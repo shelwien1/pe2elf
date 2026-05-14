@@ -131,11 +131,13 @@ struct PeImage {
       e.name[8] = 0;
       // Resolve /N long-name form via COFF string table
       if( e.name[0]=='/' && e.name[1]>='0' && e.name[1]<='9' ) {
-        uint32_t name_off = (uint32_t)strtoul(e.name+1, nullptr, 10);
-        uint32_t strtab = peh->PointerToSymbolTable + peh->NumberOfSymbols * 18;
-        if( peh->PointerToSymbolTable && strtab+4+name_off < buf.size() ) {
-          const char* p = (const char*)buf.data.data()+strtab+name_off;
-          size_t max_len = buf.size()-(strtab+name_off);
+        uint64_t name_off = strtoull(e.name+1, nullptr, 10);
+        // Use 64-bit to avoid uint32 overflow in PointerToSymbolTable + NumberOfSymbols*18
+        uint64_t strtab = (uint64_t)peh->PointerToSymbolTable + (uint64_t)peh->NumberOfSymbols * 18;
+        uint64_t str_off = strtab + name_off;
+        if( peh->PointerToSymbolTable && str_off < buf.size() ) {
+          const char* p = (const char*)buf.data.data()+str_off;
+          size_t max_len = buf.size()-(size_t)str_off;
           size_t len = strnlen(p, std::min(max_len, (size_t)255));
           e.name_str = std::string(p, len);
         }

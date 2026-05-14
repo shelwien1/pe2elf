@@ -43,7 +43,7 @@ static constexpr uint64_t kSynthFallbackVa   = 0x200000;
 // synth_size_hint = total bytes needed for synthetic sections (without dynamic)
 // n_imports, dynstr_size, dynsym_count, rela_count: sizes already known
 // ---------------------------------------------------------------------------
-inline Plan compute_plan(const PeImage& image,
+inline Plan compute_plan(PeImage& image,
                          size_t interp_size,
                          size_t dynsym_count,
                          size_t dynstr_size,
@@ -115,7 +115,7 @@ inline Plan compute_plan(const PeImage& image,
   p.pe_data_foff = align_up(cur_foff, kPageSize);
   uint64_t sec_cur = p.pe_data_foff;
   for( auto &sec : image.secmap.secs ) {
-    const_cast<PESectionMap::Entry&>(sec).elf_foff = sec_cur;
+    sec.elf_foff = sec_cur;
     sec_cur = align_up(sec_cur + sec.rawsz, kPageSize);
   }
   p.pe_hdr_foff = sec_cur;
