@@ -13,6 +13,7 @@ struct Builder {
   const std::string& shim_name;
   const std::string& interp;
   bool strip_pdata;
+  const std::string& inject_name; // extra DT_NEEDED, or empty
 
   // Synthetic section content
   std::vector<uint8_t>   interp_data;
@@ -30,14 +31,16 @@ struct Builder {
   std::vector<Elf64_Shdr> shdrs;
   std::vector<uint8_t>    shstrtab_data;
 
-  static constexpr size_t DT_ENTRY_COUNT = 12;
+  uint32_t dynstr_shim_off   = 0;
+  uint32_t dynstr_rpath_off  = 0;
+  uint32_t dynstr_inject_off = 0;
 
-  uint32_t dynstr_shim_off  = 0;
-  uint32_t dynstr_rpath_off = 0;
+  size_t dt_entry_count() const { return 12 + (inject_name.empty() ? 0 : 1); }
 
   Builder(PeImage& img, const Plan& p,
-          const std::string& shim, const std::string& itp, bool sp)
-    : image(img), plan(p), shim_name(shim), interp(itp), strip_pdata(sp) {}
+          const std::string& shim, const std::string& itp, bool sp,
+          const std::string& inj)
+    : image(img), plan(p), shim_name(shim), interp(itp), strip_pdata(sp), inject_name(inj) {}
 
   void build_synthetic_sections() {
     interp_data.assign(interp.begin(), interp.end());
@@ -52,6 +55,12 @@ struct Builder {
     for( char c : std::string("$ORIGIN") )
       dynstr_data.push_back((uint8_t)c);
     dynstr_data.push_back(0);
+    if( !inject_name.empty() ) {
+      dynstr_inject_off = (uint32_t)dynstr_data.size();
+      for( char c : inject_name )
+        dynstr_data.push_back((uint8_t)c);
+      dynstr_data.push_back(0);
+    }
 
     std::vector<std::string> unique_names;
     for( auto &ie : image.imports ) {
@@ -118,6 +127,8 @@ struct Builder {
       dynamic_data.push_back(d);
     };
     dyn(DT_NEEDED,  dynstr_shim_off);
+    if( !inject_name.empty() )
+      dyn(DT_NEEDED, dynstr_inject_off);
     dyn(DT_RUNPATH, dynstr_rpath_off);
     dyn(DT_STRTAB,  plan.dynstr_va);
     dyn(DT_STRSZ,   dynstr_data.size());
@@ -129,7 +140,7 @@ struct Builder {
     dyn(DT_DEBUG,   0);
     dyn(DT_FLAGS_1, DF_1_NOW);
     dyn(DT_NULL,    0);
-    assert(dynamic_data.size()==DT_ENTRY_COUNT);
+    assert(dynamic_data.size()==dt_entry_count());
   }
 
   void patch_rdata() {

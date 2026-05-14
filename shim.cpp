@@ -2,7 +2,6 @@
 // Exports Windows API functions using __attribute__((ms_abi)) (Windows x64 ABI).
 // All functions callable from MSVC-compiled PE code.
 
-#define _GNU_SOURCE
 #include "shim_types.h"
 
 #include <asm/prctl.h>
@@ -40,93 +39,44 @@
 #pragma GCC visibility push(hidden)
 
 // ---------------------------------------------------------------------------
-// Logging — always writes to /tmp/shimlog.txt (O_SYNC) + optional stderr
+// Logging — enabled in debug build (-DWINAPI_LOG_ENABLED), silent otherwise
 // ---------------------------------------------------------------------------
-static int g_log_fd = -1;    // file log fd (always open after init)
-static int g_log_stderr = 0; // also mirror to stderr
-static char g_log_filter[256] = "";
-static int g_log_active = 0;
+#ifdef WINAPI_LOG_ENABLED
+
+static int g_log_fd = -1;
 
 static void log_init(void) {
-  // Always open the file log with O_SYNC for write-through
-  g_log_fd = open("/tmp/shimlog.txt", O_WRONLY|O_CREAT|O_APPEND|O_SYNC, 0644);
-
-  const char* lv = getenv("WINAPI_LOG");
-  if( !lv||lv[0]=='0'||lv[0]=='\0' ) {
-    // Logging disabled — close the file, keep g_log_active=0
-    if( g_log_fd>=0 ) {
-      close(g_log_fd);
-      g_log_fd = -1;
-    }
-    return;
-  }
-  if( lv[0]=='1'||lv[0]=='2' )
-    g_log_stderr = 1;
-  g_log_active = 1;
-  const char* flt = getenv("WINAPI_LOG_FILTER");
-  if( flt )
-    strncpy(g_log_filter, flt, sizeof(g_log_filter)-1);
-}
-
-static int log_enabled(const char* name) {
-  if( !g_log_active )
-    return 0;
-  if( !g_log_filter[0] )
-    return 1;
-  return strstr(g_log_filter, name)!=NULL;
-}
-
-// Always-on write (used for crash/exit paths regardless of WINAPI_LOG)
-__attribute__((format(printf, 1, 2))) static void log_always(const char* fmt, ...) {
-return;
-
-  char buf[512];
-  va_list ap;
-  va_start(ap, fmt);
-  int n = vsnprintf(buf, sizeof(buf), fmt, ap);
-  va_end(ap);
-  if( n<=0 )
-    return;
-  size_t sz = (size_t)n<sizeof(buf) ? (size_t)n : sizeof(buf)-1;
-  // Open fresh with O_SYNC if g_log_fd not available
-  int fd = g_log_fd;
-  int owned = 0;
-  if( fd<0 ) {
-    fd = open("/tmp/shimlog.txt", O_WRONLY|O_CREAT|O_APPEND|O_SYNC, 0644);
-    owned = 1;
-  }
-  if( fd>=0 ) {
-    ssize_t _wr = write(fd, buf, sz);
-    (void)_wr;
-  }
-  if( owned&&fd>=0 )
-    close(fd);
-  ssize_t _wr = write(2, buf, sz);
-  (void)_wr; // always mirror to stderr
+  g_log_fd = open("/tmp/shimlog.txt", O_WRONLY|O_CREAT|O_TRUNC|O_SYNC, 0644);
 }
 
 __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...) {
-  if( g_log_fd<0 )
-    return;
   char buf[512];
   va_list ap;
   va_start(ap, fmt);
   int n = vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
-  if( n<=0 )
-    return;
+  if( n<=0 ) return;
   size_t sz = (size_t)n<sizeof(buf) ? (size_t)n : sizeof(buf)-1;
-  ssize_t _wr = write(g_log_fd, buf, sz);
-  (void)_wr;
-  if( g_log_stderr ) {
-    _wr = write(2, buf, sz);
+  if( g_log_fd>=0 ) {
+    ssize_t _wr = write(g_log_fd, buf, sz);
     (void)_wr;
   }
+  ssize_t _wr = write(2, buf, sz);
+  (void)_wr;
 }
 
-#define LOG(name, fmt, ...)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-        if( log_enabled(name) )                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        log_write("[%d] " name "(" fmt ")\n", (int)getpid(), ## __VA_ARGS__)
+#define log_always log_write
+#define LOG(name, fmt, ...) \
+  log_write("[%d] " name "(" fmt ")\n", (int)getpid(), ##__VA_ARGS__)
+
+#else // !WINAPI_LOG_ENABLED
+
+static inline void log_init(void) {}
+#define log_write(fmt, ...)  ((void)0)
+#define log_always(fmt, ...) ((void)0)
+#define LOG(name, fmt, ...)  ((void)0)
+
+#endif // WINAPI_LOG_ENABLED
 
 // ---------------------------------------------------------------------------
 // Thread-local last error
@@ -519,11 +469,15 @@ static void* g_unhandled_filter = NULL;
 static void crash_handler(int sig, siginfo_t* si, void* ctx) {
   ucontext_t* uc = (ucontext_t*)ctx;
   log_write("CRASH: signal %d at addr %p\n", sig, si ? si->si_addr : NULL);
+#ifdef WINAPI_LOG_ENABLED
   if( uc ) {
     mcontext_t* mc = &uc->uc_mcontext;
     log_write("  RIP=%016llx RSP=%016llx RBP=%016llx\n", (unsigned long long)mc->gregs[REG_RIP], (unsigned long long)mc->gregs[REG_RSP], (unsigned long long)mc->gregs[REG_RBP]);
     log_write("  RAX=%016llx RBX=%016llx RCX=%016llx RDX=%016llx\n", (unsigned long long)mc->gregs[REG_RAX], (unsigned long long)mc->gregs[REG_RBX], (unsigned long long)mc->gregs[REG_RCX], (unsigned long long)mc->gregs[REG_RDX]);
   }
+#else
+  (void)uc;
+#endif
   // Try unhandled exception filter
   if( g_unhandled_filter ) {
     // Can't easily call ms_abi from here; just abort
@@ -713,12 +667,10 @@ extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
 extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_t size) {
   (void)heap;
   if( flags&HEAP_ZERO_MEMORY ) {
+    size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
     void* p = realloc(ptr, size);
-    if( p ) {
-      size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
-      if( size>old_sz )
-        memset((char*)p+old_sz, 0, size-old_sz);
-    }
+    if( p&&size>old_sz )
+      memset((char*)p+old_sz, 0, size-old_sz);
     return p;
   }
   void* p = realloc(ptr, size);
@@ -947,6 +899,14 @@ extern "C" EXPORT void GetSystemTimeAsFileTime(FILETIME* pft) {
 // ---------------------------------------------------------------------------
 // 7.6 Directory / File Search
 // ---------------------------------------------------------------------------
+static void path_join(char* dst, size_t dst_sz, const char* dir, const char* name) {
+  size_t a = strnlen(dir, dst_sz-2);
+  size_t b = strnlen(name, dst_sz-a-2);
+  memcpy(dst, dir, a);
+  dst[a] = '/';
+  memcpy(dst+a+1, name, b);
+  dst[a+1+b] = '\0';
+}
 extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAA* pfd, int srchas, void* filter, DWORD flags) {
   (void)lvl;
   (void)srchas;
@@ -962,10 +922,12 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
   char* slash = strrchr(posix, '/');
   if( slash ) {
     *slash = '\0';
-    strncpy(dir, posix, sizeof(dir)-1);
-    strncpy(glob, slash+1, sizeof(glob)-1);
+    snprintf(dir, sizeof(dir), "%s", posix);
+    snprintf(glob, sizeof(glob), "%s", slash+1);
   } else {
-    strncpy(glob, posix, sizeof(glob)-1);
+    size_t n = strnlen(posix, sizeof(glob)-1);
+    memcpy(glob, posix, n);
+    glob[n] = '\0';
   }
 
   DIR* d = opendir(dir[0] ? dir : ".");
@@ -976,8 +938,8 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
 
   FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
   ctx->dir = d;
-  strncpy(ctx->glob, glob, sizeof(ctx->glob)-1);
-  strncpy(ctx->dirpath, dir[0] ? dir : ".", sizeof(ctx->dirpath)-1);
+  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
+  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
 
   // Find first match
   struct dirent* ent;
@@ -988,7 +950,7 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
       continue;
 
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {
@@ -1033,7 +995,7 @@ extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAA* pfd) {
       continue;
 
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {
@@ -1534,9 +1496,11 @@ extern "C" EXPORT LONG UnhandledExceptionFilter(void* pExcept) {
     void** ep = (void**)pExcept;
     void* excRec = ep[0];
     if( excRec ) {
+#ifdef WINAPI_LOG_ENABLED
       uint32_t code = *(uint32_t*)excRec;
       void* addr = *(void**)((uint8_t*)excRec+0x10);
       log_always("[SHIM] UnhandledExceptionFilter code=0x%08x addr=%p\n", code, addr);
+#endif
     } else {
       log_always("[SHIM] UnhandledExceptionFilter(NULL excRec)\n");
     }
@@ -1673,14 +1637,16 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   char dir[PATH_MAX] = ".";
   char glob[260] = "*";
   char tmp[PATH_MAX];
-  strncpy(tmp, posix, sizeof(tmp)-1);
+  snprintf(tmp, sizeof(tmp), "%s", posix);
   char* slash = strrchr(tmp, '/');
   if( slash ) {
     *slash = '\0';
-    strncpy(dir, tmp, sizeof(dir)-1);
-    strncpy(glob, slash+1, sizeof(glob)-1);
+    snprintf(dir, sizeof(dir), "%s", tmp);
+    snprintf(glob, sizeof(glob), "%s", slash+1);
   } else {
-    strncpy(glob, tmp, sizeof(glob)-1);
+    size_t n = strnlen(tmp, sizeof(glob)-1);
+    memcpy(glob, tmp, n);
+    glob[n] = '\0';
   }
   DIR* d = opendir(dir[0] ? dir : ".");
   if( !d ) {
@@ -1689,8 +1655,8 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   }
   FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
   ctx->dir = d;
-  strncpy(ctx->glob, glob, sizeof(ctx->glob)-1);
-  strncpy(ctx->dirpath, dir[0] ? dir : ".", sizeof(ctx->dirpath)-1);
+  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
+  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
   struct dirent* ent;
   while( (ent = readdir(d))!=NULL ) {
     if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
@@ -1698,7 +1664,7 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
     if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
       continue;
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {

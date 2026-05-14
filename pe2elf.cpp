@@ -17,6 +17,7 @@ struct Converter {
 
   std::string interp = "/lib64/ld-linux-x86-64.so.2";
   std::string shim_name = "winapi_shim.so";
+  std::string inject_name;
   bool keep_shdr = true;
   bool strip_pdata = false;
 
@@ -32,11 +33,11 @@ struct Converter {
       return false;
     printf("Imports: %u IAT entries\n", (uint32_t)image.imports.size());
 
-    Builder build(image, plan, shim_name, interp, strip_pdata);
+    Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
     build.build_synthetic_sections();
     plan = compute_plan(image, build.interp_data.size(), build.dynsym_data.size(),
                         build.dynstr_data.size(), build.rela_data.size(),
-                        Builder::DT_ENTRY_COUNT);
+                        build.dt_entry_count());
     if( !build.build_trampoline() )
       return false;
     build.build_dynamic();
@@ -70,6 +71,8 @@ static void usage(const char* prog) {
           "Usage: %s <input.exe> <output.elf>\n"
           "  [--interp <path>]       (default: /lib64/ld-linux-x86-64.so.2)\n"
           "  [--shim-soname <name>]  (default: winapi_shim.so)\n"
+          "  [--dbg]                 use winapi_shim_dbg.so (logging enabled)\n"
+          "  [--inject=<soname>]     add a second DT_NEEDED library\n"
           "  [--strip-pdata]         drop .pdata section\n"
           "  [--no-shdr]             omit section headers\n",
           prog);
@@ -90,6 +93,10 @@ int main(int argc, char** argv) {
       conv.interp = argv[++i];
     } else if( !strcmp(argv[i], "--shim-soname")&&i+1<argc ) {
       conv.shim_name = argv[++i];
+    } else if( !strcmp(argv[i], "--dbg") ) {
+      conv.shim_name = "winapi_shim_dbg.so";
+    } else if( !strncmp(argv[i], "--inject=", 9) ) {
+      conv.inject_name = argv[i]+9;
     } else if( !strcmp(argv[i], "--strip-pdata") ) {
       conv.strip_pdata = true;
     } else if( !strcmp(argv[i], "--no-shdr") ) {

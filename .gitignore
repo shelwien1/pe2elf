@@ -6,3 +6,6 @@ winapi_shim.so
 *.bak
 *.elf
 *.pmm
+*.ppm
+winapi_shim_dbg.so
+dummy.so
