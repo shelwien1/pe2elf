@@ -2,7 +2,6 @@
 // Exports Windows API functions using __attribute__((ms_abi)) (Windows x64 ABI).
 // All functions callable from MSVC-compiled PE code.
 
-#define _GNU_SOURCE
 #include "shim_types.h"
 
 #include <asm/prctl.h>
@@ -668,12 +667,10 @@ extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
 extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_t size) {
   (void)heap;
   if( flags&HEAP_ZERO_MEMORY ) {
+    size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
     void* p = realloc(ptr, size);
-    if( p ) {
-      size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
-      if( size>old_sz )
-        memset((char*)p+old_sz, 0, size-old_sz);
-    }
+    if( p&&size>old_sz )
+      memset((char*)p+old_sz, 0, size-old_sz);
     return p;
   }
   void* p = realloc(ptr, size);
@@ -902,6 +899,14 @@ extern "C" EXPORT void GetSystemTimeAsFileTime(FILETIME* pft) {
 // ---------------------------------------------------------------------------
 // 7.6 Directory / File Search
 // ---------------------------------------------------------------------------
+static void path_join(char* dst, size_t dst_sz, const char* dir, const char* name) {
+  size_t a = strnlen(dir, dst_sz-2);
+  size_t b = strnlen(name, dst_sz-a-2);
+  memcpy(dst, dir, a);
+  dst[a] = '/';
+  memcpy(dst+a+1, name, b);
+  dst[a+1+b] = '\0';
+}
 extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAA* pfd, int srchas, void* filter, DWORD flags) {
   (void)lvl;
   (void)srchas;
@@ -917,10 +922,12 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
   char* slash = strrchr(posix, '/');
   if( slash ) {
     *slash = '\0';
-    strncpy(dir, posix, sizeof(dir)-1);
-    strncpy(glob, slash+1, sizeof(glob)-1);
+    snprintf(dir, sizeof(dir), "%s", posix);
+    snprintf(glob, sizeof(glob), "%s", slash+1);
   } else {
-    strncpy(glob, posix, sizeof(glob)-1);
+    size_t n = strnlen(posix, sizeof(glob)-1);
+    memcpy(glob, posix, n);
+    glob[n] = '\0';
   }
 
   DIR* d = opendir(dir[0] ? dir : ".");
@@ -931,8 +938,8 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
 
   FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
   ctx->dir = d;
-  strncpy(ctx->glob, glob, sizeof(ctx->glob)-1);
-  strncpy(ctx->dirpath, dir[0] ? dir : ".", sizeof(ctx->dirpath)-1);
+  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
+  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
 
   // Find first match
   struct dirent* ent;
@@ -943,7 +950,7 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
       continue;
 
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {
@@ -988,7 +995,7 @@ extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAA* pfd) {
       continue;
 
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {
@@ -1630,14 +1637,16 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   char dir[PATH_MAX] = ".";
   char glob[260] = "*";
   char tmp[PATH_MAX];
-  strncpy(tmp, posix, sizeof(tmp)-1);
+  snprintf(tmp, sizeof(tmp), "%s", posix);
   char* slash = strrchr(tmp, '/');
   if( slash ) {
     *slash = '\0';
-    strncpy(dir, tmp, sizeof(dir)-1);
-    strncpy(glob, slash+1, sizeof(glob)-1);
+    snprintf(dir, sizeof(dir), "%s", tmp);
+    snprintf(glob, sizeof(glob), "%s", slash+1);
   } else {
-    strncpy(glob, tmp, sizeof(glob)-1);
+    size_t n = strnlen(tmp, sizeof(glob)-1);
+    memcpy(glob, tmp, n);
+    glob[n] = '\0';
   }
   DIR* d = opendir(dir[0] ? dir : ".");
   if( !d ) {
@@ -1646,8 +1655,8 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   }
   FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
   ctx->dir = d;
-  strncpy(ctx->glob, glob, sizeof(ctx->glob)-1);
-  strncpy(ctx->dirpath, dir[0] ? dir : ".", sizeof(ctx->dirpath)-1);
+  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
+  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
   struct dirent* ent;
   while( (ent = readdir(d))!=NULL ) {
     if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
@@ -1655,7 +1664,7 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
     if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
       continue;
     char fullpath[PATH_MAX];
-    snprintf(fullpath, sizeof(fullpath), "%s/%s", ctx->dirpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     struct stat st;
     memset(pfd, 0, sizeof(*pfd));
     if( stat(fullpath, &st)==0 ) {

@@ -9,6 +9,7 @@ DUMMY_SRCS   = dummy.cpp
 SHIM_FLAGS = -O2 -fPIC -shared -m64 -std=c++17 \
              -fvisibility=hidden \
              -Wall -Wextra -Wno-unused-parameter \
+             -D_GNU_SOURCE \
              -I.
 SHIM_LDFLAGS = -lpthread -ldl \
                -Wl,--version-script=shim.map \
