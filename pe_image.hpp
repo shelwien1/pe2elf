@@ -1,0 +1,243 @@
+#pragma once
+#include "util.hpp"
+#include "pe_types.hpp"
+#include <optional>
+#include <string>
+#include <vector>
+
+// ---------------------------------------------------------------------------
+// PE RVA → file offset map
+// ---------------------------------------------------------------------------
+struct PESectionMap {
+  struct Entry {
+    uint32_t va, raw, rawsz, virtsz;
+    uint32_t characteristics;
+    char name[9];
+    std::string name_str; // resolved name (handles /N long-name form)
+    uint64_t elf_foff;    // filled in by layout pass
+  };
+  std::vector<Entry> secs;
+
+  // Returns file offset, or empty if RVA not in any section.
+  // Returning std::optional avoids confusing "not found" with offset 0.
+  std::optional<uint32_t> rva_to_offset(uint32_t rva) const {
+    for( auto &e : secs ) {
+      uint32_t end = e.va+std::max(e.virtsz, e.rawsz);
+      if( rva>=e.va&&rva<end ) {
+        uint32_t delta = rva-e.va;
+        if( delta<e.rawsz )
+          return e.raw+delta;
+      }
+    }
+    return std::nullopt;
+  }
+
+  int section_of(uint32_t rva) const {
+    for( int i = 0; i<(int)secs.size(); ++i ) {
+      uint32_t end = secs[i].va+std::max(secs[i].virtsz, secs[i].rawsz);
+      if( rva>=secs[i].va&&rva<end )
+        return i;
+    }
+    return -1;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Import record
+// ---------------------------------------------------------------------------
+struct ImportEntry {
+  std::string dll_name;
+  std::string func_name;
+  uint32_t iat_rva;   // RVA of the IAT slot (8 bytes)
+  uint32_t sym_index; // index into .dynsym (assigned later)
+};
+
+// ---------------------------------------------------------------------------
+// Parsed PE image (input data + section map + imports)
+// ---------------------------------------------------------------------------
+struct PeImage {
+  Buffer buf;
+  const pe_dos_header*      dos = nullptr;
+  const pe_header*           peh = nullptr;
+  const pe64_optional_header* oh = nullptr;
+  size_t   dd_off = 0;
+  uint32_t num_dd = 0;
+  PESectionMap secmap;
+  std::vector<ImportEntry> imports;
+  uint64_t image_base = 0;
+  uint32_t ep_rva = 0;
+  int rdata_sec_idx = -1; // index of section holding IAT (usually .rdata)
+
+  bool parse(const char* path) {
+    if( !buf.load(path) )
+      return false;
+
+    dos = buf.at<pe_dos_header>(0);
+    if( !dos||dos->Magic!=0x5A4D ) {
+      fprintf(stderr, "Not a valid PE (bad DOS magic)\n");
+      return false;
+    }
+    size_t pe_off = dos->AddressOfNewExeHeader;
+    peh = buf.at<pe_header>(pe_off);
+    if( !peh||memcmp(peh->signature, "PE\0\0", 4)!=0 ) {
+      fprintf(stderr, "Bad PE signature\n");
+      return false;
+    }
+    if( peh->Machine!=0x8664 ) {
+      fprintf(stderr, "Not AMD64 PE (machine=0x%04x)\n", peh->Machine);
+      return false;
+    }
+    size_t opt_off = pe_off+sizeof(pe_header);
+    auto* magic_p = buf.at<uint16_t>(opt_off);
+    if( !magic_p||*magic_p!=0x20B ) {
+      fprintf(stderr, "Not PE32+ (magic=0x%04x)\n", magic_p ? *magic_p : 0);
+      return false;
+    }
+    oh = buf.at<pe64_optional_header>(opt_off);
+    if( !oh ) {
+      fprintf(stderr, "Cannot read PE64 optional header\n");
+      return false;
+    }
+    image_base = oh->ImageBase;
+    ep_rva = oh->AddressOfEntryPoint;
+    num_dd = oh->NumberOfRvaAndSize;
+    if( num_dd>96 ) {
+      fprintf(stderr, "NumberOfRvaAndSize %u exceeds limit (96)\n", num_dd);
+      return false;
+    }
+    if( peh->NumberOfSections>96 ) {
+      fprintf(stderr, "NumberOfSections %u exceeds limit (96)\n", peh->NumberOfSections);
+      return false;
+    }
+    dd_off = opt_off+sizeof(pe64_optional_header);
+    if( dd_off+num_dd*sizeof(pe_data_directory)>buf.size() ) {
+      fprintf(stderr, "Data directory array extends past end of file\n");
+      return false;
+    }
+
+    // Use SizeOfOptionalHeader (spec-correct) for section-table base (D11)
+    size_t sec_off = pe_off+sizeof(pe_header)+peh->SizeOfOptionalHeader;
+    for( uint32_t i = 0; i<peh->NumberOfSections; ++i ) {
+      auto* s = buf.at<pe_section>(sec_off+i*sizeof(pe_section));
+      if( !s )
+        break;
+      PESectionMap::Entry e{};
+      e.va = s->VirtualAddress;
+      e.raw = s->PointerToRawData;
+      e.rawsz = s->SizeOfRawData;
+      e.virtsz = s->VirtualSize;
+      e.characteristics = s->Characteristics;
+      memcpy(e.name, s->Name, 8);
+      e.name[8] = 0;
+      // Resolve /N long-name form via COFF string table
+      if( e.name[0]=='/' && e.name[1]>='0' && e.name[1]<='9' ) {
+        uint32_t name_off = (uint32_t)strtoul(e.name+1, nullptr, 10);
+        uint32_t strtab = peh->PointerToSymbolTable + peh->NumberOfSymbols * 18;
+        if( peh->PointerToSymbolTable && strtab+4+name_off < buf.size() ) {
+          const char* p = (const char*)buf.data.data()+strtab+name_off;
+          size_t max_len = buf.size()-(strtab+name_off);
+          size_t len = strnlen(p, std::min(max_len, (size_t)255));
+          e.name_str = std::string(p, len);
+        }
+      }
+      if( e.name_str.empty() ) {
+        e.name_str = e.name;
+        if( e.name_str.empty() ) e.name_str = ".pe_sec";
+      }
+      secmap.secs.push_back(e);
+    }
+    return true;
+  }
+
+  bool collect_imports() {
+    if( num_dd<=PE_DD_IMPORT )
+      return true;
+    auto* imp_dd = buf.at<pe_data_directory>(dd_off+PE_DD_IMPORT*sizeof(pe_data_directory));
+    if( !imp_dd||!imp_dd->RelativeVirtualAddress )
+      return true;
+
+    auto imp_base = secmap.rva_to_offset(imp_dd->RelativeVirtualAddress);
+    if( !imp_base ) {
+      fprintf(stderr, "Import directory RVA does not map to any section\n");
+      return false;
+    }
+    uint32_t imp_off = *imp_base;
+
+    for( uint32_t idx = 0; idx<4096; ++idx ) {
+      auto* imp = buf.at<pe_import>(imp_off+idx*sizeof(pe_import));
+      if( !imp )
+        break;
+      if( !imp->NameRVA&&!imp->ImportLookupTableRVA&&!imp->ImportAddressTableRVA )
+        break;
+
+      auto name_off_opt = imp->NameRVA ? secmap.rva_to_offset(imp->NameRVA)
+                                        : std::optional<uint32_t>{};
+      if( !name_off_opt ) {
+        fprintf(stderr, "Warning: import descriptor has invalid NameRVA 0x%x; skipping\n",
+                imp->NameRVA);
+        continue;
+      }
+      uint32_t name_off = *name_off_opt;
+      std::string dll_name;
+      for( size_t k = name_off; k<buf.size()&&k-name_off<256; ++k ) {
+        if( buf.data[k]==0 ) break;
+        dll_name.push_back((char)buf.data[k]);
+      }
+
+      uint32_t iat_rva = imp->ImportAddressTableRVA;
+      if( !iat_rva ) {
+        fprintf(stderr, "Warning: import descriptor for '%s' has zero IAT RVA; skipping\n",
+                dll_name.c_str());
+        continue;
+      }
+
+      uint32_t ilt_rva = imp->ImportLookupTableRVA ? imp->ImportLookupTableRVA : iat_rva;
+      auto ilt_off_opt = secmap.rva_to_offset(ilt_rva);
+      if( !ilt_off_opt )
+        continue;
+      uint32_t ilt_off = *ilt_off_opt;
+
+      for( uint32_t j = 0;; ++j ) {
+        auto* entry = buf.at<uint64_t>(ilt_off+j*8);
+        if( !entry||*entry==0 )
+          break;
+        uint64_t v = *entry;
+        uint32_t slot_rva = iat_rva+j*8;
+        if( secmap.section_of(slot_rva)<0 ) {
+          fprintf(stderr, "Warning: IAT slot RVA 0x%x not in any section; skipping\n", slot_rva);
+          continue;
+        }
+        if( v&0x8000000000000000ULL ) {
+          fprintf(stderr, "Error: ordinal imports are not supported (DLL '%s' ordinal %llu)\n",
+                  dll_name.c_str(), (unsigned long long)(v&0xFFFF));
+          return false;
+        } else {
+          auto hint_off_opt = secmap.rva_to_offset((uint32_t)(v&0x7FFFFFFF));
+          if( hint_off_opt && *hint_off_opt+2<buf.size() ) {
+            uint32_t hint_off = *hint_off_opt;
+            std::string fname = buf.str(hint_off+2);
+            ImportEntry ie;
+            ie.dll_name = dll_name;
+            ie.func_name = fname;
+            ie.iat_rva = slot_rva;
+            ie.sym_index = 0;
+            imports.push_back(ie);
+          }
+        }
+      }
+    }
+
+    // Identify which section holds the IAT; error on split layout (D5)
+    if( !imports.empty() ) {
+      rdata_sec_idx = secmap.section_of(imports[0].iat_rva);
+      for( auto &ie : imports ) {
+        if( secmap.section_of(ie.iat_rva)!=rdata_sec_idx ) {
+          fprintf(stderr, "Error: split IAT layout (IAT spans multiple sections) is not supported\n");
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+};
