@@ -40,7 +40,14 @@ The resulting binary loads and executes without Wine or a kernel module.
 make
 ```
 
-Produces `pe2elf` and `winapi_shim.so`.
+Produces:
+
+| Output | Description |
+|---|---|
+| `pe2elf` | The converter (statically linked) |
+| `winapi_shim.so` | WinAPI shim — silent, for production use |
+| `winapi_shim_dbg.so` | WinAPI shim — full call logging to `/tmp/shimlog.txt` and stderr |
+| `dummy.so` | Example injection library (prints `Hello, world!!!` at startup) |
 
 ## Usage
 
@@ -52,71 +59,47 @@ pe2elf <input.exe> <output.elf> [options]
 |---|---|---|
 | `--interp <path>` | `/lib64/ld-linux-x86-64.so.2` | ELF interpreter path |
 | `--shim-soname <name>` | `winapi_shim.so` | `DT_NEEDED` name for the WinAPI shim |
+| `--dbg` | off | Use `winapi_shim_dbg.so` instead (enables full call logging) |
+| `--inject=<soname>` | — | Add a second `DT_NEEDED` entry (e.g. a custom injection library) |
 | `--strip-pdata` | off | Drop the `.pdata` section (saves space; disables Windows-style SEH unwinding) |
 | `--no-shdr` | off | Omit section headers (slightly smaller output) |
 
-The converter must be run from the directory that contains `winapi_shim.so`,
-or `winapi_shim.so` must be on `LD_LIBRARY_PATH`, because pe2elf embeds
-`DT_RUNPATH=$ORIGIN` so the dynamic linker looks next to the ELF at runtime.
+The output ELF embeds `DT_RUNPATH=$ORIGIN`, so `ld.so` looks for the shim
+next to the ELF at runtime. Place `winapi_shim.so` (or `winapi_shim_dbg.so`)
+in the same directory as the converted binary before running it.
 
 ### Example
 
 ```sh
+# Convert and run
 ./pe2elf program.exe program.elf
+cp winapi_shim.so /path/to/program/
+./program.elf
+
+# Convert with debug logging
+./pe2elf program.exe program.elf --dbg
+cp winapi_shim_dbg.so /path/to/program/
+./program.elf
+# WinAPI calls are traced to /tmp/shimlog.txt and stderr
+
+# Inject an extra shared library at startup
+./pe2elf program.exe program.elf --inject=dummy.so
+cp winapi_shim.so dummy.so /path/to/program/
 ./program.elf
 ```
 
 ## Logging
 
-Set `WINAPI_LOG=1` before running to enable call tracing to `/tmp/shimlog.txt`:
+Build `winapi_shim_dbg.so` is compiled with `-DWINAPI_LOG_ENABLED`. It traces
+every shim call to `/tmp/shimlog.txt` and to stderr. Use `--dbg` when converting
+to bind the output ELF to the debug build:
 
 ```sh
-WINAPI_LOG=1 ./program.elf
+./pe2elf program.exe program.elf --dbg
+./program.elf 2>/dev/null   # trace goes to /tmp/shimlog.txt
 ```
 
-Set `WINAPI_LOG_FILTER=<substring>` to limit logging to functions whose
-names contain the given string:
-
-```sh
-WINAPI_LOG=1 WINAPI_LOG_FILTER=File ./program.elf
-```
-
-## Supported WinAPI functions
-
-The shim currently implements:
-
-`CloseHandle` · `CompareStringW` · `CreateFileA` · `CreateFileW` ·
-`DecodePointer` · `DeleteCriticalSection` · `DeleteFileA` ·
-`DosDateTimeToFileTime` · `EncodePointer` · `EnterCriticalSection` ·
-`ExitProcess` · `FileTimeToDosDateTime` · `FindClose` ·
-`FindFirstFileA` · `FindFirstFileExW` · `FindNextFileA` · `FindNextFileW` ·
-`FlsAlloc` · `FlsFree` · `FlsGetValue` · `FlsSetValue` ·
-`FlushFileBuffers` · `FormatMessageA` · `FreeEnvironmentStringsA` ·
-`FreeEnvironmentStringsW` · `FreeLibrary` · `GetACP` · `GetCPInfo` ·
-`GetCommandLineA` · `GetCommandLineW` · `GetConsoleCP` · `GetConsoleMode` ·
-`GetConsoleOutputCP` · `GetCurrentDirectoryA` · `GetCurrentProcess` ·
-`GetCurrentProcessId` · `GetCurrentThreadId` · `GetEnvironmentStrings` ·
-`GetEnvironmentStringsW` · `GetFileType` · `GetLastError` ·
-`GetLocaleInfoA` · `GetModuleFileNameA` · `GetModuleFileNameW` ·
-`GetModuleHandleExW` · `GetModuleHandleW` · `GetOEMCP` · `GetProcAddress` ·
-`GetProcessHeap` · `GetStartupInfoA` · `GetStartupInfoW` · `GetStdHandle` ·
-`GetStringTypeA` · `GetStringTypeW` · `GetSystemTimeAsFileTime` ·
-`GetTickCount` · `HeapAlloc` · `HeapCreate` · `HeapFree` · `HeapReAlloc` ·
-`HeapSetInformation` · `HeapSize` · `InitializeCriticalSection` ·
-`InitializeCriticalSectionAndSpinCount` · `InitializeSListHead` ·
-`IsDebuggerPresent` · `IsProcessorFeaturePresent` · `IsValidCodePage` ·
-`LCMapStringA` · `LCMapStringW` · `LeaveCriticalSection` · `LoadLibraryA` ·
-`LoadLibraryExW` · `MultiByteToWideChar` · `QueryPerformanceCounter` ·
-`QueryPerformanceFrequency` · `RaiseException` · `ReadConsoleInputA` ·
-`ReadFile` · `RtlCaptureContext` · `RtlLookupFunctionEntry` ·
-`RtlPcToFileHeader` · `RtlUnwindEx` · `RtlVirtualUnwind` ·
-`SetConsoleMode` · `SetEndOfFile` · `SetEnvironmentVariableW` ·
-`SetFileAttributesA` · `SetFilePointer` · `SetFilePointerEx` ·
-`SetFileTime` · `SetHandleCount` · `SetLastError` · `SetStdHandle` ·
-`SetUnhandledExceptionFilter` · `Sleep` · `TerminateProcess` · `TlsAlloc` ·
-`TlsFree` · `TlsGetValue` · `TlsSetValue` · `UnhandledExceptionFilter` ·
-`VirtualAlloc` · `VirtualFree` · `WideCharToMultiByte` · `WriteConsoleA` ·
-`WriteConsoleW` · `WriteFile`
+The production `winapi_shim.so` contains no logging code at all.
 
 ## Limitations
 
@@ -144,6 +127,7 @@ The shim currently implements:
 | `elf_plan.hpp` | `compute_plan()`: VA and file-offset layout |
 | `elf_build.hpp` | `Builder`: synthetic sections, program headers, section headers |
 | `elf_write.hpp` | `Writer`: ELF serialization and file output |
-| `shim.cpp` | `winapi_shim.so` implementation |
+| `shim.cpp` | `winapi_shim.so` / `winapi_shim_dbg.so` implementation |
 | `shim_types.h` | Win32 type definitions for the shim |
 | `shim.map` | Linker version script (controls symbol visibility) |
+| `dummy.cpp` | Example injection library built as `dummy.so` |
