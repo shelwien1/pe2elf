@@ -341,6 +341,5 @@ struct Builder {
 
     add(".shstrtab", SHT_STRTAB, 0, shstrtab_va, shstrtab_foff,
         0, 0, 0, 1, 0);
-    (void)shstrtab_va;
   }
 };
