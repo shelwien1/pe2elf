@@ -1,0 +1,8 @@
+# Compiled binaries
+pe2elf
+winapi_shim.so
+
+# Build artifacts and backups
+*.bak
+*.elf
+*.pmm
