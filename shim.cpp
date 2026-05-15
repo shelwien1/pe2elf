@@ -18,6 +18,7 @@
 #include <malloc.h>
 #endif
 #include <pthread.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,6 +28,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>
 #include <time.h>
 #include <ctype.h>
 #include <termios.h>
@@ -291,7 +293,8 @@ int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
 // ---------------------------------------------------------------------------
 // HANDLE table
 // ---------------------------------------------------------------------------
-enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE };
+enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE,
+                   H_MUTEX, H_EVENT, H_SEMAPHORE, H_THREAD };
 
 struct FindCtx {
   int  refcount;     // protected by g_handles_mu; freed when it reaches 0
@@ -300,12 +303,34 @@ struct FindCtx {
   char dirpath[PATH_MAX];
 };
 
+// Sync object structs (defined here so CloseHandle can destroy them)
+struct MutexObj {
+  pthread_mutex_t mu;
+};
+struct EventObj {
+  pthread_mutex_t mu;
+  pthread_cond_t  cv;
+  bool            signaled;
+  bool            manual_reset;
+};
+struct SemaphoreObj {
+  sem_t sem;
+};
+struct ThreadObj {
+  pthread_t       tid;
+  pthread_mutex_t mu;
+  pthread_cond_t  cv;
+  int64_t         exit_code;
+  bool            done;
+};
+
 struct HandleSlot {
   HandleKind kind;
   union {
-    int fd;
+    int      fd;
     FindCtx* find;
-    void* dlhandle;
+    void*    dlhandle;
+    void*    ptr;        // H_MUTEX / H_EVENT / H_SEMAPHORE / H_THREAD
   };
 };
 
@@ -684,6 +709,49 @@ static void build_env_block(void) {
 }
 
 // ---------------------------------------------------------------------------
+// msvcrt CRT state (used by msvcrt_ shims below)
+// ---------------------------------------------------------------------------
+static int    g_main_argc = 0;
+static char** g_main_argv = nullptr;
+
+// Fake Windows FILE IOB array: 3 entries × 48 bytes each.
+// Layout mirrors Windows x64 _iobuf: ptr[8] cnt[4] pad[4] base[8]
+//   flag[4] file[4] charbuf[4] bufsiz[4] tmpfname[8]
+static uint8_t g_fake_iob[144];
+
+static void build_argv(void) {
+  int fd = open("/proc/self/cmdline", O_RDONLY);
+  if( fd<0 ) return;
+  char raw[32768];
+  int n = (int)read(fd, raw, sizeof(raw)-1);
+  close(fd);
+  if( n<=0 ) return;
+  raw[n] = '\0';
+  int argc = 0;
+  for( int i = 0; i<n; i++ ) {
+    if( i==0||(raw[i-1]=='\0'&&raw[i]!='\0') ) argc++;
+  }
+  char** argv = (char**)malloc((size_t)(argc+1)*sizeof(char*));
+  if( !argv ) return;
+  int ai = 0;
+  const char* p = raw, *end = raw+n;
+  while( p<end&&ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
+  argv[ai] = nullptr;
+  g_main_argc = argc;
+  g_main_argv = argv;
+}
+
+static void init_fake_iob(void) {
+  memset(g_fake_iob, 0, sizeof(g_fake_iob));
+  // stdin  (_IOREAD=1, fd=0)
+  *(int*)(g_fake_iob+0*48+24) = 1;  *(int*)(g_fake_iob+0*48+28) = 0;
+  // stdout (_IOWRT=2, fd=1)
+  *(int*)(g_fake_iob+1*48+24) = 2;  *(int*)(g_fake_iob+1*48+28) = 1;
+  // stderr (_IOWRT=2, fd=2)
+  *(int*)(g_fake_iob+2*48+24) = 2;  *(int*)(g_fake_iob+2*48+28) = 2;
+}
+
+// ---------------------------------------------------------------------------
 // Signal / crash handler — all helpers must be async-signal-safe (POSIX)
 // ---------------------------------------------------------------------------
 static void* g_unhandled_filter = NULL;
@@ -797,6 +865,8 @@ __attribute__((constructor)) static void shim_init(void) {
   log_init();
   rebuild_cmdline();
   build_env_block();
+  build_argv();
+  init_fake_iob();
   install_signal_handlers();
 }
 
@@ -809,20 +879,20 @@ __attribute__((constructor)) static void shim_init(void) {
 // ---------------------------------------------------------------------------
 // 7.1 Process / Identity
 // ---------------------------------------------------------------------------
-extern "C" EXPORT HANDLE GetCurrentProcess(void) {
+extern "C" EXPORT HANDLE kernel32_GetCurrentProcess(void) {
   LOG("GetCurrentProcess", "");
   return PROCESS_PSEUDO_HANDLE;
 }
 
-extern "C" EXPORT DWORD GetCurrentProcessId(void) {
+extern "C" EXPORT DWORD kernel32_GetCurrentProcessId(void) {
   return (DWORD)getpid();
 }
 
-extern "C" EXPORT DWORD GetCurrentThreadId(void) {
+extern "C" EXPORT DWORD kernel32_GetCurrentThreadId(void) {
   return (DWORD)syscall(SYS_gettid);
 }
 
-extern "C" EXPORT void ExitProcess(DWORD code) {
+extern "C" EXPORT void kernel32_ExitProcess(DWORD code) {
   log_always("[SHIM] ExitProcess(0x%08x)\n", code);
   _exit((int)code);
 }
@@ -841,7 +911,7 @@ static void log_backtrace(void) {}
 static size_t malloc_usable_size(void* /*p*/) { return 0; }
 #endif
 
-extern "C" EXPORT BOOL TerminateProcess(HANDLE h, DWORD code) {
+extern "C" EXPORT BOOL kernel32_TerminateProcess(HANDLE h, DWORD code) {
   (void)h;
   log_always("[SHIM] TerminateProcess(0x%08x)\n", code);
   log_backtrace();
@@ -849,7 +919,7 @@ extern "C" EXPORT BOOL TerminateProcess(HANDLE h, DWORD code) {
   return TRUE;
 }
 
-extern "C" EXPORT BOOL IsDebuggerPresent(void) {
+extern "C" EXPORT BOOL kernel32_IsDebuggerPresent(void) {
   log_always("[SHIM] IsDebuggerPresent()\n");
   return FALSE;
 }
@@ -864,7 +934,7 @@ static unsigned int cpuid_get_edx(unsigned int leaf) {
 }
 #endif
 
-extern "C" EXPORT BOOL IsProcessorFeaturePresent(DWORD feature) {
+extern "C" EXPORT BOOL kernel32_IsProcessorFeaturePresent(DWORD feature) {
 #ifdef __x86_64__
   static unsigned int edx1   = 0, edx_ext = 0;
   static int          inited = 0;
@@ -891,12 +961,12 @@ extern "C" EXPORT BOOL IsProcessorFeaturePresent(DWORD feature) {
 // ---------------------------------------------------------------------------
 // 7.2 Error State
 // ---------------------------------------------------------------------------
-extern "C" EXPORT DWORD GetLastError(void) {
+extern "C" EXPORT DWORD kernel32_GetLastError(void) {
   log_always("[SHIM] GetLastError() -> %u (caller=%p)\n", tls_last_error, __builtin_return_address(0));
   return tls_last_error;
 }
 
-extern "C" EXPORT void SetLastError(DWORD e) {
+extern "C" EXPORT void kernel32_SetLastError(DWORD e) {
   SET_LAST_ERROR(e);
 }
 
@@ -923,7 +993,7 @@ static int prot_from_protect(DWORD protect) {
   }
 }
 
-extern "C" EXPORT LPVOID VirtualAlloc(LPVOID addr, size_t size, DWORD type, DWORD protect) {
+extern "C" EXPORT LPVOID kernel32_VirtualAlloc(LPVOID addr, size_t size, DWORD type, DWORD protect) {
   (void)type;
   int prot = prot_from_protect(protect);
   int flags = MAP_PRIVATE|MAP_ANONYMOUS;
@@ -951,7 +1021,7 @@ extern "C" EXPORT LPVOID VirtualAlloc(LPVOID addr, size_t size, DWORD type, DWOR
   return p;
 }
 
-extern "C" EXPORT BOOL VirtualFree(LPVOID addr, size_t size, DWORD type) {
+extern "C" EXPORT BOOL kernel32_VirtualFree(LPVOID addr, size_t size, DWORD type) {
   if( type&MEM_RELEASE ) {
     if( size!=0 ) {
       SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
@@ -967,18 +1037,18 @@ extern "C" EXPORT BOOL VirtualFree(LPVOID addr, size_t size, DWORD type) {
   return TRUE;
 }
 
-extern "C" EXPORT HANDLE HeapCreate(DWORD flags, size_t init, size_t maxsz) {
+extern "C" EXPORT HANDLE kernel32_HeapCreate(DWORD flags, size_t init, size_t maxsz) {
   (void)flags;
   (void)init;
   (void)maxsz;
   return HEAP_PSEUDO_HANDLE;
 }
 
-extern "C" EXPORT HANDLE GetProcessHeap(void) {
+extern "C" EXPORT HANDLE kernel32_GetProcessHeap(void) {
   return HEAP_PSEUDO_HANDLE;
 }
 
-extern "C" EXPORT LPVOID HeapAlloc(HANDLE heap, DWORD flags, size_t size) {
+extern "C" EXPORT LPVOID kernel32_HeapAlloc(HANDLE heap, DWORD flags, size_t size) {
   (void)heap;
   void* p = (flags&HEAP_ZERO_MEMORY) ? calloc(1, size) : malloc(size);
   if( !p )
@@ -986,7 +1056,7 @@ extern "C" EXPORT LPVOID HeapAlloc(HANDLE heap, DWORD flags, size_t size) {
   return p;
 }
 
-extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
+extern "C" EXPORT BOOL kernel32_HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
   (void)heap;
   (void)flags;
   if( (uintptr_t)ptr<0x10000&&ptr!=NULL ) {
@@ -998,7 +1068,7 @@ extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
   return TRUE;
 }
 
-extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_t size) {
+extern "C" EXPORT LPVOID kernel32_HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_t size) {
   (void)heap;
   // realloc(ptr, 0) is implementation-defined; clamp to 1 to always get a
   // valid pointer (matches Windows HeapReAlloc(size=0) behavior on glibc)
@@ -1020,13 +1090,13 @@ extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_
   return p;
 }
 
-extern "C" EXPORT size_t HeapSize(HANDLE heap, DWORD flags, LPCVOID ptr) {
+extern "C" EXPORT size_t kernel32_HeapSize(HANDLE heap, DWORD flags, LPCVOID ptr) {
   (void)heap;
   (void)flags;
   return malloc_usable_size((void*)ptr);
 }
 
-extern "C" EXPORT BOOL HeapSetInformation(HANDLE heap, DWORD cls, LPVOID info, size_t sz) {
+extern "C" EXPORT BOOL kernel32_HeapSetInformation(HANDLE heap, DWORD cls, LPVOID info, size_t sz) {
   (void)heap;
   (void)cls;
   (void)info;
@@ -1037,7 +1107,7 @@ extern "C" EXPORT BOOL HeapSetInformation(HANDLE heap, DWORD cls, LPVOID info, s
 // ---------------------------------------------------------------------------
 // 7.4 File I/O
 // ---------------------------------------------------------------------------
-extern "C" EXPORT HANDLE GetStdHandle(DWORD n) {
+extern "C" EXPORT HANDLE kernel32_GetStdHandle(DWORD n) {
   switch( n ) {
   case STD_INPUT_HANDLE:
     return idx_to_handle(0);
@@ -1051,7 +1121,7 @@ extern "C" EXPORT HANDLE GetStdHandle(DWORD n) {
   }
 }
 
-extern "C" EXPORT BOOL SetStdHandle(DWORD n, HANDLE h) {
+extern "C" EXPORT BOOL kernel32_SetStdHandle(DWORD n, HANDLE h) {
   int new_fd = get_fd(h);
   if( new_fd<0 )
     return FALSE;
@@ -1071,7 +1141,7 @@ extern "C" EXPORT BOOL SetStdHandle(DWORD n, HANDLE h) {
   return TRUE;
 }
 
-extern "C" EXPORT HANDLE CreateFileW(LPCWSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
+extern "C" EXPORT HANDLE kernel32_CreateFileW(LPCWSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
   (void)share;
   (void)sa;
   (void)flags;
@@ -1095,25 +1165,42 @@ extern "C" EXPORT HANDLE CreateFileW(LPCWSTR name, DWORD access, DWORD share, SE
   return hret;
 }
 
-extern "C" EXPORT BOOL CloseHandle(HANDLE h) {
+extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
   int idx = handle_to_idx(h);
   if( idx<0||idx<=2 )
     return TRUE;   // don't close stdio; pseudo handles are always ok
   pthread_mutex_lock(&g_handles_mu);
   HandleKind k = g_handles[idx].kind;
-  int fd = (k==H_FILE) ? g_handles[idx].fd : -1;
-  FindCtx* fc = (k==H_FIND) ? g_handles[idx].find : NULL;
-  void* dlh = (k==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+  int fd     = (k==H_FILE)   ? g_handles[idx].fd        : -1;
+  FindCtx* fc  = (k==H_FIND)   ? g_handles[idx].find      : NULL;
+  void* dlh  = (k==H_MODULE) ? g_handles[idx].dlhandle  : NULL;
+  void* ptr  = (k>=H_MUTEX)  ? g_handles[idx].ptr       : NULL;
   if( k!=H_FREE )
     g_handles[idx].kind = H_FREE;
   pthread_mutex_unlock(&g_handles_mu);
   if( k==H_FILE ) {
     close(fd);
   } else if( k==H_FIND ) {
-    if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
+    if( fc ) release_find_ctx(fc);
   } else if( k==H_MODULE ) {
-    if( dlh )
-      dlclose(dlh);
+    if( dlh ) dlclose(dlh);
+  } else if( k==H_MUTEX ) {
+    MutexObj* m = (MutexObj*)ptr;
+    pthread_mutex_destroy(&m->mu); free(m);
+  } else if( k==H_EVENT ) {
+    EventObj* ev = (EventObj*)ptr;
+    pthread_mutex_destroy(&ev->mu); pthread_cond_destroy(&ev->cv); free(ev);
+  } else if( k==H_SEMAPHORE ) {
+    SemaphoreObj* s = (SemaphoreObj*)ptr;
+    sem_destroy(&s->sem); free(s);
+  } else if( k==H_THREAD ) {
+    ThreadObj* t = (ThreadObj*)ptr;
+    pthread_mutex_lock(&t->mu);
+    bool done = t->done;
+    pthread_mutex_unlock(&t->mu);
+    if( done ) pthread_join(t->tid, nullptr);
+    else        pthread_detach(t->tid);
+    pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t);
   } else {
     SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return FALSE;
@@ -1121,7 +1208,7 @@ extern "C" EXPORT BOOL CloseHandle(HANDLE h) {
   return TRUE;
 }
 
-extern "C" EXPORT BOOL ReadFile(HANDLE h, LPVOID buf, DWORD n, DWORD* pRead, void* ov) {
+extern "C" EXPORT BOOL kernel32_ReadFile(HANDLE h, LPVOID buf, DWORD n, DWORD* pRead, void* ov) {
   (void)ov;
   log_always("[SHIM] ReadFile(h=%p, n=%u, caller=%p)\n", h, n, __builtin_return_address(0));
   int fd = get_fd(h);
@@ -1141,7 +1228,7 @@ extern "C" EXPORT BOOL ReadFile(HANDLE h, LPVOID buf, DWORD n, DWORD* pRead, voi
   return TRUE;
 }
 
-extern "C" EXPORT BOOL WriteFile(HANDLE h, LPCVOID buf, DWORD n, DWORD* pWritten, void* ov) {
+extern "C" EXPORT BOOL kernel32_WriteFile(HANDLE h, LPCVOID buf, DWORD n, DWORD* pWritten, void* ov) {
   (void)ov;
   int fd = get_fd(h);
   if( fd<0 ) {
@@ -1159,7 +1246,7 @@ extern "C" EXPORT BOOL WriteFile(HANDLE h, LPCVOID buf, DWORD n, DWORD* pWritten
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetFilePointerEx(HANDLE h, LARGE_INTEGER dist, LARGE_INTEGER* pNew, DWORD method) {
+extern "C" EXPORT BOOL kernel32_SetFilePointerEx(HANDLE h, LARGE_INTEGER dist, LARGE_INTEGER* pNew, DWORD method) {
   int fd = get_fd(h);
   if( fd<0 )
     return FALSE;
@@ -1174,7 +1261,7 @@ extern "C" EXPORT BOOL SetFilePointerEx(HANDLE h, LARGE_INTEGER dist, LARGE_INTE
   return TRUE;
 }
 
-extern "C" EXPORT BOOL FlushFileBuffers(HANDLE h) {
+extern "C" EXPORT BOOL kernel32_FlushFileBuffers(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )
     return FALSE;
@@ -1182,7 +1269,7 @@ extern "C" EXPORT BOOL FlushFileBuffers(HANDLE h) {
   return TRUE;
 }
 
-extern "C" EXPORT DWORD GetFileType(HANDLE h) {
+extern "C" EXPORT DWORD kernel32_GetFileType(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )
     return FILE_TYPE_UNKNOWN;
@@ -1201,7 +1288,7 @@ extern "C" EXPORT DWORD GetFileType(HANDLE h) {
 // ---------------------------------------------------------------------------
 // 7.5 File Times
 // ---------------------------------------------------------------------------
-extern "C" EXPORT void GetSystemTimeAsFileTime(FILETIME* pft) {
+extern "C" EXPORT void kernel32_GetSystemTimeAsFileTime(FILETIME* pft) {
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
   uint64_t v = (uint64_t)ts.tv_sec*10000000ULL+(uint64_t)ts.tv_nsec/100ULL+FILETIME_EPOCH;
@@ -1282,7 +1369,7 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   return NULL;
 }
 
-extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAW* pfd, int srchas, void* filter, DWORD flags) {
+extern "C" EXPORT HANDLE kernel32_FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAW* pfd, int srchas, void* filter, DWORD flags) {
   (void)lvl;
   (void)srchas;
   (void)filter;
@@ -1308,7 +1395,7 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
   return hret;
 }
 
-extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
+extern "C" EXPORT BOOL kernel32_FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
   FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
   if( !ctx ) return FALSE;
   struct dirent* ent;
@@ -1329,7 +1416,7 @@ extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
   return found;
 }
 
-extern "C" EXPORT BOOL FindClose(HANDLE h) {
+extern "C" EXPORT BOOL kernel32_FindClose(HANDLE h) {
   int idx = handle_to_idx(h);
   pthread_mutex_lock(&g_handles_mu);
   if( idx<0||g_handles[idx].kind!=H_FIND ) {
@@ -1348,15 +1435,15 @@ extern "C" EXPORT BOOL FindClose(HANDLE h) {
 // ---------------------------------------------------------------------------
 // 7.7 Console I/O
 // ---------------------------------------------------------------------------
-extern "C" EXPORT DWORD GetConsoleCP(void) {
+extern "C" EXPORT DWORD kernel32_GetConsoleCP(void) {
   return 65001;
 }
 
-extern "C" EXPORT DWORD GetConsoleOutputCP(void) {
+extern "C" EXPORT DWORD kernel32_GetConsoleOutputCP(void) {
   return 65001;
 }
 
-extern "C" EXPORT BOOL GetConsoleMode(HANDLE h, DWORD* pMode) {
+extern "C" EXPORT BOOL kernel32_GetConsoleMode(HANDLE h, DWORD* pMode) {
   log_always("[SHIM] GetConsoleMode(h=%p, caller=%p)\n", h, __builtin_return_address(0));
   if( !pMode ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
   // Derive fd from handle, fall back to stdin/stdout
@@ -1377,19 +1464,19 @@ extern "C" EXPORT BOOL GetConsoleMode(HANDLE h, DWORD* pMode) {
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetConsoleMode(HANDLE h, DWORD mode) {
+extern "C" EXPORT BOOL kernel32_SetConsoleMode(HANDLE h, DWORD mode) {
   log_always("[SHIM] SetConsoleMode(h=%p, mode=0x%x, caller=%p)\n", h, mode, __builtin_return_address(0));
   (void)h;
   (void)mode;
   return TRUE;
 }
 
-extern "C" EXPORT BOOL WriteConsoleA(HANDLE h, LPCVOID buf, DWORD nChars, DWORD* pWritten, void* reserved) {
+extern "C" EXPORT BOOL kernel32_WriteConsoleA(HANDLE h, LPCVOID buf, DWORD nChars, DWORD* pWritten, void* reserved) {
   (void)reserved;
-  return WriteFile(h, buf, nChars, pWritten, NULL);
+  return kernel32_WriteFile(h, buf, nChars, pWritten, NULL);
 }
 
-extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD* pWritten, void* reserved) {
+extern "C" EXPORT BOOL kernel32_WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD* pWritten, void* reserved) {
   (void)reserved;
   // Build a bounded, NUL-terminated copy so wchar_to_utf8 doesn't over-read
   uint16_t tmp[65536];
@@ -1399,7 +1486,7 @@ extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD
   char utf8[65536*4];
   int nbytes = wchar_to_utf8(tmp, utf8, sizeof(utf8)-1);
   DWORD written = 0;
-  BOOL r = WriteFile(h, utf8, (DWORD)nbytes, &written, NULL);
+  BOOL r = kernel32_WriteFile(h, utf8, (DWORD)nbytes, &written, NULL);
   if( pWritten ) {
     // Approximate written wide chars from written bytes (UTF-8 bytes >= wide chars)
     *pWritten = written>0 ? nChars : 0;
@@ -1420,7 +1507,7 @@ extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD
 // True when h refers to the main executable image
 #define IS_MAIN_IMAGE(h) ((h)==MAIN_IMAGE_MODULE || (h)==(HANDLE)g_image_base)
 
-extern "C" EXPORT HANDLE GetModuleHandleW(LPCWSTR name) {
+extern "C" EXPORT HANDLE kernel32_GetModuleHandleW(LPCWSTR name) {
   if( !name )
     return (HANDLE)g_image_base;
   char narrow[PATH_MAX], posix[PATH_MAX];
@@ -1434,15 +1521,15 @@ extern "C" EXPORT HANDLE GetModuleHandleW(LPCWSTR name) {
   return FAKE_WIN_MODULE;
 }
 
-extern "C" EXPORT BOOL GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phModule) {
+extern "C" EXPORT BOOL kernel32_GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phModule) {
   (void)flags;
-  HANDLE h = GetModuleHandleW(name);
+  HANDLE h = kernel32_GetModuleHandleW(name);
   if( phModule )
     *phModule = h;
   return h ? TRUE : FALSE;
 }
 
-extern "C" EXPORT DWORD GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
+extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
   char tmp[PATH_MAX];
   if( h==NULL||IS_MAIN_IMAGE(h) ) {
     ssize_t n = readlink("/proc/self/exe", tmp, sizeof(tmp)-1);
@@ -1470,7 +1557,7 @@ extern "C" EXPORT DWORD GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
   return (DWORD)utf8_to_wchar(tmp, buf, size);
 }
 
-extern "C" EXPORT HANDLE LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
+extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
   (void)file;
   char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(name, narrow, sizeof(narrow));
@@ -1491,7 +1578,7 @@ extern "C" EXPORT HANDLE LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) 
   return FAKE_WIN_MODULE;
 }
 
-extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
+extern "C" EXPORT BOOL kernel32_FreeLibrary(HANDLE h) {
   if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h) )
     return TRUE;
   int idx = handle_to_idx(h);
@@ -1508,7 +1595,7 @@ extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
   return TRUE;
 }
 
-extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
+extern "C" EXPORT LPVOID kernel32_GetProcAddress(HANDLE h, LPCSTR name) {
   void* dlh;
   if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h)||h==NULL ) {
     dlh = RTLD_DEFAULT;
@@ -1528,15 +1615,15 @@ extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
 // ---------------------------------------------------------------------------
 // 7.9 Startup / Command Line / Environment
 // ---------------------------------------------------------------------------
-extern "C" EXPORT LPSTR GetCommandLineA(void) {
+extern "C" EXPORT LPSTR kernel32_GetCommandLineA(void) {
   return g_cmdline;
 }
 
-extern "C" EXPORT LPWSTR GetCommandLineW(void) {
+extern "C" EXPORT LPWSTR kernel32_GetCommandLineW(void) {
   return (LPWSTR)g_cmdline_w;
 }
 
-extern "C" EXPORT void GetStartupInfoW(STARTUPINFOW* psi) {
+extern "C" EXPORT void kernel32_GetStartupInfoW(STARTUPINFOW* psi) {
   if( !psi )
     return;
   memset(psi, 0, sizeof(*psi));
@@ -1547,7 +1634,7 @@ extern "C" EXPORT void GetStartupInfoW(STARTUPINFOW* psi) {
   psi->dwFlags = STARTF_USESTDHANDLES;
 }
 
-extern "C" EXPORT void GetStartupInfoA(STARTUPINFOA* psi) {
+extern "C" EXPORT void kernel32_GetStartupInfoA(STARTUPINFOA* psi) {
   if( !psi )
     return;
   memset(psi, 0, sizeof(*psi));
@@ -1558,32 +1645,32 @@ extern "C" EXPORT void GetStartupInfoA(STARTUPINFOA* psi) {
   psi->dwFlags = STARTF_USESTDHANDLES;
 }
 
-extern "C" EXPORT LPSTR GetEnvironmentStrings(void) {
+extern "C" EXPORT LPSTR kernel32_GetEnvironmentStrings(void) {
   if( !g_env_block )
     build_env_block();
   return g_env_block;
 }
 
-extern "C" EXPORT LPWSTR GetEnvironmentStringsW(void) {
+extern "C" EXPORT LPWSTR kernel32_GetEnvironmentStringsW(void) {
   // Regenerate on demand if dirty (B23/R34)
   if( !g_env_block_w )
     build_env_block();
   return g_env_block_w;
 }
 
-extern "C" EXPORT BOOL FreeEnvironmentStringsA(LPSTR p) {
+extern "C" EXPORT BOOL kernel32_FreeEnvironmentStringsA(LPSTR p) {
   if( p!=g_env_block )
     free(p);
   return TRUE;
 }
 
-extern "C" EXPORT BOOL FreeEnvironmentStringsW(LPWSTR p) {
+extern "C" EXPORT BOOL kernel32_FreeEnvironmentStringsW(LPWSTR p) {
   if( p!=(LPWSTR)g_env_block_w )
     free(p);
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetEnvironmentVariableW(LPCWSTR name, LPCWSTR val) {
+extern "C" EXPORT BOOL kernel32_SetEnvironmentVariableW(LPCWSTR name, LPCWSTR val) {
   char n[512], v[4096];
   wchar_to_utf8(name, n, sizeof(n));
   if( val ) {
@@ -1603,19 +1690,19 @@ extern "C" EXPORT BOOL SetEnvironmentVariableW(LPCWSTR name, LPCWSTR val) {
 // ---------------------------------------------------------------------------
 // 7.10 Time / Performance
 // ---------------------------------------------------------------------------
-extern "C" EXPORT BOOL QueryPerformanceCounter(LARGE_INTEGER* pli) {
+extern "C" EXPORT BOOL kernel32_QueryPerformanceCounter(LARGE_INTEGER* pli) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   pli->QuadPart = (LONGLONG)ts.tv_sec*1000000000LL+ts.tv_nsec;
   return TRUE;
 }
 
-extern "C" EXPORT BOOL QueryPerformanceFrequency(LARGE_INTEGER* pli) {
+extern "C" EXPORT BOOL kernel32_QueryPerformanceFrequency(LARGE_INTEGER* pli) {
   pli->QuadPart = 1000000000LL;
   return TRUE;
 }
 
-extern "C" EXPORT DWORD GetTickCount(void) {
+extern "C" EXPORT DWORD kernel32_GetTickCount(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (DWORD)(ts.tv_sec*1000+ts.tv_nsec/1000000);
@@ -1624,7 +1711,7 @@ extern "C" EXPORT DWORD GetTickCount(void) {
 // ---------------------------------------------------------------------------
 // 7.11 Synchronization
 // ---------------------------------------------------------------------------
-extern "C" EXPORT BOOL InitializeCriticalSectionAndSpinCount(CRITICAL_SECTION* cs, DWORD spin) {
+extern "C" EXPORT BOOL kernel32_InitializeCriticalSectionAndSpinCount(CRITICAL_SECTION* cs, DWORD spin) {
   (void)spin;
   pthread_mutexattr_t a;
   pthread_mutexattr_init(&a);
@@ -1634,27 +1721,27 @@ extern "C" EXPORT BOOL InitializeCriticalSectionAndSpinCount(CRITICAL_SECTION* c
   return TRUE;
 }
 
-extern "C" EXPORT void InitializeCriticalSection(CRITICAL_SECTION* cs) {
-  InitializeCriticalSectionAndSpinCount(cs, 0);
+extern "C" EXPORT void kernel32_InitializeCriticalSection(CRITICAL_SECTION* cs) {
+  kernel32_InitializeCriticalSectionAndSpinCount(cs, 0);
 }
 
-extern "C" EXPORT void EnterCriticalSection(CRITICAL_SECTION* cs) {
+extern "C" EXPORT void kernel32_EnterCriticalSection(CRITICAL_SECTION* cs) {
   log_always("[SHIM] EnterCriticalSection(%p, caller=%p)\n", cs, __builtin_return_address(0));
   pthread_mutex_lock((pthread_mutex_t*)cs);
   log_always("[SHIM] EnterCriticalSection(%p) done\n", cs);
 }
 
-extern "C" EXPORT void LeaveCriticalSection(CRITICAL_SECTION* cs) {
+extern "C" EXPORT void kernel32_LeaveCriticalSection(CRITICAL_SECTION* cs) {
   log_always("[SHIM] LeaveCriticalSection(%p)\n", cs);
   pthread_mutex_unlock((pthread_mutex_t*)cs);
 }
 
-extern "C" EXPORT void DeleteCriticalSection(CRITICAL_SECTION* cs) {
+extern "C" EXPORT void kernel32_DeleteCriticalSection(CRITICAL_SECTION* cs) {
   pthread_mutex_destroy((pthread_mutex_t*)cs);
 }
 
 // TLS / FLS
-extern "C" EXPORT DWORD TlsAlloc(void) {
+extern "C" EXPORT DWORD kernel32_TlsAlloc(void) {
   pthread_key_t key;
   int r = pthread_key_create(&key, NULL);
   log_always("[SHIM] TlsAlloc() -> key=%u (r=%d)\n", (unsigned)key, r);
@@ -1663,25 +1750,25 @@ extern "C" EXPORT DWORD TlsAlloc(void) {
   return (DWORD)key;
 }
 
-extern "C" EXPORT BOOL TlsFree(DWORD idx) {
+extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
   pthread_key_delete((pthread_key_t)idx);
   return TRUE;
 }
 
-extern "C" EXPORT LPVOID TlsGetValue(DWORD idx) {
+extern "C" EXPORT LPVOID kernel32_TlsGetValue(DWORD idx) {
   SET_LAST_ERROR(0);
   void* v = pthread_getspecific((pthread_key_t)idx);
   log_always("[SHIM] TlsGetValue(idx=%u) -> %p\n", idx, v);
   return v;
 }
 
-extern "C" EXPORT BOOL TlsSetValue(DWORD idx, LPVOID val) {
+extern "C" EXPORT BOOL kernel32_TlsSetValue(DWORD idx, LPVOID val) {
   int r = pthread_setspecific((pthread_key_t)idx, val);
   log_always("[SHIM] TlsSetValue(idx=%u, val=%p) -> r=%d\n", idx, val, r);
   return r==0 ? TRUE : FALSE;
 }
 
-extern "C" EXPORT void InitializeSListHead(void* h) {
+extern "C" EXPORT void kernel32_InitializeSListHead(void* h) {
   if( h )
     memset(h, 0, 16); // SLIST_HEADER is 16 bytes
 }
@@ -1693,19 +1780,19 @@ extern "C" EXPORT void InitializeSListHead(void* h) {
 // ---------------------------------------------------------------------------
 // 7.13 String / Code Page
 // ---------------------------------------------------------------------------
-extern "C" EXPORT DWORD GetACP(void) {
+extern "C" EXPORT DWORD kernel32_GetACP(void) {
   return 65001;
 }
 
-extern "C" EXPORT DWORD GetOEMCP(void) {
+extern "C" EXPORT DWORD kernel32_GetOEMCP(void) {
   return 437;
 }
 
-extern "C" EXPORT BOOL IsValidCodePage(DWORD cp) {
+extern "C" EXPORT BOOL kernel32_IsValidCodePage(DWORD cp) {
   return (cp==65001||cp==437||cp==1252) ? TRUE : FALSE;
 }
 
-extern "C" EXPORT BOOL GetCPInfo(DWORD cp, CPINFO* info) {
+extern "C" EXPORT BOOL kernel32_GetCPInfo(DWORD cp, CPINFO* info) {
   if( !info ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
@@ -1717,7 +1804,7 @@ extern "C" EXPORT BOOL GetCPInfo(DWORD cp, CPINFO* info) {
   return TRUE;
 }
 
-extern "C" EXPORT int MultiByteToWideChar(DWORD cp, DWORD flags, LPCSTR src, int srclen, LPWSTR dst, int dstlen) {
+extern "C" EXPORT int kernel32_MultiByteToWideChar(DWORD cp, DWORD flags, LPCSTR src, int srclen, LPWSTR dst, int dstlen) {
   (void)cp;
   (void)flags;
   if( !src ) {
@@ -1743,7 +1830,7 @@ extern "C" EXPORT int MultiByteToWideChar(DWORD cp, DWORD flags, LPCSTR src, int
   return utf8_to_wchar(tmp, dst, (size_t)dstlen);
 }
 
-extern "C" EXPORT int WideCharToMultiByte(DWORD cp, DWORD flags, LPCWSTR src, int srclen, LPSTR dst, int dstlen, LPCSTR defch, BOOL* useddef) {
+extern "C" EXPORT int kernel32_WideCharToMultiByte(DWORD cp, DWORD flags, LPCWSTR src, int srclen, LPSTR dst, int dstlen, LPCSTR defch, BOOL* useddef) {
   (void)cp;
   (void)flags;
   (void)defch;
@@ -1768,7 +1855,7 @@ extern "C" EXPORT int WideCharToMultiByte(DWORD cp, DWORD flags, LPCWSTR src, in
   return wchar_to_utf8(wsrc, dst, (size_t)dstlen);
 }
 
-extern "C" EXPORT int LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int srclen, LPWSTR dst, int dstlen) {
+extern "C" EXPORT int kernel32_LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int srclen, LPWSTR dst, int dstlen) {
   (void)locale;
   if( srclen<0 ) {
     // find length
@@ -1818,7 +1905,7 @@ static WORD classify_ctype1(unsigned int c) {
   return t;
 }
 
-extern "C" EXPORT BOOL GetStringTypeW(DWORD type, LPCWSTR src, int count, WORD* types) {
+extern "C" EXPORT BOOL kernel32_GetStringTypeW(DWORD type, LPCWSTR src, int count, WORD* types) {
   if( !src||!types||count==0 ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
@@ -1834,7 +1921,7 @@ extern "C" EXPORT BOOL GetStringTypeW(DWORD type, LPCWSTR src, int count, WORD* 
   return TRUE;
 }
 
-extern "C" EXPORT int CompareStringW(DWORD locale, DWORD flags, LPCWSTR s1, int n1, LPCWSTR s2, int n2) {
+extern "C" EXPORT int kernel32_CompareStringW(DWORD locale, DWORD flags, LPCWSTR s1, int n1, LPCWSTR s2, int n2) {
   (void)locale;
   int i = 0;
   for(;; i++) {
@@ -1863,25 +1950,25 @@ extern "C" EXPORT int CompareStringW(DWORD locale, DWORD flags, LPCWSTR s1, int 
 // ---------------------------------------------------------------------------
 // 7.14 Pointer Encoding
 // ---------------------------------------------------------------------------
-extern "C" EXPORT LPVOID EncodePointer(LPVOID p) {
+extern "C" EXPORT LPVOID kernel32_EncodePointer(LPVOID p) {
   return p;
 }
 
-extern "C" EXPORT LPVOID DecodePointer(LPVOID p) {
+extern "C" EXPORT LPVOID kernel32_DecodePointer(LPVOID p) {
   return p;
 }
 
 // ---------------------------------------------------------------------------
 // 7.15 Exception / SEH stubs
 // ---------------------------------------------------------------------------
-extern "C" EXPORT LPVOID SetUnhandledExceptionFilter(LPVOID filter) {
+extern "C" EXPORT LPVOID kernel32_SetUnhandledExceptionFilter(LPVOID filter) {
   log_always("[SHIM] SetUnhandledExceptionFilter(%p)\n", filter);
   void* old = g_unhandled_filter;
   g_unhandled_filter = filter;
   return old;
 }
 
-extern "C" EXPORT LONG UnhandledExceptionFilter(void* pExcept) {
+extern "C" EXPORT LONG kernel32_UnhandledExceptionFilter(void* pExcept) {
   if( pExcept ) {
     void** ep = (void**)pExcept;
     void* excRec = ep[0];
@@ -1904,7 +1991,7 @@ extern "C" EXPORT LONG UnhandledExceptionFilter(void* pExcept) {
   return EXCEPTION_EXECUTE_HANDLER;
 }
 
-extern "C" EXPORT void RtlUnwindEx(void* f, void* target, void* except, void* retval, void* ctx, void* histo) {
+extern "C" EXPORT void kernel32_RtlUnwindEx(void* f, void* target, void* except, void* retval, void* ctx, void* histo) {
   (void)f;
   (void)target;
   (void)except;
@@ -1916,7 +2003,7 @@ extern "C" EXPORT void RtlUnwindEx(void* f, void* target, void* except, void* re
   log_always("[SHIM] RtlUnwindEx called — SEH unwind not implemented, returning\n");
 }
 
-extern "C" EXPORT LPVOID RtlVirtualUnwind(DWORD type, uint64_t base, uint64_t pc, void* entry, void* ctx, void** data, uint64_t* frame, void* transform) {
+extern "C" EXPORT LPVOID kernel32_RtlVirtualUnwind(DWORD type, uint64_t base, uint64_t pc, void* entry, void* ctx, void** data, uint64_t* frame, void* transform) {
   (void)type;
   (void)base;
   (void)pc;
@@ -1928,7 +2015,7 @@ extern "C" EXPORT LPVOID RtlVirtualUnwind(DWORD type, uint64_t base, uint64_t pc
   return NULL;
 }
 
-extern "C" EXPORT LPVOID RtlLookupFunctionEntry(uint64_t pc, uint64_t* base, void* histo) {
+extern "C" EXPORT LPVOID kernel32_RtlLookupFunctionEntry(uint64_t pc, uint64_t* base, void* histo) {
   (void)pc;
   (void)histo;
   if( base )
@@ -1936,7 +2023,7 @@ extern "C" EXPORT LPVOID RtlLookupFunctionEntry(uint64_t pc, uint64_t* base, voi
   return NULL;
 }
 
-extern "C" EXPORT void RtlCaptureContext(void* ctx) {
+extern "C" EXPORT void kernel32_RtlCaptureContext(void* ctx) {
   if( !ctx )
     return;
   memset(ctx, 0, 1232); // sizeof CONTEXT
@@ -1958,7 +2045,7 @@ extern "C" EXPORT void RtlCaptureContext(void* ctx) {
 #endif
 }
 
-extern "C" EXPORT LPVOID RtlPcToFileHeader(LPVOID pc, LPVOID* pbase) {
+extern "C" EXPORT LPVOID kernel32_RtlPcToFileHeader(LPVOID pc, LPVOID* pbase) {
   Dl_info info;
   if( dladdr(pc, &info)&&info.dli_fbase ) {
     if( pbase )
@@ -1970,7 +2057,7 @@ extern "C" EXPORT LPVOID RtlPcToFileHeader(LPVOID pc, LPVOID* pbase) {
   return NULL;
 }
 
-extern "C" EXPORT void RaiseException(DWORD code, DWORD flags, DWORD nargs, const ULONG_PTR* args) {
+extern "C" EXPORT void kernel32_RaiseException(DWORD code, DWORD flags, DWORD nargs, const ULONG_PTR* args) {
   (void)args;
   (void)nargs;
   log_always("[SHIM] RaiseException code=0x%08x flags=0x%x\n", code, flags);
@@ -1982,7 +2069,7 @@ extern "C" EXPORT void RaiseException(DWORD code, DWORD flags, DWORD nargs, cons
 // ---------------------------------------------------------------------------
 // Misc stubs
 // ---------------------------------------------------------------------------
-extern "C" EXPORT DWORD GetStringTypeA(DWORD locale, DWORD type, LPCSTR src, int count, WORD* types) {
+extern "C" EXPORT DWORD kernel32_GetStringTypeA(DWORD locale, DWORD type, LPCSTR src, int count, WORD* types) {
   (void)locale;
   if( !src||!types||count==0 ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
@@ -1995,7 +2082,7 @@ extern "C" EXPORT DWORD GetStringTypeA(DWORD locale, DWORD type, LPCSTR src, int
   return TRUE;
 }
 
-extern "C" EXPORT int LCMapStringA(DWORD locale, DWORD flags, LPCSTR src, int srclen, LPSTR dst, int dstlen) {
+extern "C" EXPORT int kernel32_LCMapStringA(DWORD locale, DWORD flags, LPCSTR src, int srclen, LPSTR dst, int dstlen) {
   (void)locale;
   if( srclen<0 )
     srclen = (int)strlen(src)+1;
@@ -2013,7 +2100,7 @@ extern "C" EXPORT int LCMapStringA(DWORD locale, DWORD flags, LPCSTR src, int sr
 }
 
 // Not in 1.exe but common; add to avoid link errors if needed
-extern "C" EXPORT void Sleep(DWORD ms) {
+extern "C" EXPORT void kernel32_Sleep(DWORD ms) {
   struct timespec deadline;
   clock_gettime(CLOCK_MONOTONIC, &deadline);
   deadline.tv_sec  += (time_t)(ms/1000);
@@ -2046,13 +2133,13 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   return hret;
 }
 
-extern "C" EXPORT HANDLE FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
+extern "C" EXPORT HANDLE kernel32_FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
   char posix[PATH_MAX];
   win_path_to_posix(pattern, posix, sizeof(posix));
   return find_first_posix(posix, pfd);
 }
 
-extern "C" EXPORT BOOL FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
+extern "C" EXPORT BOOL kernel32_FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
   FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
   if( !ctx ) return FALSE;
   struct dirent* ent;
@@ -2073,7 +2160,7 @@ extern "C" EXPORT BOOL FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
   return found;
 }
 
-extern "C" EXPORT HANDLE CreateFileA(LPCSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
+extern "C" EXPORT HANDLE kernel32_CreateFileA(LPCSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
   (void)share;
   (void)sa;
   (void)flags;
@@ -2107,7 +2194,7 @@ extern "C" EXPORT HANDLE CreateFileA(LPCSTR name, DWORD access, DWORD share, SEC
   return hret;
 }
 
-extern "C" EXPORT BOOL DeleteFileA(LPCSTR path) {
+extern "C" EXPORT BOOL kernel32_DeleteFileA(LPCSTR path) {
   char posix[PATH_MAX];
   win_path_to_posix(path, posix, sizeof(posix));
   if( unlink(posix)<0 ) {
@@ -2117,7 +2204,7 @@ extern "C" EXPORT BOOL DeleteFileA(LPCSTR path) {
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetFileAttributesA(LPCSTR path, DWORD attrs) {
+extern "C" EXPORT BOOL kernel32_SetFileAttributesA(LPCSTR path, DWORD attrs) {
   char posix[PATH_MAX];
   win_path_to_posix(path, posix, sizeof(posix));
   if( attrs&FILE_ATTRIBUTE_READONLY ) {
@@ -2131,7 +2218,7 @@ extern "C" EXPORT BOOL SetFileAttributesA(LPCSTR path, DWORD attrs) {
   return TRUE;
 }
 
-extern "C" EXPORT DWORD GetCurrentDirectoryA(DWORD size, LPSTR buf) {
+extern "C" EXPORT DWORD kernel32_GetCurrentDirectoryA(DWORD size, LPSTR buf) {
   if( !buf||size==0 ) {
     char* tmp = getcwd(NULL, 0);
     if( !tmp ) return 0;
@@ -2146,7 +2233,7 @@ extern "C" EXPORT DWORD GetCurrentDirectoryA(DWORD size, LPSTR buf) {
   return (DWORD)strlen(buf);
 }
 
-extern "C" EXPORT DWORD GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
+extern "C" EXPORT DWORD kernel32_GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
   if( size==0 ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
@@ -2174,16 +2261,16 @@ extern "C" EXPORT DWORD GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
   return 0;
 }
 
-extern "C" EXPORT HANDLE LoadLibraryA(LPCSTR name) {
+extern "C" EXPORT HANDLE kernel32_LoadLibraryA(LPCSTR name) {
   uint16_t wbuf[PATH_MAX];
   utf8_to_wchar(name, wbuf, PATH_MAX);
-  return LoadLibraryExW(wbuf, NULL, 0);
+  return kernel32_LoadLibraryExW(wbuf, NULL, 0);
 }
 
 // ---------------------------------------------------------------------------
 // SetFilePointer (non-Ex), SetFileTime, SetEndOfFile
 // ---------------------------------------------------------------------------
-extern "C" EXPORT DWORD SetFilePointer(HANDLE h, LONG dist, LONG* disthi, DWORD method) {
+extern "C" EXPORT DWORD kernel32_SetFilePointer(HANDLE h, LONG dist, LONG* disthi, DWORD method) {
   int fd = get_fd(h);
   if( fd<0 )
     return (DWORD)-1;
@@ -2201,7 +2288,7 @@ extern "C" EXPORT DWORD SetFilePointer(HANDLE h, LONG dist, LONG* disthi, DWORD 
   return (DWORD)(r&0xFFFFFFFF);
 }
 
-extern "C" EXPORT BOOL SetEndOfFile(HANDLE h) {
+extern "C" EXPORT BOOL kernel32_SetEndOfFile(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )
     return FALSE;
@@ -2217,7 +2304,7 @@ extern "C" EXPORT BOOL SetEndOfFile(HANDLE h) {
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetFileTime(HANDLE h, const FILETIME* ctime, const FILETIME* atime, const FILETIME* mtime) {
+extern "C" EXPORT BOOL kernel32_SetFileTime(HANDLE h, const FILETIME* ctime, const FILETIME* atime, const FILETIME* mtime) {
   int fd = get_fd(h);
   if( fd<0 )
     return FALSE;
@@ -2244,7 +2331,7 @@ extern "C" EXPORT BOOL SetFileTime(HANDLE h, const FILETIME* ctime, const FILETI
   return TRUE;
 }
 
-extern "C" EXPORT BOOL FileTimeToDosDateTime(const FILETIME* ft, WORD* fatdate, WORD* fattime) {
+extern "C" EXPORT BOOL kernel32_FileTimeToDosDateTime(const FILETIME* ft, WORD* fatdate, WORD* fattime) {
   if( !ft||!fatdate||!fattime )
     return FALSE;
   uint64_t v = ft_to_u64(*ft);
@@ -2267,7 +2354,7 @@ extern "C" EXPORT BOOL FileTimeToDosDateTime(const FILETIME* ft, WORD* fatdate, 
   return TRUE;
 }
 
-extern "C" EXPORT BOOL DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME* ft) {
+extern "C" EXPORT BOOL kernel32_DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME* ft) {
   if( !ft )
     return FALSE;
   struct tm tm = {};
@@ -2291,7 +2378,7 @@ static __thread void* g_fls[FLS_MAX_SLOTS];
 static uint64_t g_fls_used = 0;           // bitset of allocated slots
 static pthread_mutex_t g_fls_mu = PTHREAD_MUTEX_INITIALIZER;
 
-extern "C" EXPORT DWORD FlsAlloc(void* callback) {
+extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
   (void)callback;
   pthread_mutex_lock(&g_fls_mu);
   DWORD idx = 0xFFFFFFFF;
@@ -2307,7 +2394,7 @@ extern "C" EXPORT DWORD FlsAlloc(void* callback) {
   return idx;
 }
 
-extern "C" EXPORT BOOL FlsFree(DWORD idx) {
+extern "C" EXPORT BOOL kernel32_FlsFree(DWORD idx) {
   if( idx>=FLS_MAX_SLOTS ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
@@ -2318,7 +2405,7 @@ extern "C" EXPORT BOOL FlsFree(DWORD idx) {
   return TRUE;
 }
 
-extern "C" EXPORT LPVOID FlsGetValue(DWORD idx) {
+extern "C" EXPORT LPVOID kernel32_FlsGetValue(DWORD idx) {
   SET_LAST_ERROR(0);
   if( idx>=FLS_MAX_SLOTS ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
@@ -2329,7 +2416,7 @@ extern "C" EXPORT LPVOID FlsGetValue(DWORD idx) {
   return v;
 }
 
-extern "C" EXPORT BOOL FlsSetValue(DWORD idx, LPVOID val) {
+extern "C" EXPORT BOOL kernel32_FlsSetValue(DWORD idx, LPVOID val) {
   if( idx>=FLS_MAX_SLOTS ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
@@ -2342,7 +2429,7 @@ extern "C" EXPORT BOOL FlsSetValue(DWORD idx, LPVOID val) {
 // ---------------------------------------------------------------------------
 // Locale / GetLocaleInfoA
 // ---------------------------------------------------------------------------
-extern "C" EXPORT int GetLocaleInfoA(DWORD locale, DWORD lctype, LPSTR buf, int size) {
+extern "C" EXPORT int kernel32_GetLocaleInfoA(DWORD locale, DWORD lctype, LPSTR buf, int size) {
   (void)locale;
   const char* val = "";
   switch( lctype&0xffff ) {
@@ -2408,7 +2495,7 @@ static DWORD format_message_expand(const char* msg, LPSTR buf, DWORD size, va_li
   return out;
 }
 
-extern "C" EXPORT DWORD FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPSTR buf, DWORD size, va_list* args) {
+extern "C" EXPORT DWORD kernel32_FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPSTR buf, DWORD size, va_list* args) {
   (void)flags; (void)src; (void)lang;
   // Look up a few common Win32 codes; fall back to "Error N"
   static const struct { DWORD code; const char* msg; } table[] = {
@@ -2418,6 +2505,7 @@ extern "C" EXPORT DWORD FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DW
     {5,   "Access is denied."},
     {6,   "The handle is invalid."},
     {8,   "Not enough memory resources are available."},
+    {18,  "There are no more files."},
     {87,  "The parameter is incorrect."},
     {183, "Cannot create a file when that file already exists."},
   };
@@ -2449,7 +2537,7 @@ extern "C" EXPORT DWORD FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DW
 //  +16 DWORD dwControlKeyState
 #define INPUT_RECORD_SIZE 20
 
-extern "C" EXPORT BOOL ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD* nread) {
+extern "C" EXPORT BOOL kernel32_ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD* nread) {
   if( nread ) *nread = 0;
   if( !buf||count==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
   int idx = handle_to_idx(h);
@@ -2470,7 +2558,237 @@ extern "C" EXPORT BOOL ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD
   return TRUE;
 }
 
-extern "C" EXPORT BOOL SetHandleCount(DWORD n) {
+extern "C" EXPORT BOOL kernel32_SetHandleCount(DWORD n) {
   (void)n;
   return TRUE;
 }
+// ---------------------------------------------------------------------------
+// Additional KERNEL32 functions
+// ---------------------------------------------------------------------------
+extern "C" EXPORT HANDLE kernel32_GetModuleHandleA(LPCSTR name) {
+  if( !name ) return (HANDLE)g_image_base;
+  char posix[4096];
+  win_path_to_posix(name, posix, sizeof(posix));
+  void* h = dlopen(posix, RTLD_NOLOAD|RTLD_LAZY);
+  if( h ) return h;
+  SET_LAST_ERROR(ERROR_SUCCESS);
+  return FAKE_WIN_MODULE;
+}
+extern "C" EXPORT BOOL kernel32_IsDBCSLeadByteEx(UINT /*cp*/, BYTE /*b*/) { return FALSE; }
+extern "C" EXPORT BOOL kernel32_VirtualProtect(LPVOID addr, size_t size, DWORD np, DWORD* op) {
+  if( op ) *op = PAGE_READWRITE;
+  uintptr_t pa = (uintptr_t)addr & ~(uintptr_t)4095;
+  size_t ps = (((uintptr_t)addr + size - pa + 4095) & ~(size_t)4095);
+  if( mprotect((void*)pa, ps, prot_from_protect(np)) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+#ifndef MEM_FREE
+#define MEM_FREE    0x10000u
+#define MEM_PRIVATE 0x20000u
+#endif
+extern "C" EXPORT size_t kernel32_VirtualQuery(LPCVOID addr, void* buf, size_t buflen) {
+  if( !buf || buflen < 28 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  uint8_t* mbi = (uint8_t*)buf;
+  size_t outsz = buflen < 48 ? buflen : 48;
+  memset(mbi, 0, outsz);
+  uintptr_t target = (uintptr_t)addr;
+  FILE* f = fopen("/proc/self/maps", "r");
+  if( f ) {
+    char line[256];
+    while( fgets(line, sizeof(line), f) ) {
+      uintptr_t s, e; char perms[8];
+      if( sscanf(line, "%lx-%lx %7s", &s, &e, perms) < 3 ) continue;
+      if( s <= target && target < e ) {
+        DWORD prot = PAGE_NOACCESS;
+        if( perms[0]=='r' && perms[1]=='w' && perms[2]=='x' ) prot = PAGE_EXECUTE_READWRITE;
+        else if( perms[0]=='r' && perms[1]=='w' ) prot = PAGE_READWRITE;
+        else if( perms[0]=='r' && perms[2]=='x' ) prot = PAGE_EXECUTE_READ;
+        else if( perms[0]=='r' ) prot = PAGE_READONLY;
+        else if( perms[2]=='x' ) prot = PAGE_EXECUTE;
+        if( buflen >= 8  ) *(uintptr_t*)(mbi+0)  = s;
+        if( buflen >= 16 ) *(uintptr_t*)(mbi+8)  = s;
+        if( buflen >= 20 ) *(uint32_t*) (mbi+16) = prot;
+        if( buflen >= 32 ) *(uintptr_t*)(mbi+24) = e - s;
+        if( buflen >= 36 ) *(uint32_t*) (mbi+32) = MEM_COMMIT;
+        if( buflen >= 40 ) *(uint32_t*) (mbi+36) = prot;
+        if( buflen >= 44 ) *(uint32_t*) (mbi+40) = MEM_PRIVATE;
+        fclose(f); return outsz;
+      }
+    }
+    fclose(f);
+  }
+  if( buflen >= 8  ) *(uintptr_t*)(mbi+0)  = target & ~(uintptr_t)0xFFF;
+  if( buflen >= 32 ) *(uintptr_t*)(mbi+24) = 0x1000;
+  if( buflen >= 36 ) *(uint32_t*) (mbi+32) = MEM_FREE;
+  return buflen < 28 ? buflen : 28;
+}
+
+extern "C" EXPORT BOOL kernel32_CreateDirectoryW(LPCWSTR path, SECURITY_ATTRIBUTES* sa) {
+  (void)sa;
+  char narrow[PATH_MAX], posix[PATH_MAX];
+  wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
+  win_path_to_posix(narrow, posix, sizeof(posix));
+  if( mkdir(posix, 0777) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+
+extern "C" EXPORT HANDLE kernel32_FindFirstFileW(LPCWSTR pattern, WIN32_FIND_DATAW* pfd) {
+  return kernel32_FindFirstFileExW(pattern, 0, pfd, 0, nullptr, 0);
+}
+
+extern "C" EXPORT DWORD kernel32_FormatMessageW(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPWSTR buf, DWORD size, va_list* args) {
+  char narrow[4096];
+  DWORD n = kernel32_FormatMessageA(flags & ~0x100u, src, msgId, lang, narrow, sizeof(narrow), args);
+  if( n == 0 )
+    n = (DWORD)snprintf(narrow, sizeof(narrow), "Error %u", (unsigned)msgId);
+  if( flags & 0x100u ) {
+    // FORMAT_MESSAGE_ALLOCATE_BUFFER: buf is LPWSTR* — allocate and store pointer
+    uint16_t* out = (uint16_t*)malloc((n + 1) * sizeof(uint16_t));
+    if( !out ) return 0;
+    for( DWORD i = 0; i < n; i++ ) out[i] = (uint16_t)(uint8_t)narrow[i];
+    out[n] = 0;
+    *(uint16_t**)buf = out;
+    return n;
+  }
+  if( !buf || size == 0 ) return n;
+  uint16_t* out = (uint16_t*)buf;
+  DWORD i;
+  for( i = 0; i < n && i < size - 1; i++ )
+    out[i] = (uint16_t)(uint8_t)narrow[i];
+  out[i] = 0;
+  return i;
+}
+
+extern "C" EXPORT DWORD kernel32_GetFullPathNameW(LPCWSTR path, DWORD size, LPWSTR buf, LPWSTR* filepart) {
+  char narrow[PATH_MAX], posix[PATH_MAX], resolved[PATH_MAX];
+  wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
+  win_path_to_posix(narrow, posix, sizeof(posix));
+  if( !realpath(posix, resolved) ) strncpy(resolved, posix, sizeof(resolved)-1);
+  DWORD needed = (DWORD)utf8_to_wchar(resolved, (uint16_t*)buf, size ? size : 0);
+  if( buf && size > 0 && filepart ) {
+    uint16_t* p = (uint16_t*)buf + needed;
+    uint16_t* slash = (uint16_t*)buf;
+    for( uint16_t* q = (uint16_t*)buf; q < p; q++ )
+      if( *q == '/' || *q == '\\' ) slash = q + 1;
+    *filepart = slash < p ? slash : nullptr;
+  }
+  return needed;
+}
+
+extern "C" EXPORT void* kernel32_LocalFree(void* p) {
+  free(p);
+  return nullptr;
+}
+
+#include "shim_kernel32_sync.hpp"
+
+// ---------------------------------------------------------------------------
+// Global memory / heap
+// ---------------------------------------------------------------------------
+#define GMEM_ZEROINIT 0x0040u
+extern "C" EXPORT void* kernel32_GlobalAlloc(UINT flags, size_t size) {
+  return (flags & GMEM_ZEROINIT) ? calloc(1, size) : malloc(size);
+}
+extern "C" EXPORT void* kernel32_GlobalFree(void* p) { free(p); return nullptr; }
+
+// ---------------------------------------------------------------------------
+// File / directory attributes
+// ---------------------------------------------------------------------------
+#ifndef INVALID_FILE_ATTRIBUTES
+#define INVALID_FILE_ATTRIBUTES    0xFFFFFFFFu
+#endif
+extern "C" EXPORT DWORD kernel32_GetFileAttributesA(LPCSTR path) {
+  char posix[PATH_MAX];
+  win_path_to_posix(path, posix, sizeof(posix));
+  struct stat st;
+  if( stat(posix, &st) != 0 ) { set_errno_error(); return INVALID_FILE_ATTRIBUTES; }
+  return S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+}
+
+extern "C" EXPORT BOOL kernel32_CreateDirectoryA(LPCSTR path, SECURITY_ATTRIBUTES* sa) {
+  (void)sa;
+  char posix[PATH_MAX];
+  win_path_to_posix(path, posix, sizeof(posix));
+  if( mkdir(posix, 0777) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// FILETIME → SYSTEMTIME conversion
+// SYSTEMTIME: wYear wMonth wDayOfWeek wDay wHour wMinute wSecond wMilliseconds
+// ---------------------------------------------------------------------------
+#define FILETIME_EPOCH_DIFF 116444736000000000ULL  // 100-ns ticks 1601→1970
+extern "C" EXPORT BOOL kernel32_FileTimeToSystemTime(const uint64_t* ft, uint16_t* st) {
+  if( !ft || !st ) return FALSE;
+  uint64_t t = *ft;
+  if( t < FILETIME_EPOCH_DIFF ) return FALSE;
+  uint64_t t100 = t - FILETIME_EPOCH_DIFF;
+  time_t secs = (time_t)(t100 / 10000000ULL);
+  uint32_t ms  = (uint32_t)((t100 / 10000ULL) % 1000ULL);
+  struct tm tm_val;
+  gmtime_r(&secs, &tm_val);
+  st[0] = (uint16_t)(tm_val.tm_year + 1900);
+  st[1] = (uint16_t)(tm_val.tm_mon  + 1);
+  st[2] = (uint16_t)tm_val.tm_wday;
+  st[3] = (uint16_t)tm_val.tm_mday;
+  st[4] = (uint16_t)tm_val.tm_hour;
+  st[5] = (uint16_t)tm_val.tm_min;
+  st[6] = (uint16_t)tm_val.tm_sec;
+  st[7] = (uint16_t)ms;
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// System information
+// ---------------------------------------------------------------------------
+// SYSTEM_INFO offsets (x64 ABI, sizeof=48):
+//  +0  WORD  wProcessorArchitecture   +2  WORD pad
+//  +4  DWORD dwPageSize
+//  +8  QWORD lpMinimumApplicationAddress
+//  +16 QWORD lpMaximumApplicationAddress
+//  +24 QWORD dwActiveProcessorMask
+//  +32 DWORD dwNumberOfProcessors
+//  +36 DWORD dwProcessorType
+//  +40 DWORD dwAllocationGranularity
+//  +44 WORD  wProcessorLevel   +46 WORD wProcessorRevision
+#define PROCESSOR_ARCHITECTURE_AMD64 9u
+extern "C" EXPORT void kernel32_GetSystemInfo(uint8_t* info) {
+  if( !info ) return;
+  memset(info, 0, 48);
+  *(uint16_t*)(info+0)  = PROCESSOR_ARCHITECTURE_AMD64;
+  *(uint32_t*)(info+4)  = (uint32_t)sysconf(_SC_PAGESIZE);
+  *(uint64_t*)(info+8)  = 0x10000ULL;
+  *(uint64_t*)(info+16) = 0x7fffffffefff0000ULL;
+  int np = get_nprocs();
+  *(uint32_t*)(info+32) = (uint32_t)np;
+  *(uint64_t*)(info+24) = (np < 64) ? ((1ULL << np) - 1ULL) : ~0ULL;
+  *(uint32_t*)(info+36) = 8664u;   // PROCESSOR_AMD_X8664
+  *(uint32_t*)(info+40) = 65536u;  // dwAllocationGranularity
+}
+
+// MEMORYSTATUS layout (sizeof=32):
+//  +0  DWORD dwLength   +4 DWORD dwMemoryLoad
+//  +8  SIZE_T dwTotalPhys   +16 SIZE_T dwAvailPhys
+//  +24 SIZE_T dwTotalPageFile (set same as total phys)
+extern "C" EXPORT void kernel32_GlobalMemoryStatus(uint8_t* buf) {
+  if( !buf ) return;
+  memset(buf, 0, 32);
+  *(uint32_t*)(buf+0) = 32;
+  struct sysinfo si;
+  if( sysinfo(&si) == 0 ) {
+    uint64_t total = (uint64_t)si.totalram  * si.mem_unit;
+    uint64_t avail = (uint64_t)si.freeram   * si.mem_unit;
+    uint32_t load  = total ? (uint32_t)(100 - avail * 100 / total) : 0;
+    *(uint32_t*)(buf+4)  = load;
+    *(uint64_t*)(buf+8)  = total;
+    *(uint64_t*)(buf+16) = avail;
+    *(uint64_t*)(buf+24) = total;
+  }
+}
+
+// RtlAddFunctionTable — stub (no JIT SEH unwind needed)
+extern "C" EXPORT BOOL kernel32_RtlAddFunctionTable(void* /*table*/, DWORD /*count*/, uint64_t /*base*/) {
+  return TRUE;
+}
+
+#include "shim_msvcrt.hpp"
