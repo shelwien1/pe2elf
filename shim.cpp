@@ -1401,13 +1401,17 @@ extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD
 // ---------------------------------------------------------------------------
 // Typed pseudo-handles (B14/R27): values outside the handle-table range.
 // FAKE_WIN_MODULE: any Windows DLL we can't load as a real .so.
-// MAIN_IMAGE_MODULE: returned by GetModuleHandleW(NULL).
+// MAIN_IMAGE_MODULE: legacy sentinel kept for backward compat; at runtime
+//   GetModuleHandleW(NULL) returns the real g_image_base so callers can
+//   inspect the PE header (CRT does "cmp WORD PTR [rax], 'MZ'").
 #define FAKE_WIN_MODULE  ((HANDLE)(intptr_t)(MAX_HANDLES+1))
 #define MAIN_IMAGE_MODULE ((HANDLE)(intptr_t)(MAX_HANDLES+2))
+// True when h refers to the main executable image
+#define IS_MAIN_IMAGE(h) ((h)==MAIN_IMAGE_MODULE || (h)==(HANDLE)g_image_base)
 
 extern "C" EXPORT HANDLE GetModuleHandleW(LPCWSTR name) {
   if( !name )
-    return MAIN_IMAGE_MODULE;
+    return g_image_base ? (HANDLE)g_image_base : MAIN_IMAGE_MODULE;
   char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(name, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
@@ -1429,7 +1433,7 @@ extern "C" EXPORT BOOL GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phM
 
 extern "C" EXPORT DWORD GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
   char tmp[PATH_MAX];
-  if( h==NULL||h==MAIN_IMAGE_MODULE ) {
+  if( h==NULL||IS_MAIN_IMAGE(h) ) {
     ssize_t n = readlink("/proc/self/exe", tmp, sizeof(tmp)-1);
     if( n<0 ) { set_errno_error(); return 0; }
     tmp[n] = '\0';
@@ -1477,7 +1481,7 @@ extern "C" EXPORT HANDLE LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) 
 }
 
 extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
-  if( h==FAKE_WIN_MODULE||h==MAIN_IMAGE_MODULE )
+  if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h) )
     return TRUE;
   int idx = handle_to_idx(h);
   pthread_mutex_lock(&g_handles_mu);
@@ -1495,7 +1499,7 @@ extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
 
 extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
   void* dlh;
-  if( h==FAKE_WIN_MODULE||h==MAIN_IMAGE_MODULE||h==NULL ) {
+  if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h)||h==NULL ) {
     dlh = RTLD_DEFAULT;
   } else {
     int idx = handle_to_idx(h);
@@ -2136,7 +2140,7 @@ extern "C" EXPORT DWORD GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
-  if( h==NULL||h==MAIN_IMAGE_MODULE ) {
+  if( h==NULL||IS_MAIN_IMAGE(h) ) {
     ssize_t n = readlink("/proc/self/exe", buf, size-1);
     if( n<0 ) { set_errno_error(); return 0; }
     buf[n] = '\0';
