@@ -1,11 +1,13 @@
 # Compiled binaries
 pe2elf
+test_find
 winapi_shim.so
 
 # Build artifacts and backups
 *.bak
 *.elf
 *.pmm
+*.pmx
 *.ppm
 winapi_shim_dbg.so
 dummy.so

@@ -115,10 +115,35 @@ extern "C" EXPORT void msvcrt___setusermatherr(void* /*fn*/) {}
 extern "C" EXPORT void msvcrt__amsg_exit(int /*n*/)          { _exit(255); }
 extern "C" EXPORT void msvcrt__cexit(void)                   {}
 
-// CRT locking
-static pthread_mutex_t g_crt_lock = PTHREAD_MUTEX_INITIALIZER;
-extern "C" EXPORT void msvcrt__lock(int /*n*/)   { pthread_mutex_lock(&g_crt_lock); }
-extern "C" EXPORT void msvcrt__unlock(int /*n*/) { pthread_mutex_unlock(&g_crt_lock); }
+// CRT locking — one recursive mutex per lock ID (Windows CRT has per-ID locks
+// and the same thread can acquire different IDs in a nested call chain).
+#define CRT_NLOCK 32
+static pthread_mutex_t g_crt_locks[CRT_NLOCK];
+static pthread_once_t  g_crt_locks_once = PTHREAD_ONCE_INIT;
+static void crt_locks_init(void) {
+  pthread_mutexattr_t attr;
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  for( int i = 0; i < CRT_NLOCK; i++ )
+    pthread_mutex_init(&g_crt_locks[i], &attr);
+  pthread_mutexattr_destroy(&attr);
+}
+extern "C" EXPORT void msvcrt__lock(int n) {
+  pthread_once(&g_crt_locks_once, crt_locks_init);
+  if( n < 0 || n >= CRT_NLOCK ) {
+    log_always("[SHIM] msvcrt__lock: ID %d out of range [0,%d)\n", n, CRT_NLOCK);
+    return;
+  }
+  pthread_mutex_lock(&g_crt_locks[n]);
+}
+extern "C" EXPORT void msvcrt__unlock(int n) {
+  pthread_once(&g_crt_locks_once, crt_locks_init);
+  if( n < 0 || n >= CRT_NLOCK ) {
+    log_always("[SHIM] msvcrt__unlock: ID %d out of range [0,%d)\n", n, CRT_NLOCK);
+    return;
+  }
+  pthread_mutex_unlock(&g_crt_locks[n]);
+}
 
 // errno
 extern "C" EXPORT int* msvcrt__errno(void) { return &errno; }
@@ -271,11 +296,13 @@ extern "C" EXPORT int64_t msvcrt__time64(int64_t* t) {
 }
 extern "C" EXPORT struct tm* msvcrt__gmtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  return gmtime(&tt);
+  static __thread struct tm buf;
+  return gmtime_r(&tt, &buf);
 }
 extern "C" EXPORT struct tm* msvcrt__localtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  return localtime(&tt);
+  static __thread struct tm buf;
+  return localtime_r(&tt, &buf);
 }
 extern "C" EXPORT int64_t msvcrt__mktime64(struct tm* tm_val) {
   return (int64_t)mktime(tm_val);
@@ -330,9 +357,234 @@ extern "C" EXPORT char* msvcrt_fgets(char* buf, int n, void* f) {
 extern "C" EXPORT int    msvcrt_puts(const char* s)    { return puts(s); }
 extern "C" EXPORT int    msvcrt_putchar(int c)          { return putchar(c); }
 extern "C" EXPORT int    msvcrt_remove(const char* p)   { return remove(p); }
+extern "C" EXPORT int    msvcrt_fflush(void* /*f*/)     { return 0; }   // shim is unbuffered
+extern "C" EXPORT void*  msvcrt_realloc(void* p, size_t n) { return realloc(p, n); }
+extern "C" EXPORT char*  msvcrt__strdup(const char* s)  { return s ? strdup(s) : nullptr; }
 
 // string / memory pass-throughs
 extern "C" EXPORT void*  msvcrt_memmove(void* d, const void* s, size_t n) { return memmove(d, s, n); }
 extern "C" EXPORT void*  msvcrt_memset(void* d, int c, size_t n)          { return memset(d, c, n); }
 extern "C" EXPORT int    msvcrt_strcmp(const char* a, const char* b)       { return strcmp(a, b); }
 extern "C" EXPORT int    msvcrt_tolower(int c)                             { return tolower(c); }
+
+// ---------------------------------------------------------------------------
+// Wide string (uint16_t) functions — Linux wchar_t is 32-bit, can't use libc
+// ---------------------------------------------------------------------------
+extern "C" EXPORT uint16_t* msvcrt_wcscat(uint16_t* dst, const uint16_t* src) {
+  uint16_t* d = dst; while(*d) d++;
+  while((*d++ = *src++));
+  return dst;
+}
+extern "C" EXPORT uint16_t* msvcrt_wcschr(const uint16_t* s, uint16_t c) {
+  for(; *s; s++) if(*s == c) return (uint16_t*)s;
+  return c == 0 ? (uint16_t*)s : nullptr;
+}
+extern "C" EXPORT int msvcrt_wcscmp(const uint16_t* a, const uint16_t* b) {
+  while(*a && *a == *b) { a++; b++; }
+  return (int)*a - (int)*b;
+}
+extern "C" EXPORT uint16_t* msvcrt_wcsrchr(const uint16_t* s, uint16_t c) {
+  const uint16_t* last = nullptr;
+  const uint16_t* start = s;
+  for(; *s; s++) if(*s == c) last = s;
+  uint16_t* r = c == 0 ? (uint16_t*)s : (uint16_t*)last;
+  if( !r && c ) {
+    char tmp[512]; int i=0;
+    for(const uint16_t* p=start; *p&&i<500; p++,i++) tmp[i]=(char)(uint8_t)*p;
+    tmp[i]=0;
+    log_always("[SHIM] wcsrchr(U\"%s\", U'%c') -> NULL\n", tmp, (char)c);
+  }
+  return r;
+}
+extern "C" EXPORT int msvcrt__wcsicmp(const uint16_t* a, const uint16_t* b) {
+  while(*a && tolower(*a) == tolower(*b)) { a++; b++; }
+  return (int)tolower(*a) - (int)tolower(*b);
+}
+extern "C" EXPORT uint16_t* msvcrt__wcslwr(uint16_t* s) {
+  for(uint16_t* p = s; *p; p++) *p = (uint16_t)tolower(*p);
+  return s;
+}
+
+// ---------------------------------------------------------------------------
+// _ultoa — unsigned long to ASCII in given radix
+// ---------------------------------------------------------------------------
+extern "C" EXPORT char* msvcrt__ultoa(unsigned long val, char* buf, int radix) {
+  if( radix == 10 ) { sprintf(buf, "%lu", val); return buf; }
+  if( radix == 16 ) { sprintf(buf, "%lx", val); return buf; }
+  if( val == 0 ) { buf[0]='0'; buf[1]='\0'; return buf; }
+  char tmp[66]; int i = 65; tmp[i] = '\0';
+  for( unsigned long v = val; v; v /= (unsigned long)radix ) {
+    int d = (int)(v % (unsigned long)radix);
+    tmp[--i] = d < 10 ? '0'+d : 'a'+d-10;
+  }
+  strcpy(buf, tmp+i); return buf;
+}
+
+// ---------------------------------------------------------------------------
+// qsort — ms_abi comparator wrapper
+// ---------------------------------------------------------------------------
+// msvcrt_qsort — custom implementation that calls the ms_abi comparator
+// directly, avoiding the SYSV wrapper + libc qsort ABI complexity.
+// ---------------------------------------------------------------------------
+typedef int (__attribute__((ms_abi)) *ms_cmp_fn)(const void*, const void*);
+
+static void ms_swap_elems(uint8_t* base, size_t i, size_t j, size_t sz) {
+  uint8_t* a = base + i * sz;
+  uint8_t* b = base + j * sz;
+  for( size_t k = 0; k < sz; k++ ) { uint8_t t = a[k]; a[k] = b[k]; b[k] = t; }
+}
+
+static inline int ms_cmp_elems(ms_cmp_fn cmp, uint8_t* base, size_t i, size_t j, size_t sz) {
+  return cmp((void*)(base + i * sz), (void*)(base + j * sz));
+}
+
+extern "C" EXPORT void msvcrt_qsort(void* base0, size_t n, size_t sz, ms_cmp_fn cmp) {
+  log_always("[SHIM] qsort(base=%p, n=%zu, sz=%zu, cmp=%p)\n", base0, n, sz, (void*)(uintptr_t)cmp);
+  if( n <= 1 || sz == 0 || !cmp ) return;
+
+  enum { CUTOFF = 8, STKSIZ = 62 };
+  uint8_t* base = (uint8_t*)base0;
+  size_t lostk[STKSIZ], histk[STKSIZ];
+  int stkptr = 0;
+  size_t lo = 0, hi = n - 1;
+
+recurse:;
+  size_t size = hi - lo + 1;
+
+  if( size <= CUTOFF ) {
+    // selection sort for small arrays (matches user's template)
+    size_t shi = hi;
+    while( shi > lo ) {
+      size_t max = lo;
+      for( size_t p = lo + 1; p <= shi; p++ )
+        if( ms_cmp_elems(cmp, base, p, max, sz) > 0 ) max = p;
+      ms_swap_elems(base, max, shi, sz);
+      shi--;
+    }
+  } else {
+    size_t mid = lo + (size >> 1);
+    if( ms_cmp_elems(cmp, base, lo,  mid, sz) > 0 ) ms_swap_elems(base, lo,  mid, sz);
+    if( ms_cmp_elems(cmp, base, lo,  hi,  sz) > 0 ) ms_swap_elems(base, lo,  hi,  sz);
+    if( ms_cmp_elems(cmp, base, mid, hi,  sz) > 0 ) ms_swap_elems(base, mid, hi,  sz);
+
+    size_t loguy = lo, higuy = hi;
+    while( 1 ) {
+      if( mid > loguy )  do loguy++; while( loguy < mid  && ms_cmp_elems(cmp, base, loguy, mid, sz) <= 0 );
+      if( mid <= loguy ) do loguy++; while( loguy <= hi  && ms_cmp_elems(cmp, base, loguy, mid, sz) <= 0 );
+      do higuy--; while( higuy > mid && ms_cmp_elems(cmp, base, higuy, mid, sz) > 0 );
+      if( higuy < loguy ) break;
+      ms_swap_elems(base, loguy, higuy, sz);
+      if( mid == higuy ) mid = loguy;
+    }
+
+    higuy++;
+    if( mid < higuy )  do higuy--; while( higuy > mid && ms_cmp_elems(cmp, base, higuy, mid, sz) == 0 );
+    if( mid >= higuy ) do higuy--; while( higuy > lo  && ms_cmp_elems(cmp, base, higuy, mid, sz) == 0 );
+
+    if( higuy - lo >= hi - loguy ) {
+      if( lo < higuy ) { lostk[stkptr] = lo;     histk[stkptr] = higuy; stkptr++; }
+      if( loguy < hi ) { lo = loguy; goto recurse; }
+    } else {
+      if( loguy < hi ) { lostk[stkptr] = loguy; histk[stkptr] = hi; stkptr++; }
+      if( lo < higuy ) { hi = higuy; goto recurse; }
+    }
+  }
+
+  if( --stkptr >= 0 ) { lo = lostk[stkptr]; hi = histk[stkptr]; goto recurse; }
+}
+
+// ---------------------------------------------------------------------------
+// scanf — read from stdin, parse common format specs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int msvcrt_scanf(const char* fmt, ...) {
+  char line[4096]; ssize_t n;
+  do { n = read(STDIN_FILENO, line, sizeof(line)-1); } while(n<0 && errno==EINTR);
+  if( n <= 0 ) return -1;  // EOF
+  line[n] = '\0';
+  __builtin_ms_va_list msap; __builtin_ms_va_start(msap, fmt);
+  char* ap = (char*)msap;
+  const char* p = fmt; const char* src = line; int count = 0;
+  while( *p ) {
+    if( *p != '%' ) { if(*src==*p) src++; p++; continue; }
+    p++;
+    bool suppress = (*p == '*');
+    if( suppress ) p++;
+    if( *p == 'd' || *p == 'i' ) {
+      while(*src==' '||*src=='\t') src++;
+      long v=0; int neg=(*src=='-'); if(neg) src++;
+      while(*src>='0'&&*src<='9') v=v*10+(*src++-'0');
+      if(!suppress) { int* ptr=(int*)MSVA_ARG_PTR(ap); if(ptr)*ptr=(int)(neg?-v:v); count++; }
+    } else if( *p == 's' ) {
+      while(*src==' '||*src=='\t') src++;
+      if(!suppress) { char* out=(char*)MSVA_ARG_PTR(ap); if(out){ while(*src&&*src!=' '&&*src!='\t'&&*src!='\n') *out++=*src++; *out='\0'; } count++; }
+      else           { while(*src&&*src!=' '&&*src!='\t'&&*src!='\n') src++; }
+    } else if( *p == 'c' ) {
+      if(!suppress) { char* out=(char*)MSVA_ARG_PTR(ap); if(out&&*src)*out=*src++; count++; }
+      else if(*src) src++;
+    }
+    p++;
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
+// _beginthreadex / _endthreadex — thin wrappers over our CreateThread shim
+// ---------------------------------------------------------------------------
+typedef unsigned (__attribute__((ms_abi)) *beginthreadex_fn)(void*);
+
+extern "C" EXPORT uintptr_t msvcrt__beginthreadex(
+    void* sa, unsigned stack, beginthreadex_fn fn, void* arg, unsigned flags, unsigned* tid) {
+  DWORD dtid = 0;
+  HANDLE h = kernel32_CreateThread(sa, stack, (win_thread_fn)fn, arg, flags, &dtid);
+  if( tid ) *tid = (unsigned)dtid;
+  return (uintptr_t)h;
+}
+
+extern "C" EXPORT void msvcrt__endthreadex(unsigned code) {
+  kernel32_ExitThread((DWORD)code);
+}
+
+// ---------------------------------------------------------------------------
+// setjmp / longjmp — Windows x64 JUMP_BUFFER layout (integer regs only)
+// Offsets: Frame=0, Rbx=8, Rsp=16, Rbp=24, Rsi=32, Rdi=40,
+//          R12=48, R13=56, R14=64, R15=72, Rip=80
+// ---------------------------------------------------------------------------
+extern "C" __attribute__((ms_abi, naked, visibility("default"))) int msvcrt__setjmp(void* /*buf*/, void* /*frame*/) {
+  asm volatile(
+    "movq %%rdx,  0(%%rcx)\n"   // Frame
+    "movq %%rbx,  8(%%rcx)\n"   // Rbx
+    "leaq 8(%%rsp),%%rax\n"
+    "movq %%rax, 16(%%rcx)\n"   // Rsp (after return)
+    "movq %%rbp, 24(%%rcx)\n"   // Rbp
+    "movq %%rsi, 32(%%rcx)\n"   // Rsi
+    "movq %%rdi, 40(%%rcx)\n"   // Rdi
+    "movq %%r12, 48(%%rcx)\n"   // R12
+    "movq %%r13, 56(%%rcx)\n"   // R13
+    "movq %%r14, 64(%%rcx)\n"   // R14
+    "movq %%r15, 72(%%rcx)\n"   // R15
+    "movq (%%rsp),%%rax\n"
+    "movq %%rax, 80(%%rcx)\n"   // Rip (return address)
+    "xorl %%eax,%%eax\n"
+    "ret\n" ::: "memory");
+}
+
+extern "C" __attribute__((ms_abi, naked, visibility("default"))) void msvcrt_longjmp(void* /*buf*/, int /*val*/) {
+  asm volatile(
+    "movq 16(%%rcx),%%r10\n"    // saved Rsp
+    "movq 80(%%rcx),%%r11\n"    // saved Rip
+    "movq  8(%%rcx),%%rbx\n"
+    "movq 24(%%rcx),%%rbp\n"
+    "movq 32(%%rcx),%%rsi\n"
+    "movq 40(%%rcx),%%rdi\n"
+    "movq 48(%%rcx),%%r12\n"
+    "movq 56(%%rcx),%%r13\n"
+    "movq 64(%%rcx),%%r14\n"
+    "movq 72(%%rcx),%%r15\n"
+    "movl %%edx,%%eax\n"
+    "testl %%eax,%%eax\n"
+    "jnz 1f\n"
+    "movl $1,%%eax\n"
+    "1:\n"
+    "movq %%r10,%%rsp\n"
+    "jmpq *%%r11\n" ::: "memory");
+}

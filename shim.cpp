@@ -29,8 +29,10 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/sysinfo.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <ctype.h>
+#include <wctype.h>
 #include <termios.h>
 #include <ucontext.h>
 #include <unistd.h>
@@ -214,7 +216,7 @@ static void init_fake_peb(void) {
   fake_peb[2] = 0;
 }
 
-static void shim_init_teb(void) {
+void shim_init_teb(void) {
   memset(fake_teb, 0, sizeof(fake_teb));
   // TEB self-pointer at +0x30
   *(void**)(fake_teb+0x30) = fake_teb;
@@ -304,19 +306,25 @@ struct FindCtx {
 };
 
 // Sync object structs (defined here so CloseHandle can destroy them)
+// refcount is the first field in every sync struct so it can be accessed
+// generically via (int*)ptr. Protected by g_handles_mu.
 struct MutexObj {
+  int             refcount;
   pthread_mutex_t mu;
 };
 struct EventObj {
+  int             refcount;
   pthread_mutex_t mu;
   pthread_cond_t  cv;
   bool            signaled;
   bool            manual_reset;
 };
 struct SemaphoreObj {
+  int   refcount;
   sem_t sem;
 };
 struct ThreadObj {
+  int             refcount;
   pthread_t       tid;
   pthread_mutex_t mu;
   pthread_cond_t  cv;
@@ -492,6 +500,22 @@ static void win_path_to_posix(const char* in, char* out, size_t outsz) {
   }
 }
 
+// Convert a POSIX path to a Windows-style path (backslashes, C: prefix).
+// Windows programs that return paths (GetCurrentDirectory, GetFullPathName, etc.)
+// must use this so that rz.exe and similar tools can do wcsrchr(path, '\\').
+// Our win_path_to_posix() will convert them back when files are opened.
+static void posix_to_win_path(const char* posix, char* win, size_t wsz) {
+  if( !posix || !win || wsz < 4 ) return;
+  size_t i = 0;
+  // Add "C:" prefix for absolute paths so wcsrchr finds a separator.
+  if( posix[0] == '/' ) {
+    win[i++] = 'C'; win[i++] = ':';
+  }
+  for( ; *posix && i+1 < wsz; posix++, i++ )
+    win[i] = (*posix == '/') ? '\\' : *posix;
+  win[i] = '\0';
+}
+
 static int wchar_to_utf8(const uint16_t* src, char* dst, size_t dstsz) {
   if( !src||!dst||dstsz==0 )
     return 0;
@@ -634,43 +658,65 @@ static char* g_env_block = NULL;
 static uint16_t* g_env_block_w = NULL;
 static void* g_image_base = (void*)0x400000;  // default; overridden if needed
 
-static void rebuild_cmdline(void) {
-  // Read /proc/self/cmdline
+// TLS slot allocator — used by PE TLS callbacks section and kernel32_Tls* below
+static pthread_mutex_t g_tls_alloc_mu = PTHREAD_MUTEX_INITIALIZER;
+static uint64_t g_tls_alloc_used = 0;
+
+static inline void** tls_get_slots(void) {
+#ifdef __x86_64__
+  void* p;
+  __asm__ volatile("movq %%gs:0x58, %0" : "=r"(p));
+  return (void**)p;
+#else
+  return (void**)pthread_getspecific(g_tls_slots_key);
+#endif
+}
+
+// Read /proc/self/cmdline into a heap buffer (caller must free).
+// Returns byte count (including embedded NULs); 0 and nullptr on error.
+static char* read_cmdline_raw(size_t* out_len) {
   int fd = open("/proc/self/cmdline", O_RDONLY);
-  if( fd<0 ) {
-    g_cmdline[0] = '\0';
-    return;
+  if( fd < 0 ) { *out_len = 0; return nullptr; }
+  size_t cap = 65536, used = 0;
+  char* buf = (char*)malloc(cap + 1);
+  if( !buf ) { close(fd); *out_len = 0; return nullptr; }
+  while( true ) {
+    ssize_t n = read(fd, buf + used, cap - used);
+    if( n <= 0 ) break;
+    used += (size_t)n;
+    if( used == cap ) {
+      cap *= 2;
+      char* tmp = (char*)realloc(buf, cap + 1);
+      if( !tmp ) { free(buf); close(fd); *out_len = 0; return nullptr; }
+      buf = tmp;
+    }
   }
-  char raw[32768];
-  int n = (int)read(fd, raw, sizeof(raw)-1);
   close(fd);
-  if( n<=0 ) {
-    g_cmdline[0] = '\0';
-    return;
-  }
-  raw[n] = '\0';
+  buf[used] = '\0';
+  *out_len = used;
+  return buf;
+}
+
+static void rebuild_cmdline(void) {
+  size_t raw_len;
+  char* raw = read_cmdline_raw(&raw_len);
+  if( !raw || raw_len == 0 ) { g_cmdline[0] = '\0'; free(raw); return; }
 
   // Convert NUL-separated argv to space-separated cmdline with quoting
   size_t out = 0;
-  const char* p = raw;
-  const char* end = raw+n;
+  const char* p = raw, *end = raw + raw_len;
   int first = 1;
-  while( p<end&&out+4<sizeof(g_cmdline) ) {
-    if( !first )
-      g_cmdline[out++] = ' ';
+  while( p<end && out+4<sizeof(g_cmdline) ) {
+    if( !first ) g_cmdline[out++] = ' ';
     first = 0;
     int needs_quote = (strchr(p, ' ')||strchr(p, '\t')||*p=='\0');
-    if( needs_quote )
-      g_cmdline[out++] = '"';
-    while( *p&&p<end&&out+2<sizeof(g_cmdline) )
-      g_cmdline[out++] = *p++;
-    if( needs_quote )
-      g_cmdline[out++] = '"';
-    p++; // skip NUL separator
+    if( needs_quote ) g_cmdline[out++] = '"';
+    while( *p && p<end && out+2<sizeof(g_cmdline) ) g_cmdline[out++] = *p++;
+    if( needs_quote ) g_cmdline[out++] = '"';
+    p++;
   }
   g_cmdline[out] = '\0';
-
-  // Build UTF-16LE version
+  free(raw);
   utf8_to_wchar(g_cmdline, (uint16_t*)g_cmdline_w, sizeof(g_cmdline_w)/2);
 }
 
@@ -720,23 +766,19 @@ static char** g_main_argv = nullptr;
 static uint8_t g_fake_iob[144];
 
 static void build_argv(void) {
-  int fd = open("/proc/self/cmdline", O_RDONLY);
-  if( fd<0 ) return;
-  char raw[32768];
-  int n = (int)read(fd, raw, sizeof(raw)-1);
-  close(fd);
-  if( n<=0 ) return;
-  raw[n] = '\0';
+  size_t n;
+  char* raw = read_cmdline_raw(&n);
+  if( !raw || n == 0 ) { free(raw); return; }
   int argc = 0;
-  for( int i = 0; i<n; i++ ) {
-    if( i==0||(raw[i-1]=='\0'&&raw[i]!='\0') ) argc++;
-  }
+  for( size_t i = 0; i < n; i++ )
+    if( i==0 || (raw[i-1]=='\0' && raw[i]!='\0') ) argc++;
   char** argv = (char**)malloc((size_t)(argc+1)*sizeof(char*));
-  if( !argv ) return;
+  if( !argv ) { free(raw); return; }
   int ai = 0;
   const char* p = raw, *end = raw+n;
-  while( p<end&&ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
+  while( p<end && ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
   argv[ai] = nullptr;
+  free(raw);
   g_main_argc = argc;
   g_main_argv = argv;
 }
@@ -807,6 +849,14 @@ static void crash_handler(int sig, siginfo_t* si, void* ctx) {
 #else
   (void)ctx;
 #endif
+#ifdef __GLIBC__
+  {
+    void* bt[40];
+    int n = backtrace(bt, 40);
+    crash_write_lit("BACKTRACE:\n");
+    backtrace_symbols_fd(bt, n, STDERR_FILENO);
+  }
+#endif
   _exit(sig+128);
 }
 
@@ -816,9 +866,10 @@ static void install_signal_handlers(void) {
   sa.sa_sigaction = crash_handler;
   sa.sa_flags = SA_SIGINFO;
   sigaction(SIGSEGV, &sa, NULL);
-  sigaction(SIGILL, &sa, NULL);
-  sigaction(SIGFPE, &sa, NULL);
-  sigaction(SIGBUS, &sa, NULL);
+  sigaction(SIGILL,  &sa, NULL);
+  sigaction(SIGFPE,  &sa, NULL);
+  sigaction(SIGBUS,  &sa, NULL);
+  sigaction(SIGABRT, &sa, NULL);
 }
 
 // ---------------------------------------------------------------------------
@@ -854,6 +905,140 @@ static void discover_image_base(void) {
 }
 
 // ---------------------------------------------------------------------------
+// PE TLS directory — static TLS + callbacks
+// ---------------------------------------------------------------------------
+static uint64_t*  g_tls_callbacks_va = nullptr;
+static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS slot index
+static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
+static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
+static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
+
+static void discover_tls_callbacks(void) {
+  // Use SYS_pread64 directly to avoid any libc interception issues.
+  int fd = (int)syscall(SYS_open, "/proc/self/exe", O_RDONLY, 0);
+  log_always("[SHIM] discover_tls_callbacks: fd=%d\n", fd);
+  if( fd < 0 ) return;
+
+  uint8_t eh_buf[64];
+  ssize_t nr = (ssize_t)syscall(SYS_pread64, fd, eh_buf, (size_t)64, (off_t)0);
+  log_always("[SHIM]   pread64(hdr)=%zd magic=%02x%02x%02x%02x\n",
+             nr, eh_buf[0], eh_buf[1], eh_buf[2], eh_buf[3]);
+  if( nr != 64 || eh_buf[0] != 0x7f || eh_buf[1] != 'E' ||
+      eh_buf[2] != 'L' || eh_buf[3] != 'F' ) {
+    syscall(SYS_close, fd); return;
+  }
+  // e_shoff at offset 40 (uint64), e_shnum at 60 (uint16), e_shstrndx at 62 (uint16)
+  uint64_t e_shoff    = *(uint64_t*)(eh_buf + 40);
+  uint16_t e_shnum    = *(uint16_t*)(eh_buf + 60);
+  uint16_t e_shstrndx = *(uint16_t*)(eh_buf + 62);
+  log_always("[SHIM]   shoff=%llu shnum=%u shstrndx=%u\n",
+             (unsigned long long)e_shoff, e_shnum, e_shstrndx);
+  if( !e_shoff || !e_shnum ) { syscall(SYS_close, fd); return; }
+
+  // Read shstrtab section header (64 bytes each)
+  uint8_t snsh_buf[64];
+  off_t snsh_off = (off_t)(e_shoff + (uint64_t)e_shstrndx * 64);
+  nr = (ssize_t)syscall(SYS_pread64, fd, snsh_buf, (size_t)64, snsh_off);
+  if( nr != 64 ) { syscall(SYS_close, fd); return; }
+  // sh_offset at byte 24 (uint64), sh_size at byte 32 (uint64)
+  uint64_t snsh_offset = *(uint64_t*)(snsh_buf + 24);
+  uint64_t snsh_size   = *(uint64_t*)(snsh_buf + 32);
+  log_always("[SHIM]   shstrtab: file_offset=%llu size=%llu\n",
+             (unsigned long long)snsh_offset, (unsigned long long)snsh_size);
+  if( snsh_size > 65536 ) { syscall(SYS_close, fd); return; }
+
+  char* names = (char*)malloc(snsh_size + 1);
+  if( !names ) { syscall(SYS_close, fd); return; }
+  nr = (ssize_t)syscall(SYS_pread64, fd, names, snsh_size, (off_t)snsh_offset);
+  if( (uint64_t)nr != snsh_size ) { free(names); syscall(SYS_close, fd); return; }
+  names[snsh_size] = '\0';
+
+  uint64_t tls_va = 0, tls_sz = 0;
+  for( uint16_t i = 0; i < e_shnum; i++ ) {
+    uint8_t sh_buf[64];
+    off_t sh_off = (off_t)(e_shoff + (uint64_t)i * 64);
+    if( (ssize_t)syscall(SYS_pread64, fd, sh_buf, (size_t)64, sh_off) != 64 ) break;
+    uint32_t sh_name = *(uint32_t*)(sh_buf + 0);
+    uint64_t sh_addr = *(uint64_t*)(sh_buf + 16);
+    uint64_t sh_size = *(uint64_t*)(sh_buf + 32);
+    if( sh_name < snsh_size && strcmp(names + sh_name, ".tls") == 0 ) {
+      tls_va = sh_addr; tls_sz = sh_size;
+      log_always("[SHIM]   .tls: addr=0x%llx size=0x%llx\n",
+                 (unsigned long long)tls_va, (unsigned long long)tls_sz);
+      break;
+    }
+  }
+  free(names);
+  syscall(SYS_close, fd);
+
+  if( !tls_va || tls_sz < 40 ) { log_always("[SHIM]   .tls not found\n"); return; }
+
+  // Scan in-memory .tls section for IMAGE_TLS_DIRECTORY64:
+  //   [0]  StartAddressOfRawData (VA within .tls range)
+  //   [8]  EndAddressOfRawData   (>= start)
+  //   [24] AddressOfCallBacks    (non-null VA of NULL-terminated callback array)
+  uint8_t* tls_mem = (uint8_t*)tls_va;
+  for( uint64_t off = 0; off + 40 <= tls_sz; off += 8 ) {
+    uint64_t start   = *(uint64_t*)(tls_mem + off);
+    uint64_t end     = *(uint64_t*)(tls_mem + off + 8);
+    uint64_t idx_va  = *(uint64_t*)(tls_mem + off + 16);
+    uint64_t cbs     = *(uint64_t*)(tls_mem + off + 24);
+    log_always("[SHIM]   scan+%llu start=0x%llx end=0x%llx idx=0x%llx cbs=0x%llx\n",
+               (unsigned long long)off, (unsigned long long)start,
+               (unsigned long long)end, (unsigned long long)idx_va, (unsigned long long)cbs);
+    if( start >= tls_va && start <= tls_va + tls_sz &&
+        end >= start && cbs != 0 ) {
+      uint64_t* arr = (uint64_t*)cbs;
+      if( *arr != 0 ) {
+        g_tls_callbacks_va = arr;
+        // Capture static TLS fields for per-thread initialization
+        if( end > start ) {
+          g_tls_template_va = (uintptr_t)start;
+          g_tls_template_sz = (size_t)(end - start);
+        }
+        if( idx_va ) g_tls_index_addr = (uint32_t*)(uintptr_t)idx_va;
+        log_always("[SHIM]   template VA=0x%llx sz=%zu index_addr=%p\n",
+                   (unsigned long long)start, g_tls_template_sz, (void*)g_tls_index_addr);
+        return;
+      }
+    }
+  }
+  log_always("[SHIM]   IMAGE_TLS_DIRECTORY64 not found in .tls\n");
+}
+
+typedef void (__attribute__((ms_abi)) *tls_callback_fn)(void*, uint32_t, void*);
+
+void run_tls_callbacks(uint32_t reason) {
+  uint64_t* cbs = g_tls_callbacks_va;
+  log_always("[SHIM] run_tls_callbacks(reason=%u) cbs=%p\n", reason, (void*)cbs);
+  if( !cbs ) return;
+  for( ; *cbs; cbs++ ) {
+    log_always("[SHIM]   calling tls_cb %p\n", (void*)(uintptr_t)(*cbs));
+    tls_callback_fn fn = (tls_callback_fn)(uintptr_t)(*cbs);
+    fn(g_image_base, reason, nullptr);
+    log_always("[SHIM]   tls_cb done\n");
+  }
+}
+
+// Initialize the static TLS data block for the calling thread.
+// The Windows PE loader does this for every thread (main + created) before
+// the thread's user function runs.  We replicate it here.
+void tls_static_init_thread(void) {
+  if( g_tls_static_idx == 0xFFFFFFFFu ) return;
+  void** slots = tls_get_slots();
+  if( !slots ) return;
+  if( slots[g_tls_static_idx] ) return;  // already initialized
+  size_t sz = g_tls_template_sz ? g_tls_template_sz : 64;
+  void* buf = calloc(1, sz);
+  if( !buf ) return;
+  if( g_tls_template_va && g_tls_template_sz )
+    memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
+  slots[g_tls_static_idx] = buf;
+  log_always("[SHIM] tls_static_init_thread: slot=%u buf=%p sz=%zu\n",
+             g_tls_static_idx, buf, sz);
+}
+
+// ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
 __attribute__((constructor)) static void shim_init(void) {
@@ -863,11 +1048,34 @@ __attribute__((constructor)) static void shim_init(void) {
   handles_init();
   shim_init_teb();
   log_init();
+  discover_tls_callbacks();
+  log_always("[SHIM] TLS callbacks VA: %p\n", (void*)g_tls_callbacks_va);
+  // Pre-allocate the static TLS index (before app's TlsAlloc runs) and
+  // write it to *AddressOfIndex so compiler-generated TLS access works.
+  if( g_tls_index_addr ) {
+    pthread_mutex_lock(&g_tls_alloc_mu);
+    for( DWORD i = 0; i < 64; i++ ) {
+      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+        g_tls_alloc_used |= (1ULL<<i);
+        g_tls_static_idx = i;
+        break;
+      }
+    }
+    pthread_mutex_unlock(&g_tls_alloc_mu);
+    *g_tls_index_addr = g_tls_static_idx;
+    log_always("[SHIM] static TLS: slot=%u *AddressOfIndex=%p\n",
+               g_tls_static_idx, (void*)g_tls_index_addr);
+    tls_static_init_thread();  // main thread
+  }
   rebuild_cmdline();
   build_env_block();
   build_argv();
   init_fake_iob();
   install_signal_handlers();
+  // Call TLS callbacks with DLL_PROCESS_ATTACH exactly as the Windows loader
+  // would before handing control to the PE entry point.  The callbacks are all
+  // ms_abi (run_tls_callbacks casts them correctly) and idempotent/guarded.
+  run_tls_callbacks(1);
 }
 
 #pragma GCC visibility pop
@@ -1165,6 +1373,10 @@ extern "C" EXPORT HANDLE kernel32_CreateFileW(LPCWSTR name, DWORD access, DWORD 
   return hret;
 }
 
+// Defined in shim_kernel32_sync.hpp (included below); forward-declared here
+// so CloseHandle can use it.
+static void sync_obj_destroy(HandleKind kind, void* ptr);
+
 extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
   int idx = handle_to_idx(h);
   if( idx<0||idx<=2 )
@@ -1184,23 +1396,13 @@ extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
     if( fc ) release_find_ctx(fc);
   } else if( k==H_MODULE ) {
     if( dlh ) dlclose(dlh);
-  } else if( k==H_MUTEX ) {
-    MutexObj* m = (MutexObj*)ptr;
-    pthread_mutex_destroy(&m->mu); free(m);
-  } else if( k==H_EVENT ) {
-    EventObj* ev = (EventObj*)ptr;
-    pthread_mutex_destroy(&ev->mu); pthread_cond_destroy(&ev->cv); free(ev);
-  } else if( k==H_SEMAPHORE ) {
-    SemaphoreObj* s = (SemaphoreObj*)ptr;
-    sem_destroy(&s->sem); free(s);
-  } else if( k==H_THREAD ) {
-    ThreadObj* t = (ThreadObj*)ptr;
-    pthread_mutex_lock(&t->mu);
-    bool done = t->done;
-    pthread_mutex_unlock(&t->mu);
-    if( done ) pthread_join(t->tid, nullptr);
-    else        pthread_detach(t->tid);
-    pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t);
+  } else if( k>=H_MUTEX ) {
+    // Decrement refcount; only destroy when it reaches 0 (a concurrent
+    // WaitForSingleObject may still hold a reference to the object).
+    pthread_mutex_lock(&g_handles_mu);
+    int new_rc = --(*(int*)ptr);
+    pthread_mutex_unlock(&g_handles_mu);
+    if( new_rc == 0 ) sync_obj_destroy(k, ptr);
   } else {
     SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return FALSE;
@@ -1269,6 +1471,15 @@ extern "C" EXPORT BOOL kernel32_FlushFileBuffers(HANDLE h) {
   return TRUE;
 }
 
+extern "C" EXPORT BOOL kernel32_GetFileSizeEx(HANDLE h, int64_t* size) {
+  int fd = get_fd(h);
+  if( fd<0 ) { SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE; }
+  struct stat st;
+  if( fstat(fd, &st)<0 ) { set_errno_error(); return FALSE; }
+  if( size ) *size = (int64_t)st.st_size;
+  return TRUE;
+}
+
 extern "C" EXPORT DWORD kernel32_GetFileType(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )
@@ -1298,38 +1509,85 @@ extern "C" EXPORT void kernel32_GetSystemTimeAsFileTime(FILETIME* pft) {
 // ---------------------------------------------------------------------------
 // 7.6 Directory / File Search
 // ---------------------------------------------------------------------------
-static void fill_find_data_w(WIN32_FIND_DATAW* pfd, const char* fullpath, const char* name) {
+
+// Map Linux stat → Windows file attributes.
+// Rules:
+//   no-write bits  → READONLY
+//   any exec bit   → SYSTEM  (closest Linux semantic: executable = "system-managed")
+//   S_ISDIR        → DIRECTORY
+//   S_ISREG        → ARCHIVE (default for regular files; means "needs backup")
+//   nothing above  → NORMAL
+// NOTE: we deliberately do NOT map dot-prefixed names to HIDDEN.  Linux dot-names
+// are a naming convention, not a stored attribute; Windows HIDDEN is explicit
+// metadata.  Setting HIDDEN on all dotfiles causes archivers and other tools to
+// silently skip .git, .gitignore, etc. — the wrong behaviour for a compat shim.
+static DWORD stat_to_win_attrs(const struct stat* st, const char* /*name*/) {
+  DWORD attrs = 0;
+  if( !(st->st_mode & (S_IWUSR|S_IWGRP|S_IWOTH)) )
+    attrs |= FILE_ATTRIBUTE_READONLY;
+  if( st->st_mode & (S_IXUSR|S_IXGRP|S_IXOTH) )
+    attrs |= FILE_ATTRIBUTE_SYSTEM;
+  if( S_ISDIR(st->st_mode) )
+    attrs |= FILE_ATTRIBUTE_DIRECTORY;
+  else if( S_ISREG(st->st_mode) )
+    attrs |= FILE_ATTRIBUTE_ARCHIVE;
+  if( attrs==0 )
+    attrs = FILE_ATTRIBUTE_NORMAL;
+  return attrs;
+}
+
+// Fill common stat-derived fields of WIN32_FIND_DATA* (both A and W share layout
+// for everything except cFileName/cAlternateFileName).
+template<typename T>
+static void fill_find_data_common(T* pfd, const char* fullpath, const char* name) {
   memset(pfd, 0, sizeof(*pfd));
   struct stat st;
   if( stat(fullpath, &st)==0 ) {
-    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+    pfd->dwFileAttributes = stat_to_win_attrs(&st, name);
     uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-    pfd->ftLastWriteTime = u64_to_ft(mtime);
-    pfd->ftCreationTime = pfd->ftLastWriteTime;
+    pfd->ftLastWriteTime  = u64_to_ft(mtime);
+    pfd->ftCreationTime   = pfd->ftLastWriteTime;
     pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
+    pfd->nFileSizeLow  = (DWORD)(st.st_size & 0xFFFFFFFF);
+    pfd->nFileSizeHigh = (DWORD)(st.st_size >> 32);
   }
+}
+
+static void fill_find_data_w(WIN32_FIND_DATAW* pfd, const char* fullpath, const char* name) {
+  fill_find_data_common(pfd, fullpath, name);
   utf8_to_wchar(name, pfd->cFileName, 260);
 }
 
 static void fill_find_data_a(WIN32_FIND_DATAA* pfd, const char* fullpath, const char* name) {
-  memset(pfd, 0, sizeof(*pfd));
-  struct stat st;
-  if( stat(fullpath, &st)==0 ) {
-    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-    uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-    pfd->ftLastWriteTime = u64_to_ft(mtime);
-    pfd->ftCreationTime = pfd->ftLastWriteTime;
-    pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
-  }
+  fill_find_data_common(pfd, fullpath, name);
   strncpy(pfd->cFileName, name, 259);
 }
 
 // Shared helper: open directory from a POSIX pattern path, scan to first match,
 // populate ctx. Returns first matching dirent or NULL.
+
+// Windows FindFirstFile wildcard semantics differ from POSIX fnmatch:
+// "*.foo" also matches extensionless names (FAT/NTFS backward-compat).
+// Specifically, if the pattern ends with ".*", we also try it without the ".*"
+// tail so that "config", "HEAD", "index" etc. match "*.*" or "f*.*".
+static bool win_fnmatch(const char* glob, const char* name) {
+  if( fnmatch(glob, name, FNM_NOESCAPE)==0 ) return true;
+  // Strip trailing ".*" and retry — covers *.*  f*.*  etc.
+  const char* dot_star = strrchr(glob, '.');
+  if( dot_star && dot_star[1]=='*' && dot_star[2]=='\0' ) {
+    size_t prefix_len = (size_t)(dot_star - glob);
+    char prefix[NAME_MAX+2];
+    if( prefix_len < sizeof(prefix) ) {
+      memcpy(prefix, glob, prefix_len);
+      prefix[prefix_len] = '\0';
+      // Empty prefix (the pattern was just ".*") means match anything.
+      const char* p = prefix_len ? prefix : "*";
+      if( fnmatch(p, name, FNM_NOESCAPE)==0 ) return true;
+    }
+  }
+  return false;
+}
+
 static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   char dir[PATH_MAX] = ".";
   char glob[260] = "*";
@@ -1338,8 +1596,16 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   char* slash = strrchr(tmp, '/');
   if( slash ) {
     *slash = '\0';
-    snprintf(dir, sizeof(dir), "%s", tmp);
-    snprintf(glob, sizeof(glob), "%s", slash+1);
+    const char* g = slash+1;
+    if( g[0] ) {
+      snprintf(dir, sizeof(dir), "%s", tmp);
+      snprintf(glob, sizeof(glob), "%s", g);
+    } else {
+      // Trailing slash: caller wants the directory entry itself (like "." in dir).
+      // We mark glob as "." so find_ctx_open can detect it later.
+      snprintf(dir, sizeof(dir), "%s", tmp[0] ? tmp : "/");
+      snprintf(glob, sizeof(glob), ".");
+    }
   } else {
     size_t n = strnlen(tmp, sizeof(glob)-1);
     memcpy(glob, tmp, n);
@@ -1356,10 +1622,15 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
   *out_ctx = ctx;
   struct dirent* ent;
+  bool dot_query = (strcmp(glob, ".")==0);
   while( (ent = readdir(d))!=NULL ) {
+    if( dot_query ) {
+      if( strcmp(ent->d_name, ".")==0 ) return ent;
+      continue;
+    }
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)==0 )
+    if( win_fnmatch(ctx->glob, ent->d_name) )
       return ent;
   }
   closedir(d);
@@ -1377,15 +1648,20 @@ extern "C" EXPORT HANDLE kernel32_FindFirstFileExW(LPCWSTR pattern, int lvl, WIN
   char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(pattern, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
+  { size_t wl=0; while(pattern[wl]) wl++;
+    log_always("[SHIM] FindFirstFileExW(wlen=%zu \"%s\" -> \"%s\")\n", wl, narrow, posix); }
 
   FindCtx* ctx = NULL;
   struct dirent* ent = find_ctx_open(posix, &ctx);
-  if( !ent )
+  if( !ent ) {
+    log_always("[SHIM] FindFirstFileExW -> INVALID (find_ctx_open failed)\n");
     return INVALID_HANDLE_VALUE;
+  }
 
   char fullpath[PATH_MAX];
   path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
   fill_find_data_w(pfd, fullpath, ent->d_name);
+  log_always("[SHIM] FindFirstFileExW -> first=\"%s\"\n", ent->d_name);
 
   HANDLE hret = handle_alloc_find(ctx);
   if( hret==INVALID_HANDLE_VALUE ) {
@@ -1403,11 +1679,12 @@ extern "C" EXPORT BOOL kernel32_FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
+    if( !win_fnmatch(ctx->glob, ent->d_name) )
       continue;
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     fill_find_data_w(pfd, fullpath, ent->d_name);
+    log_always("[SHIM] FindNextFileW -> \"%s\"\n", ent->d_name);
     found = TRUE;
     break;
   }
@@ -1417,6 +1694,7 @@ extern "C" EXPORT BOOL kernel32_FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
 }
 
 extern "C" EXPORT BOOL kernel32_FindClose(HANDLE h) {
+  log_always("[SHIM] FindClose(%p)\n", h);
   int idx = handle_to_idx(h);
   pthread_mutex_lock(&g_handles_mu);
   if( idx<0||g_handles[idx].kind!=H_FIND ) {
@@ -1554,7 +1832,8 @@ extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD 
       tmp[0] = '\0';
     }
   }
-  return (DWORD)utf8_to_wchar(tmp, buf, size);
+  char win[PATH_MAX]; posix_to_win_path(tmp, win, sizeof(win));
+  return (DWORD)utf8_to_wchar(win, buf, size);
 }
 
 extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
@@ -1725,6 +2004,10 @@ extern "C" EXPORT void kernel32_InitializeCriticalSection(CRITICAL_SECTION* cs) 
   kernel32_InitializeCriticalSectionAndSpinCount(cs, 0);
 }
 
+extern "C" EXPORT BOOL kernel32_InitializeCriticalSectionEx(CRITICAL_SECTION* cs, DWORD spin, DWORD /*flags*/) {
+  return kernel32_InitializeCriticalSectionAndSpinCount(cs, spin);
+}
+
 extern "C" EXPORT void kernel32_EnterCriticalSection(CRITICAL_SECTION* cs) {
   log_always("[SHIM] EnterCriticalSection(%p, caller=%p)\n", cs, __builtin_return_address(0));
   pthread_mutex_lock((pthread_mutex_t*)cs);
@@ -1741,31 +2024,53 @@ extern "C" EXPORT void kernel32_DeleteCriticalSection(CRITICAL_SECTION* cs) {
 }
 
 // TLS / FLS
+// TLS implemented via the per-thread tls_slots array stored at GS:[0x58]
+// (same layout as Windows uses), bypassing pthread_setspecific entirely.
+// g_tls_alloc_mu, g_tls_alloc_used, tls_get_slots are declared earlier.
+
 extern "C" EXPORT DWORD kernel32_TlsAlloc(void) {
-  pthread_key_t key;
-  int r = pthread_key_create(&key, NULL);
-  log_always("[SHIM] TlsAlloc() -> key=%u (r=%d)\n", (unsigned)key, r);
-  if( r!=0 )
-    return 0xFFFFFFFF;
-  return (DWORD)key;
+  pthread_mutex_lock(&g_tls_alloc_mu);
+  DWORD idx = 0xFFFFFFFF;
+  for( DWORD i = 0; i < 64; i++ ) {
+    if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+      g_tls_alloc_used |= (1ULL<<i);
+      idx = i;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&g_tls_alloc_mu);
+  log_always("[SHIM] TlsAlloc() -> idx=%u\n", (unsigned)idx);
+  return idx;
 }
 
 extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
-  pthread_key_delete((pthread_key_t)idx);
+  if( idx >= 64 ) return FALSE;
+  pthread_mutex_lock(&g_tls_alloc_mu);
+  g_tls_alloc_used &= ~(1ULL<<idx);
+  pthread_mutex_unlock(&g_tls_alloc_mu);
   return TRUE;
 }
 
 extern "C" EXPORT LPVOID kernel32_TlsGetValue(DWORD idx) {
   SET_LAST_ERROR(0);
-  void* v = pthread_getspecific((pthread_key_t)idx);
-  log_always("[SHIM] TlsGetValue(idx=%u) -> %p\n", idx, v);
+  if( idx >= 64 ) return NULL;
+  void** slots = tls_get_slots();
+  void* v = slots ? slots[idx] : NULL;
+  if( v )
+    log_always("[SHIM] TlsGetValue(idx=%u, tid=%lu) -> %p\n", idx, (unsigned long)pthread_self(), v);
+  else
+    log_always("[SHIM] TlsGetValue(idx=%u, tid=%lu) -> (nil) [caller=%p]\n",
+               idx, (unsigned long)pthread_self(), __builtin_return_address(0));
   return v;
 }
 
 extern "C" EXPORT BOOL kernel32_TlsSetValue(DWORD idx, LPVOID val) {
-  int r = pthread_setspecific((pthread_key_t)idx, val);
-  log_always("[SHIM] TlsSetValue(idx=%u, val=%p) -> r=%d\n", idx, val, r);
-  return r==0 ? TRUE : FALSE;
+  if( idx >= 64 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  void** slots = tls_get_slots();
+  if( !slots ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  slots[idx] = val;
+  log_always("[SHIM] TlsSetValue(idx=%u, tid=%lu, val=%p)\n", idx, (unsigned long)pthread_self(), val);
+  return TRUE;
 }
 
 extern "C" EXPORT void kernel32_InitializeSListHead(void* h) {
@@ -1991,6 +2296,11 @@ extern "C" EXPORT LONG kernel32_UnhandledExceptionFilter(void* pExcept) {
   return EXCEPTION_EXECUTE_HANDLER;
 }
 
+extern "C" EXPORT void kernel32_RtlUnwind(void* frame, void* target, void* except, void* retval) {
+  (void)frame; (void)target; (void)except; (void)retval;
+  log_always("[SHIM] RtlUnwind called — SEH unwind not implemented, returning\n");
+}
+
 extern "C" EXPORT void kernel32_RtlUnwindEx(void* f, void* target, void* except, void* retval, void* ctx, void* histo) {
   (void)f;
   (void)target;
@@ -2147,7 +2457,7 @@ extern "C" EXPORT BOOL kernel32_FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
+    if( !win_fnmatch(ctx->glob, ent->d_name) )
       continue;
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
@@ -2207,58 +2517,72 @@ extern "C" EXPORT BOOL kernel32_DeleteFileA(LPCSTR path) {
 extern "C" EXPORT BOOL kernel32_SetFileAttributesA(LPCSTR path, DWORD attrs) {
   char posix[PATH_MAX];
   win_path_to_posix(path, posix, sizeof(posix));
-  if( attrs&FILE_ATTRIBUTE_READONLY ) {
-    struct stat st;
-    if( stat(posix, &st)<0 ) {
-      set_errno_error();
-      return FALSE;
-    }
-    chmod(posix, st.st_mode&~(S_IWUSR|S_IWGRP|S_IWOTH));
-  }
+  struct stat st;
+  if( stat(posix, &st)<0 ) { set_errno_error(); return FALSE; }
+  mode_t m = st.st_mode;
+  if( attrs & FILE_ATTRIBUTE_READONLY )
+    m &= ~(S_IWUSR|S_IWGRP|S_IWOTH);
+  else
+    m |= S_IWUSR;
+  if( attrs & FILE_ATTRIBUTE_SYSTEM )
+    m |= S_IXUSR|S_IXGRP|S_IXOTH;
+  else if( S_ISREG(m) )   // only strip exec from regular files, not directories
+    m &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
+  if( chmod(posix, m)<0 ) { set_errno_error(); return FALSE; }
   return TRUE;
 }
 
+extern "C" EXPORT BOOL kernel32_SetFileAttributesW(const uint16_t* path, DWORD attrs) {
+  char utf8[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  return kernel32_SetFileAttributesA(utf8, attrs);
+}
+
 extern "C" EXPORT DWORD kernel32_GetCurrentDirectoryA(DWORD size, LPSTR buf) {
-  if( !buf||size==0 ) {
-    char* tmp = getcwd(NULL, 0);
-    if( !tmp ) return 0;
-    DWORD n = (DWORD)(strlen(tmp)+1);
-    free(tmp);
-    return n;
+  char posix[PATH_MAX];
+  if( !getcwd(posix, sizeof(posix)) ) { set_errno_error(); return 0; }
+  char win[PATH_MAX];
+  posix_to_win_path(posix, win, sizeof(win));
+  DWORD n = (DWORD)strlen(win);
+  if( !buf || size == 0 ) return n + 1;
+  if( size <= n ) { SET_LAST_ERROR(122u); return n + 1; }  // ERROR_INSUFFICIENT_BUFFER=122
+  memcpy(buf, win, n + 1);
+  return n;
+}
+
+extern "C" EXPORT DWORD kernel32_GetCurrentDirectoryW(DWORD size, uint16_t* buf) {
+  char posix[PATH_MAX];
+  if( !getcwd(posix, sizeof(posix)) ) { set_errno_error(); return 0; }
+  char win[PATH_MAX];
+  posix_to_win_path(posix, win, sizeof(win));
+  if( !buf || size == 0 ) {
+    uint16_t tmp[PATH_MAX];
+    return (DWORD)utf8_to_wchar(win, tmp, PATH_MAX) + 1;
   }
-  if( !getcwd(buf, size) ) {
-    set_errno_error();
-    return 0;
-  }
-  return (DWORD)strlen(buf);
+  return (DWORD)utf8_to_wchar(win, buf, size);
 }
 
 extern "C" EXPORT DWORD kernel32_GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
-  if( size==0 ) {
-    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
-    return 0;
-  }
+  if( size==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  char posix[PATH_MAX];
   if( h==NULL||IS_MAIN_IMAGE(h) ) {
-    ssize_t n = readlink("/proc/self/exe", buf, size-1);
+    ssize_t n = readlink("/proc/self/exe", posix, sizeof(posix)-1);
     if( n<0 ) { set_errno_error(); return 0; }
-    buf[n] = '\0';
-    return (DWORD)n;
+    posix[n] = '\0';
+  } else {
+    int idx = handle_to_idx(h);
+    void* dlh = (idx>=0&&g_handles[idx].kind==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+    if( dlh ) {
+      void* sym = dlsym(dlh, "_init"); if( !sym ) sym = dlh;
+      Dl_info info;
+      if( dladdr(sym, &info)&&info.dli_fname )
+        strncpy(posix, info.dli_fname, sizeof(posix)-1);
+      else posix[0] = '\0';
+    } else { buf[0]='\0'; return 0; }
   }
-  // Loaded module: resolve via dladdr
-  int idx = handle_to_idx(h);
-  void* dlh = (idx>=0&&g_handles[idx].kind==H_MODULE) ? g_handles[idx].dlhandle : NULL;
-  if( dlh ) {
-    void* sym = dlsym(dlh, "_init");
-    if( !sym ) sym = dlh;
-    Dl_info info;
-    if( dladdr(sym, &info)&&info.dli_fname ) {
-      strncpy(buf, info.dli_fname, size-1);
-      buf[size-1] = '\0';
-      return (DWORD)strlen(buf);
-    }
-  }
-  buf[0] = '\0';
-  return 0;
+  char win[PATH_MAX]; posix_to_win_path(posix, win, sizeof(win));
+  strncpy(buf, win, size-1); buf[size-1] = '\0';
+  return (DWORD)strlen(buf);
 }
 
 extern "C" EXPORT HANDLE kernel32_LoadLibraryA(LPCSTR name) {
@@ -2537,6 +2861,24 @@ extern "C" EXPORT DWORD kernel32_FormatMessageA(DWORD flags, LPCVOID src, DWORD 
 //  +16 DWORD dwControlKeyState
 #define INPUT_RECORD_SIZE 20
 
+extern "C" EXPORT BOOL kernel32_ReadConsoleW(HANDLE h, uint16_t* buf, DWORD nchars, DWORD* nread, void* /*ctrl*/) {
+  if( !buf || nchars==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  int idx = handle_to_idx(h);
+  int fd = (idx>=0 && g_handles[idx].kind==H_FILE) ? g_handles[idx].fd : STDIN_FILENO;
+  // Read up to nchars bytes of UTF-8 then widen one char at a time.
+  char tmp[4096];
+  DWORD cap = nchars < (DWORD)sizeof(tmp) ? nchars : (DWORD)(sizeof(tmp)-1);
+  ssize_t n;
+  do { n = read(fd, tmp, cap); } while( n<0 && errno==EINTR );
+  if( n<=0 ) { if(nread) *nread=0; return n==0 ? TRUE : FALSE; }
+  tmp[n] = '\0';
+  DWORD out = 0;
+  for( ssize_t i=0; i<n && out<nchars; i++, out++ )
+    buf[out] = (uint16_t)(uint8_t)tmp[i];
+  if( nread ) *nread = out;
+  return TRUE;
+}
+
 extern "C" EXPORT BOOL kernel32_ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD* nread) {
   if( nread ) *nread = 0;
   if( !buf||count==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
@@ -2660,16 +3002,18 @@ extern "C" EXPORT DWORD kernel32_FormatMessageW(DWORD flags, LPCVOID src, DWORD 
 }
 
 extern "C" EXPORT DWORD kernel32_GetFullPathNameW(LPCWSTR path, DWORD size, LPWSTR buf, LPWSTR* filepart) {
-  char narrow[PATH_MAX], posix[PATH_MAX], resolved[PATH_MAX];
+  char narrow[PATH_MAX], posix[PATH_MAX], resolved[PATH_MAX], win[PATH_MAX];
   wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
   if( !realpath(posix, resolved) ) strncpy(resolved, posix, sizeof(resolved)-1);
-  DWORD needed = (DWORD)utf8_to_wchar(resolved, (uint16_t*)buf, size ? size : 0);
+  posix_to_win_path(resolved, win, sizeof(win));
+  log_always("[SHIM] GetFullPathNameW(\"%s\" -> \"%s\")\n", narrow, win);
+  DWORD needed = (DWORD)utf8_to_wchar(win, (uint16_t*)buf, size ? size : 0);
   if( buf && size > 0 && filepart ) {
     uint16_t* p = (uint16_t*)buf + needed;
     uint16_t* slash = (uint16_t*)buf;
     for( uint16_t* q = (uint16_t*)buf; q < p; q++ )
-      if( *q == '/' || *q == '\\' ) slash = q + 1;
+      if( *q == '\\' ) slash = q + 1;
     *filepart = slash < p ? slash : nullptr;
   }
   return needed;
@@ -2702,7 +3046,16 @@ extern "C" EXPORT DWORD kernel32_GetFileAttributesA(LPCSTR path) {
   win_path_to_posix(path, posix, sizeof(posix));
   struct stat st;
   if( stat(posix, &st) != 0 ) { set_errno_error(); return INVALID_FILE_ATTRIBUTES; }
-  return S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+  // Use the basename of the posix path for dot-hidden detection.
+  const char* base = strrchr(posix, '/');
+  base = base ? base+1 : posix;
+  return stat_to_win_attrs(&st, base);
+}
+
+extern "C" EXPORT DWORD kernel32_GetFileAttributesW(const uint16_t* path) {
+  char utf8[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  return kernel32_GetFileAttributesA(utf8);
 }
 
 extern "C" EXPORT BOOL kernel32_CreateDirectoryA(LPCSTR path, SECURITY_ATTRIBUTES* sa) {
@@ -2789,6 +3142,382 @@ extern "C" EXPORT void kernel32_GlobalMemoryStatus(uint8_t* buf) {
 // RtlAddFunctionTable — stub (no JIT SEH unwind needed)
 extern "C" EXPORT BOOL kernel32_RtlAddFunctionTable(void* /*table*/, DWORD /*count*/, uint64_t /*base*/) {
   return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// Thread pseudo-handle, affinity, priority, context — stubs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT HANDLE kernel32_GetCurrentThread(void) {
+  return (HANDLE)(intptr_t)-2;   // Windows pseudo-handle convention
+}
+
+extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE /*h*/) { return 0; }
+extern "C" EXPORT DWORD kernel32_ResumeThread (HANDLE /*h*/) { return 1; }
+
+extern "C" EXPORT int  kernel32_GetThreadPriority(HANDLE /*h*/)              { return 0; }  // THREAD_PRIORITY_NORMAL
+extern "C" EXPORT BOOL kernel32_SetThreadPriority(HANDLE /*h*/, int /*pri*/) { return TRUE; }
+
+extern "C" EXPORT BOOL kernel32_GetThreadContext(HANDLE /*h*/, void* /*ctx*/) {
+  SET_LAST_ERROR(1); return FALSE;   // ERROR_INVALID_FUNCTION
+}
+extern "C" EXPORT BOOL kernel32_SetThreadContext(HANDLE /*h*/, const void* /*ctx*/) {
+  SET_LAST_ERROR(1); return FALSE;
+}
+
+extern "C" EXPORT BOOL kernel32_GetProcessAffinityMask(HANDLE /*h*/, uint64_t* proc_mask, uint64_t* sys_mask) {
+  cpu_set_t cs; CPU_ZERO(&cs);
+  sched_getaffinity(0, sizeof(cs), &cs);
+  uint64_t mask = 0;
+  for( int i = 0; i < 64; ++i ) if( CPU_ISSET(i, &cs) ) mask |= (1ULL << i);
+  if( proc_mask ) *proc_mask = mask;
+  if( sys_mask  ) *sys_mask  = mask;
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_SetProcessAffinityMask(HANDLE /*h*/, uint64_t /*mask*/) { return TRUE; }
+
+// ---------------------------------------------------------------------------
+// Process times
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GetProcessTimes(HANDLE /*h*/,
+    FILETIME* created, FILETIME* exited, FILETIME* kernel_t, FILETIME* user_t) {
+  struct rusage ru;
+  getrusage(RUSAGE_SELF, &ru);
+  auto tv_to_ft = [](const struct timeval& tv) -> uint64_t {
+    return (uint64_t)tv.tv_sec * 10000000ULL + (uint64_t)tv.tv_usec * 10ULL;
+  };
+  if( kernel_t ) { uint64_t v = tv_to_ft(ru.ru_stime); *kernel_t = u64_to_ft(v); }
+  if( user_t   ) { uint64_t v = tv_to_ft(ru.ru_utime); *user_t   = u64_to_ft(v); }
+  if( created  ) memset(created, 0, sizeof(*created));
+  if( exited   ) memset(exited,  0, sizeof(*exited));
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// Handle info / duplication
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GetHandleInformation(HANDLE /*h*/, DWORD* flags) {
+  if( flags ) *flags = 0;
+  return TRUE;
+}
+
+extern "C" EXPORT BOOL kernel32_DuplicateHandle(
+    HANDLE /*src_proc*/, HANDLE src, HANDLE /*dst_proc*/, HANDLE* dst,
+    DWORD /*access*/, BOOL /*inherit*/, DWORD options) {
+  if( !dst ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+
+  // Windows GetCurrentThread() returns the pseudo-handle -2. Translate it to
+  // a real H_THREAD handle so pthreads-win32 implicit thread creation works.
+  if( src == (HANDLE)(intptr_t)-2 ) {
+    ThreadObj* obj = (ThreadObj*)pthread_getspecific(g_thread_obj_key);
+    if( !obj ) {
+      // Not a managed thread (main thread / external thread): create a minimal
+      // wrapper. tid=0 tells sync_obj_destroy to skip join/detach.
+      obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
+      if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return FALSE; }
+      pthread_mutex_init(&obj->mu, nullptr);
+      pthread_cond_init(&obj->cv, nullptr);
+      obj->refcount = 0; // bumped below under lock
+      obj->done     = true;
+      // obj->tid stays 0
+    }
+    pthread_mutex_lock(&g_handles_mu);
+    ++(obj->refcount);
+    for( int i = 3; i < MAX_HANDLES; ++i ) {
+      if( g_handles[i].kind == H_FREE ) {
+        g_handles[i].kind = H_THREAD;
+        g_handles[i].ptr  = obj;
+        *dst = idx_to_handle(i);
+        pthread_mutex_unlock(&g_handles_mu);
+        return TRUE;
+      }
+    }
+    // Handle table full — undo the refcount bump and clean up if new obj.
+    if( --(obj->refcount) == 0 ) {
+      pthread_mutex_unlock(&g_handles_mu);
+      pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
+    } else {
+      pthread_mutex_unlock(&g_handles_mu);
+    }
+    SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES); return FALSE;
+  }
+
+  int idx = handle_to_idx(src);
+  if( idx < 0 ) { SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE; }
+  HandleKind kind = g_handles[idx].kind;
+  if( kind == H_FILE ) {
+    int fd = dup(g_handles[idx].fd);
+    if( fd < 0 ) { set_errno_error(); return FALSE; }
+    *dst = handle_alloc_file(fd);
+    if( *dst == INVALID_HANDLE_VALUE ) { close(fd); return FALSE; }
+  } else {
+    // For non-file handles, share the same slot (bump refcount on sync objects).
+    pthread_mutex_lock(&g_handles_mu);
+    for( int i = 3; i < MAX_HANDLES; ++i ) {
+      if( g_handles[i].kind == H_FREE ) {
+        g_handles[i] = g_handles[idx];
+        if( kind >= H_MUTEX ) ++(*(int*)g_handles[i].ptr);
+        *dst = idx_to_handle(i);
+        pthread_mutex_unlock(&g_handles_mu);
+        goto done;
+      }
+    }
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES); return FALSE;
+  }
+done:
+  if( options & 1 /*DUPLICATE_CLOSE_SOURCE*/ ) kernel32_CloseHandle(src);
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// TryEnterCriticalSection
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_TryEnterCriticalSection(CRITICAL_SECTION* cs) {
+  return pthread_mutex_trylock((pthread_mutex_t*)cs) == 0 ? TRUE : FALSE;
+}
+
+// ---------------------------------------------------------------------------
+// WaitForMultipleObjects — sequential poll with back-off
+// ---------------------------------------------------------------------------
+#define MAXIMUM_WAIT_OBJECTS 64
+extern "C" EXPORT DWORD kernel32_WaitForMultipleObjects(
+    DWORD count, const HANDLE* handles, BOOL wait_all, DWORD ms) {
+  if( !handles || count == 0 || count > MAXIMUM_WAIT_OBJECTS ) {
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return WAIT_FAILED;
+  }
+  bool inf = (ms == INFINITE);
+  struct timespec deadline;
+  if( !inf ) deadline_from_ms(ms, &deadline);
+
+  auto time_left_ms = [&]() -> DWORD {
+    if( inf ) return INFINITE;
+    struct timespec now; clock_gettime(CLOCK_REALTIME, &now);
+    long diff = (long)(deadline.tv_sec - now.tv_sec) * 1000
+              + (long)(deadline.tv_nsec - now.tv_nsec) / 1000000;
+    return diff <= 0 ? 0u : (DWORD)diff;
+  };
+
+  if( !wait_all ) {
+    // Wait for any: poll with 1 ms slices until timeout.
+    while( true ) {
+      for( DWORD i = 0; i < count; ++i ) {
+        DWORD r = kernel32_WaitForSingleObject(handles[i], 0);
+        if( r == WAIT_OBJECT_0 ) return WAIT_OBJECT_0 + i;
+      }
+      DWORD left = time_left_ms();
+      if( left == 0 ) return WAIT_TIMEOUT;
+      DWORD slice = left < 1 ? left : 1;
+      kernel32_WaitForSingleObject(handles[0], slice);  // sleep via first handle
+    }
+  } else {
+    // Wait for all: wait on each in sequence with remaining timeout.
+    for( DWORD i = 0; i < count; ++i ) {
+      DWORD left = time_left_ms();
+      DWORD r = kernel32_WaitForSingleObject(handles[i], left);
+      if( r != WAIT_OBJECT_0 ) return r;
+    }
+    return WAIT_OBJECT_0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Console extras
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GetConsoleTitleA(LPSTR buf, DWORD sz) {
+  if( buf && sz ) buf[0] = '\0';
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_SetConsoleTitleA(LPCSTR /*title*/) { return TRUE; }
+
+// CONSOLE_SCREEN_BUFFER_INFO layout (22 bytes):
+//  COORD dwSize(4), COORD dwCursorPosition(4), WORD wAttributes(2),
+//  SMALL_RECT srWindow(8), COORD dwMaximumWindowSize(4)
+extern "C" EXPORT BOOL kernel32_GetConsoleScreenBufferInfo(HANDLE /*h*/, void* buf) {
+  if( !buf ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  uint8_t* b = (uint8_t*)buf;
+  memset(b, 0, 22);
+  *(uint16_t*)(b+0)  = 80;   // dwSize.X
+  *(uint16_t*)(b+2)  = 25;   // dwSize.Y
+  *(uint16_t*)(b+8)  = 0x07; // wAttributes (grey on black)
+  *(uint16_t*)(b+10) = 0;    // srWindow.Left
+  *(uint16_t*)(b+12) = 0;    // srWindow.Top
+  *(uint16_t*)(b+14) = 79;   // srWindow.Right
+  *(uint16_t*)(b+16) = 24;   // srWindow.Bottom
+  *(uint16_t*)(b+18) = 80;   // dwMaximumWindowSize.X
+  *(uint16_t*)(b+20) = 25;   // dwMaximumWindowSize.Y
+  return TRUE;
+}
+
+extern "C" EXPORT void kernel32_OutputDebugStringA(LPCSTR s) {
+  if( s ) log_always("[DBG] %s\n", s);
+}
+
+// ---------------------------------------------------------------------------
+// Vectored Exception Handler — stubs (no VEH on Linux)
+// ---------------------------------------------------------------------------
+extern "C" EXPORT void* kernel32_AddVectoredExceptionHandler(DWORD /*first*/, void* /*handler*/) {
+  return (void*)1;   // non-NULL = success
+}
+extern "C" EXPORT DWORD kernel32_RemoveVectoredExceptionHandler(void* /*handle*/) { return 1; }
+
+// ---------------------------------------------------------------------------
+// Temp file/path
+// ---------------------------------------------------------------------------
+extern "C" EXPORT DWORD kernel32_GetTempPathW(DWORD sz, uint16_t* buf) {
+  const char* tmp = getenv("TEMP");
+  if( !tmp ) tmp = "/tmp";
+  char posix[PATH_MAX], win[PATH_MAX];
+  snprintf(posix, sizeof(posix), "%s/", tmp);
+  posix_to_win_path(posix, win, sizeof(win));
+  // Ensure trailing backslash.
+  size_t n = strlen(win);
+  if( n == 0 || win[n-1] != '\\' ) { win[n++] = '\\'; win[n] = '\0'; }
+  if( buf && sz ) utf8_to_wchar(win, buf, sz);
+  return (DWORD)n;
+}
+
+extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uint16_t* prefix,
+                                                   UINT unique, uint16_t* out) {
+  char dir[PATH_MAX], pfx[16], result[PATH_MAX];
+  wchar_to_utf8(path, dir, sizeof(dir));
+  wchar_to_utf8(prefix, pfx, sizeof(pfx));
+  pfx[3] = '\0';   // Windows uses first 3 chars of prefix
+  if( unique ) {
+    snprintf(result, sizeof(result), "%s/%s%04X.tmp", dir, pfx, unique & 0xFFFF);
+    int fd = open(result, O_CREAT|O_EXCL|O_WRONLY, 0600);
+    if( fd >= 0 ) close(fd);
+  } else {
+    snprintf(result, sizeof(result), "%s/%sXXXXXX.tmp", dir, pfx);
+    int fd = mkstemps(result, 4);
+    if( fd >= 0 ) close(fd);
+    unique = (UINT)(uintptr_t)strrchr(result, '/');  // use addr as pseudo-unique
+  }
+  if( out ) utf8_to_wchar(result, out, 260);
+  return unique;
+}
+
+// ---------------------------------------------------------------------------
+// SetCurrentDirectoryW
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_SetCurrentDirectoryW(const uint16_t* path) {
+  char utf8[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  char posix[PATH_MAX];
+  win_path_to_posix(utf8, posix, sizeof(posix));
+  if( chdir(posix) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// FileTimeToLocalFileTime — apply local UTC offset
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_FileTimeToLocalFileTime(const FILETIME* utc, FILETIME* local) {
+  if( !utc || !local ) return FALSE;
+  time_t now = time(nullptr);
+  struct tm loc; localtime_r(&now, &loc);
+  int64_t off_100ns = (int64_t)loc.tm_gmtoff * 10000000LL;
+  uint64_t v = ft_to_u64(*utc);
+  *local = u64_to_ft(v + (uint64_t)off_100ns);
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// GlobalMemoryStatusEx — MEMORYSTATUSEX (64 bytes, dwLength must match)
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GlobalMemoryStatusEx(uint8_t* buf) {
+  if( !buf ) return FALSE;
+  uint32_t caller_len = *(uint32_t*)(buf+0);
+  uint32_t sz = (caller_len >= 64) ? caller_len : 64;
+  memset(buf, 0, sz);
+  *(uint32_t*)(buf+0) = sz;                     // dwLength (echo caller's value)
+  struct sysinfo si;
+  if( sysinfo(&si) == 0 ) {
+    uint64_t total = (uint64_t)si.totalram  * si.mem_unit;
+    uint64_t avail = (uint64_t)si.freeram   * si.mem_unit;
+    uint32_t load  = total ? (uint32_t)(100 - avail * 100 / total) : 0;
+    *(uint32_t*)(buf+4)  = load;                 // dwMemoryLoad
+    *(uint64_t*)(buf+8)  = total;                // ullTotalPhys
+    *(uint64_t*)(buf+16) = avail;                // ullAvailPhys
+    *(uint64_t*)(buf+24) = total;                // ullTotalPageFile
+    *(uint64_t*)(buf+32) = avail;                // ullAvailPageFile
+    *(uint64_t*)(buf+40) = (uint64_t)2 << 40;   // ullTotalVirtual (2 TB)
+    *(uint64_t*)(buf+48) = (uint64_t)2 << 40;   // ullAvailVirtual
+    if( sz >= 64 )
+      *(uint64_t*)(buf+56) = 0;                 // ullAvailExtendedVirtual
+  }
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// shell32 / shlwapi / winmm
+// ---------------------------------------------------------------------------
+
+// CommandLineToArgvW: parse a Windows command line into wide argv array.
+// Returns pointer to LPWSTR[] allocated with one LocalAlloc block;
+// the caller frees with LocalFree on the returned pointer.
+extern "C" EXPORT uint16_t** shell32_CommandLineToArgvW(const uint16_t* cmdline, int* argc_out) {
+  // Convert to UTF-8, split, then convert each arg back to wide.
+  char narrow[32768];
+  wchar_to_utf8(cmdline, narrow, sizeof(narrow));
+
+  // Count args and split on whitespace (handling quoted strings).
+  // Two-pass: count then fill.
+  int argc = 0;
+  const char* p = narrow;
+  while( *p ) {
+    while( *p == ' ' || *p == '\t' ) p++;
+    if( !*p ) break;
+    argc++;
+    if( *p == '"' ) { p++; while( *p && *p != '"' ) p++; if(*p) p++; }
+    else            { while( *p && *p != ' ' && *p != '\t' ) p++; }
+  }
+
+  // Allocate: argc pointers + storage for each wide string.
+  // We allocate a flat block: argv[] + string data.
+  size_t ptrs_sz  = (size_t)(argc + 1) * sizeof(uint16_t*);
+  size_t data_sz  = (strlen(narrow) + 1) * sizeof(uint16_t) * 2;
+  uint8_t* block  = (uint8_t*)malloc(ptrs_sz + data_sz);
+  if( !block ) { if(argc_out) *argc_out=0; return nullptr; }
+  uint16_t** argv = (uint16_t**)block;
+  uint16_t*  data = (uint16_t*)(block + ptrs_sz);
+
+  int i = 0; p = narrow;
+  uint16_t* wp = data;
+  while( *p && i < argc ) {
+    while( *p == ' ' || *p == '\t' ) p++;
+    if( !*p ) break;
+    argv[i++] = wp;
+    if( *p == '"' ) {
+      p++;
+      while( *p && *p != '"' ) *wp++ = (uint16_t)(uint8_t)*p++;
+      if( *p ) p++;
+    } else {
+      while( *p && *p != ' ' && *p != '\t' ) *wp++ = (uint16_t)(uint8_t)*p++;
+    }
+    *wp++ = 0;
+  }
+  argv[i] = nullptr;
+  if( argc_out ) *argc_out = argc;
+  return argv;
+}
+
+// PathMatchSpecW: match a wide path against a wildcard spec.
+extern "C" EXPORT BOOL shlwapi_PathMatchSpecW(const uint16_t* path, const uint16_t* spec) {
+  char path_u[PATH_MAX], spec_u[260];
+  wchar_to_utf8(path, path_u, sizeof(path_u));
+  wchar_to_utf8(spec, spec_u, sizeof(spec_u));
+  // Use basename for matching (PathMatchSpec matches the filename portion).
+  const char* base = strrchr(path_u, '\\');
+  if( !base ) base = strrchr(path_u, '/');
+  base = base ? base+1 : path_u;
+  return win_fnmatch(spec_u, base) ? TRUE : FALSE;
+}
+
+// timeGetTime: milliseconds since system boot (same as GetTickCount).
+extern "C" EXPORT DWORD winmm_timeGetTime(void) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (DWORD)((uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL);
 }
 
 #include "shim_msvcrt.hpp"
