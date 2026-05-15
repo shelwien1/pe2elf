@@ -1480,12 +1480,17 @@ extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
   if( h==FAKE_WIN_MODULE||h==MAIN_IMAGE_MODULE )
     return TRUE;
   int idx = handle_to_idx(h);
-  if( idx>=0&&g_handles[idx].kind==H_MODULE ) {
-    dlclose(g_handles[idx].dlhandle);
-    g_handles[idx].kind = H_FREE;
-    return TRUE;
+  pthread_mutex_lock(&g_handles_mu);
+  if( idx<0||g_handles[idx].kind!=H_MODULE ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    return FALSE;
   }
-  return FALSE;
+  void* dlh = g_handles[idx].dlhandle;
+  g_handles[idx].kind = H_FREE;
+  g_handles[idx].dlhandle = NULL;
+  pthread_mutex_unlock(&g_handles_mu);
+  dlclose(dlh);
+  return TRUE;
 }
 
 extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
@@ -1994,8 +1999,17 @@ extern "C" EXPORT int LCMapStringA(DWORD locale, DWORD flags, LPCSTR src, int sr
 
 // Not in 1.exe but common; add to avoid link errors if needed
 extern "C" EXPORT void Sleep(DWORD ms) {
-  struct timespec ts = {(time_t)(ms/1000), (long)((ms%1000)*1000000L)};
-  nanosleep(&ts, NULL);
+  struct timespec deadline;
+  clock_gettime(CLOCK_MONOTONIC, &deadline);
+  deadline.tv_sec  += (time_t)(ms/1000);
+  deadline.tv_nsec += (long)((ms%1000)*1000000L);
+  if( deadline.tv_nsec>=1000000000L ) {
+    deadline.tv_sec++;
+    deadline.tv_nsec -= 1000000000L;
+  }
+  // Use absolute-time sleep so EINTR restarts don't overshoot
+  while( clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &deadline, NULL)==EINTR )
+    ;
 }
 
 // ---------------------------------------------------------------------------
