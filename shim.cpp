@@ -2555,9 +2555,11 @@ extern "C" EXPORT DWORD kernel32_GetCurrentDirectoryW(DWORD size, uint16_t* buf)
   if( !getcwd(posix, sizeof(posix)) ) { set_errno_error(); return 0; }
   char win[PATH_MAX];
   posix_to_win_path(posix, win, sizeof(win));
-  DWORD n = (DWORD)utf8_to_wchar(win, buf, size);
-  if( !buf || size == 0 ) return n + 1;
-  return n;
+  if( !buf || size == 0 ) {
+    uint16_t tmp[PATH_MAX];
+    return (DWORD)utf8_to_wchar(win, tmp, PATH_MAX) + 1;
+  }
+  return (DWORD)utf8_to_wchar(win, buf, size);
 }
 
 extern "C" EXPORT DWORD kernel32_GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
@@ -3400,7 +3402,9 @@ extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uin
 extern "C" EXPORT BOOL kernel32_SetCurrentDirectoryW(const uint16_t* path) {
   char utf8[PATH_MAX];
   wchar_to_utf8(path, utf8, sizeof(utf8));
-  if( chdir(utf8) != 0 ) { set_errno_error(); return FALSE; }
+  char posix[PATH_MAX];
+  win_path_to_posix(utf8, posix, sizeof(posix));
+  if( chdir(posix) != 0 ) { set_errno_error(); return FALSE; }
   return TRUE;
 }
 
