@@ -42,6 +42,15 @@ struct Builder {
           const std::string& inj)
     : image(img), plan(p), shim_name(shim), interp(itp), strip_pdata(sp), inject_name(inj) {}
 
+  // Convert "KERNEL32.dll" + "GetModuleHandleA" → "kernel32_GetModuleHandleA"
+  static std::string make_elf_sym_name(const std::string& dll, const std::string& fn) {
+    std::string prefix = dll;
+    auto dot = prefix.rfind('.');
+    if( dot!=std::string::npos ) prefix = prefix.substr(0, dot);
+    for( char& c : prefix ) c = (char)std::tolower((unsigned char)c);
+    return prefix + "_" + fn;
+  }
+
   void build_synthetic_sections() {
     interp_data.assign(interp.begin(), interp.end());
     interp_data.push_back(0);
@@ -64,9 +73,10 @@ struct Builder {
 
     std::vector<std::string> unique_names;
     for( auto &ie : image.imports ) {
+      std::string sym = make_elf_sym_name(ie.dll_name, ie.func_name);
       bool found = false;
       for( size_t k = 0; k<unique_names.size(); ++k ) {
-        if( unique_names[k]==ie.func_name ) {
+        if( unique_names[k]==sym ) {
           ie.sym_index = (uint32_t)(k+1);
           found = true;
           break;
@@ -74,7 +84,7 @@ struct Builder {
       }
       if( !found ) {
         ie.sym_index = (uint32_t)(unique_names.size()+1);
-        unique_names.push_back(ie.func_name);
+        unique_names.push_back(sym);
       }
     }
 
@@ -240,6 +250,16 @@ struct Builder {
       if( (int)i==image.rdata_sec_idx ) {
         flags |= PF_W;
         relro_sec_idx = (int)i;
+      }
+      // Any section with R_X86_64_RELATIVE relocation targets must be writable
+      // during dynamic linking so the loader can patch the addresses.
+      uint64_t sec_va_start = image.image_base + sec.va;
+      uint64_t sec_va_end   = sec_va_start + std::max((uint64_t)sec.virtsz, (uint64_t)sec.rawsz);
+      for( auto &re : image.relocs ) {
+        if( re.va >= sec_va_start && re.va < sec_va_end ) {
+          flags |= PF_W;
+          break;
+        }
       }
       Elf64_Phdr p{};
       p.p_type   = PT_LOAD;
