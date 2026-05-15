@@ -2463,6 +2463,7 @@ extern "C" EXPORT DWORD kernel32_FormatMessageA(DWORD flags, LPCVOID src, DWORD 
     {5,   "Access is denied."},
     {6,   "The handle is invalid."},
     {8,   "Not enough memory resources are available."},
+    {18,  "There are no more files."},
     {87,  "The parameter is incorrect."},
     {183, "Cannot create a file when that file already exists."},
   };
@@ -2595,7 +2596,18 @@ extern "C" EXPORT HANDLE kernel32_FindFirstFileW(LPCWSTR pattern, WIN32_FIND_DAT
 
 extern "C" EXPORT DWORD kernel32_FormatMessageW(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPWSTR buf, DWORD size, va_list* args) {
   char narrow[4096];
-  DWORD n = kernel32_FormatMessageA(flags, src, msgId, lang, narrow, sizeof(narrow), args);
+  DWORD n = kernel32_FormatMessageA(flags & ~0x100u, src, msgId, lang, narrow, sizeof(narrow), args);
+  if( n == 0 )
+    n = (DWORD)snprintf(narrow, sizeof(narrow), "Error %u", (unsigned)msgId);
+  if( flags & 0x100u ) {
+    // FORMAT_MESSAGE_ALLOCATE_BUFFER: buf is LPWSTR* — allocate and store pointer
+    uint16_t* out = (uint16_t*)malloc((n + 1) * sizeof(uint16_t));
+    if( !out ) return 0;
+    for( DWORD i = 0; i < n; i++ ) out[i] = (uint16_t)(uint8_t)narrow[i];
+    out[n] = 0;
+    *(uint16_t**)buf = out;
+    return n;
+  }
   if( !buf || size == 0 ) return n;
   uint16_t* out = (uint16_t*)buf;
   DWORD i;
