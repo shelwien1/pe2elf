@@ -108,6 +108,7 @@ WINAPI_SHIM_1.0 {
     GetLocaleInfoA;
     ReadConsoleInputA;
     SetHandleCount;
+    pthread_create;
   local:
     *;
 };

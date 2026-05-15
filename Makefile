@@ -9,8 +9,10 @@ DUMMY_SRCS   = dummy.cpp
 SHIM_FLAGS = -O2 -fPIC -shared -m64 -std=c++17 \
              -fvisibility=hidden \
              -Wall -Wextra -Wno-unused-parameter \
-             -D_GNU_SOURCE \
+             -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
              -I.
+# Optional: link against mimalloc or jemalloc for better Heap* performance.
+# Add -DUSE_MIMALLOC -lmimalloc or -DUSE_JEMALLOC -ljemalloc to SHIM_LDFLAGS.
 SHIM_LDFLAGS = -lpthread -ldl \
                -Wl,--version-script=shim.map \
                -Wl,-z,now \

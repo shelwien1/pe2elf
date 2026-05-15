@@ -7,13 +7,16 @@
 #include <asm/prctl.h>
 #include <dirent.h>
 #include <dlfcn.h>
+#include <link.h>
 #include <errno.h>
-#include <execinfo.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <limits.h>
 #include <locale.h>
+#ifdef __GLIBC__
+#include <execinfo.h>
 #include <malloc.h>
+#endif
 #include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -21,16 +24,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
-#include <sys/uio.h>
-#include <sys/utsname.h>
 #include <time.h>
+#include <ctype.h>
+#include <termios.h>
 #include <ucontext.h>
 #include <unistd.h>
-#include <wchar.h>
 
 // ---------------------------------------------------------------------------
 // Visibility
@@ -39,17 +40,28 @@
 #pragma GCC visibility push(hidden)
 
 // ---------------------------------------------------------------------------
-// Logging — enabled in debug build (-DWINAPI_LOG_ENABLED), silent otherwise
+// Logging
 // ---------------------------------------------------------------------------
-#ifdef WINAPI_LOG_ENABLED
-
 static int g_log_fd = -1;
 
 static void log_init(void) {
-  g_log_fd = open("/tmp/shimlog.txt", O_WRONLY|O_CREAT|O_TRUNC|O_SYNC, 0644);
+  // Runtime-configurable: WINAPI_SHIM_LOG=/path/to/file or "stderr"
+  const char* env = getenv("WINAPI_SHIM_LOG");
+  if( env ) {
+    if( strcmp(env, "stderr")==0 )
+      g_log_fd = 2;
+    else
+      g_log_fd = open(env, O_WRONLY|O_CREAT|O_TRUNC|O_SYNC, 0644);
+  }
+#ifdef WINAPI_LOG_ENABLED
+  if( g_log_fd<0 )
+    g_log_fd = open("/tmp/shimlog.txt", O_WRONLY|O_CREAT|O_TRUNC|O_SYNC, 0644);
+#endif
 }
 
 __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...) {
+  if( g_log_fd<0 )
+    return;
   char buf[512];
   va_list ap;
   va_start(ap, fmt);
@@ -57,71 +69,76 @@ __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...
   va_end(ap);
   if( n<=0 ) return;
   size_t sz = (size_t)n<sizeof(buf) ? (size_t)n : sizeof(buf)-1;
-  if( g_log_fd>=0 ) {
-    ssize_t _wr = write(g_log_fd, buf, sz);
-    (void)_wr;
-  }
-  ssize_t _wr = write(2, buf, sz);
+  ssize_t _wr = write(g_log_fd, buf, sz);
   (void)_wr;
 }
 
+#ifdef WINAPI_LOG_ENABLED
 #define log_always log_write
 #define LOG(name, fmt, ...) \
   log_write("[%d] " name "(" fmt ")\n", (int)getpid(), ##__VA_ARGS__)
-
-#else // !WINAPI_LOG_ENABLED
-
-static inline void log_init(void) {}
-#define log_write(fmt, ...)  ((void)0)
-#define log_always(fmt, ...) ((void)0)
+#else
+#define log_always log_write
 #define LOG(name, fmt, ...)  ((void)0)
-
-#endif // WINAPI_LOG_ENABLED
+#endif
 
 // ---------------------------------------------------------------------------
 // Thread-local last error
 // ---------------------------------------------------------------------------
 static __thread uint32_t tls_last_error = 0;
+static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_teb()
+
+// pthread key whose destructor frees the per-thread tls_slots block on exit
+static pthread_key_t  g_tls_slots_key;
+static pthread_once_t g_tls_slots_key_once = PTHREAD_ONCE_INIT;
+static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, free); }
+
+// Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
+#define SET_LAST_ERROR(e) do { \
+  tls_last_error = (e); \
+  *(uint32_t*)(fake_teb+0x68) = (e); \
+} while(0)
 
 static uint32_t errno_to_win32(int e) {
   switch( e ) {
-  case ENOENT:
-    return 2;
-  case EACCES:
-    return 5;
-  case EBADF:
-    return 6;
-  case ENOMEM:
-    return 8;
-  case EEXIST:
-    return 80;
-  case EINVAL:
-    return 87;
-  case EMFILE:
-    return 4;
-  case ENOSPC:
-    return 112;
-  case ENOTEMPTY:
-    return 145;
-  case EPERM:
-    return 5;
-  case ENOTDIR:
-    return 3;
-  case EISDIR:
-    return 5;
-  default:
-    return 87;
+  case ENOENT:   return ERROR_FILE_NOT_FOUND;
+  case ENOTDIR:  return ERROR_PATH_NOT_FOUND;
+  case EACCES:   return ERROR_ACCESS_DENIED;
+  case EPERM:    return ERROR_ACCESS_DENIED;
+  case EISDIR:   return ERROR_ACCESS_DENIED;
+  case EBADF:    return ERROR_INVALID_HANDLE;
+  case ENOMEM:   return ERROR_OUTOFMEMORY;
+  case EEXIST:   return 80;  // ERROR_FILE_EXISTS
+  case EINVAL:   return ERROR_INVALID_PARAMETER;
+  case EMFILE:   return ERROR_TOO_MANY_OPEN_FILES;
+  case ENOSPC:   return 112; // ERROR_DISK_FULL
+  case ENOTEMPTY: return 145; // ERROR_DIR_NOT_EMPTY
+  case EAGAIN:   return 258; // ERROR_TIMEOUT (or ERROR_IO_INCOMPLETE)
+  case EBUSY:    return 32;  // ERROR_SHARING_VIOLATION
+  case ETIMEDOUT: return 258; // ERROR_TIMEOUT
+  case EINTR:    return 995; // ERROR_OPERATION_ABORTED
+  case ENAMETOOLONG: return 206; // ERROR_FILENAME_EXCED_RANGE
+  case ENOSYS:   return ERROR_CALL_NOT_IMPLEMENTED;
+  case ENOTSUP:  return ERROR_CALL_NOT_IMPLEMENTED;
+  default:       return ERROR_INVALID_PARAMETER;
   }
 }
 
 static void set_errno_error(void) {
-  tls_last_error = errno_to_win32(errno);
+  SET_LAST_ERROR(errno_to_win32(errno));
 }
+
+// Compile-time size assertions (I7)
+static_assert(sizeof(pthread_mutex_t)<=sizeof(CRITICAL_SECTION),
+              "CRITICAL_SECTION too small for pthread_mutex_t");
+static_assert(sizeof(FILETIME)==8, "FILETIME size");
+static_assert(sizeof(LARGE_INTEGER)==8, "LARGE_INTEGER size");
+static_assert(sizeof(WIN32_FIND_DATAA)==320, "WIN32_FIND_DATAA size");
 
 // ---------------------------------------------------------------------------
 // Fake TEB/PEB
 // ---------------------------------------------------------------------------
-static __thread uint8_t fake_teb[0x2000];
+// fake_teb declared earlier (near SET_LAST_ERROR macro)
 static uint8_t fake_peb[0x1000];
 
 // PEB_LDR_DATA (self-consistent empty module list)
@@ -204,12 +221,71 @@ static void shim_init_teb(void) {
   // ProcessId at +0x40, ThreadId at +0x48
   *(uint32_t*)(fake_teb+0x40) = (uint32_t)getpid();
   *(uint32_t*)(fake_teb+0x48) = (uint32_t)syscall(SYS_gettid);
-  // ThreadLocalStoragePointer at +0x58
-  static void* tls_slots[64] = {0};
+  // ThreadLocalStoragePointer at +0x58 — per-thread allocation so each
+  // thread gets its own slot array; registered with a pthread key so it
+  // is freed automatically (via free()) when the thread exits
+  pthread_once(&g_tls_slots_key_once, tls_slots_key_init);
+  void** tls_slots = (void**)calloc(64, sizeof(void*));
   *(void**)(fake_teb+0x58) = tls_slots;
+  pthread_setspecific(g_tls_slots_key, tls_slots);
 
-  // Install GS = fake_teb
+  // LastErrorValue at +0x68 (B16/R29)
+  *(uint32_t*)(fake_teb+0x68) = 0;
+
+  // Install segment register / reserved register to point at fake_teb so
+  // inlined __readgsqword / __readgsword accesses work as Windows expects.
+#ifdef __x86_64__
   syscall(SYS_arch_prctl, ARCH_SET_GS, (unsigned long)fake_teb);
+#elif defined(__aarch64__)
+  // On AArch64, x18 is the "platform register" reserved for OS/runtime use.
+  // MSVC PE code accessing TEB via NtCurrentTeb() would need a separate port;
+  // for now, stash the pointer in x18 so future __asm__ helpers can load it.
+  __asm__ volatile ("mov x18, %0" :: "r"(fake_teb) : "x18");
+#endif
+}
+
+// Called at the start of every new thread (including the main thread via
+// shim_init) to give each thread its own fake TEB and GS register value.
+static void shim_thread_attach(void) {
+  shim_init_teb();
+}
+
+// ---------------------------------------------------------------------------
+// pthread_create interceptor (I8)
+// Wrap every thread function so it gets a fake TEB before running.
+// ---------------------------------------------------------------------------
+struct ShimThreadArgs {
+  void* (*fn)(void*);
+  void* arg;
+};
+
+static void* shim_thread_trampoline(void* p) {
+  ShimThreadArgs* ta = (ShimThreadArgs*)p;
+  void* (*fn)(void*) = ta->fn;
+  void* arg = ta->arg;
+  free(ta);
+  shim_thread_attach();
+  return fn(arg);
+}
+
+typedef int (*real_pthread_create_t)(pthread_t*, const pthread_attr_t*, void*(*)(void*), void*);
+
+// Override pthread_create with default visibility so PE-binary threads get TEB.
+// dlsym(RTLD_NEXT,...) finds libpthread's real version past our shim.
+extern "C" __attribute__((visibility("default")))
+int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
+                   void* (*fn)(void*), void* arg) {
+  static real_pthread_create_t real_fn = NULL;
+  if( !real_fn )
+    real_fn = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
+  ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
+  if( !ta ) return ENOMEM;
+  ta->fn = fn;
+  ta->arg = arg;
+  int ret = real_fn(tid, attr, shim_thread_trampoline, ta);
+  if( ret!=0 ) free(ta);   // trampoline never runs; we must free
+  return ret;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +294,7 @@ static void shim_init_teb(void) {
 enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE };
 
 struct FindCtx {
+  int  refcount;     // protected by g_handles_mu; freed when it reaches 0
   DIR* dir;
   char glob[260];
   char dirpath[PATH_MAX];
@@ -259,38 +336,110 @@ static HANDLE idx_to_handle(int idx) {
   return (HANDLE)(intptr_t)idx;
 }
 
-static int alloc_handle(HandleKind kind) {
+static HANDLE handle_alloc_file(int fd) {
   pthread_mutex_lock(&g_handles_mu);
   for( int i = 3; i<MAX_HANDLES; ++i ) {
     if( g_handles[i].kind==H_FREE ) {
-      g_handles[i].kind = kind;
+      g_handles[i].kind = H_FILE;
+      g_handles[i].fd = fd;
       pthread_mutex_unlock(&g_handles_mu);
-      return i;
+      return idx_to_handle(i);
     }
   }
   pthread_mutex_unlock(&g_handles_mu);
-  return -1;
+  SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES);
+  return INVALID_HANDLE_VALUE;
 }
 
-static HandleSlot*lookup(HANDLE h, HandleKind expect) {
-  int idx = handle_to_idx(h);
-  if( idx<0||g_handles[idx].kind!=expect ) {
-    tls_last_error = ERROR_INVALID_HANDLE;
-    return NULL;
+static HANDLE handle_alloc_find(FindCtx* ctx) {
+  ctx->refcount = 1;  // caller holds one reference
+  pthread_mutex_lock(&g_handles_mu);
+  for( int i = 3; i<MAX_HANDLES; ++i ) {
+    if( g_handles[i].kind==H_FREE ) {
+      g_handles[i].kind = H_FIND;
+      g_handles[i].find = ctx;
+      pthread_mutex_unlock(&g_handles_mu);
+      return idx_to_handle(i);
+    }
   }
-  return &g_handles[idx];
+  pthread_mutex_unlock(&g_handles_mu);
+  SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES);
+  return INVALID_HANDLE_VALUE;
+}
+
+static HANDLE handle_alloc_module(void* dlh) {
+  pthread_mutex_lock(&g_handles_mu);
+  for( int i = 3; i<MAX_HANDLES; ++i ) {
+    if( g_handles[i].kind==H_FREE ) {
+      g_handles[i].kind = H_MODULE;
+      g_handles[i].dlhandle = dlh;
+      pthread_mutex_unlock(&g_handles_mu);
+      return idx_to_handle(i);
+    }
+  }
+  pthread_mutex_unlock(&g_handles_mu);
+  SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES);
+  return INVALID_HANDLE_VALUE;
 }
 
 static int get_fd(HANDLE h) {
-  HandleSlot* s = lookup(h, H_FILE);
-  if( !s )
+  int idx = handle_to_idx(h);
+  pthread_mutex_lock(&g_handles_mu);
+  if( idx<0||g_handles[idx].kind!=H_FILE ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return -1;
-  return s->fd;
+  }
+  int fd = g_handles[idx].fd;
+  pthread_mutex_unlock(&g_handles_mu);
+  return fd;
+}
+
+// Retain a FindCtx for use outside the mutex.  Must be called with
+// g_handles_mu held; pairs with release_find_ctx().
+static void find_ctx_retain(FindCtx* fc) {
+  fc->refcount++;
+}
+
+// Release a FindCtx reference.  Safe to call without g_handles_mu.
+// Frees when the last reference is dropped.
+static void release_find_ctx(FindCtx* fc) {
+  pthread_mutex_lock(&g_handles_mu);
+  int gone = (--fc->refcount == 0);
+  pthread_mutex_unlock(&g_handles_mu);
+  if( gone ) {
+    if( fc->dir ) closedir(fc->dir);
+    free(fc);
+  }
+}
+
+// Returns a retained FindCtx* for h; caller must call release_find_ctx().
+static FindCtx* get_find_ctx(HANDLE h) {
+  int idx = handle_to_idx(h);
+  pthread_mutex_lock(&g_handles_mu);
+  if( idx<0||g_handles[idx].kind!=H_FIND ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
+    return NULL;
+  }
+  FindCtx* fc = g_handles[idx].find;
+  find_ctx_retain(fc);
+  pthread_mutex_unlock(&g_handles_mu);
+  return fc;
 }
 
 // ---------------------------------------------------------------------------
-// Path translation
+// Path translation and utilities
 // ---------------------------------------------------------------------------
+static void path_join(char* dst, size_t dst_sz, const char* dir, const char* name) {
+  size_t a = strnlen(dir, dst_sz-2);
+  size_t b = strnlen(name, dst_sz-a-2);
+  memcpy(dst, dir, a);
+  dst[a] = '/';
+  memcpy(dst+a+1, name, b);
+  dst[a+1+b] = '\0';
+}
+
 static void win_path_to_posix(const char* in, char* out, size_t outsz) {
   if( !in||!out||outsz==0 )
     return;
@@ -367,6 +516,8 @@ static int utf8_to_wchar(const char* src, uint16_t* dst, size_t dstsz) {
     } else {
       cp = '?';
       s++;
+      while( (*s&0xC0)==0x80 )
+        s++;
     }
     if( cp<0x10000 ) {
       dst[i++] = (uint16_t)cp;
@@ -380,6 +531,73 @@ static int utf8_to_wchar(const char* src, uint16_t* dst, size_t dstsz) {
   }
   dst[i] = 0;
   return (int)i;
+}
+
+// ---------------------------------------------------------------------------
+// File-open flag helper (I2)
+// ---------------------------------------------------------------------------
+static int make_open_flags(DWORD access, DWORD disp) {
+  int oflags = 0;
+  if( (access&GENERIC_READ)&&(access&GENERIC_WRITE) )
+    oflags = O_RDWR;
+  else if( access&GENERIC_WRITE )
+    oflags = O_WRONLY;
+  else
+    oflags = O_RDONLY;
+  switch( disp ) {
+  case CREATE_NEW:
+    oflags |= O_CREAT|O_EXCL;
+    break;
+  case CREATE_ALWAYS:
+    oflags |= O_CREAT|O_TRUNC;
+    break;
+  case OPEN_EXISTING:
+    break;
+  case OPEN_ALWAYS:
+    oflags |= O_CREAT;
+    break;
+  case TRUNCATE_EXISTING:
+    // O_RDONLY|O_TRUNC rejected by Linux; resolve to O_RDWR|O_TRUNC
+    oflags = O_RDWR|O_TRUNC;
+    break;
+  }
+  return oflags;
+}
+
+// ---------------------------------------------------------------------------
+// mmap tracker for VirtualAlloc/VirtualFree
+// ---------------------------------------------------------------------------
+#include <sys/mman.h>
+#define MMAP_TRACK_MAX 4096
+struct MmapEntry { void* base; size_t size; };
+static MmapEntry g_mmap_table[MMAP_TRACK_MAX];
+static pthread_mutex_t g_mmap_mu = PTHREAD_MUTEX_INITIALIZER;
+
+static void mmap_track_add(void* base, size_t size) {
+  pthread_mutex_lock(&g_mmap_mu);
+  for( int i = 0; i<MMAP_TRACK_MAX; ++i ) {
+    if( !g_mmap_table[i].base ) {
+      g_mmap_table[i].base = base;
+      g_mmap_table[i].size = size;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&g_mmap_mu);
+}
+
+static size_t mmap_track_remove(void* base) {
+  pthread_mutex_lock(&g_mmap_mu);
+  size_t sz = 0;
+  for( int i = 0; i<MMAP_TRACK_MAX; ++i ) {
+    if( g_mmap_table[i].base==base ) {
+      sz = g_mmap_table[i].size;
+      g_mmap_table[i].base = NULL;
+      g_mmap_table[i].size = 0;
+      break;
+    }
+  }
+  pthread_mutex_unlock(&g_mmap_mu);
+  return sz;
 }
 
 // ---------------------------------------------------------------------------
@@ -451,37 +669,76 @@ static void build_env_block(void) {
   // Build UTF-16LE version
   size_t wsize = total*2;
   g_env_block_w = (uint16_t*)malloc(wsize);
-  if( !g_env_block_w )
+  if( !g_env_block_w ) {
+    free(g_env_block);
+    g_env_block = NULL;
     return;
+  }
   uint16_t* wp = g_env_block_w;
   for( char** e = environ; *e; ++e ) {
-    int len = utf8_to_wchar(*e, wp, total);
-    wp += len+1;   // include NUL
+    size_t remaining = wsize/2 - (size_t)(wp - g_env_block_w);
+    int len = utf8_to_wchar(*e, wp, remaining);
+    wp += len+1;
   }
   *wp = 0;
 }
 
 // ---------------------------------------------------------------------------
-// Signal / crash handler
+// Signal / crash handler — all helpers must be async-signal-safe (POSIX)
 // ---------------------------------------------------------------------------
 static void* g_unhandled_filter = NULL;
 
+// AS-safe write helpers — use raw syscall to avoid glibc warn_unused_result
+#define crash_sys_write(s, n) syscall(SYS_write, STDERR_FILENO, (s), (size_t)(n))
+
+static void crash_write_lit(const char* s) {
+  size_t n = 0;
+  while( s[n] ) n++;
+  crash_sys_write(s, n);
+}
+
+static void crash_write_int(int v) {
+  char buf[12];
+  int neg = (v<0);
+  if( neg ) v = -v;
+  int i = sizeof(buf)-1;
+  buf[i--] = '\n';
+  do { buf[i--] = '0'+(v%10); v /= 10; } while( v );
+  if( neg ) buf[i--] = '-';
+  crash_sys_write(buf+i+1, sizeof(buf)-i-1);
+}
+
+static void crash_write_hex(uint64_t v) {
+  static const char hx[] = "0123456789abcdef";
+  char buf[17];
+  for( int i = 15; i>=0; i-- ) { buf[i] = hx[v&0xf]; v >>= 4; }
+  buf[16] = ' ';
+  crash_sys_write(buf, 17);
+}
+
 static void crash_handler(int sig, siginfo_t* si, void* ctx) {
+  crash_write_lit("CRASH: signal ");
+  crash_write_int(sig);
+  crash_write_lit("CRASH: fault addr ");
+  crash_write_hex((uint64_t)(uintptr_t)(si ? si->si_addr : NULL));
+  crash_write_lit("\n");
+#ifdef __x86_64__
   ucontext_t* uc = (ucontext_t*)ctx;
-  log_write("CRASH: signal %d at addr %p\n", sig, si ? si->si_addr : NULL);
-#ifdef WINAPI_LOG_ENABLED
   if( uc ) {
     mcontext_t* mc = &uc->uc_mcontext;
-    log_write("  RIP=%016llx RSP=%016llx RBP=%016llx\n", (unsigned long long)mc->gregs[REG_RIP], (unsigned long long)mc->gregs[REG_RSP], (unsigned long long)mc->gregs[REG_RBP]);
-    log_write("  RAX=%016llx RBX=%016llx RCX=%016llx RDX=%016llx\n", (unsigned long long)mc->gregs[REG_RAX], (unsigned long long)mc->gregs[REG_RBX], (unsigned long long)mc->gregs[REG_RCX], (unsigned long long)mc->gregs[REG_RDX]);
+    crash_write_lit("RIP="); crash_write_hex((uint64_t)mc->gregs[REG_RIP]);
+    crash_write_lit("RSP="); crash_write_hex((uint64_t)mc->gregs[REG_RSP]);
+    crash_write_lit("RBP="); crash_write_hex((uint64_t)mc->gregs[REG_RBP]);
+    crash_write_lit("\n");
+    crash_write_lit("RAX="); crash_write_hex((uint64_t)mc->gregs[REG_RAX]);
+    crash_write_lit("RBX="); crash_write_hex((uint64_t)mc->gregs[REG_RBX]);
+    crash_write_lit("RCX="); crash_write_hex((uint64_t)mc->gregs[REG_RCX]);
+    crash_write_lit("RDX="); crash_write_hex((uint64_t)mc->gregs[REG_RDX]);
+    crash_write_lit("\n");
   }
 #else
-  (void)uc;
+  (void)ctx;
 #endif
-  // Try unhandled exception filter
-  if( g_unhandled_filter ) {
-    // Can't easily call ms_abi from here; just abort
-  }
   _exit(sig+128);
 }
 
@@ -497,11 +754,33 @@ static void install_signal_handlers(void) {
 }
 
 // ---------------------------------------------------------------------------
+// Image base discovery (B13, R26)
+// ---------------------------------------------------------------------------
+static int find_main_exe_base(struct dl_phdr_info* info, size_t /*sz*/, void* data) {
+  // The first call to dl_iterate_phdr is the main executable (empty name).
+  if( info->dlpi_name&&info->dlpi_name[0] )
+    return 0;
+  *(void**)data = (void*)(uintptr_t)info->dlpi_addr;
+  return 1;
+}
+
+static void discover_image_base(void) {
+  void* base = NULL;
+  dl_iterate_phdr(find_main_exe_base, &base);
+  if( base ) {
+    g_image_base = base;
+    // Update PEB+0x10 ImageBaseAddress
+    *(void**)(fake_peb+0x10) = base;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
 __attribute__((constructor)) static void shim_init(void) {
   setlocale(LC_ALL, "");
   init_fake_peb();
+  discover_image_base();
   handles_init();
   shim_init_teb();
   log_init();
@@ -537,12 +816,19 @@ extern "C" EXPORT void ExitProcess(DWORD code) {
   _exit((int)code);
 }
 
+#ifdef __GLIBC__
 static void log_backtrace(void) {
   void* bt[32];
   int n = backtrace(bt, 32);
   for( int i = 0; i<n; ++i )
     log_always("[SHIM]  bt[%02d]: %p\n", i, bt[i]);
 }
+#else
+static void log_backtrace(void) {}
+// musl doesn't provide malloc_usable_size; return 0 so HeapSize is a stub
+// and HeapReAlloc zero-fills conservatively
+static size_t malloc_usable_size(void* /*p*/) { return 0; }
+#endif
 
 extern "C" EXPORT BOOL TerminateProcess(HANDLE h, DWORD code) {
   (void)h;
@@ -557,23 +843,38 @@ extern "C" EXPORT BOOL IsDebuggerPresent(void) {
   return FALSE;
 }
 
+#ifdef __x86_64__
+static unsigned int cpuid_get_edx(unsigned int leaf) {
+  unsigned int eax, ebx, ecx, edx;
+  __asm__ volatile ("cpuid" : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+                             : "a"(leaf), "c"(0));
+  (void)eax; (void)ebx; (void)ecx;
+  return edx;
+}
+#endif
+
 extern "C" EXPORT BOOL IsProcessorFeaturePresent(DWORD feature) {
-  switch( feature ) {
-  case PF_FLOATING_POINT_EMULATED:
-    return FALSE;
-  case PF_COMPARE_EXCHANGE_DOUBLE:
-    return TRUE;
-  case PF_MMX_INSTRUCTIONS_AVAILABLE:
-    return TRUE;
-  case PF_XMMI_INSTRUCTIONS_AVAILABLE:
-    return TRUE;
-  case PF_RDTSC_INSTRUCTION_AVAILABLE:
-    return TRUE;
-  case PF_3DNOW_INSTRUCTIONS_AVAILABLE:
-    return FALSE;
-  default:
-    return FALSE;
+#ifdef __x86_64__
+  static unsigned int edx1   = 0, edx_ext = 0;
+  static int          inited = 0;
+  if( !inited ) {
+    edx1   = cpuid_get_edx(1);
+    edx_ext = cpuid_get_edx(0x80000001);
+    inited = 1;
   }
+  switch( feature ) {
+  case PF_FLOATING_POINT_EMULATED:      return FALSE;
+  case PF_COMPARE_EXCHANGE_DOUBLE:      return (edx1>>8)&1  ? TRUE : FALSE; // CMPXCHG8B
+  case PF_MMX_INSTRUCTIONS_AVAILABLE:   return (edx1>>23)&1 ? TRUE : FALSE;
+  case PF_XMMI_INSTRUCTIONS_AVAILABLE:  return (edx1>>25)&1 ? TRUE : FALSE; // SSE
+  case PF_RDTSC_INSTRUCTION_AVAILABLE:  return (edx1>>4)&1  ? TRUE : FALSE;
+  case PF_3DNOW_INSTRUCTIONS_AVAILABLE: return (edx_ext>>31)&1 ? TRUE : FALSE;
+  default: return FALSE;
+  }
+#else
+  (void)feature;
+  return FALSE;
+#endif
 }
 
 // ---------------------------------------------------------------------------
@@ -585,7 +886,7 @@ extern "C" EXPORT DWORD GetLastError(void) {
 }
 
 extern "C" EXPORT void SetLastError(DWORD e) {
-  tls_last_error = e;
+  SET_LAST_ERROR(e);
 }
 
 // ---------------------------------------------------------------------------
@@ -606,6 +907,7 @@ static int prot_from_protect(DWORD protect) {
   case PAGE_EXECUTE_READWRITE:
     return PROT_EXEC|PROT_READ|PROT_WRITE;
   default:
+    log_always("[SHIM] prot_from_protect: unknown protect=0x%x, defaulting to RW\n", protect);
     return PROT_READ|PROT_WRITE;
   }
 }
@@ -614,21 +916,42 @@ extern "C" EXPORT LPVOID VirtualAlloc(LPVOID addr, size_t size, DWORD type, DWOR
   (void)type;
   int prot = prot_from_protect(protect);
   int flags = MAP_PRIVATE|MAP_ANONYMOUS;
-  if( addr )
+  if( addr ) {
+#ifdef MAP_FIXED_NOREPLACE
     flags |= MAP_FIXED_NOREPLACE;
+    void* p = mmap(addr, size, prot, flags, -1, 0);
+    if( p==MAP_FAILED ) {
+      flags = (flags&~MAP_FIXED_NOREPLACE)|MAP_FIXED;
+      p = mmap(addr, size, prot, flags, -1, 0);
+      if( p!=addr ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
+    }
+    mmap_track_add(p, size);
+    return p;
+#else
+    flags |= MAP_FIXED;
+#endif
+  }
   void* p = mmap(addr, size, prot, flags, -1, 0);
   if( p==MAP_FAILED ) {
-    tls_last_error = ERROR_OUTOFMEMORY;
+    SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return NULL;
   }
+  mmap_track_add(p, size);
   return p;
 }
 
 extern "C" EXPORT BOOL VirtualFree(LPVOID addr, size_t size, DWORD type) {
   if( type&MEM_RELEASE ) {
-    munmap(addr, size);
+    if( size!=0 ) {
+      SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
+      return FALSE;
+    }
+    size_t tracked = mmap_track_remove(addr);
+    if( tracked )
+      munmap(addr, tracked);
   } else if( type&MEM_DECOMMIT ) {
-    mmap(addr, size, PROT_NONE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    mprotect(addr, size, PROT_NONE);
+    madvise(addr, size, MADV_DONTNEED);
   }
   return TRUE;
 }
@@ -648,7 +971,7 @@ extern "C" EXPORT LPVOID HeapAlloc(HANDLE heap, DWORD flags, size_t size) {
   (void)heap;
   void* p = (flags&HEAP_ZERO_MEMORY) ? calloc(1, size) : malloc(size);
   if( !p )
-    tls_last_error = ERROR_OUTOFMEMORY;
+    SET_LAST_ERROR(ERROR_OUTOFMEMORY);
   return p;
 }
 
@@ -657,7 +980,7 @@ extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
   (void)flags;
   if( (uintptr_t)ptr<0x10000&&ptr!=NULL ) {
     log_always("[SHIM] HeapFree: invalid ptr=%p (caller=%p) — ignoring\n", ptr, __builtin_return_address(0));
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
   free(ptr);
@@ -666,16 +989,23 @@ extern "C" EXPORT BOOL HeapFree(HANDLE heap, DWORD flags, LPVOID ptr) {
 
 extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_t size) {
   (void)heap;
+  // realloc(ptr, 0) is implementation-defined; clamp to 1 to always get a
+  // valid pointer (matches Windows HeapReAlloc(size=0) behavior on glibc)
+  size_t alloc_size = size ? size : 1;
   if( flags&HEAP_ZERO_MEMORY ) {
     size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
-    void* p = realloc(ptr, size);
-    if( p&&size>old_sz )
+    void* p = realloc(ptr, alloc_size);
+    // Zero only when we have a reliable old_sz (glibc) or there was no
+    // previous allocation (ptr==NULL → fresh block, old_sz is correctly 0).
+    // On musl malloc_usable_size stubs to 0; zeroing with old_sz==0 and
+    // ptr!=NULL would destroy the existing data, so we skip it.
+    if( p&&size>old_sz&&(old_sz>0||!ptr) )
       memset((char*)p+old_sz, 0, size-old_sz);
+    if( !p ) SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return p;
   }
-  void* p = realloc(ptr, size);
-  if( !p )
-    tls_last_error = ERROR_OUTOFMEMORY;
+  void* p = realloc(ptr, alloc_size);
+  if( !p ) SET_LAST_ERROR(ERROR_OUTOFMEMORY);
   return p;
 }
 
@@ -705,7 +1035,7 @@ extern "C" EXPORT HANDLE GetStdHandle(DWORD n) {
   case STD_ERROR_HANDLE:
     return idx_to_handle(2);
   default:
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return INVALID_HANDLE_VALUE;
   }
 }
@@ -716,19 +1046,17 @@ extern "C" EXPORT BOOL SetStdHandle(DWORD n, HANDLE h) {
     return FALSE;
   int idx = -1;
   switch( n ) {
-  case STD_INPUT_HANDLE:
-    idx = 0;
-    break;
-  case STD_OUTPUT_HANDLE:
-    idx = 1;
-    break;
-  case STD_ERROR_HANDLE:
-    idx = 2;
-    break;
+  case STD_INPUT_HANDLE:  idx = 0; break;
+  case STD_OUTPUT_HANDLE: idx = 1; break;
+  case STD_ERROR_HANDLE:  idx = 2; break;
   default:
     return FALSE;
   }
+  pthread_mutex_lock(&g_handles_mu);
   g_handles[idx].fd = new_fd;
+  pthread_mutex_unlock(&g_handles_mu);
+  // Redirect the underlying fd so CRT printf/fwrite follows (B15)
+  dup2(new_fd, idx);
   return TRUE;
 }
 
@@ -742,31 +1070,7 @@ extern "C" EXPORT HANDLE CreateFileW(LPCWSTR name, DWORD access, DWORD share, SE
   char posix[PATH_MAX];
   win_path_to_posix(narrow, posix, sizeof(posix));
 
-  int oflags = 0;
-  if( (access&GENERIC_READ)&&(access&GENERIC_WRITE) )
-    oflags = O_RDWR;
-  else if( access&GENERIC_WRITE )
-    oflags = O_WRONLY;
-  else
-    oflags = O_RDONLY;
-
-  switch( disp ) {
-  case CREATE_NEW:
-    oflags |= O_CREAT|O_EXCL;
-    break;
-  case CREATE_ALWAYS:
-    oflags |= O_CREAT|O_TRUNC;
-    break;
-  case OPEN_EXISTING:
-    break;
-  case OPEN_ALWAYS:
-    oflags |= O_CREAT;
-    break;
-  case TRUNCATE_EXISTING:
-    oflags |= O_TRUNC;
-    break;
-  }
-
+  int oflags = make_open_flags(access, disp);
   int fd = open(posix, oflags, 0666);
   log_always("[SHIM] CreateFileW(\"%s\", acc=0x%x, disp=%u) -> fd=%d\n", posix, access, disp, fd);
   if( fd<0 ) {
@@ -774,37 +1078,34 @@ extern "C" EXPORT HANDLE CreateFileW(LPCWSTR name, DWORD access, DWORD share, SE
     return INVALID_HANDLE_VALUE;
   }
 
-  int idx = alloc_handle(H_FILE);
-  if( idx<0 ) {
+  HANDLE hret = handle_alloc_file(fd);
+  if( hret==INVALID_HANDLE_VALUE )
     close(fd);
-    tls_last_error = 4;
-    return INVALID_HANDLE_VALUE;
-  }
-  g_handles[idx].fd = fd;
-  return idx_to_handle(idx);
+  return hret;
 }
 
 extern "C" EXPORT BOOL CloseHandle(HANDLE h) {
   int idx = handle_to_idx(h);
-  if( idx<0||idx>2 ) {     // don't close stdio
-    if( idx>=0&&g_handles[idx].kind==H_FILE ) {
-      close(g_handles[idx].fd);
-      g_handles[idx].kind = H_FREE;
-    } else if( idx>=0&&g_handles[idx].kind==H_FIND ) {
-      if( g_handles[idx].find ) {
-        if( g_handles[idx].find->dir )
-          closedir(g_handles[idx].find->dir);
-        free(g_handles[idx].find);
-      }
-      g_handles[idx].kind = H_FREE;
-    } else if( idx>=0&&g_handles[idx].kind==H_MODULE ) {
-      if( g_handles[idx].dlhandle )
-        dlclose(g_handles[idx].dlhandle);
-      g_handles[idx].kind = H_FREE;
-    } else {
-      tls_last_error = ERROR_INVALID_HANDLE;
-      return FALSE;
-    }
+  if( idx<0||idx<=2 )
+    return TRUE;   // don't close stdio; pseudo handles are always ok
+  pthread_mutex_lock(&g_handles_mu);
+  HandleKind k = g_handles[idx].kind;
+  int fd = (k==H_FILE) ? g_handles[idx].fd : -1;
+  FindCtx* fc = (k==H_FIND) ? g_handles[idx].find : NULL;
+  void* dlh = (k==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+  if( k!=H_FREE )
+    g_handles[idx].kind = H_FREE;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( k==H_FILE ) {
+    close(fd);
+  } else if( k==H_FIND ) {
+    if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
+  } else if( k==H_MODULE ) {
+    if( dlh )
+      dlclose(dlh);
+  } else {
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
+    return FALSE;
   }
   return TRUE;
 }
@@ -852,8 +1153,8 @@ extern "C" EXPORT BOOL SetFilePointerEx(HANDLE h, LARGE_INTEGER dist, LARGE_INTE
   if( fd<0 )
     return FALSE;
   int whence = (method==FILE_BEGIN) ? SEEK_SET : (method==FILE_CURRENT) ? SEEK_CUR : SEEK_END;
-  off64_t result = lseek64(fd, dist.QuadPart, whence);
-  if( result==(off64_t)-1 ) {
+  off_t result = lseek(fd, (off_t)dist.QuadPart, whence);
+  if( result==(off_t)-1 ) {
     set_errno_error();
     return FALSE;
   }
@@ -899,15 +1200,78 @@ extern "C" EXPORT void GetSystemTimeAsFileTime(FILETIME* pft) {
 // ---------------------------------------------------------------------------
 // 7.6 Directory / File Search
 // ---------------------------------------------------------------------------
-static void path_join(char* dst, size_t dst_sz, const char* dir, const char* name) {
-  size_t a = strnlen(dir, dst_sz-2);
-  size_t b = strnlen(name, dst_sz-a-2);
-  memcpy(dst, dir, a);
-  dst[a] = '/';
-  memcpy(dst+a+1, name, b);
-  dst[a+1+b] = '\0';
+static void fill_find_data_w(WIN32_FIND_DATAW* pfd, const char* fullpath, const char* name) {
+  memset(pfd, 0, sizeof(*pfd));
+  struct stat st;
+  if( stat(fullpath, &st)==0 ) {
+    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+    uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
+    pfd->ftLastWriteTime = u64_to_ft(mtime);
+    pfd->ftCreationTime = pfd->ftLastWriteTime;
+    pfd->ftLastAccessTime = pfd->ftLastWriteTime;
+    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
+    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
+  }
+  utf8_to_wchar(name, pfd->cFileName, 260);
 }
-extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAA* pfd, int srchas, void* filter, DWORD flags) {
+
+static void fill_find_data_a(WIN32_FIND_DATAA* pfd, const char* fullpath, const char* name) {
+  memset(pfd, 0, sizeof(*pfd));
+  struct stat st;
+  if( stat(fullpath, &st)==0 ) {
+    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+    uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
+    pfd->ftLastWriteTime = u64_to_ft(mtime);
+    pfd->ftCreationTime = pfd->ftLastWriteTime;
+    pfd->ftLastAccessTime = pfd->ftLastWriteTime;
+    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
+    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
+  }
+  strncpy(pfd->cFileName, name, 259);
+}
+
+// Shared helper: open directory from a POSIX pattern path, scan to first match,
+// populate ctx. Returns first matching dirent or NULL.
+static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
+  char dir[PATH_MAX] = ".";
+  char glob[260] = "*";
+  char tmp[PATH_MAX];
+  snprintf(tmp, sizeof(tmp), "%s", posix);
+  char* slash = strrchr(tmp, '/');
+  if( slash ) {
+    *slash = '\0';
+    snprintf(dir, sizeof(dir), "%s", tmp);
+    snprintf(glob, sizeof(glob), "%s", slash+1);
+  } else {
+    size_t n = strnlen(tmp, sizeof(glob)-1);
+    memcpy(glob, tmp, n);
+    glob[n] = '\0';
+  }
+  DIR* d = opendir(dir[0] ? dir : ".");
+  if( !d ) {
+    SET_LAST_ERROR(ERROR_PATH_NOT_FOUND);
+    return NULL;
+  }
+  FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
+  ctx->dir = d;
+  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
+  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
+  *out_ctx = ctx;
+  struct dirent* ent;
+  while( (ent = readdir(d))!=NULL ) {
+    if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
+      continue;
+    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)==0 )
+      return ent;
+  }
+  closedir(d);
+  free(ctx);
+  *out_ctx = NULL;
+  SET_LAST_ERROR(ERROR_FILE_NOT_FOUND);
+  return NULL;
+}
+
+extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAW* pfd, int srchas, void* filter, DWORD flags) {
   (void)lvl;
   (void)srchas;
   (void)filter;
@@ -916,115 +1280,57 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
   wchar_to_utf8(pattern, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
 
-  // Split into dir and glob
-  char dir[PATH_MAX] = ".";
-  char glob[260] = "*";
-  char* slash = strrchr(posix, '/');
-  if( slash ) {
-    *slash = '\0';
-    snprintf(dir, sizeof(dir), "%s", posix);
-    snprintf(glob, sizeof(glob), "%s", slash+1);
-  } else {
-    size_t n = strnlen(posix, sizeof(glob)-1);
-    memcpy(glob, posix, n);
-    glob[n] = '\0';
-  }
-
-  DIR* d = opendir(dir[0] ? dir : ".");
-  if( !d ) {
-    tls_last_error = ERROR_PATH_NOT_FOUND;
+  FindCtx* ctx = NULL;
+  struct dirent* ent = find_ctx_open(posix, &ctx);
+  if( !ent )
     return INVALID_HANDLE_VALUE;
+
+  char fullpath[PATH_MAX];
+  path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
+  fill_find_data_w(pfd, fullpath, ent->d_name);
+
+  HANDLE hret = handle_alloc_find(ctx);
+  if( hret==INVALID_HANDLE_VALUE ) {
+    closedir(ctx->dir);
+    free(ctx);
   }
-
-  FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
-  ctx->dir = d;
-  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
-  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
-
-  // Find first match
-  struct dirent* ent;
-  while( (ent = readdir(d))!=NULL ) {
-    if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
-      continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
-      continue;
-
-    char fullpath[PATH_MAX];
-    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-    struct stat st;
-    memset(pfd, 0, sizeof(*pfd));
-    if( stat(fullpath, &st)==0 ) {
-      pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-      uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-      pfd->ftLastWriteTime = u64_to_ft(mtime);
-      pfd->ftCreationTime = pfd->ftLastWriteTime;
-      pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-      pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-      pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
-    }
-    strncpy(pfd->cFileName, ent->d_name, 259);
-
-    int idx = alloc_handle(H_FIND);
-    if( idx<0 ) {
-      closedir(d);
-      free(ctx);
-      tls_last_error = 4;
-      return INVALID_HANDLE_VALUE;
-    }
-    g_handles[idx].find = ctx;
-    return idx_to_handle(idx);
-  }
-
-  closedir(d);
-  free(ctx);
-  tls_last_error = ERROR_FILE_NOT_FOUND;
-  return INVALID_HANDLE_VALUE;
+  return hret;
 }
 
-extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAA* pfd) {
-  HandleSlot* s = lookup(h, H_FIND);
-  if( !s )
-    return FALSE;
-  FindCtx* ctx = s->find;
-
+extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
+  FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
+  if( !ctx ) return FALSE;
   struct dirent* ent;
+  BOOL found = FALSE;
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
     if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
       continue;
-
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-    struct stat st;
-    memset(pfd, 0, sizeof(*pfd));
-    if( stat(fullpath, &st)==0 ) {
-      pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-      uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-      pfd->ftLastWriteTime = u64_to_ft(mtime);
-      pfd->ftCreationTime = pfd->ftLastWriteTime;
-      pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-      pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-      pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
-    }
-    strncpy(pfd->cFileName, ent->d_name, 259);
-    return TRUE;
+    fill_find_data_w(pfd, fullpath, ent->d_name);
+    found = TRUE;
+    break;
   }
-  tls_last_error = ERROR_NO_MORE_FILES;
-  return FALSE;
+  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  release_find_ctx(ctx);
+  return found;
 }
 
 extern "C" EXPORT BOOL FindClose(HANDLE h) {
-  HandleSlot* s = lookup(h, H_FIND);
-  if( !s )
+  int idx = handle_to_idx(h);
+  pthread_mutex_lock(&g_handles_mu);
+  if( idx<0||g_handles[idx].kind!=H_FIND ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return FALSE;
-  if( s->find ) {
-    if( s->find->dir )
-      closedir(s->find->dir);
-    free(s->find);
-    s->find = NULL;
   }
-  s->kind = H_FREE;
+  FindCtx* fc = g_handles[idx].find;
+  g_handles[idx].kind = H_FREE;
+  g_handles[idx].find = NULL;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
   return TRUE;
 }
 
@@ -1041,9 +1347,22 @@ extern "C" EXPORT DWORD GetConsoleOutputCP(void) {
 
 extern "C" EXPORT BOOL GetConsoleMode(HANDLE h, DWORD* pMode) {
   log_always("[SHIM] GetConsoleMode(h=%p, caller=%p)\n", h, __builtin_return_address(0));
-  (void)h;
-  if( pMode )
-    *pMode = 0x1F; // common flags
+  if( !pMode ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  // Derive fd from handle, fall back to stdin/stdout
+  int idx = handle_to_idx(h);
+  int fd = (idx>=0 && g_handles[idx].kind==H_FILE) ? g_handles[idx].fd : STDIN_FILENO;
+  struct termios ts;
+  if( tcgetattr(fd, &ts)!=0 ) {
+    // Not a tty — return sensible output defaults
+    *pMode = ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT;
+    return TRUE;
+  }
+  DWORD mode = 0;
+  if( ts.c_lflag&ICANON )  mode |= ENABLE_LINE_INPUT|ENABLE_PROCESSED_INPUT;
+  if( ts.c_lflag&ECHO )    mode |= ENABLE_ECHO_INPUT;
+  // For output handles always add the processed/wrap flags
+  mode |= ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT;
+  *pMode = mode;
   return TRUE;
 }
 
@@ -1061,34 +1380,42 @@ extern "C" EXPORT BOOL WriteConsoleA(HANDLE h, LPCVOID buf, DWORD nChars, DWORD*
 
 extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD* pWritten, void* reserved) {
   (void)reserved;
-  // Convert UTF-16LE to UTF-8
-  char utf8[65536];
-  int nbytes = wchar_to_utf8((const uint16_t*)wbuf, utf8, sizeof(utf8)-1);
-  (void)nChars; // nChars is in wide chars; nbytes is the UTF-8 length
+  // Build a bounded, NUL-terminated copy so wchar_to_utf8 doesn't over-read
+  uint16_t tmp[65536];
+  size_t n = (nChars<65535) ? nChars : 65535;
+  memcpy(tmp, wbuf, n*2);
+  tmp[n] = 0;
+  char utf8[65536*4];
+  int nbytes = wchar_to_utf8(tmp, utf8, sizeof(utf8)-1);
   DWORD written = 0;
   BOOL r = WriteFile(h, utf8, (DWORD)nbytes, &written, NULL);
-  if( pWritten )
-    *pWritten = nChars; // report wide chars written
+  if( pWritten ) {
+    // Approximate written wide chars from written bytes (UTF-8 bytes >= wide chars)
+    *pWritten = written>0 ? nChars : 0;
+  }
   return r;
 }
 
 // ---------------------------------------------------------------------------
 // 7.8 Module / Library
 // ---------------------------------------------------------------------------
-// Sentinel: any Windows DLL we can't load as a real .so; GetProcAddress uses
-// RTLD_DEFAULT so callers can still find symbols exported by our shim.
-#define FAKE_WIN_MODULE ((HANDLE)(intptr_t)MAX_HANDLES)
+// Typed pseudo-handles (B14/R27): values outside the handle-table range.
+// FAKE_WIN_MODULE: any Windows DLL we can't load as a real .so.
+// MAIN_IMAGE_MODULE: returned by GetModuleHandleW(NULL).
+#define FAKE_WIN_MODULE  ((HANDLE)(intptr_t)(MAX_HANDLES+1))
+#define MAIN_IMAGE_MODULE ((HANDLE)(intptr_t)(MAX_HANDLES+2))
 
 extern "C" EXPORT HANDLE GetModuleHandleW(LPCWSTR name) {
   if( !name )
-    return g_image_base;
-  char narrow[PATH_MAX];
+    return MAIN_IMAGE_MODULE;
+  char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(name, narrow, sizeof(narrow));
-  void* h = dlopen(narrow, RTLD_NOLOAD|RTLD_LAZY);
+  win_path_to_posix(narrow, posix, sizeof(posix));
+  void* h = dlopen(posix, RTLD_NOLOAD|RTLD_LAZY);
   if( h )
     return h;
   // Any Windows DLL name we don't have as a .so — fake it.
-  tls_last_error = ERROR_SUCCESS;
+  SET_LAST_ERROR(ERROR_SUCCESS);
   return FAKE_WIN_MODULE;
 }
 
@@ -1101,42 +1428,56 @@ extern "C" EXPORT BOOL GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phM
 }
 
 extern "C" EXPORT DWORD GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
-  (void)h;
   char tmp[PATH_MAX];
-  ssize_t n = readlink("/proc/self/exe", tmp, sizeof(tmp)-1);
-  if( n<0 ) {
-    set_errno_error();
-    return 0;
+  if( h==NULL||h==MAIN_IMAGE_MODULE ) {
+    ssize_t n = readlink("/proc/self/exe", tmp, sizeof(tmp)-1);
+    if( n<0 ) { set_errno_error(); return 0; }
+    tmp[n] = '\0';
+  } else {
+    // Resolve loaded .so path via dladdr against a known symbol in the module
+    int idx = handle_to_idx(h);
+    void* dlh = (idx>=0&&g_handles[idx].kind==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+    if( dlh ) {
+      void* sym = dlsym(dlh, "_init");
+      if( !sym )
+        sym = dlh;  // fallback
+      Dl_info info;
+      if( dladdr(sym, &info)&&info.dli_fname ) {
+        strncpy(tmp, info.dli_fname, sizeof(tmp)-1);
+        tmp[sizeof(tmp)-1] = '\0';
+      } else {
+        tmp[0] = '\0';
+      }
+    } else {
+      tmp[0] = '\0';
+    }
   }
-  tmp[n] = '\0';
   return (DWORD)utf8_to_wchar(tmp, buf, size);
 }
 
 extern "C" EXPORT HANDLE LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
   (void)file;
-  char narrow[PATH_MAX];
+  char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(name, narrow, sizeof(narrow));
-  // Only try dlopen for real .so files, skip Windows DLL search flags
+  win_path_to_posix(narrow, posix, sizeof(posix));
   int dlflags = RTLD_LAZY|RTLD_GLOBAL;
   if( flags&LOAD_LIBRARY_AS_DATAFILE )
     dlflags = RTLD_LAZY;
-  void* h = dlopen(narrow, dlflags);
+  void* h = dlopen(posix, dlflags);
   if( h ) {
-    int idx = alloc_handle(H_MODULE);
-    if( idx>=0 ) {
-      g_handles[idx].dlhandle = h;
-      return idx_to_handle(idx);
-    }
+    HANDLE hret = handle_alloc_module(h);
+    if( hret!=INVALID_HANDLE_VALUE )
+      return hret;
     dlclose(h);
   }
   // For any Windows DLL we can't resolve as a .so, return a sentinel so
   // GetProcAddress can still find symbols exported from our shim.
-  tls_last_error = ERROR_SUCCESS;
+  SET_LAST_ERROR(ERROR_SUCCESS);
   return FAKE_WIN_MODULE;
 }
 
 extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
-  if( h==FAKE_WIN_MODULE )
+  if( h==FAKE_WIN_MODULE||h==MAIN_IMAGE_MODULE )
     return TRUE;
   int idx = handle_to_idx(h);
   if( idx>=0&&g_handles[idx].kind==H_MODULE ) {
@@ -1149,7 +1490,7 @@ extern "C" EXPORT BOOL FreeLibrary(HANDLE h) {
 
 extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
   void* dlh;
-  if( h==FAKE_WIN_MODULE||h==NULL ) {
+  if( h==FAKE_WIN_MODULE||h==MAIN_IMAGE_MODULE||h==NULL ) {
     dlh = RTLD_DEFAULT;
   } else {
     int idx = handle_to_idx(h);
@@ -1160,7 +1501,7 @@ extern "C" EXPORT LPVOID GetProcAddress(HANDLE h, LPCSTR name) {
   }
   void* sym = dlsym(dlh, name);
   if( !sym )
-    tls_last_error = ERROR_CALL_NOT_IMPLEMENTED;
+    SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED);
   return sym;
 }
 
@@ -1198,10 +1539,15 @@ extern "C" EXPORT void GetStartupInfoA(STARTUPINFOA* psi) {
 }
 
 extern "C" EXPORT LPSTR GetEnvironmentStrings(void) {
+  if( !g_env_block )
+    build_env_block();
   return g_env_block;
 }
 
 extern "C" EXPORT LPWSTR GetEnvironmentStringsW(void) {
+  // Regenerate on demand if dirty (B23/R34)
+  if( !g_env_block_w )
+    build_env_block();
   return g_env_block_w;
 }
 
@@ -1226,6 +1572,11 @@ extern "C" EXPORT BOOL SetEnvironmentVariableW(LPCWSTR name, LPCWSTR val) {
   } else {
     unsetenv(n);
   }
+  // Invalidate cached wide env block so next GetEnvironmentStringsW regenerates (B23/R34)
+  free(g_env_block_w);
+  g_env_block_w = NULL;
+  free(g_env_block);
+  g_env_block = NULL;
   return TRUE;
 }
 
@@ -1298,7 +1649,7 @@ extern "C" EXPORT BOOL TlsFree(DWORD idx) {
 }
 
 extern "C" EXPORT LPVOID TlsGetValue(DWORD idx) {
-  tls_last_error = 0;
+  SET_LAST_ERROR(0);
   void* v = pthread_getspecific((pthread_key_t)idx);
   log_always("[SHIM] TlsGetValue(idx=%u) -> %p\n", idx, v);
   return v;
@@ -1336,7 +1687,7 @@ extern "C" EXPORT BOOL IsValidCodePage(DWORD cp) {
 
 extern "C" EXPORT BOOL GetCPInfo(DWORD cp, CPINFO* info) {
   if( !info ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
   info->MaxCharSize = (cp==65001) ? 4 : 2;
@@ -1350,7 +1701,7 @@ extern "C" EXPORT int MultiByteToWideChar(DWORD cp, DWORD flags, LPCSTR src, int
   (void)cp;
   (void)flags;
   if( !src ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
   if( srclen<0 )
@@ -1378,15 +1729,23 @@ extern "C" EXPORT int WideCharToMultiByte(DWORD cp, DWORD flags, LPCWSTR src, in
   (void)defch;
   (void)useddef;
   if( !src ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
-  (void)srclen;
+  // Build a NUL-terminated copy bounded by srclen when srclen >= 0
+  uint16_t tmp_w[65536];
+  const uint16_t* wsrc = src;
+  if( srclen>=0 ) {
+    size_t n = (srclen<(int)(sizeof(tmp_w)/2-1)) ? (size_t)srclen : sizeof(tmp_w)/2-1;
+    memcpy(tmp_w, src, n*2);
+    tmp_w[n] = 0;
+    wsrc = tmp_w;
+  }
   if( dstlen==0 ) {
     char tmp[65536];
-    return wchar_to_utf8(src, tmp, sizeof(tmp));
+    return wchar_to_utf8(wsrc, tmp, sizeof(tmp));
   }
-  return wchar_to_utf8(src, dst, (size_t)dstlen);
+  return wchar_to_utf8(wsrc, dst, (size_t)dstlen);
 }
 
 extern "C" EXPORT int LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int srclen, LPWSTR dst, int dstlen) {
@@ -1399,7 +1758,7 @@ extern "C" EXPORT int LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int s
       srclen++;
     srclen++;
   }
-  if( flags&0x200 ) { // LCMAP_UPPERCASE
+  if( flags&LCMAP_UPPERCASE ) {
     if( dst&&dstlen>0 ) {
       int n = (srclen<dstlen) ? srclen : dstlen;
       for( int i = 0; i<n; ++i )
@@ -1407,7 +1766,7 @@ extern "C" EXPORT int LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int s
     }
     return srclen;
   }
-  if( flags&0x100 ) { // LCMAP_LOWERCASE
+  if( flags&LCMAP_LOWERCASE ) {
     if( dst&&dstlen>0 ) {
       int n = (srclen<dstlen) ? srclen : dstlen;
       for( int i = 0; i<n; ++i )
@@ -1423,10 +1782,25 @@ extern "C" EXPORT int LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int s
   return srclen;
 }
 
+static WORD classify_ctype1(unsigned int c) {
+  // CT_CTYPE1 classification for the ASCII plane; non-ASCII gets C1_ALPHA
+  if( c>127 ) return C1_ALPHA;
+  unsigned char u = (unsigned char)c;
+  WORD t = 0;
+  if( isupper(u) ) t |= C1_UPPER|C1_ALPHA;
+  if( islower(u) ) t |= C1_LOWER|C1_ALPHA;
+  if( isdigit(u) ) t |= C1_DIGIT;
+  if( isspace(u) ) t |= C1_SPACE;
+  if( ispunct(u) ) t |= C1_PUNCT;
+  if( iscntrl(u) ) t |= C1_CNTRL;
+  if( u==' '||u=='\t' ) t |= C1_BLANK;
+  if( isxdigit(u) ) t |= C1_XDIGIT;
+  return t;
+}
+
 extern "C" EXPORT BOOL GetStringTypeW(DWORD type, LPCWSTR src, int count, WORD* types) {
-  (void)type;
   if( !src||!types||count==0 ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
   if( count<0 ) {
@@ -1436,36 +1810,33 @@ extern "C" EXPORT BOOL GetStringTypeW(DWORD type, LPCWSTR src, int count, WORD* 
       count++;
   }
   for( int i = 0; i<count; ++i )
-    types[i] = 0;
+    types[i] = (type==CT_CTYPE1) ? classify_ctype1(src[i]) : 0;
   return TRUE;
 }
 
 extern "C" EXPORT int CompareStringW(DWORD locale, DWORD flags, LPCWSTR s1, int n1, LPCWSTR s2, int n2) {
   (void)locale;
-  (void)flags;
-  (void)n1;
-  (void)n2;
-  // Minimal: compare up to NUL
-  for(;; ) {
-    if( !*s1&&!*s2 )
-      return 2; // CSTR_EQUAL
-    if( !*s1 )
-      return 1; // CSTR_LESS_THAN
-    if( !*s2 )
-      return 3; // CSTR_GREATER_THAN
-    uint16_t c1 = *s1, c2 = *s2;
-    if( flags&0x1 ) { // NORM_IGNORECASE
+  int i = 0;
+  for(;; i++) {
+    int at1 = (n1>=0) ? (i>=n1) : (!s1[i]);
+    int at2 = (n2>=0) ? (i>=n2) : (!s2[i]);
+    if( at1&&at2 )
+      return CSTR_EQUAL;
+    if( at1 )
+      return CSTR_LESS_THAN;
+    if( at2 )
+      return CSTR_GREATER_THAN;
+    uint16_t c1 = s1[i], c2 = s2[i];
+    if( flags&NORM_IGNORECASE ) {
       if( c1>='A'&&c1<='Z' )
         c1 += 32;
       if( c2>='A'&&c2<='Z' )
         c2 += 32;
     }
     if( c1<c2 )
-      return 1;
+      return CSTR_LESS_THAN;
     if( c1>c2 )
-      return 3;
-    s1++;
-    s2++;
+      return CSTR_GREATER_THAN;
   }
 }
 
@@ -1491,22 +1862,25 @@ extern "C" EXPORT LPVOID SetUnhandledExceptionFilter(LPVOID filter) {
 }
 
 extern "C" EXPORT LONG UnhandledExceptionFilter(void* pExcept) {
-  // Extract exception info if available
   if( pExcept ) {
     void** ep = (void**)pExcept;
     void* excRec = ep[0];
     if( excRec ) {
-#ifdef WINAPI_LOG_ENABLED
       uint32_t code = *(uint32_t*)excRec;
       void* addr = *(void**)((uint8_t*)excRec+0x10);
       log_always("[SHIM] UnhandledExceptionFilter code=0x%08x addr=%p\n", code, addr);
-#endif
     } else {
       log_always("[SHIM] UnhandledExceptionFilter(NULL excRec)\n");
     }
   } else {
     log_always("[SHIM] UnhandledExceptionFilter(NULL)\n");
   }
+  // Chain to registered filter if set; otherwise signal fatal error (B36/R36)
+  if( g_unhandled_filter ) {
+    // Cannot call ms_abi safely here — just log and terminate
+    log_always("[SHIM] UnhandledExceptionFilter: filter registered but cannot safely call; terminating\n");
+  }
+  _exit(1);
   return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -1517,9 +1891,9 @@ extern "C" EXPORT void RtlUnwindEx(void* f, void* target, void* except, void* re
   (void)retval;
   (void)ctx;
   (void)histo;
-  // Can't implement; just abort
-  fprintf(stderr, "RtlUnwindEx called — aborting\n");
-  abort();
+  // Full SEH unwind not implemented; log and return so the caller can handle
+  // the structured-exception path without a hard abort
+  log_always("[SHIM] RtlUnwindEx called — SEH unwind not implemented, returning\n");
 }
 
 extern "C" EXPORT LPVOID RtlVirtualUnwind(DWORD type, uint64_t base, uint64_t pc, void* entry, void* ctx, void** data, uint64_t* frame, void* transform) {
@@ -1550,23 +1924,18 @@ extern "C" EXPORT void RtlCaptureContext(void* ctx) {
   uint64_t rsp, rbp, rip;
   __asm__ volatile ("mov %%rsp, %0" : "=r" (rsp));
   __asm__ volatile ("mov %%rbp, %0" : "=r" (rbp));
-  __asm__ volatile ("lea (%%rip), %0" : "=r" (rip));
+  __asm__ volatile ("lea 0(%%rip), %0" : "=r" (rip));
   // CONTEXT: ContextFlags at +0, Rsp at +152, Rbp at +160, Rip at +248
   *(uint32_t*)((uint8_t*)ctx+0) = 0x10001f;     // CONTEXT_ALL roughly
   *(uint64_t*)((uint8_t*)ctx+152) = rsp;
   *(uint64_t*)((uint8_t*)ctx+160) = rbp;
   *(uint64_t*)((uint8_t*)ctx+248) = rip;
-  // Dump stack to find caller of _invalid_parameter
+#ifdef WINAPI_LOG_ENABLED
   log_always("[SHIM] RtlCaptureContext: dumping call stack:\n");
-  uint64_t* sp = (uint64_t*)(rsp+8);    // skip our own return addr
-  for( int i = 0; i<24; i++ ) {
-    uint64_t val = sp[i];
-    // Heuristic: values in PPMonstr text range are return addresses
-    if( val>=0x140001000&&val<0x140030000 )
-      log_always("[SHIM]   stack[%02d]=0x%016lx  *** PPMonstr addr\n", i, (unsigned long)val);
-    else
-      log_always("[SHIM]   stack[%02d]=0x%016lx\n", i, (unsigned long)val);
-  }
+  uint64_t* sp = (uint64_t*)(rsp+8);
+  for( int i = 0; i<24; i++ )
+    log_always("[SHIM]   stack[%02d]=0x%016lx\n", i, (unsigned long)sp[i]);
+#endif
 }
 
 extern "C" EXPORT LPVOID RtlPcToFileHeader(LPVOID pc, LPVOID* pbase) {
@@ -1595,15 +1964,14 @@ extern "C" EXPORT void RaiseException(DWORD code, DWORD flags, DWORD nargs, cons
 // ---------------------------------------------------------------------------
 extern "C" EXPORT DWORD GetStringTypeA(DWORD locale, DWORD type, LPCSTR src, int count, WORD* types) {
   (void)locale;
-  (void)type;
   if( !src||!types||count==0 ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
   if( count<0 )
     count = (int)strlen(src);
   for( int i = 0; i<count; ++i )
-    types[i] = 0;
+    types[i] = (type==CT_CTYPE1) ? classify_ctype1((unsigned char)src[i]) : 0;
   return TRUE;
 }
 
@@ -1611,7 +1979,7 @@ extern "C" EXPORT int LCMapStringA(DWORD locale, DWORD flags, LPCSTR src, int sr
   (void)locale;
   if( srclen<0 )
     srclen = (int)strlen(src)+1;
-  if( flags&0x200 ) { // uppercase
+  if( flags&LCMAP_UPPERCASE ) { // uppercase
     if( dst&&dstlen>0 ) {
       int n = srclen<dstlen ? srclen : dstlen;
       for( int i = 0; i<n; ++i )
@@ -1634,63 +2002,19 @@ extern "C" EXPORT void Sleep(DWORD ms) {
 // A-variant file/directory functions
 // ---------------------------------------------------------------------------
 static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
-  char dir[PATH_MAX] = ".";
-  char glob[260] = "*";
-  char tmp[PATH_MAX];
-  snprintf(tmp, sizeof(tmp), "%s", posix);
-  char* slash = strrchr(tmp, '/');
-  if( slash ) {
-    *slash = '\0';
-    snprintf(dir, sizeof(dir), "%s", tmp);
-    snprintf(glob, sizeof(glob), "%s", slash+1);
-  } else {
-    size_t n = strnlen(tmp, sizeof(glob)-1);
-    memcpy(glob, tmp, n);
-    glob[n] = '\0';
-  }
-  DIR* d = opendir(dir[0] ? dir : ".");
-  if( !d ) {
-    tls_last_error = ERROR_PATH_NOT_FOUND;
+  FindCtx* ctx = NULL;
+  struct dirent* ent = find_ctx_open(posix, &ctx);
+  if( !ent )
     return INVALID_HANDLE_VALUE;
+  char fullpath[PATH_MAX];
+  path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
+  fill_find_data_a(pfd, fullpath, ent->d_name);
+  HANDLE hret = handle_alloc_find(ctx);
+  if( hret==INVALID_HANDLE_VALUE ) {
+    closedir(ctx->dir);
+    free(ctx);
   }
-  FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
-  ctx->dir = d;
-  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
-  snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
-  struct dirent* ent;
-  while( (ent = readdir(d))!=NULL ) {
-    if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
-      continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
-      continue;
-    char fullpath[PATH_MAX];
-    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-    struct stat st;
-    memset(pfd, 0, sizeof(*pfd));
-    if( stat(fullpath, &st)==0 ) {
-      pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-      uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-      pfd->ftLastWriteTime = u64_to_ft(mtime);
-      pfd->ftCreationTime = pfd->ftLastWriteTime;
-      pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-      pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-      pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
-    }
-    strncpy(pfd->cFileName, ent->d_name, 259);
-    int idx = alloc_handle(H_FIND);
-    if( idx<0 ) {
-      closedir(d);
-      free(ctx);
-      tls_last_error = 4;
-      return INVALID_HANDLE_VALUE;
-    }
-    g_handles[idx].find = ctx;
-    return idx_to_handle(idx);
-  }
-  closedir(d);
-  free(ctx);
-  tls_last_error = ERROR_FILE_NOT_FOUND;
-  return INVALID_HANDLE_VALUE;
+  return hret;
 }
 
 extern "C" EXPORT HANDLE FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
@@ -1700,7 +2024,24 @@ extern "C" EXPORT HANDLE FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
 }
 
 extern "C" EXPORT BOOL FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
-  return FindNextFileW(h, pfd);
+  FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
+  if( !ctx ) return FALSE;
+  struct dirent* ent;
+  BOOL found = FALSE;
+  while( (ent = readdir(ctx->dir))!=NULL ) {
+    if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
+      continue;
+    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
+      continue;
+    char fullpath[PATH_MAX];
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
+    fill_find_data_a(pfd, fullpath, ent->d_name);
+    found = TRUE;
+    break;
+  }
+  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  release_find_ctx(ctx);
+  return found;
 }
 
 extern "C" EXPORT HANDLE CreateFileA(LPCSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
@@ -1717,54 +2058,24 @@ extern "C" EXPORT HANDLE CreateFileA(LPCSTR name, DWORD access, DWORD share, SEC
       set_errno_error();
       return INVALID_HANDLE_VALUE;
     }
-    int idx = alloc_handle(H_FILE);
-    if( idx<0 ) {
+    HANDLE hret = handle_alloc_file(fd);
+    if( hret==INVALID_HANDLE_VALUE )
       close(fd);
-      tls_last_error = 4;
-      return INVALID_HANDLE_VALUE;
-    }
-    g_handles[idx].fd = fd;
-    return idx_to_handle(idx);
+    return hret;
   }
   char posix[PATH_MAX];
   win_path_to_posix(name, posix, sizeof(posix));
-  int oflags = 0;
-  if( (access&GENERIC_READ)&&(access&GENERIC_WRITE) )
-    oflags = O_RDWR;
-  else if( access&GENERIC_WRITE )
-    oflags = O_WRONLY;
-  else
-    oflags = O_RDONLY;
-  switch( disp ) {
-  case CREATE_NEW:
-    oflags |= O_CREAT|O_EXCL;
-    break;
-  case CREATE_ALWAYS:
-    oflags |= O_CREAT|O_TRUNC;
-    break;
-  case OPEN_EXISTING:
-    break;
-  case OPEN_ALWAYS:
-    oflags |= O_CREAT;
-    break;
-  case TRUNCATE_EXISTING:
-    oflags |= O_TRUNC;
-    break;
-  }
+  int oflags = make_open_flags(access, disp);
   int fd = open(posix, oflags, 0666);
   log_always("[SHIM] CreateFileA(\"%s\", acc=0x%x, disp=%u) -> fd=%d (caller=%p)\n", posix, access, disp, fd, __builtin_return_address(0));
   if( fd<0 ) {
     set_errno_error();
     return INVALID_HANDLE_VALUE;
   }
-  int idx = alloc_handle(H_FILE);
-  if( idx<0 ) {
+  HANDLE hret = handle_alloc_file(fd);
+  if( hret==INVALID_HANDLE_VALUE )
     close(fd);
-    tls_last_error = 4;
-    return INVALID_HANDLE_VALUE;
-  }
-  g_handles[idx].fd = fd;
-  return idx_to_handle(idx);
+  return hret;
 }
 
 extern "C" EXPORT BOOL DeleteFileA(LPCSTR path) {
@@ -1782,15 +2093,23 @@ extern "C" EXPORT BOOL SetFileAttributesA(LPCSTR path, DWORD attrs) {
   win_path_to_posix(path, posix, sizeof(posix));
   if( attrs&FILE_ATTRIBUTE_READONLY ) {
     struct stat st;
-    stat(posix, &st);
+    if( stat(posix, &st)<0 ) {
+      set_errno_error();
+      return FALSE;
+    }
     chmod(posix, st.st_mode&~(S_IWUSR|S_IWGRP|S_IWOTH));
   }
   return TRUE;
 }
 
 extern "C" EXPORT DWORD GetCurrentDirectoryA(DWORD size, LPSTR buf) {
-  if( !buf||size==0 )
-    return (DWORD)(strlen(getcwd(NULL, 0))+1);
+  if( !buf||size==0 ) {
+    char* tmp = getcwd(NULL, 0);
+    if( !tmp ) return 0;
+    DWORD n = (DWORD)(strlen(tmp)+1);
+    free(tmp);
+    return n;
+  }
   if( !getcwd(buf, size) ) {
     set_errno_error();
     return 0;
@@ -1799,14 +2118,31 @@ extern "C" EXPORT DWORD GetCurrentDirectoryA(DWORD size, LPSTR buf) {
 }
 
 extern "C" EXPORT DWORD GetModuleFileNameA(HANDLE h, LPSTR buf, DWORD size) {
-  (void)h;
-  ssize_t n = readlink("/proc/self/exe", buf, size-1);
-  if( n<0 ) {
-    set_errno_error();
+  if( size==0 ) {
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
-  buf[n] = '\0';
-  return (DWORD)n;
+  if( h==NULL||h==MAIN_IMAGE_MODULE ) {
+    ssize_t n = readlink("/proc/self/exe", buf, size-1);
+    if( n<0 ) { set_errno_error(); return 0; }
+    buf[n] = '\0';
+    return (DWORD)n;
+  }
+  // Loaded module: resolve via dladdr
+  int idx = handle_to_idx(h);
+  void* dlh = (idx>=0&&g_handles[idx].kind==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+  if( dlh ) {
+    void* sym = dlsym(dlh, "_init");
+    if( !sym ) sym = dlh;
+    Dl_info info;
+    if( dladdr(sym, &info)&&info.dli_fname ) {
+      strncpy(buf, info.dli_fname, size-1);
+      buf[size-1] = '\0';
+      return (DWORD)strlen(buf);
+    }
+  }
+  buf[0] = '\0';
+  return 0;
 }
 
 extern "C" EXPORT HANDLE LoadLibraryA(LPCSTR name) {
@@ -1891,6 +2227,12 @@ extern "C" EXPORT BOOL FileTimeToDosDateTime(const FILETIME* ft, WORD* fatdate, 
   time_t t = (time_t)(v/10000000ULL);
   struct tm tm;
   gmtime_r(&t, &tm);
+  // DOS epoch starts 1980; clamp pre-1980 dates to avoid WORD wrap
+  if( tm.tm_year<80 ) {
+    *fatdate = *fattime = 0;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
+    return FALSE;
+  }
   *fatdate = (WORD)(((tm.tm_year-80)<<9)|((tm.tm_mon+1)<<5)|tm.tm_mday);
   *fattime = (WORD)((tm.tm_hour<<11)|(tm.tm_min<<5)|(tm.tm_sec>>1));
   return TRUE;
@@ -1913,32 +2255,44 @@ extern "C" EXPORT BOOL DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIM
 }
 
 // ---------------------------------------------------------------------------
-// FLS (Fiber Local Storage) — implemented via pthread TLS
+// FLS (Fiber Local Storage) — implemented via per-thread array + free bitset
 // ---------------------------------------------------------------------------
-// FLS implemented via __thread array to avoid pthread_key_t=0 reservation issues
 #define FLS_MAX_SLOTS 64
 static __thread void* g_fls[FLS_MAX_SLOTS];
-static DWORD g_fls_next = 0;
+static uint64_t g_fls_used = 0;           // bitset of allocated slots
 static pthread_mutex_t g_fls_mu = PTHREAD_MUTEX_INITIALIZER;
 
 extern "C" EXPORT DWORD FlsAlloc(void* callback) {
   (void)callback;
   pthread_mutex_lock(&g_fls_mu);
-  DWORD idx = (g_fls_next<FLS_MAX_SLOTS) ? g_fls_next++ : 0xFFFFFFFF;
+  DWORD idx = 0xFFFFFFFF;
+  for( DWORD i = 0; i<FLS_MAX_SLOTS; ++i ) {
+    if( !(g_fls_used&(1ULL<<i)) ) {
+      g_fls_used |= (1ULL<<i);
+      idx = i;
+      break;
+    }
+  }
   pthread_mutex_unlock(&g_fls_mu);
   log_always("[SHIM] FlsAlloc() -> idx=%u\n", idx);
   return idx;
 }
 
 extern "C" EXPORT BOOL FlsFree(DWORD idx) {
-  (void)idx;
+  if( idx>=FLS_MAX_SLOTS ) {
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
+    return FALSE;
+  }
+  pthread_mutex_lock(&g_fls_mu);
+  g_fls_used &= ~(1ULL<<idx);
+  pthread_mutex_unlock(&g_fls_mu);
   return TRUE;
 }
 
 extern "C" EXPORT LPVOID FlsGetValue(DWORD idx) {
-  tls_last_error = 0;
+  SET_LAST_ERROR(0);
   if( idx>=FLS_MAX_SLOTS ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return NULL;
   }
   void* v = g_fls[idx];
@@ -1948,7 +2302,7 @@ extern "C" EXPORT LPVOID FlsGetValue(DWORD idx) {
 
 extern "C" EXPORT BOOL FlsSetValue(DWORD idx, LPVOID val) {
   if( idx>=FLS_MAX_SLOTS ) {
-    tls_last_error = ERROR_INVALID_PARAMETER;
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
   g_fls[idx] = val;
@@ -1977,9 +2331,57 @@ extern "C" EXPORT int GetLocaleInfoA(DWORD locale, DWORD lctype, LPSTR buf, int 
   return (int)strlen(buf)+1;
 }
 
+// Expand Windows positional escapes (%1!s! %2!d! etc.) from a va_list.
+// Supports up to 9 positional args; reads them from args in declaration order.
+static DWORD format_message_expand(const char* msg, LPSTR buf, DWORD size, va_list* args) {
+  // Pre-fetch up to 9 args as void* — safe for s/d/u on x86-64 ABI
+  void* argp[9] = {};
+  va_list ap;
+  if( args ) {
+    va_copy(ap, *args);
+    for( int i = 0; i<9; i++ )
+      argp[i] = va_arg(ap, void*);
+    va_end(ap);
+  }
+  DWORD out = 0;
+  for( const char* p = msg; *p&&out<size-1; p++ ) {
+    if( p[0]=='%'&&p[1]>='1'&&p[1]<='9' ) {
+      int idx = p[1]-'1';
+      p += 2;
+      char fmt[16] = "s";
+      if( *p=='!' ) {
+        p++;
+        int fi = 0;
+        while( *p&&*p!='!'&&fi<(int)sizeof(fmt)-1 )
+          fmt[fi++] = *p++;
+        fmt[fi] = '\0';
+        if( *p=='!' ) p++;
+        p--; // compensate for outer loop increment
+      } else {
+        p--; // just %N with no !fmt!
+      }
+      char fmtbuf[20];
+      fmtbuf[0] = '%';
+      strncpy(fmtbuf+1, fmt, sizeof(fmtbuf)-2);
+      fmtbuf[sizeof(fmtbuf)-1] = '\0';
+      char sub[256];
+      snprintf(sub, sizeof(sub), fmtbuf, argp[idx]);
+      for( const char* s = sub; *s&&out<size-1; s++ )
+        buf[out++] = *s;
+    } else if( p[0]=='%'&&p[1]=='%' ) {
+      buf[out++] = '%';
+      p++;
+    } else {
+      buf[out++] = *p;
+    }
+  }
+  buf[out] = '\0';
+  return out;
+}
+
 extern "C" EXPORT DWORD FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPSTR buf, DWORD size, va_list* args) {
-  (void)flags; (void)src; (void)lang; (void)args;
-  // Minimal: look up a few common Win32 codes, fall back to strerror
+  (void)flags; (void)src; (void)lang;
+  // Look up a few common Win32 codes; fall back to "Error N"
   static const struct { DWORD code; const char* msg; } table[] = {
     {0,   "The operation completed successfully."},
     {2,   "The system cannot find the file specified."},
@@ -1994,28 +2396,49 @@ extern "C" EXPORT DWORD FormatMessageA(DWORD flags, LPCVOID src, DWORD msgId, DW
   for( size_t i = 0; i<sizeof(table)/sizeof(table[0]); ++i ) {
     if( table[i].code==msgId ) { msg = table[i].msg; break; }
   }
-  char tmp[256];
+  char fallback[64];
   if( !msg ) {
-    snprintf(tmp, sizeof(tmp), "Error %u", (unsigned)msgId);
-    msg = tmp;
+    snprintf(fallback, sizeof(fallback), "Error %u", (unsigned)msgId);
+    msg = fallback;
   }
   if( !buf||size==0 )
     return 0;
-  strncpy(buf, msg, size-1);
-  buf[size-1] = '\0';
-  return (DWORD)strlen(buf);
+  return format_message_expand(msg, buf, size, args);
 }
 
 // ---------------------------------------------------------------------------
 // Console misc
 // ---------------------------------------------------------------------------
+// INPUT_RECORD layout (Windows x64 ABI, sizeof=20):
+//  +0  WORD  EventType        (1 = KEY_EVENT)
+//  +2  WORD  padding
+//  +4  DWORD bKeyDown
+//  +8  WORD  wRepeatCount
+//  +10 WORD  wVirtualKeyCode
+//  +12 WORD  wVirtualScanCode
+//  +14 WORD  uChar (AsciiChar in low byte)
+//  +16 DWORD dwControlKeyState
+#define INPUT_RECORD_SIZE 20
+
 extern "C" EXPORT BOOL ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD* nread) {
-  (void)h;
-  (void)buf;
-  (void)count;
-  if( nread )
-    *nread = 0;
-  return FALSE;
+  if( nread ) *nread = 0;
+  if( !buf||count==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  int idx = handle_to_idx(h);
+  int fd = (idx>=0 && g_handles[idx].kind==H_FILE) ? g_handles[idx].fd : STDIN_FILENO;
+  char ch;
+  ssize_t n;
+  do {
+    n = read(fd, &ch, 1);
+  } while( n<0&&errno==EINTR );
+  if( n<=0 ) return FALSE;
+  uint8_t* rec = (uint8_t*)buf;
+  memset(rec, 0, INPUT_RECORD_SIZE);
+  *(uint16_t*)(rec+0)  = 0x0001;              // KEY_EVENT
+  *(uint32_t*)(rec+4)  = 1;                   // bKeyDown = TRUE
+  *(uint16_t*)(rec+8)  = 1;                   // wRepeatCount
+  *(uint16_t*)(rec+14) = (uint16_t)(uint8_t)ch; // AsciiChar
+  if( nread ) *nread = 1;
+  return TRUE;
 }
 
 extern "C" EXPORT BOOL SetHandleCount(DWORD n) {
