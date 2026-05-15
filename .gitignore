@@ -9,3 +9,4 @@ winapi_shim.so
 *.ppm
 winapi_shim_dbg.so
 dummy.so
+backup
