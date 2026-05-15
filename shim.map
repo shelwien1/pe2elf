@@ -114,6 +114,11 @@ WINAPI_SHIM_1.0 {
     kernel32_RtlPcToFileHeader;
     kernel32_RaiseException;
     kernel32_SetHandleCount;
+    kernel32_CreateDirectoryW;
+    kernel32_FindFirstFileW;
+    kernel32_FormatMessageW;
+    kernel32_GetFullPathNameW;
+    kernel32_LocalFree;
 
     msvcrt__commode;
     msvcrt__fmode;
@@ -147,6 +152,9 @@ WINAPI_SHIM_1.0 {
     msvcrt_localeconv;
     msvcrt_signal;
     msvcrt_wcslen;
+    msvcrt_strcpy;
+    msvcrt_wcscpy;
+    msvcrt___wgetmainargs;
   local:
     *;
 };

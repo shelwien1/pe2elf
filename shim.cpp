@@ -2580,4 +2580,50 @@ extern "C" EXPORT size_t kernel32_VirtualQuery(LPCVOID addr, void* buf, size_t b
   return buflen < 28 ? buflen : 28;
 }
 
+extern "C" EXPORT BOOL kernel32_CreateDirectoryW(LPCWSTR path, SECURITY_ATTRIBUTES* sa) {
+  (void)sa;
+  char narrow[PATH_MAX], posix[PATH_MAX];
+  wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
+  win_path_to_posix(narrow, posix, sizeof(posix));
+  if( mkdir(posix, 0777) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+
+extern "C" EXPORT HANDLE kernel32_FindFirstFileW(LPCWSTR pattern, WIN32_FIND_DATAW* pfd) {
+  return kernel32_FindFirstFileExW(pattern, 0, pfd, 0, nullptr, 0);
+}
+
+extern "C" EXPORT DWORD kernel32_FormatMessageW(DWORD flags, LPCVOID src, DWORD msgId, DWORD lang, LPWSTR buf, DWORD size, va_list* args) {
+  char narrow[4096];
+  DWORD n = kernel32_FormatMessageA(flags, src, msgId, lang, narrow, sizeof(narrow), args);
+  if( !buf || size == 0 ) return n;
+  uint16_t* out = (uint16_t*)buf;
+  DWORD i;
+  for( i = 0; i < n && i < size - 1; i++ )
+    out[i] = (uint16_t)(uint8_t)narrow[i];
+  out[i] = 0;
+  return i;
+}
+
+extern "C" EXPORT DWORD kernel32_GetFullPathNameW(LPCWSTR path, DWORD size, LPWSTR buf, LPWSTR* filepart) {
+  char narrow[PATH_MAX], posix[PATH_MAX], resolved[PATH_MAX];
+  wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
+  win_path_to_posix(narrow, posix, sizeof(posix));
+  if( !realpath(posix, resolved) ) strncpy(resolved, posix, sizeof(resolved)-1);
+  DWORD needed = (DWORD)utf8_to_wchar(resolved, (uint16_t*)buf, size ? size : 0);
+  if( buf && size > 0 && filepart ) {
+    uint16_t* p = (uint16_t*)buf + needed;
+    uint16_t* slash = (uint16_t*)buf;
+    for( uint16_t* q = (uint16_t*)buf; q < p; q++ )
+      if( *q == '/' || *q == '\\' ) slash = q + 1;
+    *filepart = slash < p ? slash : nullptr;
+  }
+  return needed;
+}
+
+extern "C" EXPORT void* kernel32_LocalFree(void* p) {
+  free(p);
+  return nullptr;
+}
+
 #include "shim_msvcrt.hpp"

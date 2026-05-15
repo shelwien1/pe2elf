@@ -193,3 +193,42 @@ extern "C" EXPORT size_t msvcrt_wcslen(const uint16_t* s) {
   while( *p ) p++;
   return (size_t)(p - s);
 }
+
+extern "C" EXPORT char* msvcrt_strcpy(char* dst, const char* src) { return strcpy(dst, src); }
+
+extern "C" EXPORT uint16_t* msvcrt_wcscpy(uint16_t* dst, const uint16_t* src) {
+  uint16_t* d = dst;
+  while( (*d++ = *src++) ) {}
+  return dst;
+}
+
+extern "C" EXPORT int msvcrt___wgetmainargs(int* argc, uint16_t*** wargv, uint16_t*** wenvp,
+                                             int /*expand*/, int* newmode) {
+  static uint16_t** s_wargv = nullptr;
+  static uint16_t** s_wenvp = nullptr;
+  if( !s_wargv && g_main_argc > 0 ) {
+    s_wargv = (uint16_t**)calloc(g_main_argc + 1, sizeof(uint16_t*));
+    for( int i = 0; i < g_main_argc; i++ ) {
+      size_t len = strlen(g_main_argv[i]) + 1;
+      s_wargv[i] = (uint16_t*)malloc(len * 2);
+      for( size_t j = 0; j < len; j++ )
+        s_wargv[i][j] = (uint16_t)(uint8_t)g_main_argv[i][j];
+    }
+  }
+  if( !s_wenvp ) {
+    int nenv = 0;
+    while( environ[nenv] ) nenv++;
+    s_wenvp = (uint16_t**)calloc(nenv + 1, sizeof(uint16_t*));
+    for( int i = 0; i < nenv; i++ ) {
+      size_t len = strlen(environ[i]) + 1;
+      s_wenvp[i] = (uint16_t*)malloc(len * 2);
+      for( size_t j = 0; j < len; j++ )
+        s_wenvp[i][j] = (uint16_t)(uint8_t)environ[i][j];
+    }
+  }
+  if( argc )   *argc   = g_main_argc;
+  if( wargv )  *wargv  = s_wargv;
+  if( wenvp )  *wenvp  = s_wenvp;
+  if( newmode ) *newmode = 0;
+  return 0;
+}
