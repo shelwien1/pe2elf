@@ -24,10 +24,11 @@ static int win_file_to_fd(void* f) {
 
 // Format string parser for MS ABI variadic args passed as char*.
 // Caller must have done __builtin_ms_va_start before passing (char*)ap.
-static int ms_vfprintf_fd(int fd, const char* fmt, char* ap) {
+// Writes formatted output into buf[bufsz], NUL-terminates, returns byte count.
+static int ms_vformat(char* outbuf, int bufsz, const char* fmt, char* ap) {
   if( !fmt ) return 0;
-  char outbuf[65536]; int out = 0;
-  for( const char* p = fmt; *p && out < (int)sizeof(outbuf) - 512; ) {
+  int out = 0;
+  for( const char* p = fmt; *p && out < bufsz - 512; ) {
     if( *p != '%' ) { outbuf[out++] = *p++; continue; }
     p++;
     if( !*p ) break;
@@ -83,10 +84,16 @@ static int ms_vfprintf_fd(int fd, const char* fmt, char* ap) {
     default: tmp[0] = conv; tmp[1] = '\0'; break;
     }
     int tlen = (int)strlen(tmp);
-    if( out + tlen > (int)sizeof(outbuf) - 1 ) tlen = (int)sizeof(outbuf) - 1 - out;
+    if( out + tlen > bufsz - 1 ) tlen = bufsz - 1 - out;
     if( tlen > 0 ) { memcpy(outbuf + out, tmp, tlen); out += tlen; }
   }
   outbuf[out] = '\0';
+  return out;
+}
+
+static int ms_vfprintf_fd(int fd, const char* fmt, char* ap) {
+  char outbuf[65536];
+  int out = ms_vformat(outbuf, (int)sizeof(outbuf), fmt, ap);
   ssize_t r = write(fd, outbuf, out);
   return r < 0 ? -1 : (int)r;
 }
@@ -232,3 +239,100 @@ extern "C" EXPORT int msvcrt___wgetmainargs(int* argc, uint16_t*** wargv, uint16
   if( newmode ) *newmode = 0;
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// msvcrt data variables
+// ---------------------------------------------------------------------------
+// _acmdln mirrors GetCommandLineA (g_cmdline is the same static buffer)
+char* msvcrt__acmdln __attribute__((visibility("default"))) = g_cmdline;
+
+// ---------------------------------------------------------------------------
+// CRT lifecycle extras
+// ---------------------------------------------------------------------------
+extern "C" EXPORT void msvcrt___lconv_init(void) {}
+
+// _onexit / __dllonexit: register fn via atexit, return fn on success
+extern "C" EXPORT void* msvcrt__onexit(void* fn) {
+  if( fn ) atexit((void(*)(void))fn);
+  return fn;
+}
+extern "C" EXPORT void* msvcrt___dllonexit(void* fn, void** /*pbegin*/, void** /*pend*/) {
+  if( fn ) atexit((void(*)(void))fn);
+  return fn;
+}
+
+// ---------------------------------------------------------------------------
+// Time functions (_time64 family — time_t is 64-bit on Linux x86-64)
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int64_t msvcrt__time64(int64_t* t) {
+  int64_t now = (int64_t)time(nullptr);
+  if( t ) *t = now;
+  return now;
+}
+extern "C" EXPORT struct tm* msvcrt__gmtime64(const int64_t* t) {
+  time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
+  return gmtime(&tt);
+}
+extern "C" EXPORT struct tm* msvcrt__localtime64(const int64_t* t) {
+  time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
+  return localtime(&tt);
+}
+extern "C" EXPORT int64_t msvcrt__mktime64(struct tm* tm_val) {
+  return (int64_t)mktime(tm_val);
+}
+extern "C" EXPORT size_t msvcrt_strftime(char* buf, size_t bufsz, const char* fmt, const struct tm* tm_val) {
+  return strftime(buf, bufsz, fmt, tm_val);
+}
+
+// ---------------------------------------------------------------------------
+// stdio — MS ABI variadic wrappers
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int msvcrt_printf(const char* fmt, ...) {
+  __builtin_ms_va_list ap;
+  __builtin_ms_va_start(ap, fmt);
+  int r = ms_vfprintf_fd(STDOUT_FILENO, fmt, (char*)ap);
+  __builtin_ms_va_end(ap);
+  return r;
+}
+extern "C" EXPORT int msvcrt_sprintf(char* buf, const char* fmt, ...) {
+  __builtin_ms_va_list ap;
+  __builtin_ms_va_start(ap, fmt);
+  char tmp[65536];
+  int n = ms_vformat(tmp, (int)sizeof(tmp), fmt, (char*)ap);
+  __builtin_ms_va_end(ap);
+  if( buf ) { memcpy(buf, tmp, (size_t)n); buf[n] = '\0'; }
+  return n;
+}
+
+// stdio — file I/O using win_file_to_fd
+extern "C" EXPORT size_t msvcrt_fwrite(const void* buf, size_t sz, size_t count, void* f) {
+  if( !buf || sz == 0 || count == 0 ) return 0;
+  ssize_t r = write(win_file_to_fd(f), buf, sz * count);
+  return r < 0 ? 0 : (size_t)r / sz;
+}
+extern "C" EXPORT char* msvcrt_fgets(char* buf, int n, void* f) {
+  if( !buf || n <= 0 ) return nullptr;
+  int fd = win_file_to_fd(f);
+  int i = 0;
+  while( i < n - 1 ) {
+    char c; ssize_t r;
+    do { r = read(fd, &c, 1); } while( r < 0 && errno == EINTR );
+    if( r <= 0 ) break;
+    buf[i++] = c;
+    if( c == '\n' ) break;
+  }
+  if( i == 0 ) return nullptr;
+  buf[i] = '\0';
+  return buf;
+}
+
+// stdio — simple pass-throughs
+extern "C" EXPORT int    msvcrt_puts(const char* s)    { return puts(s); }
+extern "C" EXPORT int    msvcrt_putchar(int c)          { return putchar(c); }
+extern "C" EXPORT int    msvcrt_remove(const char* p)   { return remove(p); }
+
+// string / memory pass-throughs
+extern "C" EXPORT void*  msvcrt_memmove(void* d, const void* s, size_t n) { return memmove(d, s, n); }
+extern "C" EXPORT void*  msvcrt_memset(void* d, int c, size_t n)          { return memset(d, c, n); }
+extern "C" EXPORT int    msvcrt_strcmp(const char* a, const char* b)       { return strcmp(a, b); }
+extern "C" EXPORT int    msvcrt_tolower(int c)                             { return tolower(c); }

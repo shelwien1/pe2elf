@@ -119,6 +119,14 @@ WINAPI_SHIM_1.0 {
     kernel32_FormatMessageW;
     kernel32_GetFullPathNameW;
     kernel32_LocalFree;
+    kernel32_GlobalAlloc;
+    kernel32_GlobalFree;
+    kernel32_GetFileAttributesA;
+    kernel32_CreateDirectoryA;
+    kernel32_FileTimeToSystemTime;
+    kernel32_GetSystemInfo;
+    kernel32_GlobalMemoryStatus;
+    kernel32_RtlAddFunctionTable;
 
     msvcrt__commode;
     msvcrt__fmode;
@@ -155,6 +163,26 @@ WINAPI_SHIM_1.0 {
     msvcrt_strcpy;
     msvcrt_wcscpy;
     msvcrt___wgetmainargs;
+    msvcrt__acmdln;
+    msvcrt___lconv_init;
+    msvcrt__onexit;
+    msvcrt___dllonexit;
+    msvcrt__time64;
+    msvcrt__gmtime64;
+    msvcrt__localtime64;
+    msvcrt__mktime64;
+    msvcrt_strftime;
+    msvcrt_printf;
+    msvcrt_sprintf;
+    msvcrt_fwrite;
+    msvcrt_fgets;
+    msvcrt_puts;
+    msvcrt_putchar;
+    msvcrt_remove;
+    msvcrt_memmove;
+    msvcrt_memset;
+    msvcrt_strcmp;
+    msvcrt_tolower;
   local:
     *;
 };
