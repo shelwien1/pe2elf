@@ -161,9 +161,11 @@ struct CPINFO { UINT MaxCharSize; BYTE DefaultChar[2]; BYTE LeadByte[12]; };
 
 // File attributes
 #define FILE_ATTRIBUTE_READONLY  0x1
+#define FILE_ATTRIBUTE_HIDDEN    0x2
+#define FILE_ATTRIBUTE_SYSTEM    0x4
 #define FILE_ATTRIBUTE_DIRECTORY 0x10
-#define FILE_ATTRIBUTE_NORMAL    0x80
 #define FILE_ATTRIBUTE_ARCHIVE   0x20
+#define FILE_ATTRIBUTE_NORMAL    0x80
 
 // Standard handles
 #define STD_INPUT_HANDLE  ((DWORD)-10)

@@ -1302,33 +1302,56 @@ extern "C" EXPORT void kernel32_GetSystemTimeAsFileTime(FILETIME* pft) {
 // ---------------------------------------------------------------------------
 // 7.6 Directory / File Search
 // ---------------------------------------------------------------------------
-static void fill_find_data_w(WIN32_FIND_DATAW* pfd, const char* fullpath, const char* name) {
+
+// Map Linux stat → Windows file attributes.
+// Rules:
+//   no-write bits  → READONLY
+//   any exec bit   → SYSTEM  (closest Linux semantic: executable = "system-managed")
+//   name[0]=='.'   → HIDDEN  (Linux convention)
+//   S_ISDIR        → DIRECTORY
+//   S_ISREG        → ARCHIVE (default for regular files; means "needs backup")
+//   nothing above  → NORMAL
+static DWORD stat_to_win_attrs(const struct stat* st, const char* name) {
+  DWORD attrs = 0;
+  if( !(st->st_mode & (S_IWUSR|S_IWGRP|S_IWOTH)) )
+    attrs |= FILE_ATTRIBUTE_READONLY;
+  if( st->st_mode & (S_IXUSR|S_IXGRP|S_IXOTH) )
+    attrs |= FILE_ATTRIBUTE_SYSTEM;
+  if( name && name[0]=='.' && !(name[1]=='.' && name[2]=='\0') && name[1]!='\0' )
+    attrs |= FILE_ATTRIBUTE_HIDDEN;
+  if( S_ISDIR(st->st_mode) )
+    attrs |= FILE_ATTRIBUTE_DIRECTORY;
+  else if( S_ISREG(st->st_mode) )
+    attrs |= FILE_ATTRIBUTE_ARCHIVE;
+  if( attrs==0 )
+    attrs = FILE_ATTRIBUTE_NORMAL;
+  return attrs;
+}
+
+// Fill common stat-derived fields of WIN32_FIND_DATA* (both A and W share layout
+// for everything except cFileName/cAlternateFileName).
+template<typename T>
+static void fill_find_data_common(T* pfd, const char* fullpath, const char* name) {
   memset(pfd, 0, sizeof(*pfd));
   struct stat st;
   if( stat(fullpath, &st)==0 ) {
-    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+    pfd->dwFileAttributes = stat_to_win_attrs(&st, name);
     uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-    pfd->ftLastWriteTime = u64_to_ft(mtime);
-    pfd->ftCreationTime = pfd->ftLastWriteTime;
+    pfd->ftLastWriteTime  = u64_to_ft(mtime);
+    pfd->ftCreationTime   = pfd->ftLastWriteTime;
     pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
+    pfd->nFileSizeLow  = (DWORD)(st.st_size & 0xFFFFFFFF);
+    pfd->nFileSizeHigh = (DWORD)(st.st_size >> 32);
   }
+}
+
+static void fill_find_data_w(WIN32_FIND_DATAW* pfd, const char* fullpath, const char* name) {
+  fill_find_data_common(pfd, fullpath, name);
   utf8_to_wchar(name, pfd->cFileName, 260);
 }
 
 static void fill_find_data_a(WIN32_FIND_DATAA* pfd, const char* fullpath, const char* name) {
-  memset(pfd, 0, sizeof(*pfd));
-  struct stat st;
-  if( stat(fullpath, &st)==0 ) {
-    pfd->dwFileAttributes = S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-    uint64_t mtime = (uint64_t)st.st_mtime*10000000ULL+FILETIME_EPOCH;
-    pfd->ftLastWriteTime = u64_to_ft(mtime);
-    pfd->ftCreationTime = pfd->ftLastWriteTime;
-    pfd->ftLastAccessTime = pfd->ftLastWriteTime;
-    pfd->nFileSizeLow = (DWORD)(st.st_size&0xFFFFFFFF);
-    pfd->nFileSizeHigh = (DWORD)(st.st_size>>32);
-  }
+  fill_find_data_common(pfd, fullpath, name);
   strncpy(pfd->cFileName, name, 259);
 }
 
@@ -2211,15 +2234,25 @@ extern "C" EXPORT BOOL kernel32_DeleteFileA(LPCSTR path) {
 extern "C" EXPORT BOOL kernel32_SetFileAttributesA(LPCSTR path, DWORD attrs) {
   char posix[PATH_MAX];
   win_path_to_posix(path, posix, sizeof(posix));
-  if( attrs&FILE_ATTRIBUTE_READONLY ) {
-    struct stat st;
-    if( stat(posix, &st)<0 ) {
-      set_errno_error();
-      return FALSE;
-    }
-    chmod(posix, st.st_mode&~(S_IWUSR|S_IWGRP|S_IWOTH));
-  }
+  struct stat st;
+  if( stat(posix, &st)<0 ) { set_errno_error(); return FALSE; }
+  mode_t m = st.st_mode;
+  if( attrs & FILE_ATTRIBUTE_READONLY )
+    m &= ~(S_IWUSR|S_IWGRP|S_IWOTH);
+  else
+    m |= S_IWUSR;
+  if( attrs & FILE_ATTRIBUTE_SYSTEM )
+    m |= S_IXUSR|S_IXGRP|S_IXOTH;
+  else if( S_ISREG(m) )   // only strip exec from regular files, not directories
+    m &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
+  if( chmod(posix, m)<0 ) { set_errno_error(); return FALSE; }
   return TRUE;
+}
+
+extern "C" EXPORT BOOL kernel32_SetFileAttributesW(const uint16_t* path, DWORD attrs) {
+  char utf8[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  return kernel32_SetFileAttributesA(utf8, attrs);
 }
 
 extern "C" EXPORT DWORD kernel32_GetCurrentDirectoryA(DWORD size, LPSTR buf) {
@@ -2706,7 +2739,16 @@ extern "C" EXPORT DWORD kernel32_GetFileAttributesA(LPCSTR path) {
   win_path_to_posix(path, posix, sizeof(posix));
   struct stat st;
   if( stat(posix, &st) != 0 ) { set_errno_error(); return INVALID_FILE_ATTRIBUTES; }
-  return S_ISDIR(st.st_mode) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+  // Use the basename of the posix path for dot-hidden detection.
+  const char* base = strrchr(posix, '/');
+  base = base ? base+1 : posix;
+  return stat_to_win_attrs(&st, base);
+}
+
+extern "C" EXPORT DWORD kernel32_GetFileAttributesW(const uint16_t* path) {
+  char utf8[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  return kernel32_GetFileAttributesA(utf8);
 }
 
 extern "C" EXPORT BOOL kernel32_CreateDirectoryA(LPCSTR path, SECURITY_ATTRIBUTES* sa) {

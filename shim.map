@@ -45,6 +45,7 @@ WINAPI_SHIM_1.0 {
     kernel32_FindClose;
     kernel32_DeleteFileA;
     kernel32_SetFileAttributesA;
+    kernel32_SetFileAttributesW;
     kernel32_GetConsoleCP;
     kernel32_GetConsoleOutputCP;
     kernel32_GetConsoleMode;
@@ -134,6 +135,7 @@ WINAPI_SHIM_1.0 {
     kernel32_GlobalAlloc;
     kernel32_GlobalFree;
     kernel32_GetFileAttributesA;
+    kernel32_GetFileAttributesW;
     kernel32_CreateDirectoryA;
     kernel32_FileTimeToSystemTime;
     kernel32_GetSystemInfo;
