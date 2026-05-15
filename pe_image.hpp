@@ -321,4 +321,48 @@ struct PeImage {
     }
     return true;
   }
+
+  // Apply a new image base in-place: patches every reloc site in buf.data,
+  // updates image_base, then clears relocs (applied; no ELF relocs needed).
+  // If new_base == image_base the relocs are still cleared (caller asked for
+  // a no-ELF-relocs output at the original base).
+  bool rebase(uint64_t new_base) {
+    if( new_base==image_base ) {
+      relocs.clear();
+      return true;
+    }
+    if( relocs.empty() ) {
+      fprintf(stderr,
+              "Error: cannot rebase 0x%llx → 0x%llx: "
+              "no PE base relocations present in input\n",
+              (unsigned long long)image_base, (unsigned long long)new_base);
+      return false;
+    }
+    int64_t delta = (int64_t)(new_base-image_base);
+    for( auto& re : relocs ) {
+      uint32_t rva = (uint32_t)(re.va-image_base);
+      auto off_opt = secmap.rva_to_offset(rva);
+      if( !off_opt ) {
+        fprintf(stderr,
+                "Error: rebase: reloc RVA 0x%x maps to no section\n", rva);
+        return false;
+      }
+      uint32_t off = *off_opt;
+      if( off+8>(uint32_t)buf.data.size() ) {
+        fprintf(stderr,
+                "Error: rebase: reloc at file offset 0x%x out of bounds\n", off);
+        return false;
+      }
+      uint64_t val;
+      memcpy(&val, buf.data.data()+off, 8);
+      val = (uint64_t)((int64_t)val+delta);
+      memcpy(buf.data.data()+off, &val, 8);
+    }
+    printf("Rebased 0x%llx → 0x%llx (delta %+lld), %u patches applied\n",
+           (unsigned long long)image_base, (unsigned long long)new_base,
+           (long long)delta, (uint32_t)relocs.size());
+    image_base = new_base;
+    relocs.clear();
+    return true;
+  }
 };
