@@ -10,3 +10,4 @@ winapi_shim.so
 winapi_shim_dbg.so
 dummy.so
 backup
+1.exe
