@@ -98,4 +98,12 @@ static const uint32_t PE_SCN_MEM_READ    = 0x40000000;
 static const uint32_t PE_SCN_MEM_WRITE   = 0x80000000;
 
 // Data directory indices
-static const uint32_t PE_DD_IMPORT = 1;
+static const uint32_t PE_DD_IMPORT    = 1;
+static const uint32_t PE_DD_BASERELOC = 5;
+
+#pragma pack(push, 1)
+struct pe_base_reloc {
+  uint32_t VirtualAddress;
+  uint32_t SizeOfBlock;
+};
+#pragma pack(pop)

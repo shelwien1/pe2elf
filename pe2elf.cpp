@@ -33,6 +33,10 @@ struct Converter {
       return false;
     printf("Imports: %u IAT entries\n", (uint32_t)image.imports.size());
 
+    if( !image.collect_relocs() )
+      return false;
+    printf("Base relocs: %u DIR64 entries\n", (uint32_t)image.relocs.size());
+
     Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
     build.build_synthetic_sections();
     plan = compute_plan(image, build.interp_data.size(), build.dynsym_data.size(),

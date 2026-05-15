@@ -99,7 +99,8 @@ static const uint16_t SHN_UNDEF    = 0;
 static const uint8_t  STB_GLOBAL   = 1;
 static const uint8_t  STT_FUNC     = 2;
 #define ELF64_R_INFO(sym, type) (((uint64_t)(sym)<<32)|(uint32_t)(type))
-static const uint32_t R_X86_64_64  = 1;
+static const uint32_t R_X86_64_64       = 1;
+static const uint32_t R_X86_64_RELATIVE = 8;
 
 static const int64_t DT_NEEDED   = 1;
 static const int64_t DT_STRTAB   = 5;
