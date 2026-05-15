@@ -35,6 +35,7 @@ WINAPI_SHIM_1.0 {
     kernel32_SetFileTime;
     kernel32_FlushFileBuffers;
     kernel32_GetFileType;
+    kernel32_GetFileSizeEx;
     kernel32_GetSystemTimeAsFileTime;
     kernel32_FileTimeToDosDateTime;
     kernel32_DosDateTimeToFileTime;
@@ -52,6 +53,7 @@ WINAPI_SHIM_1.0 {
     kernel32_SetConsoleMode;
     kernel32_WriteConsoleA;
     kernel32_WriteConsoleW;
+    kernel32_ReadConsoleW;
     kernel32_ReadConsoleInputA;
     kernel32_FormatMessageA;
     kernel32_GetModuleHandleW;
@@ -78,6 +80,7 @@ WINAPI_SHIM_1.0 {
     kernel32_GetTickCount;
     kernel32_Sleep;
     kernel32_InitializeCriticalSectionAndSpinCount;
+    kernel32_InitializeCriticalSectionEx;
     kernel32_InitializeCriticalSection;
     kernel32_EnterCriticalSection;
     kernel32_LeaveCriticalSection;
@@ -108,6 +111,7 @@ WINAPI_SHIM_1.0 {
     kernel32_DecodePointer;
     kernel32_SetUnhandledExceptionFilter;
     kernel32_UnhandledExceptionFilter;
+    kernel32_RtlUnwind;
     kernel32_RtlUnwindEx;
     kernel32_RtlVirtualUnwind;
     kernel32_RtlLookupFunctionEntry;

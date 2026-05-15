@@ -1273,6 +1273,15 @@ extern "C" EXPORT BOOL kernel32_FlushFileBuffers(HANDLE h) {
   return TRUE;
 }
 
+extern "C" EXPORT BOOL kernel32_GetFileSizeEx(HANDLE h, int64_t* size) {
+  int fd = get_fd(h);
+  if( fd<0 ) { SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE; }
+  struct stat st;
+  if( fstat(fd, &st)<0 ) { set_errno_error(); return FALSE; }
+  if( size ) *size = (int64_t)st.st_size;
+  return TRUE;
+}
+
 extern "C" EXPORT DWORD kernel32_GetFileType(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )
@@ -1776,6 +1785,10 @@ extern "C" EXPORT void kernel32_InitializeCriticalSection(CRITICAL_SECTION* cs) 
   kernel32_InitializeCriticalSectionAndSpinCount(cs, 0);
 }
 
+extern "C" EXPORT BOOL kernel32_InitializeCriticalSectionEx(CRITICAL_SECTION* cs, DWORD spin, DWORD /*flags*/) {
+  return kernel32_InitializeCriticalSectionAndSpinCount(cs, spin);
+}
+
 extern "C" EXPORT void kernel32_EnterCriticalSection(CRITICAL_SECTION* cs) {
   log_always("[SHIM] EnterCriticalSection(%p, caller=%p)\n", cs, __builtin_return_address(0));
   pthread_mutex_lock((pthread_mutex_t*)cs);
@@ -2040,6 +2053,11 @@ extern "C" EXPORT LONG kernel32_UnhandledExceptionFilter(void* pExcept) {
   }
   _exit(1);
   return EXCEPTION_EXECUTE_HANDLER;
+}
+
+extern "C" EXPORT void kernel32_RtlUnwind(void* frame, void* target, void* except, void* retval) {
+  (void)frame; (void)target; (void)except; (void)retval;
+  log_always("[SHIM] RtlUnwind called — SEH unwind not implemented, returning\n");
 }
 
 extern "C" EXPORT void kernel32_RtlUnwindEx(void* f, void* target, void* except, void* retval, void* ctx, void* histo) {
@@ -2597,6 +2615,24 @@ extern "C" EXPORT DWORD kernel32_FormatMessageA(DWORD flags, LPCVOID src, DWORD 
 //  +14 WORD  uChar (AsciiChar in low byte)
 //  +16 DWORD dwControlKeyState
 #define INPUT_RECORD_SIZE 20
+
+extern "C" EXPORT BOOL kernel32_ReadConsoleW(HANDLE h, uint16_t* buf, DWORD nchars, DWORD* nread, void* /*ctrl*/) {
+  if( !buf || nchars==0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  int idx = handle_to_idx(h);
+  int fd = (idx>=0 && g_handles[idx].kind==H_FILE) ? g_handles[idx].fd : STDIN_FILENO;
+  // Read up to nchars bytes of UTF-8 then widen one char at a time.
+  char tmp[4096];
+  DWORD cap = nchars < (DWORD)sizeof(tmp) ? nchars : (DWORD)(sizeof(tmp)-1);
+  ssize_t n;
+  do { n = read(fd, tmp, cap); } while( n<0 && errno==EINTR );
+  if( n<=0 ) { if(nread) *nread=0; return n==0 ? TRUE : FALSE; }
+  tmp[n] = '\0';
+  DWORD out = 0;
+  for( ssize_t i=0; i<n && out<nchars; i++, out++ )
+    buf[out] = (uint16_t)(uint8_t)tmp[i];
+  if( nread ) *nread = out;
+  return TRUE;
+}
 
 extern "C" EXPORT BOOL kernel32_ReadConsoleInputA(HANDLE h, void* buf, DWORD count, DWORD* nread) {
   if( nread ) *nread = 0;
