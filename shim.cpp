@@ -1358,6 +1358,29 @@ static void fill_find_data_a(WIN32_FIND_DATAA* pfd, const char* fullpath, const 
 
 // Shared helper: open directory from a POSIX pattern path, scan to first match,
 // populate ctx. Returns first matching dirent or NULL.
+
+// Windows FindFirstFile wildcard semantics differ from POSIX fnmatch:
+// "*.foo" also matches extensionless names (FAT/NTFS backward-compat).
+// Specifically, if the pattern ends with ".*", we also try it without the ".*"
+// tail so that "config", "HEAD", "index" etc. match "*.*" or "f*.*".
+static bool win_fnmatch(const char* glob, const char* name) {
+  if( fnmatch(glob, name, FNM_NOESCAPE)==0 ) return true;
+  // Strip trailing ".*" and retry — covers *.*  f*.*  etc.
+  const char* dot_star = strrchr(glob, '.');
+  if( dot_star && dot_star[1]=='*' && dot_star[2]=='\0' ) {
+    size_t prefix_len = (size_t)(dot_star - glob);
+    char prefix[NAME_MAX+2];
+    if( prefix_len < sizeof(prefix) ) {
+      memcpy(prefix, glob, prefix_len);
+      prefix[prefix_len] = '\0';
+      // Empty prefix (the pattern was just ".*") means match anything.
+      const char* p = prefix_len ? prefix : "*";
+      if( fnmatch(p, name, FNM_NOESCAPE)==0 ) return true;
+    }
+  }
+  return false;
+}
+
 static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   char dir[PATH_MAX] = ".";
   char glob[260] = "*";
@@ -1387,7 +1410,7 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   while( (ent = readdir(d))!=NULL ) {
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)==0 )
+    if( win_fnmatch(ctx->glob, ent->d_name) )
       return ent;
   }
   closedir(d);
@@ -1431,7 +1454,7 @@ extern "C" EXPORT BOOL kernel32_FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
+    if( !win_fnmatch(ctx->glob, ent->d_name) )
       continue;
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
@@ -2175,7 +2198,7 @@ extern "C" EXPORT BOOL kernel32_FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
       continue;
-    if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
+    if( !win_fnmatch(ctx->glob, ent->d_name) )
       continue;
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
