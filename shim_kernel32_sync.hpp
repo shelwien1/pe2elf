@@ -52,8 +52,12 @@ static void sync_obj_destroy(HandleKind kind, void* ptr) {
     pthread_mutex_lock(&t->mu);
     bool done = t->done;
     pthread_mutex_unlock(&t->mu);
-    if( done ) pthread_join(t->tid, nullptr);
-    else        pthread_detach(t->tid);
+    // tid==0 marks an implicit handle (not backed by a managed thread);
+    // skip join/detach to avoid EDEADLK or double-detach.
+    if( t->tid ) {
+      if( done ) pthread_join(t->tid, nullptr);
+      else        pthread_detach(t->tid);
+    }
     pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t); break;
   }
   default: break;
@@ -286,12 +290,20 @@ static void thread_finish(ThreadObj* obj, int64_t code) {
   pthread_mutex_unlock(&obj->mu);
 }
 
+extern void shim_init_teb(void);         // defined in shim.cpp
+extern void run_tls_callbacks(uint32_t); // defined in shim.cpp
+extern void tls_static_init_thread(void);// defined in shim.cpp
+
 static void* thread_trampoline(void* arg) {
   ThreadStart ts = *(ThreadStart*)arg;
   free(arg);
+  shim_init_teb();
+  run_tls_callbacks(2);     // DLL_THREAD_ATTACH
+  tls_static_init_thread(); // populate static TLS block (like Windows loader)
   pthread_once(&g_thread_key_once, thread_key_init);
   pthread_setspecific(g_thread_obj_key, ts.obj);
   uint32_t ret = ts.fn(ts.param);
+  run_tls_callbacks(3);  // DLL_THREAD_DETACH — mirrors what Windows loader does
   thread_finish(ts.obj, (int64_t)(uint32_t)ret);
   return nullptr;
 }
