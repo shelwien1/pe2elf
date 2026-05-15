@@ -270,11 +270,14 @@ int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
   static real_pthread_create_t real_fn = NULL;
   if( !real_fn )
     real_fn = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
   ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
   if( !ta ) return ENOMEM;
   ta->fn = fn;
   ta->arg = arg;
-  return real_fn(tid, attr, shim_thread_trampoline, ta);
+  int ret = real_fn(tid, attr, shim_thread_trampoline, ta);
+  if( ret!=0 ) free(ta);   // trampoline never runs; we must free
+  return ret;
 }
 
 // ---------------------------------------------------------------------------
@@ -283,6 +286,7 @@ int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
 enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE };
 
 struct FindCtx {
+  int  refcount;     // protected by g_handles_mu; freed when it reaches 0
   DIR* dir;
   char glob[260];
   char dirpath[PATH_MAX];
@@ -340,6 +344,7 @@ static HANDLE handle_alloc_file(int fd) {
 }
 
 static HANDLE handle_alloc_find(FindCtx* ctx) {
+  ctx->refcount = 1;  // caller holds one reference
   pthread_mutex_lock(&g_handles_mu);
   for( int i = 3; i<MAX_HANDLES; ++i ) {
     if( g_handles[i].kind==H_FREE ) {
@@ -369,18 +374,6 @@ static HANDLE handle_alloc_module(void* dlh) {
   return INVALID_HANDLE_VALUE;
 }
 
-static HandleSlot* lookup(HANDLE h, HandleKind expect) {
-  int idx = handle_to_idx(h);
-  pthread_mutex_lock(&g_handles_mu);
-  if( idx<0||g_handles[idx].kind!=expect ) {
-    pthread_mutex_unlock(&g_handles_mu);
-    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
-    return NULL;
-  }
-  pthread_mutex_unlock(&g_handles_mu);
-  return &g_handles[idx];
-}
-
 static int get_fd(HANDLE h) {
   int idx = handle_to_idx(h);
   pthread_mutex_lock(&g_handles_mu);
@@ -392,6 +385,39 @@ static int get_fd(HANDLE h) {
   int fd = g_handles[idx].fd;
   pthread_mutex_unlock(&g_handles_mu);
   return fd;
+}
+
+// Retain a FindCtx for use outside the mutex.  Must be called with
+// g_handles_mu held; pairs with release_find_ctx().
+static void find_ctx_retain(FindCtx* fc) {
+  fc->refcount++;
+}
+
+// Release a FindCtx reference.  Safe to call without g_handles_mu.
+// Frees when the last reference is dropped.
+static void release_find_ctx(FindCtx* fc) {
+  pthread_mutex_lock(&g_handles_mu);
+  int gone = (--fc->refcount == 0);
+  pthread_mutex_unlock(&g_handles_mu);
+  if( gone ) {
+    if( fc->dir ) closedir(fc->dir);
+    free(fc);
+  }
+}
+
+// Returns a retained FindCtx* for h; caller must call release_find_ctx().
+static FindCtx* get_find_ctx(HANDLE h) {
+  int idx = handle_to_idx(h);
+  pthread_mutex_lock(&g_handles_mu);
+  if( idx<0||g_handles[idx].kind!=H_FIND ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
+    return NULL;
+  }
+  FindCtx* fc = g_handles[idx].find;
+  find_ctx_retain(fc);
+  pthread_mutex_unlock(&g_handles_mu);
+  return fc;
 }
 
 // ---------------------------------------------------------------------------
@@ -961,7 +987,11 @@ extern "C" EXPORT LPVOID HeapReAlloc(HANDLE heap, DWORD flags, LPVOID ptr, size_
   if( flags&HEAP_ZERO_MEMORY ) {
     size_t old_sz = ptr ? malloc_usable_size(ptr) : 0;
     void* p = realloc(ptr, alloc_size);
-    if( p&&size>old_sz )
+    // Zero only when we have a reliable old_sz (glibc) or there was no
+    // previous allocation (ptr==NULL → fresh block, old_sz is correctly 0).
+    // On musl malloc_usable_size stubs to 0; zeroing with old_sz==0 and
+    // ptr!=NULL would destroy the existing data, so we skip it.
+    if( p&&size>old_sz&&(old_sz>0||!ptr) )
       memset((char*)p+old_sz, 0, size-old_sz);
     if( !p ) SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return p;
@@ -1061,11 +1091,7 @@ extern "C" EXPORT BOOL CloseHandle(HANDLE h) {
   if( k==H_FILE ) {
     close(fd);
   } else if( k==H_FIND ) {
-    if( fc ) {
-      if( fc->dir )
-        closedir(fc->dir);
-      free(fc);
-    }
+    if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
   } else if( k==H_MODULE ) {
     if( dlh )
       dlclose(dlh);
@@ -1264,25 +1290,24 @@ extern "C" EXPORT HANDLE FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_D
 }
 
 extern "C" EXPORT BOOL FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
-  HandleSlot* s = lookup(h, H_FIND);
-  if( !s )
-    return FALSE;
-  FindCtx* ctx = s->find;
-
+  FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
+  if( !ctx ) return FALSE;
   struct dirent* ent;
+  BOOL found = FALSE;
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
       continue;
     if( fnmatch(ctx->glob, ent->d_name, FNM_NOESCAPE)!=0 )
       continue;
-
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     fill_find_data_w(pfd, fullpath, ent->d_name);
-    return TRUE;
+    found = TRUE;
+    break;
   }
-  SET_LAST_ERROR(ERROR_NO_MORE_FILES);
-  return FALSE;
+  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  release_find_ctx(ctx);
+  return found;
 }
 
 extern "C" EXPORT BOOL FindClose(HANDLE h) {
@@ -1297,11 +1322,7 @@ extern "C" EXPORT BOOL FindClose(HANDLE h) {
   g_handles[idx].kind = H_FREE;
   g_handles[idx].find = NULL;
   pthread_mutex_unlock(&g_handles_mu);
-  if( fc ) {
-    if( fc->dir )
-      closedir(fc->dir);
-    free(fc);
-  }
+  if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
   return TRUE;
 }
 
@@ -1995,11 +2016,10 @@ extern "C" EXPORT HANDLE FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
 }
 
 extern "C" EXPORT BOOL FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
-  HandleSlot* s = lookup(h, H_FIND);
-  if( !s )
-    return FALSE;
-  FindCtx* ctx = s->find;
+  FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
+  if( !ctx ) return FALSE;
   struct dirent* ent;
+  BOOL found = FALSE;
   while( (ent = readdir(ctx->dir))!=NULL ) {
     if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
       continue;
@@ -2008,10 +2028,12 @@ extern "C" EXPORT BOOL FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
     char fullpath[PATH_MAX];
     path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
     fill_find_data_a(pfd, fullpath, ent->d_name);
-    return TRUE;
+    found = TRUE;
+    break;
   }
-  SET_LAST_ERROR(ERROR_NO_MORE_FILES);
-  return FALSE;
+  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  release_find_ctx(ctx);
+  return found;
 }
 
 extern "C" EXPORT HANDLE CreateFileA(LPCSTR name, DWORD access, DWORD share, SECURITY_ATTRIBUTES* sa, DWORD disp, DWORD flags, HANDLE tmpl) {
