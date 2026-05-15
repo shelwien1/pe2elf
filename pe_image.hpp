@@ -43,6 +43,14 @@ struct PESectionMap {
 };
 
 // ---------------------------------------------------------------------------
+// Base relocation record
+// ---------------------------------------------------------------------------
+struct BaseRelocEntry {
+  uint64_t va;      // absolute VA of the pointer in the loaded image
+  int64_t  addend;  // value to write (preferred-base pointer; unchanged for ET_EXEC at preferred base)
+};
+
+// ---------------------------------------------------------------------------
 // Import record
 // ---------------------------------------------------------------------------
 struct ImportEntry {
@@ -63,7 +71,8 @@ struct PeImage {
   size_t   dd_off = 0;
   uint32_t num_dd = 0;
   PESectionMap secmap;
-  std::vector<ImportEntry> imports;
+  std::vector<ImportEntry>    imports;
+  std::vector<BaseRelocEntry> relocs;
   uint64_t image_base = 0;
   uint32_t ep_rva = 0;
   int rdata_sec_idx = -1; // index of section holding IAT (usually .rdata)
@@ -240,6 +249,120 @@ struct PeImage {
       }
     }
 
+    return true;
+  }
+
+  bool collect_relocs() {
+    if( num_dd<=PE_DD_BASERELOC )
+      return true;
+    auto* rel_dd = buf.at<pe_data_directory>(dd_off+PE_DD_BASERELOC*sizeof(pe_data_directory));
+    if( !rel_dd||!rel_dd->RelativeVirtualAddress )
+      return true;
+
+    auto off_opt = secmap.rva_to_offset(rel_dd->RelativeVirtualAddress);
+    if( !off_opt ) {
+      fprintf(stderr, "Base reloc directory RVA does not map to any section\n");
+      return false;
+    }
+
+    // Build set of IAT VAs so we can skip them (handled by R_X86_64_64)
+    auto is_iat = [&](uint64_t va) {
+      for( auto& ie : imports )
+        if( image_base+(uint64_t)ie.iat_rva==va ) return true;
+      return false;
+    };
+
+    uint32_t cur_off = *off_opt;
+    uint32_t end_off = cur_off+rel_dd->Size;
+    if( end_off>(uint32_t)buf.size() ) end_off = (uint32_t)buf.size();
+
+    while( cur_off+sizeof(pe_base_reloc)<=end_off ) {
+      auto* blk = buf.at<pe_base_reloc>(cur_off);
+      if( !blk||blk->SizeOfBlock<8||
+          (blk->VirtualAddress==0&&blk->SizeOfBlock==0) )
+        break;
+
+      uint32_t n_entries = (blk->SizeOfBlock-8)/2;
+      for( uint32_t i = 0; i<n_entries; ++i ) {
+        auto* ep = buf.at<uint16_t>(cur_off+8+i*2);
+        if( !ep ) break;
+        uint16_t entry = *ep;
+        uint8_t  type  = entry>>12;
+        uint32_t rva   = blk->VirtualAddress+(entry&0xFFF);
+
+        if( type==10 ) { // IMAGE_REL_BASED_DIR64
+          auto data_off_opt = secmap.rva_to_offset(rva);
+          if( !data_off_opt ) {
+            fprintf(stderr,
+                    "Warning: base reloc RVA 0x%x not in any section; skipping\n", rva);
+            continue;
+          }
+          auto* vp = buf.at<uint64_t>(*data_off_opt);
+          if( !vp ) {
+            fprintf(stderr,
+                    "Warning: base reloc at file offset 0x%x out of bounds; skipping\n",
+                    *data_off_opt);
+            continue;
+          }
+          uint64_t va = image_base+rva;
+          if( !is_iat(va) ) {
+            BaseRelocEntry re;
+            re.va     = va;
+            re.addend = (int64_t)*vp;
+            relocs.push_back(re);
+          }
+        } else if( type!=0 ) { // type 0 = padding entry
+          fprintf(stderr,
+                  "Warning: unsupported base reloc type %u at RVA 0x%x; skipping\n",
+                  type, rva);
+        }
+      }
+      cur_off += blk->SizeOfBlock;
+    }
+    return true;
+  }
+
+  // Apply a new image base in-place: patches every reloc site in buf.data,
+  // updates image_base, then clears relocs (applied; no ELF relocs needed).
+  // If new_base == image_base the relocs are still cleared (caller asked for
+  // a no-ELF-relocs output at the original base).
+  bool rebase(uint64_t new_base) {
+    if( new_base==image_base ) {
+      relocs.clear();
+      return true;
+    }
+    if( relocs.empty() ) {
+      fprintf(stderr,
+              "Error: cannot rebase 0x%llx → 0x%llx: "
+              "no PE base relocations present in input\n",
+              (unsigned long long)image_base, (unsigned long long)new_base);
+      return false;
+    }
+    int64_t delta = (int64_t)(new_base-image_base);
+    for( auto& re : relocs ) {
+      uint32_t rva = (uint32_t)(re.va-image_base);
+      auto off_opt = secmap.rva_to_offset(rva);
+      if( !off_opt ) {
+        fprintf(stderr,
+                "Error: rebase: reloc RVA 0x%x maps to no section\n", rva);
+        return false;
+      }
+      uint32_t off = *off_opt;
+      if( off+8>(uint32_t)buf.data.size() ) {
+        fprintf(stderr,
+                "Error: rebase: reloc at file offset 0x%x out of bounds\n", off);
+        return false;
+      }
+      uint64_t val;
+      memcpy(&val, buf.data.data()+off, 8);
+      val = (uint64_t)((int64_t)val+delta);
+      memcpy(buf.data.data()+off, &val, 8);
+    }
+    printf("Rebased 0x%llx → 0x%llx (delta %+lld), %u patches applied\n",
+           (unsigned long long)image_base, (unsigned long long)new_base,
+           (long long)delta, (uint32_t)relocs.size());
+    image_base = new_base;
+    relocs.clear();
     return true;
   }
 };

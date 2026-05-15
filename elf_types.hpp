@@ -74,6 +74,7 @@ static_assert(sizeof(Elf64_Dyn)  == 16,  "Elf64_Dyn size mismatch");
 
 // ELF constants
 static const uint16_t ET_EXEC    = 2;
+static const uint16_t ET_DYN     = 3;
 static const uint16_t EM_X86_64  = 62;
 static const uint32_t PT_LOAD    = 1;
 static const uint32_t PT_DYNAMIC = 2;
@@ -99,7 +100,8 @@ static const uint16_t SHN_UNDEF    = 0;
 static const uint8_t  STB_GLOBAL   = 1;
 static const uint8_t  STT_FUNC     = 2;
 #define ELF64_R_INFO(sym, type) (((uint64_t)(sym)<<32)|(uint32_t)(type))
-static const uint32_t R_X86_64_64  = 1;
+static const uint32_t R_X86_64_64       = 1;
+static const uint32_t R_X86_64_RELATIVE = 8;
 
 static const int64_t DT_NEEDED   = 1;
 static const int64_t DT_STRTAB   = 5;

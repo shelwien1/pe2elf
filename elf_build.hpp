@@ -97,6 +97,14 @@ struct Builder {
       r.r_info   = ELF64_R_INFO(ie.sym_index, R_X86_64_64);
       rela_data.push_back(r);
     }
+
+    for( auto &re : image.relocs ) {
+      Elf64_Rela r{};
+      r.r_offset = re.va;
+      r.r_info   = ELF64_R_INFO(0, R_X86_64_RELATIVE);
+      r.r_addend = re.addend;
+      rela_data.push_back(r);
+    }
   }
 
   bool build_trampoline() {

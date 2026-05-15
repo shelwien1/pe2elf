@@ -20,6 +20,8 @@ struct Converter {
   std::string inject_name;
   bool keep_shdr = true;
   bool strip_pdata = false;
+  bool pie = false;
+  uint64_t rebase_to = 0; // 0 = no explicit rebase
 
   bool convert(const char* in_path, const char* out_path) {
     if( !image.parse(in_path) )
@@ -32,6 +34,13 @@ struct Converter {
     if( !image.collect_imports() )
       return false;
     printf("Imports: %u IAT entries\n", (uint32_t)image.imports.size());
+
+    if( !image.collect_relocs() )
+      return false;
+    printf("Base relocs: %u DIR64 entries\n", (uint32_t)image.relocs.size());
+
+    if( rebase_to && !image.rebase(rebase_to) )
+      return false;
 
     Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
     build.build_synthetic_sections();
@@ -58,7 +67,7 @@ struct Converter {
       shoff = align_up(shstrtab_foff+build.shstrtab_data.size(), 8);
     }
 
-    Writer writer(image, plan, build, keep_shdr);
+    Writer writer(image, plan, build, keep_shdr, pie);
     return writer.write(out_path, shoff, shstrtab_foff);
   }
 };
@@ -74,7 +83,10 @@ static void usage(const char* prog) {
           "  [--dbg]                 use winapi_shim_dbg.so (logging enabled)\n"
           "  [--inject=<soname>]     add a second DT_NEEDED library\n"
           "  [--strip-pdata]         drop .pdata section\n"
-          "  [--no-shdr]             omit section headers\n",
+          "  [--no-shdr]             omit section headers\n"
+          "  [--pie]                 emit ET_DYN (PIE/ASLR) instead of ET_EXEC\n"
+          "  [--base=<addr>]         rebase to <addr> (patches relocs in-place;\n"
+          "                          errors if original base differs and no relocs)\n",
           prog);
 }
 
@@ -101,6 +113,15 @@ int main(int argc, char** argv) {
       conv.strip_pdata = true;
     } else if( !strcmp(argv[i], "--no-shdr") ) {
       conv.keep_shdr = false;
+    } else if( !strcmp(argv[i], "--pie") ) {
+      conv.pie = true;
+    } else if( !strncmp(argv[i], "--base=", 7) ) {
+      char* endp;
+      conv.rebase_to = strtoull(argv[i]+7, &endp, 0);
+      if( *endp ) {
+        fprintf(stderr, "Invalid base address: %s\n", argv[i]+7);
+        return 1;
+      }
     } else if( !in_path ) {
       in_path = argv[i];
     } else if( !out_path ) {
