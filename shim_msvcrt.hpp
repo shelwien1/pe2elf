@@ -130,11 +130,19 @@ static void crt_locks_init(void) {
 }
 extern "C" EXPORT void msvcrt__lock(int n) {
   pthread_once(&g_crt_locks_once, crt_locks_init);
-  if( n >= 0 && n < CRT_NLOCK ) pthread_mutex_lock(&g_crt_locks[n]);
+  if( n < 0 || n >= CRT_NLOCK ) {
+    log_always("[SHIM] msvcrt__lock: ID %d out of range [0,%d)\n", n, CRT_NLOCK);
+    return;
+  }
+  pthread_mutex_lock(&g_crt_locks[n]);
 }
 extern "C" EXPORT void msvcrt__unlock(int n) {
   pthread_once(&g_crt_locks_once, crt_locks_init);
-  if( n >= 0 && n < CRT_NLOCK ) pthread_mutex_unlock(&g_crt_locks[n]);
+  if( n < 0 || n >= CRT_NLOCK ) {
+    log_always("[SHIM] msvcrt__unlock: ID %d out of range [0,%d)\n", n, CRT_NLOCK);
+    return;
+  }
+  pthread_mutex_unlock(&g_crt_locks[n]);
 }
 
 // errno

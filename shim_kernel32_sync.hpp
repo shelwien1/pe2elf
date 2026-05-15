@@ -149,10 +149,18 @@ extern "C" EXPORT DWORD kernel32_WaitForSingleObject(HANDLE h, DWORD ms) {
   }
 
   // Release our reference; free the object if CloseHandle already ran.
+  // For H_MUTEX with WAIT_OBJECT_0 the mutex is held by this thread; unlock
+  // it before destroying so pthread_mutex_destroy does not see a locked mutex
+  // (POSIX UB).  The application has already closed the handle so it cannot
+  // call ReleaseMutex anyway.
   pthread_mutex_lock(&g_handles_mu);
   int new_rc = --(*(int*)ptr);
   pthread_mutex_unlock(&g_handles_mu);
-  if( new_rc == 0 ) sync_obj_destroy(kind, ptr);
+  if( new_rc == 0 ) {
+    if( kind == H_MUTEX && ret == WAIT_OBJECT_0 )
+      pthread_mutex_unlock(&((MutexObj*)ptr)->mu);
+    sync_obj_destroy(kind, ptr);
+  }
 
   return ret;
 }
