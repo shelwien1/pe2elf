@@ -119,6 +119,18 @@ WINAPI_SHIM_1.0 {
     kernel32_FormatMessageW;
     kernel32_GetFullPathNameW;
     kernel32_LocalFree;
+    kernel32_WaitForSingleObject;
+    kernel32_CreateMutexA;
+    kernel32_ReleaseMutex;
+    kernel32_CreateEventA;
+    kernel32_SetEvent;
+    kernel32_ResetEvent;
+    kernel32_CreateSemaphoreA;
+    kernel32_ReleaseSemaphore;
+    kernel32_CreateThread;
+    kernel32_ExitThread;
+    kernel32_GetExitCodeThread;
+    kernel32_SignalObjectAndWait;
     kernel32_GlobalAlloc;
     kernel32_GlobalFree;
     kernel32_GetFileAttributesA;

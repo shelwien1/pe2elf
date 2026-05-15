@@ -18,6 +18,7 @@
 #include <malloc.h>
 #endif
 #include <pthread.h>
+#include <semaphore.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -292,7 +293,8 @@ int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
 // ---------------------------------------------------------------------------
 // HANDLE table
 // ---------------------------------------------------------------------------
-enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE };
+enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE,
+                   H_MUTEX, H_EVENT, H_SEMAPHORE, H_THREAD };
 
 struct FindCtx {
   int  refcount;     // protected by g_handles_mu; freed when it reaches 0
@@ -301,12 +303,34 @@ struct FindCtx {
   char dirpath[PATH_MAX];
 };
 
+// Sync object structs (defined here so CloseHandle can destroy them)
+struct MutexObj {
+  pthread_mutex_t mu;
+};
+struct EventObj {
+  pthread_mutex_t mu;
+  pthread_cond_t  cv;
+  bool            signaled;
+  bool            manual_reset;
+};
+struct SemaphoreObj {
+  sem_t sem;
+};
+struct ThreadObj {
+  pthread_t       tid;
+  pthread_mutex_t mu;
+  pthread_cond_t  cv;
+  int64_t         exit_code;
+  bool            done;
+};
+
 struct HandleSlot {
   HandleKind kind;
   union {
-    int fd;
+    int      fd;
     FindCtx* find;
-    void* dlhandle;
+    void*    dlhandle;
+    void*    ptr;        // H_MUTEX / H_EVENT / H_SEMAPHORE / H_THREAD
   };
 };
 
@@ -1147,19 +1171,36 @@ extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
     return TRUE;   // don't close stdio; pseudo handles are always ok
   pthread_mutex_lock(&g_handles_mu);
   HandleKind k = g_handles[idx].kind;
-  int fd = (k==H_FILE) ? g_handles[idx].fd : -1;
-  FindCtx* fc = (k==H_FIND) ? g_handles[idx].find : NULL;
-  void* dlh = (k==H_MODULE) ? g_handles[idx].dlhandle : NULL;
+  int fd     = (k==H_FILE)   ? g_handles[idx].fd        : -1;
+  FindCtx* fc  = (k==H_FIND)   ? g_handles[idx].find      : NULL;
+  void* dlh  = (k==H_MODULE) ? g_handles[idx].dlhandle  : NULL;
+  void* ptr  = (k>=H_MUTEX)  ? g_handles[idx].ptr       : NULL;
   if( k!=H_FREE )
     g_handles[idx].kind = H_FREE;
   pthread_mutex_unlock(&g_handles_mu);
   if( k==H_FILE ) {
     close(fd);
   } else if( k==H_FIND ) {
-    if( fc ) release_find_ctx(fc);   // drops refcount; frees when it hits 0
+    if( fc ) release_find_ctx(fc);
   } else if( k==H_MODULE ) {
-    if( dlh )
-      dlclose(dlh);
+    if( dlh ) dlclose(dlh);
+  } else if( k==H_MUTEX ) {
+    MutexObj* m = (MutexObj*)ptr;
+    pthread_mutex_destroy(&m->mu); free(m);
+  } else if( k==H_EVENT ) {
+    EventObj* ev = (EventObj*)ptr;
+    pthread_mutex_destroy(&ev->mu); pthread_cond_destroy(&ev->cv); free(ev);
+  } else if( k==H_SEMAPHORE ) {
+    SemaphoreObj* s = (SemaphoreObj*)ptr;
+    sem_destroy(&s->sem); free(s);
+  } else if( k==H_THREAD ) {
+    ThreadObj* t = (ThreadObj*)ptr;
+    pthread_mutex_lock(&t->mu);
+    bool done = t->done;
+    pthread_mutex_unlock(&t->mu);
+    if( done ) pthread_join(t->tid, nullptr);
+    else        pthread_detach(t->tid);
+    pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t);
   } else {
     SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return FALSE;
@@ -2638,6 +2679,8 @@ extern "C" EXPORT void* kernel32_LocalFree(void* p) {
   free(p);
   return nullptr;
 }
+
+#include "shim_kernel32_sync.hpp"
 
 // ---------------------------------------------------------------------------
 // Global memory / heap
