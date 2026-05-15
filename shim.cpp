@@ -757,10 +757,21 @@ static void install_signal_handlers(void) {
 // Image base discovery (B13, R26)
 // ---------------------------------------------------------------------------
 static int find_main_exe_base(struct dl_phdr_info* info, size_t /*sz*/, void* data) {
-  // The first call to dl_iterate_phdr is the main executable (empty name).
+  // Skip any entry that has a name — the main executable has an empty name.
   if( info->dlpi_name&&info->dlpi_name[0] )
     return 0;
-  *(void**)data = (void*)(uintptr_t)info->dlpi_addr;
+  // dlpi_addr is the load *bias* (0 for non-PIE binaries that load at their
+  // preferred address).  Walk PT_LOAD segments to find the lowest mapped VA,
+  // which gives the true image base regardless of PIE/non-PIE.
+  uintptr_t lowest = (uintptr_t)-1;
+  for( int i = 0; i<info->dlpi_phnum; ++i ) {
+    if( info->dlpi_phdr[i].p_type==PT_LOAD ) {
+      uintptr_t va = (uintptr_t)info->dlpi_addr + info->dlpi_phdr[i].p_vaddr;
+      if( va<lowest ) lowest = va;
+    }
+  }
+  if( lowest!=(uintptr_t)-1 )
+    *(void**)data = (void*)lowest;
   return 1;
 }
 
