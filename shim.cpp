@@ -1411,7 +1411,7 @@ extern "C" EXPORT BOOL WriteConsoleW(HANDLE h, LPCVOID wbuf, DWORD nChars, DWORD
 
 extern "C" EXPORT HANDLE GetModuleHandleW(LPCWSTR name) {
   if( !name )
-    return g_image_base ? (HANDLE)g_image_base : MAIN_IMAGE_MODULE;
+    return (HANDLE)g_image_base;
   char narrow[PATH_MAX], posix[PATH_MAX];
   wchar_to_utf8(name, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
