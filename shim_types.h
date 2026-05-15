@@ -59,7 +59,7 @@ struct SECURITY_ATTRIBUTES { DWORD nLength; LPVOID lpSecurityDescriptor; BOOL bI
 // CRITICAL_SECTION — opaque 40-byte block (pthread_mutex_t overlaid in first 24 bytes)
 struct CRITICAL_SECTION { uint8_t opaque[40]; };
 
-// WIN32_FIND_DATAA (592 bytes, matches Windows layout)
+// WIN32_FIND_DATAA (320 bytes on Linux x86-64)
 struct WIN32_FIND_DATAA {
     DWORD    dwFileAttributes;
     FILETIME ftCreationTime;
@@ -71,6 +71,20 @@ struct WIN32_FIND_DATAA {
     DWORD    dwReserved1;
     char     cFileName[260];
     char     cAlternateFileName[14];
+};
+
+// WIN32_FIND_DATAW — same layout, wide filename
+struct WIN32_FIND_DATAW {
+    DWORD    dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD    nFileSizeHigh;
+    DWORD    nFileSizeLow;
+    DWORD    dwReserved0;
+    DWORD    dwReserved1;
+    uint16_t cFileName[260];
+    uint16_t cAlternateFileName[14];
 };
 
 // STARTUPINFOA
@@ -196,3 +210,25 @@ struct CPINFO { UINT MaxCharSize; BYTE DefaultChar[2]; BYTE LeadByte[12]; };
 
 // LoadLibrary flags
 #define LOAD_LIBRARY_AS_DATAFILE  2
+
+// String mapping / comparison flags
+#define LCMAP_LOWERCASE   0x00000100
+#define LCMAP_UPPERCASE   0x00000200
+#define NORM_IGNORECASE   0x00000001
+#define CSTR_LESS_THAN    1
+#define CSTR_EQUAL        2
+#define CSTR_GREATER_THAN 3
+
+// GetStringTypeW/A character category flags (CT_CTYPE1)
+#define CT_CTYPE1         1
+#define CT_CTYPE2         2
+#define CT_CTYPE3         4
+#define C1_UPPER          0x0001
+#define C1_LOWER          0x0002
+#define C1_DIGIT          0x0004
+#define C1_SPACE          0x0008
+#define C1_PUNCT          0x0010
+#define C1_CNTRL          0x0020
+#define C1_BLANK          0x0040
+#define C1_XDIGIT         0x0080
+#define C1_ALPHA          0x0100
