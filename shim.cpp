@@ -304,19 +304,25 @@ struct FindCtx {
 };
 
 // Sync object structs (defined here so CloseHandle can destroy them)
+// refcount is the first field in every sync struct so it can be accessed
+// generically via (int*)ptr. Protected by g_handles_mu.
 struct MutexObj {
+  int             refcount;
   pthread_mutex_t mu;
 };
 struct EventObj {
+  int             refcount;
   pthread_mutex_t mu;
   pthread_cond_t  cv;
   bool            signaled;
   bool            manual_reset;
 };
 struct SemaphoreObj {
+  int   refcount;
   sem_t sem;
 };
 struct ThreadObj {
+  int             refcount;
   pthread_t       tid;
   pthread_mutex_t mu;
   pthread_cond_t  cv;
@@ -634,43 +640,51 @@ static char* g_env_block = NULL;
 static uint16_t* g_env_block_w = NULL;
 static void* g_image_base = (void*)0x400000;  // default; overridden if needed
 
-static void rebuild_cmdline(void) {
-  // Read /proc/self/cmdline
+// Read /proc/self/cmdline into a heap buffer (caller must free).
+// Returns byte count (including embedded NULs); 0 and nullptr on error.
+static char* read_cmdline_raw(size_t* out_len) {
   int fd = open("/proc/self/cmdline", O_RDONLY);
-  if( fd<0 ) {
-    g_cmdline[0] = '\0';
-    return;
+  if( fd < 0 ) { *out_len = 0; return nullptr; }
+  size_t cap = 65536, used = 0;
+  char* buf = (char*)malloc(cap + 1);
+  if( !buf ) { close(fd); *out_len = 0; return nullptr; }
+  while( true ) {
+    ssize_t n = read(fd, buf + used, cap - used);
+    if( n <= 0 ) break;
+    used += (size_t)n;
+    if( used == cap ) {
+      cap *= 2;
+      char* tmp = (char*)realloc(buf, cap + 1);
+      if( !tmp ) { free(buf); close(fd); *out_len = 0; return nullptr; }
+      buf = tmp;
+    }
   }
-  char raw[32768];
-  int n = (int)read(fd, raw, sizeof(raw)-1);
   close(fd);
-  if( n<=0 ) {
-    g_cmdline[0] = '\0';
-    return;
-  }
-  raw[n] = '\0';
+  buf[used] = '\0';
+  *out_len = used;
+  return buf;
+}
+
+static void rebuild_cmdline(void) {
+  size_t raw_len;
+  char* raw = read_cmdline_raw(&raw_len);
+  if( !raw || raw_len == 0 ) { g_cmdline[0] = '\0'; free(raw); return; }
 
   // Convert NUL-separated argv to space-separated cmdline with quoting
   size_t out = 0;
-  const char* p = raw;
-  const char* end = raw+n;
+  const char* p = raw, *end = raw + raw_len;
   int first = 1;
-  while( p<end&&out+4<sizeof(g_cmdline) ) {
-    if( !first )
-      g_cmdline[out++] = ' ';
+  while( p<end && out+4<sizeof(g_cmdline) ) {
+    if( !first ) g_cmdline[out++] = ' ';
     first = 0;
     int needs_quote = (strchr(p, ' ')||strchr(p, '\t')||*p=='\0');
-    if( needs_quote )
-      g_cmdline[out++] = '"';
-    while( *p&&p<end&&out+2<sizeof(g_cmdline) )
-      g_cmdline[out++] = *p++;
-    if( needs_quote )
-      g_cmdline[out++] = '"';
-    p++; // skip NUL separator
+    if( needs_quote ) g_cmdline[out++] = '"';
+    while( *p && p<end && out+2<sizeof(g_cmdline) ) g_cmdline[out++] = *p++;
+    if( needs_quote ) g_cmdline[out++] = '"';
+    p++;
   }
   g_cmdline[out] = '\0';
-
-  // Build UTF-16LE version
+  free(raw);
   utf8_to_wchar(g_cmdline, (uint16_t*)g_cmdline_w, sizeof(g_cmdline_w)/2);
 }
 
@@ -720,23 +734,19 @@ static char** g_main_argv = nullptr;
 static uint8_t g_fake_iob[144];
 
 static void build_argv(void) {
-  int fd = open("/proc/self/cmdline", O_RDONLY);
-  if( fd<0 ) return;
-  char raw[32768];
-  int n = (int)read(fd, raw, sizeof(raw)-1);
-  close(fd);
-  if( n<=0 ) return;
-  raw[n] = '\0';
+  size_t n;
+  char* raw = read_cmdline_raw(&n);
+  if( !raw || n == 0 ) { free(raw); return; }
   int argc = 0;
-  for( int i = 0; i<n; i++ ) {
-    if( i==0||(raw[i-1]=='\0'&&raw[i]!='\0') ) argc++;
-  }
+  for( size_t i = 0; i < n; i++ )
+    if( i==0 || (raw[i-1]=='\0' && raw[i]!='\0') ) argc++;
   char** argv = (char**)malloc((size_t)(argc+1)*sizeof(char*));
-  if( !argv ) return;
+  if( !argv ) { free(raw); return; }
   int ai = 0;
   const char* p = raw, *end = raw+n;
-  while( p<end&&ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
+  while( p<end && ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
   argv[ai] = nullptr;
+  free(raw);
   g_main_argc = argc;
   g_main_argv = argv;
 }
@@ -1165,6 +1175,10 @@ extern "C" EXPORT HANDLE kernel32_CreateFileW(LPCWSTR name, DWORD access, DWORD 
   return hret;
 }
 
+// Defined in shim_kernel32_sync.hpp (included below); forward-declared here
+// so CloseHandle can use it.
+static void sync_obj_destroy(HandleKind kind, void* ptr);
+
 extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
   int idx = handle_to_idx(h);
   if( idx<0||idx<=2 )
@@ -1184,23 +1198,13 @@ extern "C" EXPORT BOOL kernel32_CloseHandle(HANDLE h) {
     if( fc ) release_find_ctx(fc);
   } else if( k==H_MODULE ) {
     if( dlh ) dlclose(dlh);
-  } else if( k==H_MUTEX ) {
-    MutexObj* m = (MutexObj*)ptr;
-    pthread_mutex_destroy(&m->mu); free(m);
-  } else if( k==H_EVENT ) {
-    EventObj* ev = (EventObj*)ptr;
-    pthread_mutex_destroy(&ev->mu); pthread_cond_destroy(&ev->cv); free(ev);
-  } else if( k==H_SEMAPHORE ) {
-    SemaphoreObj* s = (SemaphoreObj*)ptr;
-    sem_destroy(&s->sem); free(s);
-  } else if( k==H_THREAD ) {
-    ThreadObj* t = (ThreadObj*)ptr;
-    pthread_mutex_lock(&t->mu);
-    bool done = t->done;
-    pthread_mutex_unlock(&t->mu);
-    if( done ) pthread_join(t->tid, nullptr);
-    else        pthread_detach(t->tid);
-    pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t);
+  } else if( k>=H_MUTEX ) {
+    // Decrement refcount; only destroy when it reaches 0 (a concurrent
+    // WaitForSingleObject may still hold a reference to the object).
+    pthread_mutex_lock(&g_handles_mu);
+    int new_rc = --(*(int*)ptr);
+    pthread_mutex_unlock(&g_handles_mu);
+    if( new_rc == 0 ) sync_obj_destroy(k, ptr);
   } else {
     SET_LAST_ERROR(ERROR_INVALID_HANDLE);
     return FALSE;

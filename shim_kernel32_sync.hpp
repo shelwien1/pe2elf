@@ -31,6 +31,36 @@ static HANDLE handle_alloc_sync(HandleKind kind, void* ptr) {
 }
 
 // ---------------------------------------------------------------------------
+// Destroy + free a sync object (called only when refcount reaches 0)
+// ---------------------------------------------------------------------------
+static void sync_obj_destroy(HandleKind kind, void* ptr) {
+  switch( kind ) {
+  case H_MUTEX: {
+    MutexObj* m = (MutexObj*)ptr;
+    pthread_mutex_destroy(&m->mu); free(m); break;
+  }
+  case H_EVENT: {
+    EventObj* ev = (EventObj*)ptr;
+    pthread_mutex_destroy(&ev->mu); pthread_cond_destroy(&ev->cv); free(ev); break;
+  }
+  case H_SEMAPHORE: {
+    SemaphoreObj* s = (SemaphoreObj*)ptr;
+    sem_destroy(&s->sem); free(s); break;
+  }
+  case H_THREAD: {
+    ThreadObj* t = (ThreadObj*)ptr;
+    pthread_mutex_lock(&t->mu);
+    bool done = t->done;
+    pthread_mutex_unlock(&t->mu);
+    if( done ) pthread_join(t->tid, nullptr);
+    else        pthread_detach(t->tid);
+    pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t); break;
+  }
+  default: break;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Timeout: Windows ms → absolute CLOCK_REALTIME timespec
 // ---------------------------------------------------------------------------
 static void deadline_from_ms(DWORD ms, struct timespec* ts) {
@@ -42,24 +72,40 @@ static void deadline_from_ms(DWORD ms, struct timespec* ts) {
 
 // ---------------------------------------------------------------------------
 // WaitForSingleObject — dispatches on handle kind
+// Bumps the object's refcount before releasing g_handles_mu so a concurrent
+// CloseHandle cannot free the object while we are blocked inside the wait.
 // ---------------------------------------------------------------------------
 extern "C" EXPORT DWORD kernel32_WaitForSingleObject(HANDLE h, DWORD ms) {
+  // Read kind+ptr and bump refcount atomically under the handle lock.
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
-  if( idx < 0 ) { SET_LAST_ERROR(ERROR_INVALID_HANDLE); return WAIT_FAILED; }
+  if( idx < 0 ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return WAIT_FAILED;
+  }
   HandleKind kind = g_handles[idx].kind;
   void* ptr = g_handles[idx].ptr;
+  if( kind < H_MUTEX ) {   // H_FREE / H_FILE / H_FIND / H_MODULE — not waitable
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return WAIT_FAILED;
+  }
+  ++(*(int*)ptr);   // refcount; first field of every sync struct
+  pthread_mutex_unlock(&g_handles_mu);
+
   bool inf = (ms == INFINITE);
   struct timespec ts;
   if( !inf ) deadline_from_ms(ms, &ts);
 
+  DWORD ret = WAIT_FAILED;
   switch( kind ) {
   case H_MUTEX: {
     MutexObj* m = (MutexObj*)ptr;
     int r = inf ? pthread_mutex_lock(&m->mu)
                 : pthread_mutex_timedlock(&m->mu, &ts);
-    if( r == 0 ) return WAIT_OBJECT_0;
-    if( r == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); return WAIT_TIMEOUT; }
-    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return WAIT_FAILED;
+    if( r == 0 ) ret = WAIT_OBJECT_0;
+    else if( r == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); ret = WAIT_TIMEOUT; }
+    else { SET_LAST_ERROR(ERROR_INVALID_HANDLE); }
+    break;
   }
   case H_EVENT: {
     EventObj* ev = (EventObj*)ptr;
@@ -69,23 +115,22 @@ extern "C" EXPORT DWORD kernel32_WaitForSingleObject(HANDLE h, DWORD ms) {
       r = inf ? pthread_cond_wait(&ev->cv, &ev->mu)
               : pthread_cond_timedwait(&ev->cv, &ev->mu, &ts);
     }
-    DWORD ret;
     if( ev->signaled ) {
-      if( !ev->manual_reset ) ev->signaled = false;  // auto-reset: consume signal
+      if( !ev->manual_reset ) ev->signaled = false;
       ret = WAIT_OBJECT_0;
     } else {
-      ret = (r == ETIMEDOUT) ? WAIT_TIMEOUT : WAIT_FAILED;
-      if( r == ETIMEDOUT ) SET_LAST_ERROR(ERROR_SEM_TIMEOUT);
+      if( r == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); ret = WAIT_TIMEOUT; }
     }
     pthread_mutex_unlock(&ev->mu);
-    return ret;
+    break;
   }
   case H_SEMAPHORE: {
     SemaphoreObj* s = (SemaphoreObj*)ptr;
     int r = inf ? sem_wait(&s->sem) : sem_timedwait(&s->sem, &ts);
-    if( r == 0 ) return WAIT_OBJECT_0;
-    if( errno == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); return WAIT_TIMEOUT; }
-    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return WAIT_FAILED;
+    if( r == 0 ) ret = WAIT_OBJECT_0;
+    else if( errno == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); ret = WAIT_TIMEOUT; }
+    else { SET_LAST_ERROR(ERROR_INVALID_HANDLE); }
+    break;
   }
   case H_THREAD: {
     ThreadObj* t = (ThreadObj*)ptr;
@@ -95,16 +140,21 @@ extern "C" EXPORT DWORD kernel32_WaitForSingleObject(HANDLE h, DWORD ms) {
       r = inf ? pthread_cond_wait(&t->cv, &t->mu)
               : pthread_cond_timedwait(&t->cv, &t->mu, &ts);
     }
-    DWORD ret = t->done ? WAIT_OBJECT_0
-              : (r == ETIMEDOUT ? WAIT_TIMEOUT : WAIT_FAILED);
-    if( r == ETIMEDOUT ) SET_LAST_ERROR(ERROR_SEM_TIMEOUT);
+    if( t->done ) ret = WAIT_OBJECT_0;
+    else if( r == ETIMEDOUT ) { SET_LAST_ERROR(ERROR_SEM_TIMEOUT); ret = WAIT_TIMEOUT; }
     pthread_mutex_unlock(&t->mu);
-    return ret;
+    break;
   }
-  default:
-    SET_LAST_ERROR(ERROR_INVALID_HANDLE);
-    return WAIT_FAILED;
+  default: SET_LAST_ERROR(ERROR_INVALID_HANDLE); break;
   }
+
+  // Release our reference; free the object if CloseHandle already ran.
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --(*(int*)ptr);
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(kind, ptr);
+
+  return ret;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,9 +164,10 @@ extern "C" EXPORT HANDLE kernel32_CreateMutexA(void* sa, BOOL initial_owner, LPC
   (void)sa; (void)name;
   MutexObj* m = (MutexObj*)malloc(sizeof(MutexObj));
   if( !m ) return INVALID_HANDLE_VALUE;
+  m->refcount = 1;
   pthread_mutexattr_t attr;
   pthread_mutexattr_init(&attr);
-  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);  // Windows mutexes are recursive
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init(&m->mu, &attr);
   pthread_mutexattr_destroy(&attr);
   if( initial_owner ) pthread_mutex_lock(&m->mu);
@@ -149,6 +200,7 @@ extern "C" EXPORT HANDLE kernel32_CreateEventA(void* sa, BOOL manual_reset, BOOL
   (void)sa; (void)name;
   EventObj* ev = (EventObj*)calloc(1, sizeof(EventObj));
   if( !ev ) return INVALID_HANDLE_VALUE;
+  ev->refcount = 1;
   pthread_mutex_init(&ev->mu, nullptr);
   pthread_cond_init(&ev->cv, nullptr);
   ev->manual_reset = (manual_reset != 0);
@@ -188,6 +240,7 @@ extern "C" EXPORT HANDLE kernel32_CreateSemaphoreA(void* sa, LONG initial, LONG 
   (void)sa; (void)name;
   SemaphoreObj* s = (SemaphoreObj*)malloc(sizeof(SemaphoreObj));
   if( !s ) return INVALID_HANDLE_VALUE;
+  s->refcount = 1;
   if( sem_init(&s->sem, 0, (unsigned)initial) != 0 ) { free(s); return INVALID_HANDLE_VALUE; }
   HANDLE h = handle_alloc_sync(H_SEMAPHORE, s);
   if( h == INVALID_HANDLE_VALUE ) { sem_destroy(&s->sem); free(s); }
@@ -208,14 +261,10 @@ extern "C" EXPORT BOOL kernel32_ReleaseSemaphore(HANDLE h, LONG count, LONG* pre
 // ---------------------------------------------------------------------------
 // Thread
 // ---------------------------------------------------------------------------
-// Windows thread start routines use ms_abi on x86-64.
-// Declaring the fn ptr type __attribute__((ms_abi)) makes GCC generate the
-// correct register mapping (param in RCX, not RDI) when we call it.
 typedef uint32_t (__attribute__((ms_abi)) *win_thread_fn)(void*);
 
 struct ThreadStart { win_thread_fn fn; void* param; ThreadObj* obj; };
 
-// Per-thread TLS key so ExitThread can signal the ThreadObj
 static pthread_key_t  g_thread_obj_key;
 static pthread_once_t g_thread_key_once = PTHREAD_ONCE_INIT;
 static void thread_key_init(void) { pthread_key_create(&g_thread_obj_key, nullptr); }
@@ -244,11 +293,15 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
   (void)sa;
   ThreadObj* obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
   if( !obj ) return INVALID_HANDLE_VALUE;
+  obj->refcount = 1;
   pthread_mutex_init(&obj->mu, nullptr);
   pthread_cond_init(&obj->cv, nullptr);
 
   ThreadStart* ts = (ThreadStart*)malloc(sizeof(ThreadStart));
-  if( !ts ) { pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj); return INVALID_HANDLE_VALUE; }
+  if( !ts ) {
+    pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
+    return INVALID_HANDLE_VALUE;
+  }
   ts->fn = fn; ts->param = param; ts->obj = obj;
 
   HANDLE h = handle_alloc_sync(H_THREAD, obj);
@@ -258,8 +311,8 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
   }
   if( pthread_create(&obj->tid, nullptr, thread_trampoline, ts) != 0 ) {
     free(ts);
-    int idx = handle_to_idx(h);
-    if( idx >= 0 ) g_handles[idx].kind = H_FREE;
+    int idx2 = handle_to_idx(h);
+    if( idx2 >= 0 ) { pthread_mutex_lock(&g_handles_mu); g_handles[idx2].kind = H_FREE; pthread_mutex_unlock(&g_handles_mu); }
     pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
     SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return INVALID_HANDLE_VALUE;
@@ -288,7 +341,7 @@ extern "C" EXPORT BOOL kernel32_GetExitCodeThread(HANDLE h, DWORD* code) {
 }
 
 // ---------------------------------------------------------------------------
-// SignalObjectAndWait — signal one object then wait on another atomically
+// SignalObjectAndWait — signal one object then wait on another
 // ---------------------------------------------------------------------------
 static BOOL signal_handle(HANDLE h) {
   int idx = handle_to_idx(h);

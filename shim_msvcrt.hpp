@@ -115,10 +115,27 @@ extern "C" EXPORT void msvcrt___setusermatherr(void* /*fn*/) {}
 extern "C" EXPORT void msvcrt__amsg_exit(int /*n*/)          { _exit(255); }
 extern "C" EXPORT void msvcrt__cexit(void)                   {}
 
-// CRT locking
-static pthread_mutex_t g_crt_lock = PTHREAD_MUTEX_INITIALIZER;
-extern "C" EXPORT void msvcrt__lock(int /*n*/)   { pthread_mutex_lock(&g_crt_lock); }
-extern "C" EXPORT void msvcrt__unlock(int /*n*/) { pthread_mutex_unlock(&g_crt_lock); }
+// CRT locking — one recursive mutex per lock ID (Windows CRT has per-ID locks
+// and the same thread can acquire different IDs in a nested call chain).
+#define CRT_NLOCK 32
+static pthread_mutex_t g_crt_locks[CRT_NLOCK];
+static pthread_once_t  g_crt_locks_once = PTHREAD_ONCE_INIT;
+static void crt_locks_init(void) {
+  pthread_mutexattr_t attr;
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+  for( int i = 0; i < CRT_NLOCK; i++ )
+    pthread_mutex_init(&g_crt_locks[i], &attr);
+  pthread_mutexattr_destroy(&attr);
+}
+extern "C" EXPORT void msvcrt__lock(int n) {
+  pthread_once(&g_crt_locks_once, crt_locks_init);
+  if( n >= 0 && n < CRT_NLOCK ) pthread_mutex_lock(&g_crt_locks[n]);
+}
+extern "C" EXPORT void msvcrt__unlock(int n) {
+  pthread_once(&g_crt_locks_once, crt_locks_init);
+  if( n >= 0 && n < CRT_NLOCK ) pthread_mutex_unlock(&g_crt_locks[n]);
+}
 
 // errno
 extern "C" EXPORT int* msvcrt__errno(void) { return &errno; }
@@ -271,11 +288,13 @@ extern "C" EXPORT int64_t msvcrt__time64(int64_t* t) {
 }
 extern "C" EXPORT struct tm* msvcrt__gmtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  return gmtime(&tt);
+  static __thread struct tm buf;
+  return gmtime_r(&tt, &buf);
 }
 extern "C" EXPORT struct tm* msvcrt__localtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  return localtime(&tt);
+  static __thread struct tm buf;
+  return localtime_r(&tt, &buf);
 }
 extern "C" EXPORT int64_t msvcrt__mktime64(struct tm* tm_val) {
   return (int64_t)mktime(tm_val);
