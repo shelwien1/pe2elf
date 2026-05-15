@@ -1,5 +1,6 @@
 # Compiled binaries
 pe2elf
+test_find
 winapi_shim.so
 
 # Build artifacts and backups
