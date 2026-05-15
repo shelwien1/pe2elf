@@ -13,9 +13,10 @@ struct Writer {
   const Plan& plan;
   const Builder& build;
   bool keep_shdr;
+  bool pie;
 
-  Writer(const PeImage& img, const Plan& p, const Builder& b, bool ks)
-    : image(img), plan(p), build(b), keep_shdr(ks) {}
+  Writer(const PeImage& img, const Plan& p, const Builder& b, bool ks, bool pie_ = false)
+    : image(img), plan(p), build(b), keep_shdr(ks), pie(pie_) {}
 
   bool write(const char* out_path, uint64_t shoff, uint64_t shstrtab_foff) {
     Elf64_Ehdr ehdr{};
@@ -27,7 +28,7 @@ struct Writer {
     ehdr.e_ident[5] = 1; // ELFDATA2LSB
     ehdr.e_ident[6] = 1; // EV_CURRENT
     ehdr.e_ident[7] = 0; // ELFOSABI_NONE
-    ehdr.e_type = ET_EXEC;
+    ehdr.e_type = pie ? ET_DYN : ET_EXEC;
     ehdr.e_machine = EM_X86_64;
     ehdr.e_version = 1;
     ehdr.e_entry = plan.trampoline_va;

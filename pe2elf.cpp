@@ -20,6 +20,7 @@ struct Converter {
   std::string inject_name;
   bool keep_shdr = true;
   bool strip_pdata = false;
+  bool pie = false;
 
   bool convert(const char* in_path, const char* out_path) {
     if( !image.parse(in_path) )
@@ -62,7 +63,7 @@ struct Converter {
       shoff = align_up(shstrtab_foff+build.shstrtab_data.size(), 8);
     }
 
-    Writer writer(image, plan, build, keep_shdr);
+    Writer writer(image, plan, build, keep_shdr, pie);
     return writer.write(out_path, shoff, shstrtab_foff);
   }
 };
@@ -78,7 +79,8 @@ static void usage(const char* prog) {
           "  [--dbg]                 use winapi_shim_dbg.so (logging enabled)\n"
           "  [--inject=<soname>]     add a second DT_NEEDED library\n"
           "  [--strip-pdata]         drop .pdata section\n"
-          "  [--no-shdr]             omit section headers\n",
+          "  [--no-shdr]             omit section headers\n"
+          "  [--pie]                 emit ET_DYN (PIE/ASLR) instead of ET_EXEC\n",
           prog);
 }
 
@@ -105,6 +107,8 @@ int main(int argc, char** argv) {
       conv.strip_pdata = true;
     } else if( !strcmp(argv[i], "--no-shdr") ) {
       conv.keep_shdr = false;
+    } else if( !strcmp(argv[i], "--pie") ) {
+      conv.pie = true;
     } else if( !in_path ) {
       in_path = argv[i];
     } else if( !out_path ) {
