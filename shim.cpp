@@ -88,6 +88,11 @@ __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...
 static __thread uint32_t tls_last_error = 0;
 static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_teb()
 
+// pthread key whose destructor frees the per-thread tls_slots block on exit
+static pthread_key_t  g_tls_slots_key;
+static pthread_once_t g_tls_slots_key_once = PTHREAD_ONCE_INIT;
+static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, free); }
+
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
 #define SET_LAST_ERROR(e) do { \
   tls_last_error = (e); \
@@ -217,9 +222,12 @@ static void shim_init_teb(void) {
   *(uint32_t*)(fake_teb+0x40) = (uint32_t)getpid();
   *(uint32_t*)(fake_teb+0x48) = (uint32_t)syscall(SYS_gettid);
   // ThreadLocalStoragePointer at +0x58 — per-thread allocation so each
-  // thread gets its own slot array
+  // thread gets its own slot array; registered with a pthread key so it
+  // is freed automatically (via free()) when the thread exits
+  pthread_once(&g_tls_slots_key_once, tls_slots_key_init);
   void** tls_slots = (void**)calloc(64, sizeof(void*));
   *(void**)(fake_teb+0x58) = tls_slots;
+  pthread_setspecific(g_tls_slots_key, tls_slots);
 
   // LastErrorValue at +0x68 (B16/R29)
   *(uint32_t*)(fake_teb+0x68) = 0;
