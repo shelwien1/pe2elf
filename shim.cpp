@@ -1307,18 +1307,19 @@ extern "C" EXPORT void kernel32_GetSystemTimeAsFileTime(FILETIME* pft) {
 // Rules:
 //   no-write bits  → READONLY
 //   any exec bit   → SYSTEM  (closest Linux semantic: executable = "system-managed")
-//   name[0]=='.'   → HIDDEN  (Linux convention)
 //   S_ISDIR        → DIRECTORY
 //   S_ISREG        → ARCHIVE (default for regular files; means "needs backup")
 //   nothing above  → NORMAL
-static DWORD stat_to_win_attrs(const struct stat* st, const char* name) {
+// NOTE: we deliberately do NOT map dot-prefixed names to HIDDEN.  Linux dot-names
+// are a naming convention, not a stored attribute; Windows HIDDEN is explicit
+// metadata.  Setting HIDDEN on all dotfiles causes archivers and other tools to
+// silently skip .git, .gitignore, etc. — the wrong behaviour for a compat shim.
+static DWORD stat_to_win_attrs(const struct stat* st, const char* /*name*/) {
   DWORD attrs = 0;
   if( !(st->st_mode & (S_IWUSR|S_IWGRP|S_IWOTH)) )
     attrs |= FILE_ATTRIBUTE_READONLY;
   if( st->st_mode & (S_IXUSR|S_IXGRP|S_IXOTH) )
     attrs |= FILE_ATTRIBUTE_SYSTEM;
-  if( name && name[0]=='.' && !(name[1]=='.' && name[2]=='\0') && name[1]!='\0' )
-    attrs |= FILE_ATTRIBUTE_HIDDEN;
   if( S_ISDIR(st->st_mode) )
     attrs |= FILE_ATTRIBUTE_DIRECTORY;
   else if( S_ISREG(st->st_mode) )
