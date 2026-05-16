@@ -236,23 +236,44 @@ extern "C" EXPORT HANDLE kernel32_CreateEventA(void* sa, BOOL manual_reset, BOOL
 }
 
 extern "C" EXPORT BOOL kernel32_SetEvent(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
   if( idx < 0 || g_handles[idx].kind != H_EVENT ) {
+    pthread_mutex_unlock(&g_handles_mu);
     SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE;
   }
-  event_signal((EventObj*)g_handles[idx].ptr);
+  EventObj* ev = (EventObj*)g_handles[idx].ptr;
+  ++ev->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  event_signal(ev);
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --ev->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_EVENT, ev);
   return TRUE;
 }
 
 extern "C" EXPORT BOOL kernel32_ResetEvent(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
   if( idx < 0 || g_handles[idx].kind != H_EVENT ) {
+    pthread_mutex_unlock(&g_handles_mu);
     SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE;
   }
   EventObj* ev = (EventObj*)g_handles[idx].ptr;
+  ++ev->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
   pthread_mutex_lock(&ev->mu);
   ev->signaled = false;
   pthread_mutex_unlock(&ev->mu);
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --ev->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_EVENT, ev);
   return TRUE;
 }
 
@@ -271,13 +292,23 @@ extern "C" EXPORT HANDLE kernel32_CreateSemaphoreA(void* sa, LONG initial, LONG 
 }
 
 extern "C" EXPORT BOOL kernel32_ReleaseSemaphore(HANDLE h, LONG count, LONG* prev) {
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
   if( idx < 0 || g_handles[idx].kind != H_SEMAPHORE ) {
+    pthread_mutex_unlock(&g_handles_mu);
     SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE;
   }
   SemaphoreObj* s = (SemaphoreObj*)g_handles[idx].ptr;
+  ++s->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
   if( prev ) { int v = 0; sem_getvalue(&s->sem, &v); *prev = (LONG)v; }
   for( LONG i = 0; i < count; ++i ) sem_post(&s->sem);
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --s->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_SEMAPHORE, s);
   return TRUE;
 }
 
@@ -388,4 +419,45 @@ static BOOL signal_handle(HANDLE h) {
 extern "C" EXPORT DWORD kernel32_SignalObjectAndWait(HANDLE signal, HANDLE wait, DWORD ms, BOOL /*alertable*/) {
   signal_handle(signal);
   return kernel32_WaitForSingleObject(wait, ms);
+}
+
+// ---------------------------------------------------------------------------
+// undo_wait_acquire — roll back a WaitForSingleObject(h, 0) that returned
+// WAIT_OBJECT_0.  Used by the wait-all poll loop so no handle stays locked
+// while we sleep between retries.
+// ---------------------------------------------------------------------------
+static void undo_wait_acquire(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 ) { pthread_mutex_unlock(&g_handles_mu); return; }
+  HandleKind kind = g_handles[idx].kind;
+  void* ptr = g_handles[idx].ptr;
+  ++(*(int*)ptr);
+  pthread_mutex_unlock(&g_handles_mu);
+
+  switch( kind ) {
+  case H_MUTEX:
+    pthread_mutex_unlock(&((MutexObj*)ptr)->mu);
+    break;
+  case H_EVENT: {
+    EventObj* ev = (EventObj*)ptr;
+    if( !ev->manual_reset ) {
+      pthread_mutex_lock(&ev->mu);
+      ev->signaled = true;
+      pthread_cond_broadcast(&ev->cv);
+      pthread_mutex_unlock(&ev->mu);
+    }
+    break;
+  }
+  case H_SEMAPHORE:
+    sem_post(&((SemaphoreObj*)ptr)->sem);
+    break;
+  default:
+    break;
+  }
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --(*(int*)ptr);
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(kind, ptr);
 }

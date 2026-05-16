@@ -332,10 +332,11 @@ extern "C" EXPORT int msvcrt_printf(const char* fmt, ...) {
 extern "C" EXPORT int msvcrt_sprintf(char* buf, const char* fmt, ...) {
   __builtin_ms_va_list ap;
   __builtin_ms_va_start(ap, fmt);
-  char tmp[65536];
-  int n = ms_vformat(tmp, (int)sizeof(tmp), fmt, (char*)ap);
+  char* tmp = (char*)malloc(65536);
+  int n = tmp ? ms_vformat(tmp, 65536, fmt, (char*)ap) : 0;
   __builtin_ms_va_end(ap);
-  if( buf ) { memcpy(buf, tmp, (size_t)n); buf[n] = '\0'; }
+  if( buf && tmp ) { memcpy(buf, tmp, (size_t)n); buf[n] = '\0'; }
+  free(tmp);
   return n;
 }
 

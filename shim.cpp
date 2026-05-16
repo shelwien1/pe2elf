@@ -3255,13 +3255,26 @@ extern "C" EXPORT DWORD kernel32_WaitForMultipleObjects(
       nanosleep(&ts, nullptr);
     }
   } else {
-    // Wait for all: wait on each in sequence with remaining timeout.
-    for( DWORD i = 0; i < count; ++i ) {
+    // Wait for all: poll each handle with 0 timeout each round.  If one
+    // fails, roll back the handles acquired so far before sleeping so no
+    // handle (e.g. a mutex) stays locked while we wait for the rest.
+    while( true ) {
+      DWORD n_acq = 0;
+      DWORD fail  = WAIT_OBJECT_0;
+      for( DWORD i = 0; i < count; ++i ) {
+        DWORD r = kernel32_WaitForSingleObject(handles[i], 0);
+        if( r == WAIT_OBJECT_0 ) { ++n_acq; }
+        else { fail = (r == WAIT_FAILED) ? WAIT_FAILED : WAIT_TIMEOUT; break; }
+      }
+      if( fail == WAIT_OBJECT_0 ) return WAIT_OBJECT_0;
+      for( DWORD j = 0; j < n_acq; ++j ) undo_wait_acquire(handles[j]);
+      if( fail == WAIT_FAILED ) return WAIT_FAILED;
       DWORD left = time_left_ms();
-      DWORD r = kernel32_WaitForSingleObject(handles[i], left);
-      if( r != WAIT_OBJECT_0 ) return r;
+      if( left == 0 ) return WAIT_TIMEOUT;
+      DWORD slice = (left == INFINITE || left > 1) ? 1 : left;
+      struct timespec ts = { 0, (long)slice * 1000000L };
+      nanosleep(&ts, nullptr);
     }
-    return WAIT_OBJECT_0;
   }
 }
 
