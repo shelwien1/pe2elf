@@ -2026,6 +2026,12 @@ extern "C" EXPORT DWORD kernel32_TlsAlloc(void) {
 
 extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
   if( idx >= 64 ) return FALSE;
+  // Zero the calling thread's slot so a subsequent TlsAlloc on the same
+  // index doesn't expose stale data to the new owner.  Full per-thread
+  // zeroing (Windows guarantee) would require iterating all threads; this
+  // handles the most common single-threaded free path.
+  void** slots = tls_get_slots();
+  if( slots ) slots[idx] = NULL;
   pthread_mutex_lock(&g_tls_alloc_mu);
   g_tls_alloc_used &= ~(1ULL<<idx);
   pthread_mutex_unlock(&g_tls_alloc_mu);
@@ -2035,6 +2041,11 @@ extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
 extern "C" EXPORT LPVOID kernel32_TlsGetValue(DWORD idx) {
   SET_LAST_ERROR(0);
   if( idx >= 64 ) return NULL;
+  // Return NULL (with no error) for a freed index, matching Windows behaviour.
+  pthread_mutex_lock(&g_tls_alloc_mu);
+  bool allocated = (g_tls_alloc_used >> idx) & 1;
+  pthread_mutex_unlock(&g_tls_alloc_mu);
+  if( !allocated ) return NULL;
   void** slots = tls_get_slots();
   void* v = slots ? slots[idx] : NULL;
   if( v )
