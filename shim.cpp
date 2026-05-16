@@ -295,8 +295,11 @@ extern "C" __attribute__((visibility("default")))
 int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
                    void* (*fn)(void*), void* arg) {
   static real_pthread_create_t real_fn = NULL;
-  if( !real_fn )
-    real_fn = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  // Use acquire/release to avoid the data race on the first call.
+  if( !__atomic_load_n(&real_fn, __ATOMIC_ACQUIRE) ) {
+    real_pthread_create_t p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+    __atomic_store_n(&real_fn, p, __ATOMIC_RELEASE);
+  }
   if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
   ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
   if( !ta ) return ENOMEM;
@@ -1062,7 +1065,14 @@ extern "C" EXPORT DWORD kernel32_GetCurrentProcessId(void) {
 }
 
 extern "C" EXPORT DWORD kernel32_GetCurrentThreadId(void) {
+#ifdef __x86_64__
+  // Read cached TID from TEB+0x48 — shim_init_teb stores it there.
+  uint32_t tid;
+  __asm__ volatile ("movl %%gs:0x48, %0" : "=r"(tid));
+  return tid;
+#else
   return (DWORD)syscall(SYS_gettid);
+#endif
 }
 
 extern "C" EXPORT void kernel32_ExitProcess(DWORD code) {
