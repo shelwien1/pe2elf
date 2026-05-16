@@ -229,6 +229,8 @@ static void init_fake_peb(void) {
   fake_peb[2] = 0;
 }
 
+static void fls_register_thread(void);  // defined with the FLS section below
+
 void shim_init_teb(void) {
   // Idempotent: self-pointer at +0x30 is set on first call; skip on re-entry.
   if( *(void**)(fake_teb+0x30) == (void*)fake_teb ) return;
@@ -261,6 +263,9 @@ void shim_init_teb(void) {
   // for now, stash the pointer in x18 so future __asm__ helpers can load it.
   __asm__ volatile ("mov x18, %0" :: "r"(fake_teb) : "x18");
 #endif
+
+  // Arm the FLS per-thread destructor so callbacks fire at thread exit.
+  fls_register_thread();
 }
 
 // Called at the start of every new thread (including the main thread via
@@ -2707,14 +2712,46 @@ extern "C" EXPORT BOOL kernel32_DosDateTimeToFileTime(WORD fatdate, WORD fattime
 static __thread void* g_fls[FLS_MAX_SLOTS];
 static uint64_t g_fls_used = 0;           // bitset of allocated slots
 static pthread_mutex_t g_fls_mu = PTHREAD_MUTEX_INITIALIZER;
+// Per-slot destruction callbacks; NULL means no callback.
+static void* g_fls_callbacks[FLS_MAX_SLOTS] = {};
+
+typedef void (__attribute__((ms_abi)) *fls_callback_t)(void*);
+
+// pthread-key destructor: run FLS callbacks for non-NULL slots on thread exit.
+static void fls_thread_exit(void* /*unused*/) {
+  for( DWORD i = 0; i < FLS_MAX_SLOTS; ++i ) {
+    void* val = g_fls[i];
+    if( !val ) continue;
+    pthread_mutex_lock(&g_fls_mu);
+    bool live = (g_fls_used >> i) & 1;
+    void* cb  = live ? g_fls_callbacks[i] : NULL;
+    pthread_mutex_unlock(&g_fls_mu);
+    if( cb ) {
+      g_fls[i] = NULL;  // zero before callback to prevent re-entry
+      ((fls_callback_t)cb)(val);
+    }
+  }
+}
+
+static pthread_key_t  g_fls_exit_key;
+static pthread_once_t g_fls_exit_once = PTHREAD_ONCE_INIT;
+static void fls_exit_key_init(void) { pthread_key_create(&g_fls_exit_key, fls_thread_exit); }
+
+// Call once per thread to arm the FLS exit destructor.
+static void fls_register_thread(void) {
+  pthread_once(&g_fls_exit_once, fls_exit_key_init);
+  // Any non-NULL sentinel arms the destructor; the value itself is ignored.
+  if( !pthread_getspecific(g_fls_exit_key) )
+    pthread_setspecific(g_fls_exit_key, (void*)(uintptr_t)1);
+}
 
 extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
-  (void)callback;
   pthread_mutex_lock(&g_fls_mu);
   DWORD idx = 0xFFFFFFFF;
   for( DWORD i = 0; i<FLS_MAX_SLOTS; ++i ) {
     if( !(g_fls_used&(1ULL<<i)) ) {
       g_fls_used |= (1ULL<<i);
+      g_fls_callbacks[i] = callback;
       idx = i;
       break;
     }
@@ -2729,9 +2766,17 @@ extern "C" EXPORT BOOL kernel32_FlsFree(DWORD idx) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
+  // Invoke the callback for the current thread's value, then clear the slot.
+  void* val = g_fls[idx];
   pthread_mutex_lock(&g_fls_mu);
+  void* cb = g_fls_callbacks[idx];
   g_fls_used &= ~(1ULL<<idx);
+  g_fls_callbacks[idx] = NULL;
   pthread_mutex_unlock(&g_fls_mu);
+  if( val && cb ) {
+    g_fls[idx] = NULL;
+    ((fls_callback_t)cb)(val);
+  }
   return TRUE;
 }
 
