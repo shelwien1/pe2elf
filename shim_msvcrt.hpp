@@ -37,12 +37,18 @@ static int ms_vformat(char* outbuf, int bufsz, const char* fmt, char* ap) {
     while( *p && (*p=='-'||*p=='+'||*p==' '||*p=='#'||*p=='0') && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++;
     if( *p == '*' ) {
       int w = (int)MSVA_ARG_LL(ap);
-      fsi += snprintf(fs + fsi, sizeof(fs) - fsi, "%d", w); p++;
+      int n = snprintf(fs + fsi, sizeof(fs) - fsi, "%d", w);
+      if( n > 0 ) fsi += n;
+      if( fsi >= (int)sizeof(fs) ) fsi = (int)sizeof(fs) - 1;
+      p++;
     } else { while( *p >= '0' && *p <= '9' && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++; }
     if( *p == '.' && fsi<(int)sizeof(fs)-1 ) { fs[fsi++] = *p++;
       if( *p == '*' ) {
         int pr = (int)MSVA_ARG_LL(ap);
-        fsi += snprintf(fs + fsi, sizeof(fs) - fsi, "%d", pr); p++;
+        int n = snprintf(fs + fsi, sizeof(fs) - fsi, "%d", pr);
+        if( n > 0 ) fsi += n;
+        if( fsi >= (int)sizeof(fs) ) fsi = (int)sizeof(fs) - 1;
+        p++;
       } else { while( *p >= '0' && *p <= '9' && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++; }
     }
     int ll = 0;
@@ -54,6 +60,8 @@ static int ms_vformat(char* outbuf, int bufsz, const char* fmt, char* ap) {
     else if( p[0]=='I' && p[1]=='6' && p[2]=='4' ) { ll = 1; p += 3; }
     else if( p[0]=='I' && p[1]=='3' && p[2]=='2' ) { p += 3; }
     else if( p[0]=='I' ) { ll = 1; p++; }
+    // Leave room for up to 3 conversion chars + null terminator
+    if( fsi > (int)sizeof(fs) - 5 ) fsi = (int)sizeof(fs) - 5;
     char conv = *p++; char tmp[512]; tmp[0] = '\0';
     switch( conv ) {
     case 'd': case 'i': {
