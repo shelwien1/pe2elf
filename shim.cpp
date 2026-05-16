@@ -941,6 +941,7 @@ static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS sl
 static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
 static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
 static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
+static size_t     g_tls_align        = 16;       // required alignment for static-TLS block
 // g_tls_static_idx declared earlier (needed by tls_slots_dtor before this point)
 
 // Layout of the ShimTlsInfo struct embedded in pe2elf's startup trampoline.
@@ -965,7 +966,14 @@ void shim_register_tls(const ShimTlsInfo* info) {
   g_tls_zero_fill    = (size_t)info->zero_fill;
   g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
   g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
-  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
+  // Characteristics bits 20-23 encode alignment as 2^(N-1) bytes (N=1..15).
+  // calloc/malloc guarantee 16-byte alignment on glibc x86-64; only use
+  // posix_memalign when a larger alignment is requested.
+  {
+    uint32_t n = (uint32_t)(info->align_chars >> 20) & 0xF;
+    g_tls_align = (n >= 1) ? ((size_t)1 << (n - 1)) : 1;
+    if( g_tls_align < 16 ) g_tls_align = 16;
+  }
   log_always("[SHIM] shim_register_tls: template=0x%llx sz=%zu callbacks=0x%llx\n",
              (unsigned long long)g_tls_template_va, g_tls_template_sz,
              (unsigned long long)info->callbacks_va);
@@ -1014,7 +1022,13 @@ void tls_static_init_thread(void) {
   if( slots[g_tls_static_idx] ) return;  // already initialized
   size_t sz = g_tls_template_sz + g_tls_zero_fill;
   if( sz == 0 ) sz = 64;
-  void* buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
+  void* buf = nullptr;
+  if( g_tls_align > 16 ) {
+    if( posix_memalign(&buf, g_tls_align, sz) != 0 ) buf = nullptr;
+    if( buf ) memset(buf, 0, sz);
+  } else {
+    buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
+  }
   if( !buf ) return;
   if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
