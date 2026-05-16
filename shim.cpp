@@ -250,6 +250,23 @@ void shim_init_teb(void) {
   *(void**)(fake_teb+0x58) = tls_slots;
   pthread_setspecific(g_tls_slots_key, tls_slots);
 
+  // TEB+0x08 StackBase (top/high address) and TEB+0x10 StackLimit (low address).
+  // CRT stack-overflow probes and SEH unwind code read these; leaving them zero
+  // produces degenerate bounds.  Use pthread_getattr_np to get the real values.
+  {
+    pthread_attr_t attr;
+    if( pthread_getattr_np(pthread_self(), &attr) == 0 ) {
+      void* stack_addr = NULL;
+      size_t stack_size = 0;
+      pthread_attr_getstack(&attr, &stack_addr, &stack_size);
+      pthread_attr_destroy(&attr);
+      if( stack_addr && stack_size ) {
+        *(void**)(fake_teb+0x10) = stack_addr;                          // StackLimit (low)
+        *(void**)(fake_teb+0x08) = (uint8_t*)stack_addr + stack_size;  // StackBase  (high)
+      }
+    }
+  }
+
   // LastErrorValue at +0x68 (B16/R29)
   *(uint32_t*)(fake_teb+0x68) = 0;
 
