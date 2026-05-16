@@ -358,8 +358,13 @@ static void* thread_trampoline(void* arg) {
 }
 
 extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_thread_fn fn,
-                                                void* param, DWORD /*flags*/, DWORD* tid_out) {
+                                                void* param, DWORD flags, DWORD* tid_out) {
   (void)sa;
+#define CREATE_SUSPENDED 0x00000004
+  if( flags & CREATE_SUSPENDED ) {
+    fprintf(stderr, "[SHIM] FATAL: CreateThread called with CREATE_SUSPENDED — not implemented\n");
+    abort();
+  }
   ThreadObj* obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
   if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
   obj->refcount = 1;
