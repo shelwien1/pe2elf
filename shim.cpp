@@ -908,6 +908,8 @@ static void discover_image_base(void) {
 
 // ---------------------------------------------------------------------------
 // PE TLS directory — static TLS + callbacks
+static void tls_static_init_thread(void);
+void run_tls_callbacks(uint32_t reason);
 // ---------------------------------------------------------------------------
 static uint64_t*  g_tls_callbacks_va = nullptr;
 static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS slot index
@@ -916,23 +918,47 @@ static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
 static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
 static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
 
-// Called by pe2elf's startup thunk (or looked up via __pe_tls_info) to register
-// the PE binary's TLS directory so the shim can set up static TLS and callbacks
-// without scanning /proc/self/exe at runtime.
+// Layout of the ShimTlsInfo struct embedded in pe2elf's startup trampoline.
+// Must match the push64 sequence in elf_build.hpp build_trampoline().
+struct ShimTlsInfo {
+  uint64_t template_va;   // StartAddressOfRawData (0 if no TLS)
+  uint64_t template_sz;   // EndAddressOfRawData - Start
+  uint64_t zero_fill;     // SizeOfZeroFill
+  uint64_t align_chars;   // Characteristics
+  uint64_t index_va;      // AddressOfIndex (0 if none)
+  uint64_t callbacks_va;  // AddressOfCallBacks (0 if none)
+};
+
+// Called from pe2elf's startup thunk (lea rdi,[rip+struct]; call [rip+slot])
+// before PE_ENTRY. Registers TLS directory info, allocates the static TLS slot,
+// initialises main-thread TLS, and fires DLL_PROCESS_ATTACH callbacks.
 extern "C" __attribute__((visibility("default")))
-void shim_register_tls(const void* template_va, size_t template_sz, size_t zero_fill,
-                        uint32_t align_chars, uint32_t* index_va,
-                        const void* const* callbacks) {
-  g_tls_template_va  = (uintptr_t)template_va;
-  g_tls_template_sz  = template_sz;
-  g_tls_zero_fill    = zero_fill;
-  g_tls_index_addr   = index_va;
-  g_tls_callbacks_va = (uint64_t*)callbacks;
-  (void)align_chars; // TODO: use posix_memalign when Characteristics alignment > 16
-  log_always("[SHIM] shim_register_tls: template=%p sz=%zu zero_fill=%zu"
-             " index_va=%p callbacks=%p\n",
-             template_va, template_sz, zero_fill,
-             (void*)index_va, (void*)callbacks);
+void shim_register_tls(const ShimTlsInfo* info) {
+  if( !info ) return;
+  g_tls_template_va  = (uintptr_t)info->template_va;
+  g_tls_template_sz  = (size_t)info->template_sz;
+  g_tls_zero_fill    = (size_t)info->zero_fill;
+  g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
+  g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
+  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
+  log_always("[SHIM] shim_register_tls: template=0x%llx sz=%zu callbacks=0x%llx\n",
+             (unsigned long long)g_tls_template_va, g_tls_template_sz,
+             (unsigned long long)info->callbacks_va);
+  if( g_tls_index_addr ) {
+    pthread_mutex_lock(&g_tls_alloc_mu);
+    for( DWORD i = 0; i < 64; i++ ) {
+      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+        g_tls_alloc_used |= (1ULL<<i);
+        g_tls_static_idx = i;
+        break;
+      }
+    }
+    pthread_mutex_unlock(&g_tls_alloc_mu);
+    *g_tls_index_addr = g_tls_static_idx;
+    log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
+    tls_static_init_thread();
+  }
+  run_tls_callbacks(1);
 }
 
 static void discover_tls_callbacks(void) {
@@ -1071,51 +1097,13 @@ __attribute__((constructor)) static void shim_init(void) {
   handles_init();
   shim_init_teb();
   log_init();
-  // Try to read TLS info from the __pe_tls_info struct emitted by pe2elf.
-  // The struct contains 6 uint64_t fields matching shim_register_tls's params.
-  // Fall back to scanning /proc/self/exe only if the symbol isn't found.
-  struct PeTlsInfo { uint64_t template_va, template_sz, zero_fill,
-                               align_chars, index_va, callbacks_va; };
-  PeTlsInfo* tls_info = (PeTlsInfo*)dlsym(RTLD_DEFAULT, "__pe_tls_info");
-  if( tls_info && (tls_info->template_va || tls_info->callbacks_va) ) {
-    shim_register_tls(
-        (const void*)(uintptr_t)tls_info->template_va,
-        (size_t)tls_info->template_sz,
-        (size_t)tls_info->zero_fill,
-        (uint32_t)tls_info->align_chars,
-        tls_info->index_va ? (uint32_t*)(uintptr_t)tls_info->index_va : nullptr,
-        tls_info->callbacks_va ? (const void* const*)(uintptr_t)tls_info->callbacks_va
-                               : nullptr);
-  } else {
-    discover_tls_callbacks();
-  }
-  log_always("[SHIM] TLS callbacks VA: %p\n", (void*)g_tls_callbacks_va);
-  // Pre-allocate the static TLS index (before app's TlsAlloc runs) and
-  // write it to *AddressOfIndex so compiler-generated TLS access works.
-  if( g_tls_index_addr ) {
-    pthread_mutex_lock(&g_tls_alloc_mu);
-    for( DWORD i = 0; i < 64; i++ ) {
-      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
-        g_tls_alloc_used |= (1ULL<<i);
-        g_tls_static_idx = i;
-        break;
-      }
-    }
-    pthread_mutex_unlock(&g_tls_alloc_mu);
-    *g_tls_index_addr = g_tls_static_idx;
-    log_always("[SHIM] static TLS: slot=%u *AddressOfIndex=%p\n",
-               g_tls_static_idx, (void*)g_tls_index_addr);
-    tls_static_init_thread();  // main thread
-  }
   rebuild_cmdline();
   build_env_block();
   build_argv();
   init_fake_iob();
   install_signal_handlers();
-  // Call TLS callbacks with DLL_PROCESS_ATTACH exactly as the Windows loader
-  // would before handing control to the PE entry point.  The callbacks are all
-  // ms_abi (run_tls_callbacks casts them correctly) and idempotent/guarded.
-  run_tls_callbacks(1);
+  // TLS registration, slot allocation, and DLL_PROCESS_ATTACH callbacks are
+  // handled by shim_register_tls(), called from the pe2elf startup thunk.
 }
 
 #pragma GCC visibility pop
