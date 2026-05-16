@@ -385,6 +385,7 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
 
 extern "C" EXPORT void kernel32_ExitThread(DWORD code) {
   pthread_once(&g_thread_key_once, thread_key_init);
+  run_tls_callbacks(3);  // DLL_THREAD_DETACH
   thread_finish((ThreadObj*)pthread_getspecific(g_thread_obj_key), (int64_t)(uint32_t)code);
   pthread_exit(nullptr);
 }

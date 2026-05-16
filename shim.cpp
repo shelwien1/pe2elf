@@ -963,9 +963,13 @@ void shim_register_tls(const ShimTlsInfo* info) {
       }
     }
     pthread_mutex_unlock(&g_tls_alloc_mu);
-    *g_tls_index_addr = g_tls_static_idx;
-    log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
-    tls_static_init_thread();
+    if( g_tls_static_idx == 0xFFFFFFFFu ) {
+      fprintf(stderr, "[SHIM] shim_register_tls: no free TLS slot; static TLS disabled\n");
+    } else {
+      *g_tls_index_addr = g_tls_static_idx;
+      log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
+      tls_static_init_thread();
+    }
   }
   run_tls_callbacks(1);
 }
@@ -1006,6 +1010,10 @@ void tls_static_init_thread(void) {
 // ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
+__attribute__((destructor)) static void shim_fini(void) {
+  run_tls_callbacks(0);  // DLL_PROCESS_DETACH
+}
+
 __attribute__((constructor)) static void shim_init(void) {
   setlocale(LC_ALL, "");
   init_fake_peb();
@@ -1780,6 +1788,12 @@ extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD 
   return (DWORD)utf8_to_wchar(win, buf, size);
 }
 
+// LoadLibrary* / FreeLibrary: pe2elf resolves all PE imports at conversion time,
+// so these exist only to satisfy explicit runtime LoadLibrary calls.  The result
+// is a token for GetProcAddress lookups against the shim's own exports.  Real PE
+// DLL loading on Linux is out of scope; TLS state (g_tls_callbacks_va et al.) is
+// not extended for dynamically-loaded modules — the converter already flattened
+// the import graph.
 extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
   (void)file;
   char narrow[PATH_MAX], posix[PATH_MAX];
