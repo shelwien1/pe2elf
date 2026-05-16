@@ -80,6 +80,13 @@ static void deadline_from_ms(DWORD ms, struct timespec* ts) {
 // CloseHandle cannot free the object while we are blocked inside the wait.
 // ---------------------------------------------------------------------------
 extern "C" EXPORT DWORD kernel32_WaitForSingleObject(HANDLE h, DWORD ms) {
+  // Pseudo-handle -2 (GetCurrentThread): a thread cannot wait on itself.
+  // Return WAIT_TIMEOUT to avoid deadlock (matches Windows behaviour for ms=0;
+  // waiting indefinitely on oneself would deadlock on Windows too).
+  if( h == (HANDLE)(intptr_t)-2 ) {
+    (void)ms;
+    SET_LAST_ERROR(ERROR_SEM_TIMEOUT); return WAIT_TIMEOUT;
+  }
   // Read kind+ptr and bump refcount atomically under the handle lock.
   pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
@@ -391,15 +398,30 @@ extern "C" EXPORT void kernel32_ExitThread(DWORD code) {
 }
 
 extern "C" EXPORT BOOL kernel32_GetExitCodeThread(HANDLE h, DWORD* code) {
+  // Pseudo-handle -2 (GetCurrentThread): the thread is always running.
+  if( h == (HANDLE)(intptr_t)-2 ) {
+    if( code ) *code = STILL_ACTIVE;
+    return TRUE;
+  }
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
   if( idx < 0 || g_handles[idx].kind != H_THREAD ) {
+    pthread_mutex_unlock(&g_handles_mu);
     SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE;
   }
   ThreadObj* t = (ThreadObj*)g_handles[idx].ptr;
+  ++t->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
   pthread_mutex_lock(&t->mu);
   DWORD v = t->done ? (DWORD)(uint32_t)t->exit_code : (DWORD)STILL_ACTIVE;
   pthread_mutex_unlock(&t->mu);
   if( code ) *code = v;
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --t->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_THREAD, t);
   return TRUE;
 }
 
