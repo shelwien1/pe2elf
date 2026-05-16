@@ -16,3 +16,4 @@ backup
 2.exe
 archive
 archive.nz
+archive[0-9]*
