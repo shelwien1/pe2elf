@@ -95,7 +95,20 @@ static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_te
 // pthread key whose destructor frees the per-thread tls_slots block on exit
 static pthread_key_t  g_tls_slots_key;
 static pthread_once_t g_tls_slots_key_once = PTHREAD_ONCE_INIT;
-static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, free); }
+
+static DWORD g_tls_static_idx = 0xFFFFFFFFu; // pre-allocated static TLS slot; defined below
+
+static void tls_slots_dtor(void* p) {
+  void** slots = (void**)p;
+  if( !slots ) return;
+  // Free the static-TLS block that tls_static_init_thread() allocated for
+  // this thread; without this it leaks at every thread exit.
+  if( g_tls_static_idx != 0xFFFFFFFFu )
+    free(slots[g_tls_static_idx]);
+  free(slots);
+}
+
+static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, tls_slots_dtor); }
 
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
 #define SET_LAST_ERROR(e) do { \
@@ -925,7 +938,7 @@ static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS sl
 static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
 static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
 static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
-static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
+// g_tls_static_idx declared earlier (needed by tls_slots_dtor before this point)
 
 // Layout of the ShimTlsInfo struct embedded in pe2elf's startup trampoline.
 // Must match the push64 sequence in elf_build.hpp build_trampoline().
