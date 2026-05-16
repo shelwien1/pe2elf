@@ -100,6 +100,18 @@ static const uint32_t PE_SCN_MEM_WRITE   = 0x80000000;
 // Data directory indices
 static const uint32_t PE_DD_IMPORT    = 1;
 static const uint32_t PE_DD_BASERELOC = 5;
+static const uint32_t PE_DD_TLS       = 9;
+
+#pragma pack(push, 1)
+struct pe_tls64 {
+  uint64_t StartAddressOfRawData;
+  uint64_t EndAddressOfRawData;
+  uint64_t AddressOfIndex;
+  uint64_t AddressOfCallBacks;
+  uint32_t SizeOfZeroFill;
+  uint32_t Characteristics;
+};
+#pragma pack(pop)
 
 #pragma pack(push, 1)
 struct pe_base_reloc {

@@ -33,7 +33,7 @@ struct Plan {
   uint64_t pe_hdr_foff = 0;
 };
 
-static constexpr size_t   kTrampolineSize    = 16;
+static constexpr size_t   kTrampolineSize    = 64;
 static constexpr size_t   kPhdrsMaxCount     = 20;
 static constexpr uint64_t kSynthMargin       = 0x10000;
 static constexpr uint64_t kSynthFallbackVa   = 0x200000;

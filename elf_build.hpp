@@ -35,6 +35,15 @@ struct Builder {
   uint32_t dynstr_rpath_off  = 0;
   uint32_t dynstr_inject_off = 0;
 
+  // TLS directory fields (set from PeImage before build_synthetic_sections)
+  uint64_t tls_template_va  = 0;
+  uint64_t tls_template_sz  = 0;
+  uint64_t tls_zero_fill    = 0;
+  uint64_t tls_align_chars  = 0;
+  uint64_t tls_index_va     = 0;
+  uint64_t tls_callbacks_va = 0;
+  size_t   tls_info_sym_idx = 0; // index into dynsym_data for __pe_tls_info
+
   size_t dt_entry_count() const { return 12 + (inject_name.empty() ? 0 : 1); }
 
   Builder(PeImage& img, const Plan& p,
@@ -115,6 +124,31 @@ struct Builder {
       r.r_addend = re.addend;
       rela_data.push_back(r);
     }
+
+    // Add __pe_tls_info as a global defined SHN_ABS symbol so the shim can
+    // locate the TLS directory via dlsym(RTLD_DEFAULT, "__pe_tls_info").
+    // st_value (the VA of the struct) is filled in by finalize_tls_info()
+    // once the plan VA is known.
+    tls_info_sym_idx = dynsym_data.size();
+    {
+      uint32_t str_off = (uint32_t)dynstr_data.size();
+      const char* sym_name = "__pe_tls_info";
+      for( const char* p = sym_name; *p; ++p )
+        dynstr_data.push_back((uint8_t)*p);
+      dynstr_data.push_back(0);
+      Elf64_Sym sym{};
+      sym.st_name  = str_off;
+      sym.st_value = 0; // patched by finalize_tls_info()
+      sym.st_size  = 48; // 6 × uint64_t
+      sym.st_info  = (uint8_t)((STB_GLOBAL<<4)|STT_OBJECT);
+      sym.st_shndx = SHN_ABS;
+      dynsym_data.push_back(sym);
+    }
+  }
+
+  void finalize_tls_info(uint64_t tls_info_va) {
+    if( tls_info_sym_idx < dynsym_data.size() )
+      dynsym_data[tls_info_sym_idx].st_value = tls_info_va;
   }
 
   bool build_trampoline() {
@@ -134,7 +168,20 @@ struct Builder {
                        (uint8_t)(rel32>>8),
                        (uint8_t)(rel32>>16),
                        (uint8_t)(rel32>>24)};
-    while( trampoline_data.size()<kTrampolineSize )
+    // Pad to 16 bytes with NOPs, then emit 48-byte __pe_tls_info struct.
+    while( trampoline_data.size() < 16 )
+      trampoline_data.push_back(0x90);
+    auto push64 = [&](uint64_t v) {
+      for( int i = 0; i < 8; ++i )
+        trampoline_data.push_back((uint8_t)(v >> (i*8)));
+    };
+    push64(tls_template_va);   // StartAddressOfRawData
+    push64(tls_template_sz);   // EndAddressOfRawData - Start
+    push64(tls_zero_fill);     // SizeOfZeroFill
+    push64(tls_align_chars);   // Characteristics
+    push64(tls_index_va);      // AddressOfIndex
+    push64(tls_callbacks_va);  // AddressOfCallBacks
+    while( trampoline_data.size() < kTrampolineSize )
       trampoline_data.push_back(0x90);
     return true;
   }

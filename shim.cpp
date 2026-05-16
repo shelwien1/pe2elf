@@ -217,6 +217,8 @@ static void init_fake_peb(void) {
 }
 
 void shim_init_teb(void) {
+  // Idempotent: self-pointer at +0x30 is set on first call; skip on re-entry.
+  if( *(void**)(fake_teb+0x30) == (void*)fake_teb ) return;
   memset(fake_teb, 0, sizeof(fake_teb));
   // TEB self-pointer at +0x30
   *(void**)(fake_teb+0x30) = fake_teb;
@@ -911,7 +913,27 @@ static uint64_t*  g_tls_callbacks_va = nullptr;
 static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS slot index
 static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
 static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
+static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
 static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
+
+// Called by pe2elf's startup thunk (or looked up via __pe_tls_info) to register
+// the PE binary's TLS directory so the shim can set up static TLS and callbacks
+// without scanning /proc/self/exe at runtime.
+extern "C" __attribute__((visibility("default")))
+void shim_register_tls(const void* template_va, size_t template_sz, size_t zero_fill,
+                        uint32_t align_chars, uint32_t* index_va,
+                        const void* const* callbacks) {
+  g_tls_template_va  = (uintptr_t)template_va;
+  g_tls_template_sz  = template_sz;
+  g_tls_zero_fill    = zero_fill;
+  g_tls_index_addr   = index_va;
+  g_tls_callbacks_va = (uint64_t*)callbacks;
+  (void)align_chars; // TODO: use posix_memalign when Characteristics alignment > 16
+  log_always("[SHIM] shim_register_tls: template=%p sz=%zu zero_fill=%zu"
+             " index_va=%p callbacks=%p\n",
+             template_va, template_sz, zero_fill,
+             (void*)index_va, (void*)callbacks);
+}
 
 static void discover_tls_callbacks(void) {
   // Use SYS_pread64 directly to avoid any libc interception issues.
@@ -1028,8 +1050,9 @@ void tls_static_init_thread(void) {
   void** slots = tls_get_slots();
   if( !slots ) return;
   if( slots[g_tls_static_idx] ) return;  // already initialized
-  size_t sz = g_tls_template_sz ? g_tls_template_sz : 64;
-  void* buf = calloc(1, sz);
+  size_t sz = g_tls_template_sz + g_tls_zero_fill;
+  if( sz == 0 ) sz = 64;
+  void* buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
   if( !buf ) return;
   if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
@@ -1048,7 +1071,24 @@ __attribute__((constructor)) static void shim_init(void) {
   handles_init();
   shim_init_teb();
   log_init();
-  discover_tls_callbacks();
+  // Try to read TLS info from the __pe_tls_info struct emitted by pe2elf.
+  // The struct contains 6 uint64_t fields matching shim_register_tls's params.
+  // Fall back to scanning /proc/self/exe only if the symbol isn't found.
+  struct PeTlsInfo { uint64_t template_va, template_sz, zero_fill,
+                               align_chars, index_va, callbacks_va; };
+  PeTlsInfo* tls_info = (PeTlsInfo*)dlsym(RTLD_DEFAULT, "__pe_tls_info");
+  if( tls_info && (tls_info->template_va || tls_info->callbacks_va) ) {
+    shim_register_tls(
+        (const void*)(uintptr_t)tls_info->template_va,
+        (size_t)tls_info->template_sz,
+        (size_t)tls_info->zero_fill,
+        (uint32_t)tls_info->align_chars,
+        tls_info->index_va ? (uint32_t*)(uintptr_t)tls_info->index_va : nullptr,
+        tls_info->callbacks_va ? (const void* const*)(uintptr_t)tls_info->callbacks_va
+                               : nullptr);
+  } else {
+    discover_tls_callbacks();
+  }
   log_always("[SHIM] TLS callbacks VA: %p\n", (void*)g_tls_callbacks_va);
   // Pre-allocate the static TLS index (before app's TlsAlloc runs) and
   // write it to *AddressOfIndex so compiler-generated TLS access works.
@@ -3306,8 +3346,9 @@ extern "C" EXPORT DWORD kernel32_WaitForMultipleObjects(
       }
       DWORD left = time_left_ms();
       if( left == 0 ) return WAIT_TIMEOUT;
-      DWORD slice = left < 1 ? left : 1;
-      kernel32_WaitForSingleObject(handles[0], slice);  // sleep via first handle
+      DWORD slice = (left == INFINITE || left > 1) ? 1 : left;
+      struct timespec ts = { 0, (long)slice * 1000000L };
+      nanosleep(&ts, nullptr);
     }
   } else {
     // Wait for all: wait on each in sequence with remaining timeout.

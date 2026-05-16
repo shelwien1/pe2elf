@@ -77,6 +77,14 @@ struct PeImage {
   uint32_t ep_rva = 0;
   int rdata_sec_idx = -1; // index of section holding IAT (usually .rdata)
 
+  // TLS directory (IMAGE_TLS_DIRECTORY64), zeros if no TLS directory present
+  uint64_t tls_template_va  = 0; // StartAddressOfRawData
+  uint64_t tls_template_sz  = 0; // EndAddressOfRawData - Start
+  uint64_t tls_zero_fill    = 0; // SizeOfZeroFill
+  uint64_t tls_align_chars  = 0; // Characteristics
+  uint64_t tls_index_va     = 0; // AddressOfIndex
+  uint64_t tls_callbacks_va = 0; // AddressOfCallBacks
+
   bool parse(const char* path) {
     if( !buf.load(path) )
       return false;
@@ -319,6 +327,34 @@ struct PeImage {
       }
       cur_off += blk->SizeOfBlock;
     }
+    return true;
+  }
+
+  bool collect_tls() {
+    if( num_dd <= PE_DD_TLS ) return true;
+    auto* tls_dd = buf.at<pe_data_directory>(dd_off + PE_DD_TLS * sizeof(pe_data_directory));
+    if( !tls_dd || !tls_dd->RelativeVirtualAddress ) return true;
+    auto off_opt = secmap.rva_to_offset(tls_dd->RelativeVirtualAddress);
+    if( !off_opt ) {
+      fprintf(stderr, "Warning: TLS directory RVA does not map to any section; skipping\n");
+      return true;
+    }
+    auto* tls = buf.at<pe_tls64>(*off_opt);
+    if( !tls ) {
+      fprintf(stderr, "Warning: TLS directory extends past end of file; skipping\n");
+      return true;
+    }
+    tls_template_va  = tls->StartAddressOfRawData;
+    tls_template_sz  = (tls->EndAddressOfRawData > tls->StartAddressOfRawData)
+                       ? tls->EndAddressOfRawData - tls->StartAddressOfRawData : 0;
+    tls_zero_fill    = tls->SizeOfZeroFill;
+    tls_align_chars  = tls->Characteristics;
+    tls_index_va     = tls->AddressOfIndex;
+    tls_callbacks_va = tls->AddressOfCallBacks;
+    printf("TLS: template VA=0x%llx sz=%llu zero_fill=%u index_va=0x%llx callbacks_va=0x%llx\n",
+           (unsigned long long)tls_template_va, (unsigned long long)tls_template_sz,
+           (unsigned)tls_zero_fill,
+           (unsigned long long)tls_index_va, (unsigned long long)tls_callbacks_va);
     return true;
   }
 
