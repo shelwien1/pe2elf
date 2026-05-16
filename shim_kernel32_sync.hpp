@@ -361,7 +361,7 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
                                                 void* param, DWORD /*flags*/, DWORD* tid_out) {
   (void)sa;
   ThreadObj* obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
-  if( !obj ) return INVALID_HANDLE_VALUE;
+  if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
   obj->refcount = 1;
   pthread_mutex_init(&obj->mu, nullptr);
   pthread_cond_init(&obj->cv, nullptr);
@@ -369,14 +369,14 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
   ThreadStart* ts = (ThreadStart*)malloc(sizeof(ThreadStart));
   if( !ts ) {
     pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
-    return INVALID_HANDLE_VALUE;
+    SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL;
   }
   ts->fn = fn; ts->param = param; ts->obj = obj;
 
   HANDLE h = handle_alloc_sync(H_THREAD, obj);
   if( h == INVALID_HANDLE_VALUE ) {
     free(ts); pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
-    return INVALID_HANDLE_VALUE;
+    SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES); return NULL;
   }
   if( pthread_create(&obj->tid, nullptr, thread_trampoline, ts) != 0 ) {
     free(ts);
@@ -384,7 +384,7 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
     if( idx2 >= 0 ) { pthread_mutex_lock(&g_handles_mu); g_handles[idx2].kind = H_FREE; pthread_mutex_unlock(&g_handles_mu); }
     pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
     SET_LAST_ERROR(ERROR_OUTOFMEMORY);
-    return INVALID_HANDLE_VALUE;
+    return NULL;
   }
   if( tid_out ) *tid_out = (DWORD)(uintptr_t)obj->tid;
   return h;
