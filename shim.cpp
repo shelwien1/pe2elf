@@ -3179,17 +3179,22 @@ extern "C" EXPORT BOOL kernel32_DuplicateHandle(
   // Windows GetCurrentThread() returns the pseudo-handle -2. Translate it to
   // a real H_THREAD handle so pthreads-win32 implicit thread creation works.
   if( src == (HANDLE)(intptr_t)-2 ) {
+    pthread_once(&g_thread_key_once, thread_key_init);
     ThreadObj* obj = (ThreadObj*)pthread_getspecific(g_thread_obj_key);
     if( !obj ) {
       // Not a managed thread (main thread / external thread): create a minimal
       // wrapper. tid=0 tells sync_obj_destroy to skip join/detach.
+      // Cache it in g_thread_obj_key so repeated DuplicateHandle calls from
+      // the same thread share one ThreadObj rather than allocating a new one
+      // each time.
       obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
       if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return FALSE; }
       pthread_mutex_init(&obj->mu, nullptr);
       pthread_cond_init(&obj->cv, nullptr);
-      obj->refcount = 0; // bumped below under lock
+      obj->refcount = 1; // one ref held by g_thread_obj_key
       obj->done     = true;
       // obj->tid stays 0
+      pthread_setspecific(g_thread_obj_key, obj);
     }
     pthread_mutex_lock(&g_handles_mu);
     ++(obj->refcount);
