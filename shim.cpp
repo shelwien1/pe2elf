@@ -370,6 +370,8 @@ struct ThreadObj {
   pthread_cond_t  cv;
   int64_t         exit_code;
   bool            done;
+  sem_t           suspend_sem;   // posted by ResumeThread; waited by trampoline/signal-handler
+  int             suspend_count; // 1 when CREATE_SUSPENDED, bumped by SuspendThread
 };
 
 struct HandleSlot {
@@ -3219,8 +3221,52 @@ extern "C" EXPORT HANDLE kernel32_GetCurrentThread(void) {
   return (HANDLE)(intptr_t)-2;   // Windows pseudo-handle convention
 }
 
-extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE /*h*/) { return 0; }
-extern "C" EXPORT DWORD kernel32_ResumeThread (HANDLE /*h*/) { return 1; }
+extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 || g_handles[idx].kind != H_THREAD ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return (DWORD)-1;
+  }
+  ThreadObj* obj = (ThreadObj*)g_handles[idx].ptr;
+  ++obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  DWORD prev = (DWORD)__atomic_fetch_add(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
+  pthread_kill(obj->tid, SIGUSR1);
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_THREAD, obj);
+  return prev;
+}
+
+extern "C" EXPORT DWORD kernel32_ResumeThread(HANDLE h) {
+  if( h == (HANDLE)(intptr_t)-2 ) return 0;  // GetCurrentThread() pseudo-handle
+
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 || g_handles[idx].kind != H_THREAD ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return (DWORD)-1;
+  }
+  ThreadObj* obj = (ThreadObj*)g_handles[idx].ptr;
+  ++obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  DWORD prev = (DWORD)obj->suspend_count;
+  if( obj->suspend_count > 0 ) {
+    __atomic_fetch_sub(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
+    sem_post(&obj->suspend_sem);
+  }
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_THREAD, obj);
+  return prev;
+}
 
 extern "C" EXPORT int  kernel32_GetThreadPriority(HANDLE /*h*/)              { return 0; }  // THREAD_PRIORITY_NORMAL
 extern "C" EXPORT BOOL kernel32_SetThreadPriority(HANDLE /*h*/, int /*pri*/) { return TRUE; }

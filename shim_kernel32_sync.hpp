@@ -58,6 +58,7 @@ static void sync_obj_destroy(HandleKind kind, void* ptr) {
       if( done ) pthread_join(t->tid, nullptr);
       else        pthread_detach(t->tid);
     }
+    sem_destroy(&t->suspend_sem);
     pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t); break;
   }
   default: break;
@@ -343,6 +344,14 @@ extern void shim_init_teb(void);         // defined in shim.cpp
 extern void run_tls_callbacks(uint32_t); // defined in shim.cpp
 extern void tls_static_init_thread(void);// defined in shim.cpp
 
+// SIGUSR1 handler: called by SuspendThread; blocks in suspend_sem until ResumeThread.
+static void suspend_signal_handler(int /*sig*/) {
+  pthread_once(&g_thread_key_once, thread_key_init);
+  ThreadObj* obj = (ThreadObj*)pthread_getspecific(g_thread_obj_key);
+  if( !obj ) return;
+  sem_wait(&obj->suspend_sem);
+}
+
 static void* thread_trampoline(void* arg) {
   ThreadStart ts = *(ThreadStart*)arg;
   free(arg);
@@ -351,6 +360,18 @@ static void* thread_trampoline(void* arg) {
   tls_static_init_thread(); // populate static TLS block (like Windows loader)
   pthread_once(&g_thread_key_once, thread_key_init);
   pthread_setspecific(g_thread_obj_key, ts.obj);
+
+  // Install SIGUSR1 handler before any possible suspension wait.
+  struct sigaction sa = {};
+  sa.sa_handler = suspend_signal_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;   // no SA_RESTART: signal must be able to interrupt sem_wait
+  sigaction(SIGUSR1, &sa, nullptr);
+
+  // If created with CREATE_SUSPENDED, block here until the first ResumeThread.
+  if( ts.obj->suspend_count > 0 )
+    sem_wait(&ts.obj->suspend_sem);
+
   uint32_t ret = ts.fn(ts.param);
   run_tls_callbacks(3);  // DLL_THREAD_DETACH — mirrors what Windows loader does
   thread_finish(ts.obj, (int64_t)(uint32_t)ret);
@@ -370,6 +391,8 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
   obj->refcount = 1;
   pthread_mutex_init(&obj->mu, nullptr);
   pthread_cond_init(&obj->cv, nullptr);
+  sem_init(&obj->suspend_sem, 0, 0);
+  if( flags & 0x4 /* CREATE_SUSPENDED */ ) obj->suspend_count = 1;
 
   ThreadStart* ts = (ThreadStart*)malloc(sizeof(ThreadStart));
   if( !ts ) {
@@ -380,13 +403,15 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
 
   HANDLE h = handle_alloc_sync(H_THREAD, obj);
   if( h == INVALID_HANDLE_VALUE ) {
-    free(ts); pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
+    free(ts); sem_destroy(&obj->suspend_sem);
+    pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
     SET_LAST_ERROR(ERROR_TOO_MANY_OPEN_FILES); return NULL;
   }
   if( pthread_create(&obj->tid, nullptr, thread_trampoline, ts) != 0 ) {
     free(ts);
     int idx2 = handle_to_idx(h);
     if( idx2 >= 0 ) { pthread_mutex_lock(&g_handles_mu); g_handles[idx2].kind = H_FREE; pthread_mutex_unlock(&g_handles_mu); }
+    sem_destroy(&obj->suspend_sem);
     pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
     SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return NULL;
