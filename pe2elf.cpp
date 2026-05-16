@@ -39,10 +39,10 @@ struct Converter {
       return false;
     printf("Base relocs: %u DIR64 entries\n", (uint32_t)image.relocs.size());
 
-    if( !image.collect_tls() )
+    if( rebase_to && !image.rebase(rebase_to) )
       return false;
 
-    if( rebase_to && !image.rebase(rebase_to) )
+    if( !image.collect_tls() )
       return false;
 
     Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
