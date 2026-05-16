@@ -189,11 +189,22 @@ extern "C" EXPORT HANDLE kernel32_CreateMutexA(void* sa, BOOL initial_owner, LPC
 }
 
 extern "C" EXPORT BOOL kernel32_ReleaseMutex(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
   if( idx < 0 || g_handles[idx].kind != H_MUTEX ) {
+    pthread_mutex_unlock(&g_handles_mu);
     SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE;
   }
-  pthread_mutex_unlock(&((MutexObj*)g_handles[idx].ptr)->mu);
+  MutexObj* m = (MutexObj*)g_handles[idx].ptr;
+  ++m->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  pthread_mutex_unlock(&m->mu);
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --m->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_MUTEX, m);
   return TRUE;
 }
 

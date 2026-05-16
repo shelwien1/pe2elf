@@ -20,8 +20,8 @@ The shim implements only the `TEB+0x58` indirection and reuses the same
 
 ## Startup: `shim_init` constructor
 
-`shim.cpp:1044` (`__attribute__((constructor)) shim_init`) drives all TLS
-setup in this order:
+`shim.cpp` (`__attribute__((constructor)) shim_init`) drives general
+initialization in this order:
 
 1. `init_fake_peb()` — builds a global 4 KiB fake PEB with a self-referential
    empty `PEB_LDR_DATA`, minimal `RTL_USER_PROCESS_PARAMETERS`, and a
@@ -31,46 +31,72 @@ setup in this order:
    0/1/2 are pre-bound to stdin/stdout/stderr.
 4. `shim_init_teb()` — initializes the main thread's fake TEB and points
    `GS` at it (see next section).
-5. `discover_tls_callbacks()` — locates the PE TLS directory by reading
-   `/proc/self/exe` via raw `SYS_pread64` and scanning the `.tls` ELF
-   section.
-6. Pre-allocates the *static* TLS slot index, writes it to
-   `*AddressOfIndex`, and calls `tls_static_init_thread()` so the main
-   thread sees its initialized static TLS block.
-7. `run_tls_callbacks(1)` — invokes each PE TLS callback with
-   `DLL_PROCESS_ATTACH`.
+5. `log_init()`, `rebuild_cmdline()`, `build_env_block()`, `build_argv()`,
+   `init_fake_iob()`, `install_signal_handlers()`.
 
-### `discover_tls_callbacks` (`shim.cpp:916–1007`)
+TLS registration, static-slot allocation, and `DLL_PROCESS_ATTACH` callbacks
+are **not** performed here. They are handled by `shim_register_tls()`, which
+is called from the pe2elf-generated startup thunk before PE_ENTRY runs.
 
-The function:
+---
 
-- Reads the ELF header from `/proc/self/exe`, finds the section table,
-  locates a section named `.tls` (`shim.cpp:964`).
-- Scans the in-memory `.tls` section in 8-byte steps, treating every
-  40-byte window as a candidate `IMAGE_TLS_DIRECTORY64` and accepting the
-  first one whose fields look plausible:
+## Startup thunk and `shim_register_tls`
 
-  ```cpp
-  if( start >= tls_va && start <= tls_va + tls_sz &&
-      end >= start && cbs != 0 ) {
-    uint64_t* arr = (uint64_t*)cbs;
-    if( *arr != 0 ) { ... record and return ... }
-  }
-  ```
+The pe2elf converter emits a small startup thunk as the ELF entry point
+(`e_entry`). The thunk runs after the dynamic linker has finished (so
+`shim_init` has already run) and before the PE entry point:
 
-- Stores `g_tls_callbacks_va`, `g_tls_template_va`, `g_tls_template_sz`,
-  and `g_tls_index_addr`.
+```asm
+; trampoline layout (kTrampolineSize = 80 bytes)
++0:  lea rdi,[rip+0x19]      ; → ShimTlsInfo struct at +32
++7:  call [rip+0x0b]         ; → slot@+24 (filled by RELA R_X86_64_64 shim_register_tls)
++13: and rsp,-16             ; realign stack
++17: push rax                ; RSP%16 → 8: simulate PE entry via CALL
++18: jmp rel32               ; → PE_ENTRY
++24: [8-byte slot]            R_X86_64_64 → shim_register_tls (filled at load time)
++32: ShimTlsInfo             6×uint64: template_va, template_sz, zero_fill,
+                              align_chars, index_va, callbacks_va
+```
 
-### Static-TLS index pre-allocation (`shim.cpp:1055–1069`)
-
-Before any application code runs, the constructor walks the 64-bit
-`g_tls_alloc_used` bitset, claims the first free slot, stores its number
-in `g_tls_static_idx`, writes that DWORD to `*AddressOfIndex`, and calls
-`tls_static_init_thread()` to populate the main thread's static block:
+`shim_register_tls` (`shim.cpp`) receives one argument — a pointer to the
+embedded `ShimTlsInfo` struct — and performs all static TLS setup:
 
 ```cpp
-size_t sz = g_tls_template_sz ? g_tls_template_sz : 64;
-void* buf = calloc(1, sz);
+extern "C" void shim_register_tls(const ShimTlsInfo* info) {
+  if( !info ) return;
+  g_tls_template_va  = (uintptr_t)info->template_va;
+  g_tls_template_sz  = (size_t)info->template_sz;
+  g_tls_zero_fill    = (size_t)info->zero_fill;
+  g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
+  g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
+  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
+  if( g_tls_index_addr ) {
+    // claim first free slot from g_tls_alloc_used, write to *AddressOfIndex
+    pthread_mutex_lock(&g_tls_alloc_mu);
+    for( DWORD i = 0; i < 64; i++ ) {
+      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+        g_tls_alloc_used |= (1ULL<<i);
+        g_tls_static_idx = i;
+        break;
+      }
+    }
+    pthread_mutex_unlock(&g_tls_alloc_mu);
+    *g_tls_index_addr = g_tls_static_idx;
+    tls_static_init_thread();   // populate main thread's static block
+  }
+  run_tls_callbacks(1);         // DLL_PROCESS_ATTACH
+}
+```
+
+`tls_static_init_thread` (`shim.cpp`) allocates `template_sz + zero_fill`
+bytes via `calloc` (which zeros the zero-fill portion automatically), copies
+the template, and stores the pointer at `slots[g_tls_static_idx]`:
+
+```cpp
+size_t sz = g_tls_template_sz + g_tls_zero_fill;
+if( sz == 0 ) sz = 64;
+void* buf = calloc(1, sz); // calloc zeros; zero_fill requires no explicit memset
+if( !buf ) return;
 if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
 slots[g_tls_static_idx] = buf;
@@ -79,20 +105,24 @@ slots[g_tls_static_idx] = buf;
 This matches the indirected MSVC access pattern
 `gs:[0x58] → array → [idx]*8 → block`.
 
-Note: `slots` is itself per-thread (it's `gs:[0x58]` of *this* thread),
-so different threads write to different memory; this is not a shared
-location and there is no inter-thread race on `slots[g_tls_static_idx]`.
+The pe2elf converter reads the TLS directory fields **after** `rebase()` runs,
+so the VAs in `ShimTlsInfo` are always in the final address space.
 
 ---
 
 ## TEB emulation
 
 ```cpp
-static __thread uint8_t fake_teb[0x2000];     // shim.cpp:93 — 8 KiB per thread
-static uint8_t          fake_peb[0x1000];     // shim.cpp:146 — process-global
+static __thread uint8_t fake_teb[0x2000];     // shim.cpp — 8 KiB per thread
+static uint8_t          fake_peb[0x1000];     // shim.cpp — process-global
 ```
 
-`shim_init_teb()` (`shim.cpp:219–249`) populates per-thread fields:
+`shim_init_teb()` (`shim.cpp`) is idempotent: it checks the self-pointer
+at `+0x30` and returns immediately if already initialized, preventing
+double-init when both the `pthread_create` interceptor and
+`thread_trampoline` call it on the same thread.
+
+Populated per-thread fields:
 
 | Offset | Field | Source |
 |---|---|---|
@@ -109,22 +139,20 @@ The TEB is published to user code by
 and `gs:[0x58]` for TLS access all work.
 
 Each thread's slot array is registered with a `pthread_key_t` whose
-destructor is `free` (`shim.cpp:96–98`), so the *array* is reclaimed
-when the thread exits — *except* when the array gets overwritten
-mid-attach (see the double-attach bug below). The pointers *inside*
-the array (static-TLS buffer, any `TlsSetValue` values) are not touched
-by the destructor.
+destructor is `free` (`shim.cpp`), so the *array* is reclaimed
+when the thread exits — but the pointers *inside* the array (static-TLS
+buffer, any `TlsSetValue` values) are not touched by the destructor
+(see leak note below).
 
 ---
 
 ## `kernel32_CreateThread` and the two trampolines
 
-There are two completely separate thread trampolines in this shim, and
-this is where most of the trouble lives.
+There are two completely separate thread trampolines in this shim.
 
 ### Trampoline A: `thread_trampoline` (CreateThread's own)
 
-In `shim_kernel32_sync.hpp:297–309`:
+In `shim_kernel32_sync.hpp`:
 
 ```cpp
 static void* thread_trampoline(void* arg) {
@@ -147,7 +175,7 @@ case — TEB, callbacks, static block, then user fn, then detach
 callbacks. The exit-via-`ExitThread` case bypasses the post-fn steps
 (see below).
 
-`kernel32_CreateThread` (`shim_kernel32_sync.hpp:311–342`):
+`kernel32_CreateThread` (`shim_kernel32_sync.hpp`):
 
 1. `calloc`s a `ThreadObj` (refcount=1, mutex+cond initialized).
 2. Allocates a `ThreadStart` carrying `{fn, param, obj}`.
@@ -157,9 +185,9 @@ callbacks. The exit-via-`ExitThread` case bypasses the post-fn steps
 The pthread TID is stored on the `ThreadObj` so that
 `sync_obj_destroy` can join or detach it.
 
-### Trampoline B: the `pthread_create` override (`shim.cpp:280–293`)
+### Trampoline B: the `pthread_create` override (`shim.cpp`)
 
-The shim *also* overrides `pthread_create` itself with default visibility
+The shim also overrides `pthread_create` itself with default visibility
 so any direct pthread call from the PE binary funnels through:
 
 ```cpp
@@ -176,7 +204,7 @@ static void* shim_thread_trampoline(void* p) {
 This trampoline only sets up the fake TEB — it does **not** call TLS
 callbacks and does **not** populate the static TLS block.
 
-### The double-attach problem
+### The double-call path
 
 Because `kernel32_CreateThread` calls `pthread_create`, and the shim's
 own `pthread_create` is the visible symbol, every `CreateThread` thread
@@ -188,46 +216,23 @@ kernel32_CreateThread
       → real pthread_create with shim_thread_trampoline
           [new thread]
           → shim_thread_trampoline
-              → shim_init_teb()                # first init
+              → shim_init_teb()                # first call
               → thread_trampoline               # the original fn
-                  → shim_init_teb()             # second init
+                  → shim_init_teb()             # second call — no-op (idempotent)
                   → run_tls_callbacks(2)
                   → tls_static_init_thread()
                   → fn(...)
 ```
 
-`shim_init_teb` is called twice. Each call does:
-
-```cpp
-memset(fake_teb, 0, sizeof(fake_teb));
-…
-void** tls_slots = (void**)calloc(64, sizeof(void*));
-*(void**)(fake_teb+0x58) = tls_slots;
-pthread_setspecific(g_tls_slots_key, tls_slots);
-```
-
-Consequences:
-
-- **Memory leak per CreateThread thread.** The first `calloc(64, 8) = 512
-  bytes` is dropped on the floor; `pthread_setspecific` overwrites the
-  key value without running the previous value's destructor (POSIX
-  doesn't run the destructor on overwrite). The first slot block becomes
-  unreachable until process exit.
-- **GS is re-bound to the same `fake_teb` address** — harmless but
-  wasted syscall.
-- **Any state written between the two `shim_init_teb` calls would be
-  silently zeroed.** Currently nothing is written there, but anything
-  added later (e.g. an attempt to record thread arguments in the TEB)
-  would be destroyed by the second `memset`.
-
-This affects `_beginthreadex` too (`shim_msvcrt.hpp:535`), which just
-wraps `kernel32_CreateThread`.
+`shim_init_teb` is idempotent: it checks `*(void**)(fake_teb+0x30) ==
+fake_teb` and returns immediately on the second call, so no memory is
+leaked and the TEB is not re-zeroed. The double-call is otherwise
+harmless.
 
 ### Threads that bypass `kernel32_CreateThread`
 
-If the PE binary calls `pthread_create` directly (e.g. statically linked
-pthreads-win32 code paths, or a port that uses POSIX threads), only
-Trampoline B runs. Those threads get:
+If the PE binary calls `pthread_create` directly, only Trampoline B runs.
+Those threads get:
 
 - a fake TEB ✓
 - TLS slot array at `gs:[0x58]` ✓
@@ -235,16 +240,8 @@ Trampoline B runs. Those threads get:
 - **no** static TLS block ✗
 - **no** `DLL_THREAD_DETACH` callback ✗ (no post-fn hook in Trampoline B)
 
-This is also the path taken by anything that ends up routed to
-`pthread_create` rather than `CreateThread` — most relevantly, MSVC
-STL `std::thread` when compiled targeting a POSIX threading model, or
-any DLL whose own thread-creation glue calls `pthread_create` directly.
-
-The `tls_example.txt` mingw runtime is the kind of code that breaks
-here: its `_dyn_tls_dtor` / `_mingw_TLScallback` chain installs a
-per-thread key-destructor table on attach and runs it on detach. A
-thread that skips both attach and detach leaves its key state
-uninitialized and any registered key destructors un-run.
+This affects MSVC STL `std::thread` when compiled targeting a POSIX threading
+model, or any code that calls `pthread_create` directly.
 
 ### Threads with no trampoline at all
 
@@ -259,7 +256,7 @@ slots, etc. return garbage or fault. In practice rare; possible.
 
 ## `kernel32_Tls*` functions
 
-All four live in `shim.cpp:2031–2074`. They are backed by the same
+All four live in `shim.cpp`. They are backed by the same
 per-thread 64-slot array at `gs:[0x58]` and the same global bitset:
 
 ```cpp
@@ -274,7 +271,7 @@ static uint64_t        g_tls_alloc_used = 0;
 | `TlsGetValue(idx)` | `slots = gs:[0x58]; return slots[idx];` clears LastError to 0 first. |
 | `TlsSetValue(idx, v)` | `slots[idx] = v;` |
 
-`tls_get_slots()` (`shim.cpp:665`) is a single `mov %gs:0x58, %0`.
+`tls_get_slots()` (`shim.cpp`) is a single `mov %gs:0x58, %0`.
 
 ### Issues
 
@@ -284,43 +281,40 @@ static uint64_t        g_tls_alloc_used = 0;
    64 slots — common when multiple statically-linked DLLs each grab a
    handful — will see `TlsAlloc` returning `0xFFFFFFFF` and likely
    crash.
-2. **The static-TLS slot competes with `TlsAlloc`.** `shim_init`
+2. **The static-TLS slot competes with `TlsAlloc`.** `shim_register_tls`
    reserves `g_tls_static_idx` from the same bitset, so only 63
-   dynamic slots remain after startup. Good for safety; surprising for
-   capacity.
+   dynamic slots remain. Good for safety; surprising for capacity.
 3. **`TlsFree` does not zero the slot in any thread.** Windows
    guarantees the slot is reset to 0 in all threads when freed. The
    shim only clears the bitset. If the slot is later reissued by
    another `TlsAlloc`, the new owner can observe stale per-thread
-   values (anything any thread last `TlsSetValue`'d into that index).
+   values.
 4. **`TlsGetValue` does not validate against the bitset.** On Windows
    `TlsGetValue` on a freed index returns 0 with no error; the shim
-   returns whatever stale pointer was last written. In practice this
-   plus #3 means a freed-then-realloced slot leaks data across
-   subscribers.
-5. **No memory barrier or `std::atomic`** on the bitset; only the
-   mutex serializes. That is fine in practice but means `TlsAlloc` /
-   `TlsFree` racing with `TlsGetValue` / `TlsSetValue` on a different
-   slot rely on the mutex's release-acquire semantics, which is OK.
-6. **Inline-TLS ABI mismatch.** MSVC's `TlsGetValue`/`TlsSetValue` are
+   returns whatever stale pointer was last written. Combined with #3,
+   a freed-then-realloced slot leaks data across subscribers.
+5. **Inline-TLS ABI mismatch.** MSVC's `TlsGetValue`/`TlsSetValue` are
    sometimes inlined as direct `gs:[0x1480 + idx*8]` reads/writes
    (slots 0–63 live inside the TEB on Windows, *not* indirected through
    `+0x58`). The shim's fake TEB is `0x2000` bytes so those addresses
    land inside the array and don't fault — but they read/write
    uninitialized zero bytes in `fake_teb`, not the `kernel32_TlsSetValue`
    storage. A binary that mixes inlined and out-of-line access patterns
-   sees two different views of "the same" slot. The only reliable path
-   today is calling the kernel32 exports.
-7. **`g_tls_static_idx == 0xFFFFFFFF` is still written to
-   `*AddressOfIndex`** if the startup scan finds no free slot
-   (`shim.cpp:1065`). That degenerate case turns every static-TLS
-   access into `gs:[0x58][0xFFFFFFFF]` and is fatal. The bitset is
-   empty at startup so the for-loop will always find slot 0, but the
-   safety check is missing.
+   sees two different views of "the same" slot.
+6. **`Characteristics` (alignment) is ignored.** The `calloc` for the
+   static TLS block has malloc-grade alignment (16 on glibc x86_64).
+   PE TLS templates with alignment requirements > 16 (SSE arrays, etc.)
+   get under-aligned blocks. The `align_chars` field is received by
+   `shim_register_tls` but currently discarded with a `TODO`.
+7. **`g_tls_static_idx == 0xFFFFFFFF` is written to `*AddressOfIndex`**
+   if the startup scan finds no free slot. That degenerate case turns
+   every static-TLS access into `gs:[0x58][0xFFFFFFFF]` and is fatal.
+   The bitset is empty at startup so the for-loop will always find slot
+   0, but the safety check is missing.
 
 ### FLS (Fiber Local Storage) — same family, separate storage
 
-`kernel32_FlsAlloc`/`Free`/`Get`/`SetValue` (`shim.cpp:2705–2751`) are
+`kernel32_FlsAlloc`/`Free`/`Get`/`SetValue` (`shim.cpp`) are
 backed by `static __thread void* g_fls[64]` and a global
 `g_fls_used` bitset. Note this is a *different* per-thread array from
 the TLS slots — FLS uses glibc `__thread` (FS-based), TLS uses the fake
@@ -342,33 +336,15 @@ The shim refcounts sync objects (`refcount` is the first field of
 `MutexObj`/`EventObj`/`SemaphoreObj`/`ThreadObj` so it can be reached
 generically as `*(int*)ptr`).
 
-### `WaitForSingleObject` (`shim_kernel32_sync.hpp:82–170`)
+### `WaitForSingleObject` (`shim_kernel32_sync.hpp`)
 
-For thread waits:
+The lookup/refcount bump is atomic under `g_handles_mu`. The
+decrement+destroy at the bottom is also under `g_handles_mu`. The
+`H_MUTEX` exit path correctly unlocks the mutex before destroying when
+refcount reaches zero, avoiding POSIX UB on `pthread_mutex_destroy` of
+a locked mutex.
 
-```cpp
-case H_THREAD: {
-  ThreadObj* t = (ThreadObj*)ptr;
-  pthread_mutex_lock(&t->mu);
-  int r = 0;
-  while( !t->done && r == 0 ) {
-    r = inf ? pthread_cond_wait(&t->cv, &t->mu)
-            : pthread_cond_timedwait(&t->cv, &t->mu, &ts);
-  }
-  if( t->done ) ret = WAIT_OBJECT_0;
-  …
-}
-```
-
-The lookup/refcount bump is atomic under `g_handles_mu` (line 84–97).
-The decrement+destroy at the bottom (line 160–167) is also under
-`g_handles_mu`. The `H_MUTEX` exit path correctly unlocks the mutex
-before destroying when refcount reaches zero, avoiding POSIX UB on
-`pthread_mutex_destroy` of a locked mutex — but only for the case
-where Wait's own decrement was the one that hit zero (see issue 2
-below).
-
-### `kernel32_CloseHandle` (`shim.cpp:1380–1411`)
+### `kernel32_CloseHandle` (`shim.cpp`)
 
 For sync handles it reads `kind` and `ptr` under `g_handles_mu`,
 marks the slot `H_FREE`, then decrements the refcount under the same
@@ -377,7 +353,14 @@ mutex. Only when the refcount hits zero does it call
 `WaitForSingleObject` finish safely even if `CloseHandle` runs while a
 wait is in flight.
 
-### Thread-handle destruction (`shim_kernel32_sync.hpp:50–62`)
+### `kernel32_ReleaseMutex` (`shim_kernel32_sync.hpp`)
+
+Correctly bumps the refcount under `g_handles_mu` before releasing the
+lock, performs the unlock, then decrements the refcount and calls
+`sync_obj_destroy` if it reaches zero — matching the `WaitForSingleObject`
+pattern.
+
+### Thread-handle destruction (`shim_kernel32_sync.hpp`)
 
 ```cpp
 case H_THREAD: {
@@ -395,20 +378,19 @@ case H_THREAD: {
 ```
 
 `tid == 0` marks the synthetic `H_THREAD` that `DuplicateHandle` of
-`GetCurrentThread()` creates for unmanaged threads (`shim.cpp:3214`);
-join/detach is skipped there.
+`GetCurrentThread()` creates for unmanaged threads; join/detach is skipped
+there.
 
 ### Issues
 
-1. **TOCTOU in the non-wait sync APIs.** `ReleaseMutex` (line 191),
-   `SetEvent` (line 227), `ResetEvent` (line 236), `ReleaseSemaphore`
-   (line 262), `GetExitCodeThread` (`shim.cpp:3350`), and
-   `signal_handle` (line 366) all read `g_handles[idx].kind` and
-   `g_handles[idx].ptr` **without holding `g_handles_mu`**. A
-   concurrent `CloseHandle` from another thread can drop the refcount
-   to zero between the load and the dereference, freeing the object
-   through `sync_obj_destroy` and turning the dereference into a
-   use-after-free. None of these paths bump the refcount first.
+1. **TOCTOU in the remaining non-wait sync APIs.** `SetEvent`,
+   `ResetEvent`, `ReleaseSemaphore`, `GetExitCodeThread`, and
+   `signal_handle` all read `g_handles[idx].kind` and
+   `g_handles[idx].ptr` **without holding `g_handles_mu`** and without
+   bumping the refcount. A concurrent `CloseHandle` from another thread
+   can drop the refcount to zero between the load and the dereference,
+   freeing the object through `sync_obj_destroy` and turning the
+   dereference into a use-after-free.
 2. **`CloseHandle` on a held mutex destroys a locked mutex.** Scenario:
    thread A `WaitForSingleObject(mutex, INFINITE)` returns
    `WAIT_OBJECT_0` (mutex locked, refcount back to 1 after Wait's own
@@ -416,31 +398,24 @@ join/detach is skipped there.
    refcount to 0; `CloseHandle`'s destroy path calls
    `pthread_mutex_destroy` on a still-locked mutex (POSIX UB).
    Thread A's later `ReleaseMutex` finds the slot now `H_FREE` and
-   returns `FALSE` with `ERROR_INVALID_HANDLE`. Wait's own exit path
-   has an explicit `pthread_mutex_unlock` before destroy
-   (`shim_kernel32_sync.hpp:164–165`); `CloseHandle`'s destroy path
-   does not. The application is misusing the API, but the resulting
-   UB is in shim code, not application code.
+   returns `FALSE` with `ERROR_INVALID_HANDLE`. The application is
+   misusing the API, but the resulting UB is in shim code.
 3. **`GetCurrentThread()` pseudo-handle (`-2`).** `DuplicateHandle`
-   special-cases it (`shim.cpp:3210`). Most other thread APIs do not.
+   special-cases it. Most other thread APIs do not.
    `GetExitCodeThread(GetCurrentThread(), …)` returns `FALSE` with
    `ERROR_INVALID_HANDLE`, and `WaitForSingleObject(GetCurrentThread(),
    0)` returns `WAIT_FAILED`. Real Windows accepts the pseudo-handle in
    both.
-4. **`CreateThread` returns `INVALID_HANDLE_VALUE` (`-1`) on failure**
-   (`shim_kernel32_sync.hpp:315, 322, 329, 338`). Real Windows
-   returns `NULL`. Code that checks `if (h == NULL)` will think a
-   failed `CreateThread` succeeded.
+4. **`CreateThread` returns `INVALID_HANDLE_VALUE` (`-1`) on failure**.
+   Real Windows returns `NULL`. Code that checks `if (h == NULL)` will
+   think a failed `CreateThread` succeeded.
 5. **`CreateThread`'s `flags` (incl. `CREATE_SUSPENDED`) and `stack`
    size are ignored.** Threads always start immediately at default
-   stack. The matching `ResumeThread` (`shim.cpp:3155`) is a stub
-   returning 1, so binaries that suspend-and-resume during init silently
-   skip whatever was supposed to happen before resume.
-6. **Mutexes are recursive** (`shim_kernel32_sync.hpp:182`). Windows
-   mutex objects *are* recursive, so this is right, but the
-   `ReleaseMutex`-without-lock TOCTOU above is more dangerous on a
-   recursive mutex because a buggy double-release on a freed object is
-   even harder to diagnose.
+   stack. The matching `ResumeThread` is a stub returning 1, so binaries
+   that suspend-and-resume during init silently skip whatever was
+   supposed to happen before resume.
+6. **Mutexes are recursive** (`shim_kernel32_sync.hpp`). Windows
+   mutex objects *are* recursive, so this is right.
 
 ---
 
@@ -466,18 +441,17 @@ thread_finish(...);
 ```
 
 If `fn()` calls `ExitThread` (directly or via the CRT `_endthreadex`,
-which wraps `ExitThread`), the post-`fn` steps in `thread_trampoline`
-are never reached: `pthread_exit` unwinds through them. So
-`DLL_THREAD_DETACH` is silently skipped for any thread that exits via
-`ExitThread`. For mingw-runtime binaries this means
-`_mingwthr_run_key_dtors_part_0` never runs for those threads — TLS-key
-destructors don't fire, and any resources keyed off them leak.
+which wraps `ExitThread`), `run_tls_callbacks(3)` in `thread_trampoline`
+is never reached. Note that `thread_finish` itself **is** called inside
+`ExitThread` before `pthread_exit`, so `WaitForSingleObject` on the
+thread handle still returns `WAIT_OBJECT_0` correctly — only the
+`DLL_THREAD_DETACH` callbacks are silently skipped.
 
 ### Per-thread static TLS buffer leaks on thread exit
 
 `tls_static_init_thread` allocates a buffer with `calloc(1, sz)` and
 stores its pointer in `slots[g_tls_static_idx]`. At thread exit, the
-pthread-key destructor (`shim.cpp:98`) frees `slots` itself but does
+pthread-key destructor (`shim.cpp`) frees `slots` itself but does
 not iterate it. The static-TLS buffer (and any pointer ever written
 through `TlsSetValue` to a value the *shim itself* allocated) leaks at
 thread exit. For long-lived processes that create and join many
@@ -489,135 +463,11 @@ itself allocated. Untouched `TlsSetValue` values that came from the
 application stay the application's responsibility (Windows doesn't
 free them either).
 
-### Scanning `/proc/self/exe` is the wrong layer — pe2elf should pass the TLS directory explicitly
-
-The whole `discover_tls_callbacks` design is upside-down. The pe2elf
-converter has full, authoritative knowledge of the
-`IMAGE_TLS_DIRECTORY64` at conversion time — every field, exact byte
-offsets, the size of each callback array, the alignment requirement,
-SizeOfZeroFill, all of it. The shim then throws that knowledge away
-and tries to *rediscover* it at runtime by:
-
-- opening `/proc/self/exe` and re-parsing ELF section headers via raw
-  `SYS_pread64`,
-- looking for an ELF section literally named `.tls` (which depends on
-  the converter preserving that name through the ELF emit path),
-- and then **heuristically scanning** the section in 8-byte steps for
-  a 40-byte window whose fields look plausible:
-
-  ```cpp
-  for( uint64_t off = 0; off + 40 <= tls_sz; off += 8 ) {
-    ...
-    if( start >= tls_va && start <= tls_va + tls_sz &&
-        end >= start && cbs != 0 ) {
-      uint64_t* arr = (uint64_t*)cbs;
-      if( *arr != 0 ) { …record and return… }
-    }
-  }
-  ```
-
-That guess-the-struct loop is the root cause of the three issues
-below (no-callbacks → abort; SizeOfZeroFill ignored; Characteristics
-ignored): the scan only inspects the first 24 bytes of each candidate
-because going further would multiply the false-positive surface, and
-it requires a non-empty callback array because that's the only field
-distinctive enough to anchor the match.
-
-The right shape is for pe2elf to emit a small startup thunk that calls
-into the shim with the directory contents passed by value (or by
-pointer to a known-layout struct), e.g.
-
-```cpp
-// In shim.cpp — replaces discover_tls_callbacks entirely.
-extern "C" void shim_register_tls(
-    const void* template_va,   // StartAddressOfRawData
-    size_t      template_sz,   // End - Start
-    size_t      zero_fill,     // SizeOfZeroFill
-    uint32_t    align_chars,   // Characteristics (IMAGE_SCN_ALIGN_*)
-    uint32_t*   index_va,      // AddressOfIndex
-    const void* const* callbacks); // NULL-terminated, may be NULL or empty
-```
-
-The converter emits exactly one call to `shim_register_tls(...)` at
-the top of the generated `_start` thunk (or, equivalently, inside a
-`.init_array` entry that runs *before* the shim constructor — order
-controllable via `init_priority`). The shim constructor then has
-nothing to discover: it reads the globals the thunk wrote and proceeds
-to per-thread init and `run_tls_callbacks(1)`.
-
-Benefits, beyond just being honest about who knows what:
-
-- No `/proc/self/exe` open, no ELF parsing, no `SYS_pread64`, no
-  reliance on the `.tls` section name. Works under chroot, under
-  `LD_PRELOAD`-wrapped sandboxes, on stripped binaries, and on PIE
-  builds where the section's runtime address differs from `sh_addr`.
-- The "no callbacks" case is handled trivially: the thunk passes
-  `callbacks = nullptr` or a pointer to a single null entry, and the
-  shim records it correctly instead of bailing out (issue below).
-- `SizeOfZeroFill` and alignment are both passed in. The shim
-  allocates `posix_memalign(align, template_sz + zero_fill)` and the
-  static-TLS buffer is sized and aligned correctly first-try.
-- The scan's false-positive risk goes away — there's no scan.
-- Multi-binary scenarios (if ever needed) become a matter of calling
-  `shim_register_tls` more than once, instead of having to teach the
-  scanner about additional modules.
-
-The three subsections that follow are all symptoms of the
-scan-based design and would simply not exist with explicit
-registration.
-
-### `discover_tls_callbacks` aborts when there are no callbacks
-
-```cpp
-uint64_t* arr = (uint64_t*)cbs;
-if( *arr != 0 ) { …record… return; }
-```
-
-If the binary has a TLS directory with static data but `AddressOfCallBacks`
-pointing at a single null entry (no callbacks at all — perfectly legal),
-the scan keeps stepping forward looking for a "better" match. Since the
-test is also "is this 40-byte window a plausible directory", the loop
-will most likely fall off the end and the shim ends up with no static-TLS
-template, no `g_tls_index_addr`, and PE code that does
-`__declspec(thread) int x` will read whatever happens to be at offset
-0 inside an uninitialized slot.
-
-### `SizeOfZeroFill` is ignored
-
-The IMAGE_TLS_DIRECTORY layout has at offset +32 a `DWORD SizeOfZeroFill`
-specifying *additional* uninitialized bytes that should follow the
-copied template. The scan (`shim.cpp:982–985`) only reads fields up to
-offset +24 and `tls_static_init_thread` only allocates
-`end - start` bytes:
-
-```cpp
-size_t sz = g_tls_template_sz ? g_tls_template_sz : 64;
-```
-
-For binaries that declare `__declspec(thread)` BSS data, those zero-fill
-bytes live *past* the buffer and any write to them corrupts the
-following heap chunk.
-
-### `Characteristics` (alignment) is ignored
-
-The `calloc` for the static TLS block has malloc-grade alignment (16 on
-glibc x86_64). PE TLS templates with alignment requirements > 16
-(SSE arrays, etc.) get under-aligned blocks; loads can fault or run
-slowly depending on the instruction.
-
 ### `LoadLibrary` is a dummy — worth a comment saying so
 
-`discover_tls_callbacks` opens `/proc/self/exe` and only handles the
-main executable's TLS directory. `kernel32_LoadLibraryExW`
-(`shim.cpp:1839`) just does `dlopen(..., RTLD_LAZY|RTLD_GLOBAL)` and
-returns a handle slot:
-
-```cpp
-void* h = dlopen(posix, dlflags);
-if( h ) { HANDLE hret = handle_alloc_module(h); … return hret; }
-```
-
-This is by design — the converter resolves all PE imports at conversion
+`kernel32_LoadLibraryExW` (`shim.cpp`) just does
+`dlopen(..., RTLD_LAZY|RTLD_GLOBAL)` and returns a handle slot. This
+is by design — the converter resolves all PE imports at conversion
 time, so `LoadLibrary` exists only to satisfy explicit runtime lookups
 and the result is mostly used as a token for subsequent
 `GetProcAddress` calls into the shim's own exports. Loading a real PE
@@ -626,69 +476,46 @@ DLL on Linux is out of scope.
 The single-module assumption is baked into the global TLS state
 (`g_tls_callbacks_va`, `g_tls_index_addr`, `g_tls_static_idx`) — there
 is nowhere to record additional modules' TLS state. Implementing full
-TLS for `LoadLibrary`-loaded modules would mean (a) reading a PE
-file from disk, (b) scanning *its* TLS directory, (c) allocating a new
-per-module TLS index, and (d) running its callbacks on every existing
-thread — none of which is worth doing when the converter has already
-flattened the import graph.
+TLS for `LoadLibrary`-loaded modules is out of scope given that the
+converter has already flattened the import graph.
 
-What *is* worth doing is annotating the `LoadLibrary*` and
-`FreeLibrary` functions with a leading comment to that effect, so
-future readers don't reach for `discover_tls_callbacks` thinking the
-TLS machinery should generalize. Something like:
-
-```cpp
-// LoadLibraryExW is a dummy: PE DLLs cannot be loaded at runtime on
-// Linux. The converter resolves all PE imports statically; this
-// function exists so explicit runtime LoadLibrary("kernel32.dll")
-// style calls succeed and return a handle that GetProcAddress can
-// dispatch into the shim's own exports. We do NOT scan the loaded
-// module for a PE TLS directory, run TLS callbacks, or allocate
-// per-module TLS slots — none of that is reachable in practice.
-```
-
-The same note belongs on `kernel32_LoadLibraryA` (`shim.cpp:2588`),
-`kernel32_GetModuleHandle*`, and `kernel32_FreeLibrary`.
+What is worth doing is annotating the `LoadLibrary*` and
+`FreeLibrary` functions with a comment to that effect, so future
+readers don't reach for the TLS machinery thinking it should generalize.
 
 ### No `DLL_PROCESS_DETACH`
 
-`run_tls_callbacks(1)` is invoked from the constructor; there is no
+`run_tls_callbacks(1)` is invoked from `shim_register_tls`; there is no
 matching `__attribute__((destructor))` or `atexit(run_tls_callbacks_0)`.
-The `tls_example.txt` mingw runtime relies on
-`DLL_PROCESS_DETACH` to:
-- `_mingwthr_run_key_dtors_part_0()` (run pending TLS dtors)
-- free the per-process linked list at `qword_4373E0`
-- `DeleteCriticalSection(&CriticalSection)`
-
-None of that runs at process exit. The kernel reclaims the address
-space, so this is mostly cosmetic for the main process, but a parent
-that monitors child cleanup behaviour will see the difference.
+The mingw runtime relies on `DLL_PROCESS_DETACH` to run pending TLS
+destructors and clean up its critical section. None of that runs at
+process exit. The kernel reclaims the address space, so this is mostly
+cosmetic for the main process, but a parent monitoring child cleanup
+behaviour will see the difference.
 
 ### No fault isolation around TLS callbacks
 
-`run_tls_callbacks` (`shim.cpp:1011–1021`) calls each callback directly
+`run_tls_callbacks` (`shim.cpp`) calls each callback directly
 with no SEH wrapping, no `sigsetjmp`, no `try/catch`. The Windows
 loader installs an exception filter around TLS-callback invocation so
 a faulting callback doesn't kill process init. Here, a faulting
-callback escapes through `run_tls_callbacks` into the constructor,
-which has no handler either, and the process dies via the installed
-`crash_handler`. (The TLS callback ABI is `ms_abi`, so a C++ exception
-thrown out of one would also be undefined behaviour at the ABI
-boundary.)
+callback escapes through `run_tls_callbacks` into the thunk context
+and the process dies. (The TLS callback ABI is `ms_abi`, so a C++
+exception thrown out of one would also be undefined behaviour at the
+ABI boundary.)
 
 ### `fake_teb` is 0x2000 bytes; real TEB is bigger
 
 A real Win10 x64 TEB is around 0x1840 + the TEB-extension area, but
 common offsets accessed by ucrtbase and mingw runtimes include:
 
-- `TEB+0x1480` — `TlsSlots[64]` (inline TLS, see #6 in the Tls section)
+- `TEB+0x1480` — `TlsSlots[64]` (inline TLS, see #5 in the Tls section)
 - `TEB+0x1780` — `TlsExpansionSlots`
 - `TEB+0x17C8` — `GdiBatchCount` etc.
 
 `0x1780` and `0x17C8` fit inside `0x2000`, so accesses don't fault, but
 all of those fields are zero. Inline reads of expansion-slot TLS,
-GDI/Win32k state, or the activation context stack get NULL. The first
-two are the relevant ones for a binary doing TLS work.
+GDI/Win32k state, or the activation context stack get NULL.
 
 ### Stack-bounds fields are zero
 
@@ -699,26 +526,24 @@ fiber bookkeeping) will see degenerate bounds.
 ### Hard-coded `ImageBaseAddress = 0x400000`
 
 `init_fake_peb` always writes `0x400000` into `PEB+0x10`. If the ELF was
-linked at a different base, code that walks `GetModuleHandle(NULL) ==
-PEB.ImageBaseAddress` against the actual loaded base will mis-identify
-its own module. The `discover_image_base()` call exists for exactly
-this but its result isn't fed back into the PEB.
+linked at a different base (e.g. via `--base=`), code that walks
+`GetModuleHandle(NULL) == PEB.ImageBaseAddress` against the actual loaded
+base will mis-identify its own module. The `discover_image_base()` call
+exists for exactly this but its result isn't fed back into the PEB.
 
 ### Empty loader list
 
-`shim_init_teb` writes `fake_peb` into every thread's `TEB+0x60`
-(one PEB per process — correct). The fake `PEB_LDR_DATA` lists are
-empty self-referencing rings, so a thread walking the loader's module
-list to find DLLs (which mingw runtime startup occasionally does) sees
-no modules. The PE binary itself isn't in the list.
+The fake `PEB_LDR_DATA` lists are empty self-referencing rings, so a
+thread walking the loader's module list to find DLLs sees no modules.
+The PE binary itself isn't in the list.
 
-### The pthread_create override is a one-way trapdoor
+### The pthread_create override has a benign initialization race
 
 `pthread_create` resolves `dlsym(RTLD_NEXT, "pthread_create")` on first
-call and caches it in a non-atomic static (`shim.cpp:282–284`). Two
-threads racing the first call may both run `dlsym`. `dlsym` itself is
-thread-safe and idempotent here, and the write is a single pointer
-store, so the race is benign in practice — but it's a race.
+call and caches it in a non-atomic static. Two threads racing the first
+call may both run `dlsym`. `dlsym` itself is thread-safe and idempotent
+here, and the write is a single pointer store, so the race is benign in
+practice — but it's technically a data race.
 
 ### `fake_teb` may not be page-aligned
 
@@ -729,7 +554,7 @@ TEB. That pattern fails here.
 
 ### `kernel32_GetCurrentThreadId` calls `gettid()` every time
 
-`shim.cpp:1099` does `(DWORD)syscall(SYS_gettid)` per call. The fake TEB
+`shim.cpp` does `(DWORD)syscall(SYS_gettid)` per call. The fake TEB
 already caches the TID at `+0x48`. A hot loop calling
 `GetCurrentThreadId()` will syscall on every iteration when it could
 just read `gs:[0x48]`.
@@ -741,23 +566,20 @@ if( slots[g_tls_static_idx] ) return;
 ```
 
 If anything writes a non-NULL value into the static slot before
-`tls_static_init_thread` runs for that thread — e.g. a stray
-`TlsSetValue(g_tls_static_idx, …)` from PE code that found the index in
-`*AddressOfIndex` and decided to "TlsSetValue" through it — the static
+`tls_static_init_thread` runs for that thread, the static
 template never gets copied and reads of the variable hit whatever value
 was stored. `g_tls_alloc_used` has the bit set so `TlsAlloc` won't
 hand it out, but the PE code can still call `TlsSetValue` on a known
-index. Defensive programming would zero-check by allocating the buffer
-first and then CAS-installing.
+index.
 
 ### `DuplicateHandle` of `-2` from main thread leaks on subsequent calls
 
-`shim.cpp:3210–3242`: each `DuplicateHandle(GetCurrentThread())` from a
-thread that has no `g_thread_obj_key`-tracked `ThreadObj` allocates a
-fresh `ThreadObj` (`done=true`, `tid=0`). The new `ThreadObj` is
-*not* stored in `g_thread_obj_key`, so the next call from the same
-thread allocates another one. Each `DuplicateHandle` from the main
-thread is a fresh allocation, never deduped.
+Each `DuplicateHandle(GetCurrentThread())` from a thread that has no
+`g_thread_obj_key`-tracked `ThreadObj` allocates a fresh `ThreadObj`
+(`done=true`, `tid=0`). The new `ThreadObj` is *not* stored in
+`g_thread_obj_key`, so the next call from the same thread allocates
+another one. Each `DuplicateHandle` from the main thread is a fresh
+allocation, never deduped.
 
 ---
 
@@ -765,25 +587,22 @@ thread is a fresh allocation, never deduped.
 
 | Severity | Item |
 |---|---|
-| Architecture | TLS directory is rediscovered at runtime by scanning `/proc/self/exe` for the `.tls` section and heuristic-matching a 40-byte window — pe2elf already knows the directory at conversion time and should emit a startup thunk that calls `shim_register_tls(...)` with the exact fields. Fixes the three discovery-related symptoms below. |
 | Functional bug | 64-slot ceiling: PE binaries with >63 dynamic TLS slots fail. |
-| Functional bug | `SizeOfZeroFill` ignored — static-TLS BSS overflows the allocated buffer. |
 | Functional bug | No `DLL_PROCESS_DETACH` — mingw thread runtime never tears down. |
 | Functional bug | `ExitThread` (and therefore `_endthreadex`) bypasses `DLL_THREAD_DETACH`. |
 | Functional bug | Direct `pthread_create` threads skip `DLL_THREAD_ATTACH`/`DETACH` and static-TLS init. |
-| Functional bug | TLS-discovery aborts when callback array is empty (binary has only static TLS). |
-| Documentation | `LoadLibrary*` is a dummy by design (PE DLLs aren't loaded at runtime on Linux) — should carry a comment saying so, so its lack of TLS handling isn't misread as an oversight. |
 | Functional bug | `FlsAlloc` callback parameter is silently discarded. |
 | Functional bug | `TlsFree` doesn't zero slots; `TlsGetValue` doesn't validate bitset → stale data across reuse. |
+| Functional bug | `Characteristics` (alignment) ignored in static-TLS block allocation — SSE-aligned TLS templates get malloc-grade alignment. |
+| Documentation | `LoadLibrary*` is a dummy by design — should carry a comment so its lack of TLS handling isn't misread as an oversight. |
 | ABI bug | Inline `gs:[0x1480+idx*8]` slot reads/writes don't see `kernel32_Tls*` storage and vice versa. |
 | ABI bug | `CreateThread` returns `INVALID_HANDLE_VALUE` (`-1`) on failure instead of `NULL`. |
 | ABI bug | `GetCurrentThread()` pseudo-handle (`-2`) only honored by `DuplicateHandle`. |
 | ABI bug | `TEB+0x08`/`+0x10` (StackBase/StackLimit) are zero; PEB has empty loader list and hard-coded ImageBase. |
-| Race / UAF | `ReleaseMutex`, `SetEvent`, `ResetEvent`, `ReleaseSemaphore`, `GetExitCodeThread` read handle state without `g_handles_mu` and skip refcount bump. |
+| Race / UAF | `SetEvent`, `ResetEvent`, `ReleaseSemaphore`, `GetExitCodeThread` read handle state without `g_handles_mu` and skip refcount bump. |
 | Race / UAF | `CloseHandle` on a held mutex calls `pthread_mutex_destroy` on a locked mutex (POSIX UB); Wait's own exit path guards this, `CloseHandle`'s does not. |
-| Leak | Every `CreateThread` leaks a 512-byte slot block via double `shim_init_teb`. |
 | Leak | Per-thread static TLS buffer is never freed at thread exit (pthread-key dtor frees the slots *array* but not its contents). |
 | Leak | Every `DuplicateHandle(GetCurrentThread())` from an unmanaged thread allocates a new untracked `ThreadObj`. |
-| Robustness | TLS callbacks run with no SEH/`try` isolation — a faulting callback aborts process init. |
-| Stub | `CREATE_SUSPENDED`, `SuspendThread`, `ResumeThread`, `GetThreadContext`, `SetThreadContext`, `SetThreadPriority` are all no-ops. |
+| Robustness | TLS callbacks run with no SEH/`try` isolation — a faulting callback aborts the process. |
+| Stub (DELAY) | `CREATE_SUSPENDED` flag is silently ignored (`/*flags*/` in `kernel32_CreateThread`). `SuspendThread`/`ResumeThread`/`GetThreadContext`/`SetThreadContext`/`SetThreadPriority` are stubs. Binaries that rely on `CREATE_SUSPENDED` to guard parameter initialisation before the thread reads them have a race window. `rz.elf` happens to work despite this race; marked delayed until a binary that requires correct suspend behaviour is tested. |
 | Cosmetic | `GetCurrentThreadId` syscalls every call instead of reading `gs:[0x48]`. |

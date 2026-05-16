@@ -624,16 +624,18 @@ struct MmapEntry { void* base; size_t size; };
 static MmapEntry g_mmap_table[MMAP_TRACK_MAX];
 static pthread_mutex_t g_mmap_mu = PTHREAD_MUTEX_INITIALIZER;
 
-static void mmap_track_add(void* base, size_t size) {
+static bool mmap_track_add(void* base, size_t size) {
   pthread_mutex_lock(&g_mmap_mu);
   for( int i = 0; i<MMAP_TRACK_MAX; ++i ) {
     if( !g_mmap_table[i].base ) {
       g_mmap_table[i].base = base;
       g_mmap_table[i].size = size;
-      break;
+      pthread_mutex_unlock(&g_mmap_mu);
+      return true;
     }
   }
   pthread_mutex_unlock(&g_mmap_mu);
+  return false;
 }
 
 static size_t mmap_track_remove(void* base) {
@@ -778,7 +780,14 @@ static void build_argv(void) {
   if( !argv ) { free(raw); return; }
   int ai = 0;
   const char* p = raw, *end = raw+n;
-  while( p<end && ai<argc ) { argv[ai++] = strdup(p); p += strlen(p)+1; }
+  while( p<end && ai<argc ) {
+    argv[ai] = strdup(p);
+    if( !argv[ai] ) {
+      for( int j = 0; j < ai; ++j ) free(argv[j]);
+      free(argv); free(raw); return;
+    }
+    ++ai; p += strlen(p)+1;
+  }
   argv[ai] = nullptr;
   free(raw);
   g_main_argc = argc;
@@ -1149,7 +1158,7 @@ extern "C" EXPORT LPVOID kernel32_VirtualAlloc(LPVOID addr, size_t size, DWORD t
       p = mmap(addr, size, prot, flags, -1, 0);
       if( p!=addr ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
     }
-    mmap_track_add(p, size);
+    if( !mmap_track_add(p, size) ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
     return p;
 #else
     flags |= MAP_FIXED;
@@ -1160,7 +1169,7 @@ extern "C" EXPORT LPVOID kernel32_VirtualAlloc(LPVOID addr, size_t size, DWORD t
     SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return NULL;
   }
-  mmap_track_add(p, size);
+  if( !mmap_track_add(p, size) ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
   return p;
 }
 
