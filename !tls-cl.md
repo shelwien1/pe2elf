@@ -63,14 +63,24 @@ embedded `ShimTlsInfo` struct — and performs all static TLS setup:
 
 ```cpp
 extern "C" void shim_register_tls(const ShimTlsInfo* info) {
-  g_tls_template_va  = info->template_va;
-  g_tls_template_sz  = info->template_sz;
-  g_tls_zero_fill    = info->zero_fill;
-  g_tls_index_addr   = info->index_va  ? (uint32_t*)info->index_va  : nullptr;
-  g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)info->callbacks_va : nullptr;
-  (void)info->align_chars; // TODO: posix_memalign when alignment > 16
+  if( !info ) return;
+  g_tls_template_va  = (uintptr_t)info->template_va;
+  g_tls_template_sz  = (size_t)info->template_sz;
+  g_tls_zero_fill    = (size_t)info->zero_fill;
+  g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
+  g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
+  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
   if( g_tls_index_addr ) {
     // claim first free slot from g_tls_alloc_used, write to *AddressOfIndex
+    pthread_mutex_lock(&g_tls_alloc_mu);
+    for( DWORD i = 0; i < 64; i++ ) {
+      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+        g_tls_alloc_used |= (1ULL<<i);
+        g_tls_static_idx = i;
+        break;
+      }
+    }
+    pthread_mutex_unlock(&g_tls_alloc_mu);
     *g_tls_index_addr = g_tls_static_idx;
     tls_static_init_thread();   // populate main thread's static block
   }
@@ -85,7 +95,8 @@ the template, and stores the pointer at `slots[g_tls_static_idx]`:
 ```cpp
 size_t sz = g_tls_template_sz + g_tls_zero_fill;
 if( sz == 0 ) sz = 64;
-void* buf = calloc(1, sz);
+void* buf = calloc(1, sz); // calloc zeros; zero_fill requires no explicit memset
+if( !buf ) return;
 if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
 slots[g_tls_static_idx] = buf;
@@ -430,10 +441,11 @@ thread_finish(...);
 ```
 
 If `fn()` calls `ExitThread` (directly or via the CRT `_endthreadex`,
-which wraps `ExitThread`), the post-`fn` steps in `thread_trampoline`
-are never reached: `pthread_exit` unwinds through them. So
-`DLL_THREAD_DETACH` is silently skipped for any thread that exits via
-`ExitThread`.
+which wraps `ExitThread`), `run_tls_callbacks(3)` in `thread_trampoline`
+is never reached. Note that `thread_finish` itself **is** called inside
+`ExitThread` before `pthread_exit`, so `WaitForSingleObject` on the
+thread handle still returns `WAIT_OBJECT_0` correctly — only the
+`DLL_THREAD_DETACH` callbacks are silently skipped.
 
 ### Per-thread static TLS buffer leaks on thread exit
 
@@ -592,5 +604,5 @@ allocation, never deduped.
 | Leak | Per-thread static TLS buffer is never freed at thread exit (pthread-key dtor frees the slots *array* but not its contents). |
 | Leak | Every `DuplicateHandle(GetCurrentThread())` from an unmanaged thread allocates a new untracked `ThreadObj`. |
 | Robustness | TLS callbacks run with no SEH/`try` isolation — a faulting callback aborts the process. |
-| Stub (DELAY — attempted, see notes) | `CREATE_SUSPENDED`, `SuspendThread`, `ResumeThread`, `GetThreadContext`, `SetThreadContext`, `SetThreadPriority` are all no-ops. Attempted fix: added `suspended`/`has_suspend_sem`/`suspend_sem` to `ThreadObj`, blocking `thread_trampoline` on `sem_wait` when `CREATE_SUSPENDED` flag is set, with `kernel32_ResumeThread` calling `sem_post`. This eliminates the race (thread no longer reads param before main thread initialises it). However `rz.elf a -y archive 3.exe` still crashes at `rz.elf[0x421ba8]` (`mov (%rcx),%rbx`, RCX=0x28) — same address as before, different RBX. Root cause unclear: either `run_tls_callbacks(2)` (DLL_THREAD_ATTACH) corrupts some state, or the TLS static-block is not yet correct for the worker thread when the crash-site code runs. The CREATE_SUSPENDED implementation itself appears correct; the crash is in the PE binary code after the thread starts properly. |
+| Stub (DELAY) | `CREATE_SUSPENDED` flag is silently ignored (`/*flags*/` in `kernel32_CreateThread`). `SuspendThread`/`ResumeThread`/`GetThreadContext`/`SetThreadContext`/`SetThreadPriority` are stubs. Binaries that rely on `CREATE_SUSPENDED` to guard parameter initialisation before the thread reads them have a race window. `rz.elf` happens to work despite this race; marked delayed until a binary that requires correct suspend behaviour is tested. |
 | Cosmetic | `GetCurrentThreadId` syscalls every call instead of reading `gs:[0x48]`. |
