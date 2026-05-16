@@ -34,16 +34,16 @@ static int ms_vformat(char* outbuf, int bufsz, const char* fmt, char* ap) {
     if( !*p ) break;
     if( *p == '%' ) { outbuf[out++] = '%'; p++; continue; }
     char fs[64]; int fsi = 0; fs[fsi++] = '%';
-    while( *p && (*p=='-'||*p=='+'||*p==' '||*p=='#'||*p=='0') ) fs[fsi++] = *p++;
+    while( *p && (*p=='-'||*p=='+'||*p==' '||*p=='#'||*p=='0') && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++;
     if( *p == '*' ) {
       int w = (int)MSVA_ARG_LL(ap);
       fsi += snprintf(fs + fsi, sizeof(fs) - fsi, "%d", w); p++;
-    } else { while( *p >= '0' && *p <= '9' ) fs[fsi++] = *p++; }
-    if( *p == '.' ) { fs[fsi++] = *p++;
+    } else { while( *p >= '0' && *p <= '9' && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++; }
+    if( *p == '.' && fsi<(int)sizeof(fs)-1 ) { fs[fsi++] = *p++;
       if( *p == '*' ) {
         int pr = (int)MSVA_ARG_LL(ap);
         fsi += snprintf(fs + fsi, sizeof(fs) - fsi, "%d", pr); p++;
-      } else { while( *p >= '0' && *p <= '9' ) fs[fsi++] = *p++; }
+      } else { while( *p >= '0' && *p <= '9' && fsi<(int)sizeof(fs)-1 ) fs[fsi++] = *p++; }
     }
     int ll = 0;
     if( p[0]=='l' && p[1]=='l' ) { ll = 1; p += 2; }
