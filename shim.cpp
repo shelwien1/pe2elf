@@ -317,17 +317,17 @@ extern "C" __attribute__((visibility("default")))
 int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
                    void* (*fn)(void*), void* arg) {
   static real_pthread_create_t real_fn = NULL;
-  // Use acquire/release to avoid the data race on the first call.
-  if( !__atomic_load_n(&real_fn, __ATOMIC_ACQUIRE) ) {
-    real_pthread_create_t p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  real_pthread_create_t p = __atomic_load_n(&real_fn, __ATOMIC_ACQUIRE);
+  if( !p ) {
+    p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
     __atomic_store_n(&real_fn, p, __ATOMIC_RELEASE);
   }
-  if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
+  if( !p ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
   ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
   if( !ta ) return ENOMEM;
   ta->fn = fn;
   ta->arg = arg;
-  int ret = real_fn(tid, attr, shim_thread_trampoline, ta);
+  int ret = p(tid, attr, shim_thread_trampoline, ta);
   if( ret!=0 ) free(ta);   // trampoline never runs; we must free
   return ret;
 }

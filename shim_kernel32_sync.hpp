@@ -431,12 +431,56 @@ extern "C" EXPORT BOOL kernel32_GetExitCodeThread(HANDLE h, DWORD* code) {
 }
 
 // ---------------------------------------------------------------------------
+// undo_wait_acquire — reverse a WaitForSingleObject(h,0)==WAIT_OBJECT_0
+// Used by WaitForMultipleObjects wait-all rollback.
+// Must hold no locks on entry.  Bumps refcount inside g_handles_mu so the
+// object cannot be freed between the kind read and the release operation.
+// ---------------------------------------------------------------------------
+static void undo_wait_acquire(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 ) { pthread_mutex_unlock(&g_handles_mu); return; }
+  HandleKind kind = g_handles[idx].kind;
+  void* ptr = g_handles[idx].ptr;
+  if( kind < H_MUTEX ) { pthread_mutex_unlock(&g_handles_mu); return; }
+  ++(*(int*)ptr);
+  pthread_mutex_unlock(&g_handles_mu);
+
+  switch( kind ) {
+  case H_MUTEX:
+    pthread_mutex_unlock(&((MutexObj*)ptr)->mu);
+    break;
+  case H_SEMAPHORE:
+    sem_post(&((SemaphoreObj*)ptr)->sem);
+    break;
+  case H_EVENT: {
+    EventObj* ev = (EventObj*)ptr;
+    pthread_mutex_lock(&ev->mu);
+    ev->signaled = true;
+    if( ev->manual_reset ) pthread_cond_broadcast(&ev->cv);
+    else                   pthread_cond_signal(&ev->cv);
+    pthread_mutex_unlock(&ev->mu);
+    break;
+  }
+  default: break;
+  }
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --(*(int*)ptr);
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(kind, ptr);
+}
+
+// ---------------------------------------------------------------------------
 // SignalObjectAndWait — signal one object then wait on another
 // ---------------------------------------------------------------------------
 static BOOL signal_handle(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
   int idx = handle_to_idx(h);
-  if( idx < 0 ) { SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE; }
-  switch( g_handles[idx].kind ) {
+  if( idx < 0 ) { pthread_mutex_unlock(&g_handles_mu); SET_LAST_ERROR(ERROR_INVALID_HANDLE); return FALSE; }
+  HandleKind kind = g_handles[idx].kind;
+  pthread_mutex_unlock(&g_handles_mu);
+  switch( kind ) {
   case H_MUTEX:     return kernel32_ReleaseMutex(h);
   case H_EVENT:     return kernel32_SetEvent(h);
   case H_SEMAPHORE: return kernel32_ReleaseSemaphore(h, 1, nullptr);

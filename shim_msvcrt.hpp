@@ -335,6 +335,7 @@ extern "C" EXPORT int msvcrt_sprintf(char* buf, const char* fmt, ...) {
   char* tmp = (char*)malloc(65536);
   int n = tmp ? ms_vformat(tmp, 65536, fmt, (char*)ap) : 0;
   __builtin_ms_va_end(ap);
+  if( buf ) buf[0] = '\0';
   if( buf && tmp ) { memcpy(buf, tmp, (size_t)n); buf[n] = '\0'; }
   free(tmp);
   return n;
