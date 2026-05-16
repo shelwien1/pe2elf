@@ -97,7 +97,9 @@ static const uint64_t SHF_ALLOC    = 0x2;
 static const uint64_t SHF_EXECINSTR= 0x4;
 static const uint64_t SHF_WRITE    = 0x1;
 static const uint16_t SHN_UNDEF    = 0;
+static const uint16_t SHN_ABS      = 0xfff1;
 static const uint8_t  STB_GLOBAL   = 1;
+static const uint8_t  STT_OBJECT   = 1;
 static const uint8_t  STT_FUNC     = 2;
 #define ELF64_R_INFO(sym, type) (((uint64_t)(sym)<<32)|(uint32_t)(type))
 static const uint32_t R_X86_64_64       = 1;

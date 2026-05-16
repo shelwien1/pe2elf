@@ -39,14 +39,25 @@ struct Converter {
       return false;
     printf("Base relocs: %u DIR64 entries\n", (uint32_t)image.relocs.size());
 
+    if( !image.collect_tls() )
+      return false;
+
     if( rebase_to && !image.rebase(rebase_to) )
       return false;
 
     Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
+    build.tls_template_va  = image.tls_template_va;
+    build.tls_template_sz  = image.tls_template_sz;
+    build.tls_zero_fill    = image.tls_zero_fill;
+    build.tls_align_chars  = image.tls_align_chars;
+    build.tls_index_va     = image.tls_index_va;
+    build.tls_callbacks_va = image.tls_callbacks_va;
     build.build_synthetic_sections();
     plan = compute_plan(image, build.interp_data.size(), build.dynsym_data.size(),
                         build.dynstr_data.size(), build.rela_data.size(),
                         build.dt_entry_count());
+    // Fix up RELA r_offset for shim_register_tls call slot (trampoline+24)
+    build.finalize_tls_call(plan.trampoline_va + 24);
     if( !build.build_trampoline() )
       return false;
     build.build_dynamic();

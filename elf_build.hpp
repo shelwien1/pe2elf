@@ -35,6 +35,16 @@ struct Builder {
   uint32_t dynstr_rpath_off  = 0;
   uint32_t dynstr_inject_off = 0;
 
+  // TLS directory fields (set from PeImage before build_synthetic_sections)
+  uint64_t tls_template_va  = 0;
+  uint64_t tls_template_sz  = 0;
+  uint64_t tls_zero_fill    = 0;
+  uint64_t tls_align_chars  = 0;
+  uint64_t tls_index_va     = 0;
+  uint64_t tls_callbacks_va = 0;
+  size_t shim_reg_tls_sym_idx  = 0; // dynsym index of shim_register_tls (UND)
+  size_t shim_reg_tls_rela_idx = 0; // rela index for the call slot
+
   size_t dt_entry_count() const { return 12 + (inject_name.empty() ? 0 : 1); }
 
   Builder(PeImage& img, const Plan& p,
@@ -115,12 +125,50 @@ struct Builder {
       r.r_addend = re.addend;
       rela_data.push_back(r);
     }
+
+    // Add shim_register_tls as an undefined import symbol; the dynamic linker
+    // resolves it from winapi_shim.so and writes its address into the call slot
+    // inside the startup trampoline (see build_trampoline).
+    shim_reg_tls_sym_idx = dynsym_data.size();
+    {
+      uint32_t str_off = (uint32_t)dynstr_data.size();
+      const char* sym_name = "shim_register_tls";
+      for( const char* p = sym_name; *p; ++p )
+        dynstr_data.push_back((uint8_t)*p);
+      dynstr_data.push_back(0);
+      Elf64_Sym sym{};
+      sym.st_name  = str_off;
+      sym.st_info  = (uint8_t)((STB_GLOBAL<<4)|STT_FUNC);
+      sym.st_shndx = SHN_UNDEF;
+      dynsym_data.push_back(sym);
+    }
+    // Placeholder RELA for the call slot; r_offset fixed by finalize_tls_call().
+    shim_reg_tls_rela_idx = rela_data.size();
+    {
+      Elf64_Rela r{};
+      r.r_info = ELF64_R_INFO((uint32_t)shim_reg_tls_sym_idx, R_X86_64_64);
+      rela_data.push_back(r);
+    }
+  }
+
+  void finalize_tls_call(uint64_t slot_va) {
+    if( shim_reg_tls_rela_idx < rela_data.size() )
+      rela_data[shim_reg_tls_rela_idx].r_offset = slot_va;
   }
 
   bool build_trampoline() {
-    uint64_t pe_entry      = image.image_base+image.ep_rva;
-    uint64_t jmp_instr_end = plan.trampoline_va+4+5;
-    int64_t  d             = (int64_t)(pe_entry-jmp_instr_end);
+    uint64_t pe_entry = image.image_base+image.ep_rva;
+    // Layout:
+    //  +0  lea rdi,[rip+0x19] (7)  rip_after=+7,  tls_info at +32, disp=25
+    //  +7  call [rip+0x0b]    (6)  rip_after=+13, slot at +24, disp=11
+    //  +13 and rsp,-16        (4)  align to 16 bytes
+    //  +17 push rax           (1)  RSP % 16 → 8: simulates PE entry via CALL
+    //  +18 jmp rel32          (5)  rip_after=+23
+    //  +23 nop                (1)
+    //  +24 slot (8 bytes)          R_X86_64_64 → shim_register_tls
+    //  +32 ShimTlsInfo (48 bytes)  6×uint64 TLS directory fields
+    uint64_t jmp_end = plan.trampoline_va + 23;
+    int64_t  d       = (int64_t)(pe_entry - jmp_end);
     if( d != (int32_t)d ) {
       fprintf(stderr, "Error: trampoline rel32 out of range "
               "(PE entry 0x%llx too far from synthetic segment)\n",
@@ -128,13 +176,32 @@ struct Builder {
       return false;
     }
     int32_t rel32 = (int32_t)d;
-    trampoline_data = {0x48, 0x83, 0xec, 0x08,    // sub rsp, 8
-                       0xe9,
-                       (uint8_t)(rel32),
-                       (uint8_t)(rel32>>8),
-                       (uint8_t)(rel32>>16),
-                       (uint8_t)(rel32>>24)};
-    while( trampoline_data.size()<kTrampolineSize )
+    trampoline_data = {
+      0x48, 0x8d, 0x3d, 0x19,0x00,0x00,0x00, // lea rdi,[rip+25] → tls_info@+32
+      0xff, 0x15, 0x0b,0x00,0x00,0x00,        // call [rip+11]    → slot@+24
+      0x48, 0x83, 0xe4, 0xf0,                 // and rsp,-16
+      0x50,                                   // push rax (RSP % 16 → 8)
+      0xe9,                                   // jmp rel32
+        (uint8_t)(rel32),
+        (uint8_t)(rel32>>8),
+        (uint8_t)(rel32>>16),
+        (uint8_t)(rel32>>24),
+      0x90,                                   // nop (pad to +24)
+      // slot at +24 (8 bytes, filled by RELA R_X86_64_64 shim_register_tls)
+      0,0,0,0, 0,0,0,0,
+    };
+    // ShimTlsInfo at +32 (6×uint64_t = 48 bytes)
+    auto push64 = [&](uint64_t v) {
+      for( int i = 0; i < 8; ++i )
+        trampoline_data.push_back((uint8_t)(v >> (i*8)));
+    };
+    push64(tls_template_va);
+    push64(tls_template_sz);
+    push64(tls_zero_fill);
+    push64(tls_align_chars);
+    push64(tls_index_va);
+    push64(tls_callbacks_va);
+    while( trampoline_data.size() < kTrampolineSize )
       trampoline_data.push_back(0x90);
     return true;
   }

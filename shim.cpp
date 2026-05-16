@@ -217,6 +217,8 @@ static void init_fake_peb(void) {
 }
 
 void shim_init_teb(void) {
+  // Idempotent: self-pointer at +0x30 is set on first call; skip on re-entry.
+  if( *(void**)(fake_teb+0x30) == (void*)fake_teb ) return;
   memset(fake_teb, 0, sizeof(fake_teb));
   // TEB self-pointer at +0x30
   *(void**)(fake_teb+0x30) = fake_teb;
@@ -906,104 +908,57 @@ static void discover_image_base(void) {
 
 // ---------------------------------------------------------------------------
 // PE TLS directory — static TLS + callbacks
+static void tls_static_init_thread(void);
+void run_tls_callbacks(uint32_t reason);
 // ---------------------------------------------------------------------------
 static uint64_t*  g_tls_callbacks_va = nullptr;
 static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS slot index
 static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
 static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
+static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
 static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
 
-static void discover_tls_callbacks(void) {
-  // Use SYS_pread64 directly to avoid any libc interception issues.
-  int fd = (int)syscall(SYS_open, "/proc/self/exe", O_RDONLY, 0);
-  log_always("[SHIM] discover_tls_callbacks: fd=%d\n", fd);
-  if( fd < 0 ) return;
+// Layout of the ShimTlsInfo struct embedded in pe2elf's startup trampoline.
+// Must match the push64 sequence in elf_build.hpp build_trampoline().
+struct ShimTlsInfo {
+  uint64_t template_va;   // StartAddressOfRawData (0 if no TLS)
+  uint64_t template_sz;   // EndAddressOfRawData - Start
+  uint64_t zero_fill;     // SizeOfZeroFill
+  uint64_t align_chars;   // Characteristics
+  uint64_t index_va;      // AddressOfIndex (0 if none)
+  uint64_t callbacks_va;  // AddressOfCallBacks (0 if none)
+};
 
-  uint8_t eh_buf[64];
-  ssize_t nr = (ssize_t)syscall(SYS_pread64, fd, eh_buf, (size_t)64, (off_t)0);
-  log_always("[SHIM]   pread64(hdr)=%zd magic=%02x%02x%02x%02x\n",
-             nr, eh_buf[0], eh_buf[1], eh_buf[2], eh_buf[3]);
-  if( nr != 64 || eh_buf[0] != 0x7f || eh_buf[1] != 'E' ||
-      eh_buf[2] != 'L' || eh_buf[3] != 'F' ) {
-    syscall(SYS_close, fd); return;
-  }
-  // e_shoff at offset 40 (uint64), e_shnum at 60 (uint16), e_shstrndx at 62 (uint16)
-  uint64_t e_shoff    = *(uint64_t*)(eh_buf + 40);
-  uint16_t e_shnum    = *(uint16_t*)(eh_buf + 60);
-  uint16_t e_shstrndx = *(uint16_t*)(eh_buf + 62);
-  log_always("[SHIM]   shoff=%llu shnum=%u shstrndx=%u\n",
-             (unsigned long long)e_shoff, e_shnum, e_shstrndx);
-  if( !e_shoff || !e_shnum ) { syscall(SYS_close, fd); return; }
-
-  // Read shstrtab section header (64 bytes each)
-  uint8_t snsh_buf[64];
-  off_t snsh_off = (off_t)(e_shoff + (uint64_t)e_shstrndx * 64);
-  nr = (ssize_t)syscall(SYS_pread64, fd, snsh_buf, (size_t)64, snsh_off);
-  if( nr != 64 ) { syscall(SYS_close, fd); return; }
-  // sh_offset at byte 24 (uint64), sh_size at byte 32 (uint64)
-  uint64_t snsh_offset = *(uint64_t*)(snsh_buf + 24);
-  uint64_t snsh_size   = *(uint64_t*)(snsh_buf + 32);
-  log_always("[SHIM]   shstrtab: file_offset=%llu size=%llu\n",
-             (unsigned long long)snsh_offset, (unsigned long long)snsh_size);
-  if( snsh_size > 65536 ) { syscall(SYS_close, fd); return; }
-
-  char* names = (char*)malloc(snsh_size + 1);
-  if( !names ) { syscall(SYS_close, fd); return; }
-  nr = (ssize_t)syscall(SYS_pread64, fd, names, snsh_size, (off_t)snsh_offset);
-  if( (uint64_t)nr != snsh_size ) { free(names); syscall(SYS_close, fd); return; }
-  names[snsh_size] = '\0';
-
-  uint64_t tls_va = 0, tls_sz = 0;
-  for( uint16_t i = 0; i < e_shnum; i++ ) {
-    uint8_t sh_buf[64];
-    off_t sh_off = (off_t)(e_shoff + (uint64_t)i * 64);
-    if( (ssize_t)syscall(SYS_pread64, fd, sh_buf, (size_t)64, sh_off) != 64 ) break;
-    uint32_t sh_name = *(uint32_t*)(sh_buf + 0);
-    uint64_t sh_addr = *(uint64_t*)(sh_buf + 16);
-    uint64_t sh_size = *(uint64_t*)(sh_buf + 32);
-    if( sh_name < snsh_size && strcmp(names + sh_name, ".tls") == 0 ) {
-      tls_va = sh_addr; tls_sz = sh_size;
-      log_always("[SHIM]   .tls: addr=0x%llx size=0x%llx\n",
-                 (unsigned long long)tls_va, (unsigned long long)tls_sz);
-      break;
-    }
-  }
-  free(names);
-  syscall(SYS_close, fd);
-
-  if( !tls_va || tls_sz < 40 ) { log_always("[SHIM]   .tls not found\n"); return; }
-
-  // Scan in-memory .tls section for IMAGE_TLS_DIRECTORY64:
-  //   [0]  StartAddressOfRawData (VA within .tls range)
-  //   [8]  EndAddressOfRawData   (>= start)
-  //   [24] AddressOfCallBacks    (non-null VA of NULL-terminated callback array)
-  uint8_t* tls_mem = (uint8_t*)tls_va;
-  for( uint64_t off = 0; off + 40 <= tls_sz; off += 8 ) {
-    uint64_t start   = *(uint64_t*)(tls_mem + off);
-    uint64_t end     = *(uint64_t*)(tls_mem + off + 8);
-    uint64_t idx_va  = *(uint64_t*)(tls_mem + off + 16);
-    uint64_t cbs     = *(uint64_t*)(tls_mem + off + 24);
-    log_always("[SHIM]   scan+%llu start=0x%llx end=0x%llx idx=0x%llx cbs=0x%llx\n",
-               (unsigned long long)off, (unsigned long long)start,
-               (unsigned long long)end, (unsigned long long)idx_va, (unsigned long long)cbs);
-    if( start >= tls_va && start <= tls_va + tls_sz &&
-        end >= start && cbs != 0 ) {
-      uint64_t* arr = (uint64_t*)cbs;
-      if( *arr != 0 ) {
-        g_tls_callbacks_va = arr;
-        // Capture static TLS fields for per-thread initialization
-        if( end > start ) {
-          g_tls_template_va = (uintptr_t)start;
-          g_tls_template_sz = (size_t)(end - start);
-        }
-        if( idx_va ) g_tls_index_addr = (uint32_t*)(uintptr_t)idx_va;
-        log_always("[SHIM]   template VA=0x%llx sz=%zu index_addr=%p\n",
-                   (unsigned long long)start, g_tls_template_sz, (void*)g_tls_index_addr);
-        return;
+// Called from pe2elf's startup thunk (lea rdi,[rip+struct]; call [rip+slot])
+// before PE_ENTRY. Registers TLS directory info, allocates the static TLS slot,
+// initialises main-thread TLS, and fires DLL_PROCESS_ATTACH callbacks.
+extern "C" __attribute__((visibility("default")))
+void shim_register_tls(const ShimTlsInfo* info) {
+  if( !info ) return;
+  g_tls_template_va  = (uintptr_t)info->template_va;
+  g_tls_template_sz  = (size_t)info->template_sz;
+  g_tls_zero_fill    = (size_t)info->zero_fill;
+  g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
+  g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
+  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
+  log_always("[SHIM] shim_register_tls: template=0x%llx sz=%zu callbacks=0x%llx\n",
+             (unsigned long long)g_tls_template_va, g_tls_template_sz,
+             (unsigned long long)info->callbacks_va);
+  if( g_tls_index_addr ) {
+    pthread_mutex_lock(&g_tls_alloc_mu);
+    for( DWORD i = 0; i < 64; i++ ) {
+      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
+        g_tls_alloc_used |= (1ULL<<i);
+        g_tls_static_idx = i;
+        break;
       }
     }
+    pthread_mutex_unlock(&g_tls_alloc_mu);
+    *g_tls_index_addr = g_tls_static_idx;
+    log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
+    tls_static_init_thread();
   }
-  log_always("[SHIM]   IMAGE_TLS_DIRECTORY64 not found in .tls\n");
+  run_tls_callbacks(1);
 }
 
 typedef void (__attribute__((ms_abi)) *tls_callback_fn)(void*, uint32_t, void*);
@@ -1028,8 +983,9 @@ void tls_static_init_thread(void) {
   void** slots = tls_get_slots();
   if( !slots ) return;
   if( slots[g_tls_static_idx] ) return;  // already initialized
-  size_t sz = g_tls_template_sz ? g_tls_template_sz : 64;
-  void* buf = calloc(1, sz);
+  size_t sz = g_tls_template_sz + g_tls_zero_fill;
+  if( sz == 0 ) sz = 64;
+  void* buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
   if( !buf ) return;
   if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
@@ -1048,34 +1004,13 @@ __attribute__((constructor)) static void shim_init(void) {
   handles_init();
   shim_init_teb();
   log_init();
-  discover_tls_callbacks();
-  log_always("[SHIM] TLS callbacks VA: %p\n", (void*)g_tls_callbacks_va);
-  // Pre-allocate the static TLS index (before app's TlsAlloc runs) and
-  // write it to *AddressOfIndex so compiler-generated TLS access works.
-  if( g_tls_index_addr ) {
-    pthread_mutex_lock(&g_tls_alloc_mu);
-    for( DWORD i = 0; i < 64; i++ ) {
-      if( !(g_tls_alloc_used & (1ULL<<i)) ) {
-        g_tls_alloc_used |= (1ULL<<i);
-        g_tls_static_idx = i;
-        break;
-      }
-    }
-    pthread_mutex_unlock(&g_tls_alloc_mu);
-    *g_tls_index_addr = g_tls_static_idx;
-    log_always("[SHIM] static TLS: slot=%u *AddressOfIndex=%p\n",
-               g_tls_static_idx, (void*)g_tls_index_addr);
-    tls_static_init_thread();  // main thread
-  }
   rebuild_cmdline();
   build_env_block();
   build_argv();
   init_fake_iob();
   install_signal_handlers();
-  // Call TLS callbacks with DLL_PROCESS_ATTACH exactly as the Windows loader
-  // would before handing control to the PE entry point.  The callbacks are all
-  // ms_abi (run_tls_callbacks casts them correctly) and idempotent/guarded.
-  run_tls_callbacks(1);
+  // TLS registration, slot allocation, and DLL_PROCESS_ATTACH callbacks are
+  // handled by shim_register_tls(), called from the pe2elf startup thunk.
 }
 
 #pragma GCC visibility pop
@@ -3306,8 +3241,9 @@ extern "C" EXPORT DWORD kernel32_WaitForMultipleObjects(
       }
       DWORD left = time_left_ms();
       if( left == 0 ) return WAIT_TIMEOUT;
-      DWORD slice = left < 1 ? left : 1;
-      kernel32_WaitForSingleObject(handles[0], slice);  // sleep via first handle
+      DWORD slice = (left == INFINITE || left > 1) ? 1 : left;
+      struct timespec ts = { 0, (long)slice * 1000000L };
+      nanosleep(&ts, nullptr);
     }
   } else {
     // Wait for all: wait on each in sequence with remaining timeout.
