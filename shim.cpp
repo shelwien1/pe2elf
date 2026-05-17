@@ -95,7 +95,20 @@ static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_te
 // pthread key whose destructor frees the per-thread tls_slots block on exit
 static pthread_key_t  g_tls_slots_key;
 static pthread_once_t g_tls_slots_key_once = PTHREAD_ONCE_INIT;
-static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, free); }
+
+static DWORD g_tls_static_idx = 0xFFFFFFFFu; // pre-allocated static TLS slot; defined below
+
+static void tls_slots_dtor(void* p) {
+  void** slots = (void**)p;
+  if( !slots ) return;
+  // Free the static-TLS block that tls_static_init_thread() allocated for
+  // this thread; without this it leaks at every thread exit.
+  if( g_tls_static_idx != 0xFFFFFFFFu )
+    free(slots[g_tls_static_idx]);
+  free(slots);
+}
+
+static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, tls_slots_dtor); }
 
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
 #define SET_LAST_ERROR(e) do { \
@@ -216,6 +229,8 @@ static void init_fake_peb(void) {
   fake_peb[2] = 0;
 }
 
+static void fls_register_thread(void);  // defined with the FLS section below
+
 void shim_init_teb(void) {
   // Idempotent: self-pointer at +0x30 is set on first call; skip on re-entry.
   if( *(void**)(fake_teb+0x30) == (void*)fake_teb ) return;
@@ -235,6 +250,23 @@ void shim_init_teb(void) {
   *(void**)(fake_teb+0x58) = tls_slots;
   pthread_setspecific(g_tls_slots_key, tls_slots);
 
+  // TEB+0x08 StackBase (top/high address) and TEB+0x10 StackLimit (low address).
+  // CRT stack-overflow probes and SEH unwind code read these; leaving them zero
+  // produces degenerate bounds.  Use pthread_getattr_np to get the real values.
+  {
+    pthread_attr_t attr;
+    if( pthread_getattr_np(pthread_self(), &attr) == 0 ) {
+      void* stack_addr = NULL;
+      size_t stack_size = 0;
+      pthread_attr_getstack(&attr, &stack_addr, &stack_size);
+      pthread_attr_destroy(&attr);
+      if( stack_addr && stack_size ) {
+        *(void**)(fake_teb+0x10) = stack_addr;                          // StackLimit (low)
+        *(void**)(fake_teb+0x08) = (uint8_t*)stack_addr + stack_size;  // StackBase  (high)
+      }
+    }
+  }
+
   // LastErrorValue at +0x68 (B16/R29)
   *(uint32_t*)(fake_teb+0x68) = 0;
 
@@ -248,6 +280,9 @@ void shim_init_teb(void) {
   // for now, stash the pointer in x18 so future __asm__ helpers can load it.
   __asm__ volatile ("mov x18, %0" :: "r"(fake_teb) : "x18");
 #endif
+
+  // Arm the FLS per-thread destructor so callbacks fire at thread exit.
+  fls_register_thread();
 }
 
 // Called at the start of every new thread (including the main thread via
@@ -282,8 +317,11 @@ extern "C" __attribute__((visibility("default")))
 int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
                    void* (*fn)(void*), void* arg) {
   static real_pthread_create_t real_fn = NULL;
-  if( !real_fn )
-    real_fn = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  // Use acquire/release to avoid the data race on the first call.
+  if( !__atomic_load_n(&real_fn, __ATOMIC_ACQUIRE) ) {
+    real_pthread_create_t p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+    __atomic_store_n(&real_fn, p, __ATOMIC_RELEASE);
+  }
   if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
   ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
   if( !ta ) return ENOMEM;
@@ -925,7 +963,8 @@ static uint32_t*  g_tls_index_addr   = nullptr; // *AddressOfIndex: DWORD TLS sl
 static uintptr_t  g_tls_template_va  = 0;       // StartAddressOfRawData
 static size_t     g_tls_template_sz  = 0;       // EndAddressOfRawData - Start
 static size_t     g_tls_zero_fill    = 0;        // SizeOfZeroFill
-static DWORD      g_tls_static_idx   = 0xFFFFFFFFu; // pre-allocated static TLS slot
+static size_t     g_tls_align        = 16;       // required alignment for static-TLS block
+// g_tls_static_idx declared earlier (needed by tls_slots_dtor before this point)
 
 // Layout of the ShimTlsInfo struct embedded in pe2elf's startup trampoline.
 // Must match the push64 sequence in elf_build.hpp build_trampoline().
@@ -949,7 +988,14 @@ void shim_register_tls(const ShimTlsInfo* info) {
   g_tls_zero_fill    = (size_t)info->zero_fill;
   g_tls_index_addr   = info->index_va  ? (uint32_t*)(uintptr_t)info->index_va  : nullptr;
   g_tls_callbacks_va = info->callbacks_va ? (uint64_t*)(uintptr_t)info->callbacks_va : nullptr;
-  (void)info->align_chars; // TODO: posix_memalign when Characteristics alignment > 16
+  // Characteristics bits 20-23 encode alignment as 2^(N-1) bytes (N=1..15).
+  // calloc/malloc guarantee 16-byte alignment on glibc x86-64; only use
+  // posix_memalign when a larger alignment is requested.
+  {
+    uint32_t n = (uint32_t)(info->align_chars >> 20) & 0xF;
+    g_tls_align = (n >= 1) ? ((size_t)1 << (n - 1)) : 1;
+    if( g_tls_align < 16 ) g_tls_align = 16;
+  }
   log_always("[SHIM] shim_register_tls: template=0x%llx sz=%zu callbacks=0x%llx\n",
              (unsigned long long)g_tls_template_va, g_tls_template_sz,
              (unsigned long long)info->callbacks_va);
@@ -963,9 +1009,13 @@ void shim_register_tls(const ShimTlsInfo* info) {
       }
     }
     pthread_mutex_unlock(&g_tls_alloc_mu);
-    *g_tls_index_addr = g_tls_static_idx;
-    log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
-    tls_static_init_thread();
+    if( g_tls_static_idx == 0xFFFFFFFFu ) {
+      fprintf(stderr, "[SHIM] shim_register_tls: no free TLS slot; static TLS disabled\n");
+    } else {
+      *g_tls_index_addr = g_tls_static_idx;
+      log_always("[SHIM] static TLS: slot=%u\n", g_tls_static_idx);
+      tls_static_init_thread();
+    }
   }
   run_tls_callbacks(1);
 }
@@ -994,7 +1044,13 @@ void tls_static_init_thread(void) {
   if( slots[g_tls_static_idx] ) return;  // already initialized
   size_t sz = g_tls_template_sz + g_tls_zero_fill;
   if( sz == 0 ) sz = 64;
-  void* buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
+  void* buf = nullptr;
+  if( g_tls_align > 16 ) {
+    if( posix_memalign(&buf, g_tls_align, sz) != 0 ) buf = nullptr;
+    if( buf ) memset(buf, 0, sz);
+  } else {
+    buf = calloc(1, sz); // calloc zeros; zero_fill portion requires no explicit memset
+  }
   if( !buf ) return;
   if( g_tls_template_va && g_tls_template_sz )
     memcpy(buf, (void*)g_tls_template_va, g_tls_template_sz);
@@ -1006,6 +1062,10 @@ void tls_static_init_thread(void) {
 // ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
+__attribute__((destructor)) static void shim_fini(void) {
+  run_tls_callbacks(0);  // DLL_PROCESS_DETACH
+}
+
 __attribute__((constructor)) static void shim_init(void) {
   setlocale(LC_ALL, "");
   init_fake_peb();
@@ -1041,7 +1101,14 @@ extern "C" EXPORT DWORD kernel32_GetCurrentProcessId(void) {
 }
 
 extern "C" EXPORT DWORD kernel32_GetCurrentThreadId(void) {
+#ifdef __x86_64__
+  // Read cached TID from TEB+0x48 — shim_init_teb stores it there.
+  uint32_t tid;
+  __asm__ volatile ("movl %%gs:0x48, %0" : "=r"(tid));
+  return tid;
+#else
   return (DWORD)syscall(SYS_gettid);
+#endif
 }
 
 extern "C" EXPORT void kernel32_ExitProcess(DWORD code) {
@@ -1780,6 +1847,12 @@ extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD 
   return (DWORD)utf8_to_wchar(win, buf, size);
 }
 
+// LoadLibrary* / FreeLibrary: pe2elf resolves all PE imports at conversion time,
+// so these exist only to satisfy explicit runtime LoadLibrary calls.  The result
+// is a token for GetProcAddress lookups against the shim's own exports.  Real PE
+// DLL loading on Linux is out of scope; TLS state (g_tls_callbacks_va et al.) is
+// not extended for dynamically-loaded modules — the converter already flattened
+// the import graph.
 extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
   (void)file;
   char narrow[PATH_MAX], posix[PATH_MAX];
@@ -1989,6 +2062,12 @@ extern "C" EXPORT DWORD kernel32_TlsAlloc(void) {
 
 extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
   if( idx >= 64 ) return FALSE;
+  // Zero the calling thread's slot so a subsequent TlsAlloc on the same
+  // index doesn't expose stale data to the new owner.  Full per-thread
+  // zeroing (Windows guarantee) would require iterating all threads; this
+  // handles the most common single-threaded free path.
+  void** slots = tls_get_slots();
+  if( slots ) slots[idx] = NULL;
   pthread_mutex_lock(&g_tls_alloc_mu);
   g_tls_alloc_used &= ~(1ULL<<idx);
   pthread_mutex_unlock(&g_tls_alloc_mu);
@@ -1998,6 +2077,11 @@ extern "C" EXPORT BOOL kernel32_TlsFree(DWORD idx) {
 extern "C" EXPORT LPVOID kernel32_TlsGetValue(DWORD idx) {
   SET_LAST_ERROR(0);
   if( idx >= 64 ) return NULL;
+  // Return NULL (with no error) for a freed index, matching Windows behaviour.
+  pthread_mutex_lock(&g_tls_alloc_mu);
+  bool allocated = (g_tls_alloc_used >> idx) & 1;
+  pthread_mutex_unlock(&g_tls_alloc_mu);
+  if( !allocated ) return NULL;
   void** slots = tls_get_slots();
   void* v = slots ? slots[idx] : NULL;
   if( v )
@@ -2645,14 +2729,46 @@ extern "C" EXPORT BOOL kernel32_DosDateTimeToFileTime(WORD fatdate, WORD fattime
 static __thread void* g_fls[FLS_MAX_SLOTS];
 static uint64_t g_fls_used = 0;           // bitset of allocated slots
 static pthread_mutex_t g_fls_mu = PTHREAD_MUTEX_INITIALIZER;
+// Per-slot destruction callbacks; NULL means no callback.
+static void* g_fls_callbacks[FLS_MAX_SLOTS] = {};
+
+typedef void (__attribute__((ms_abi)) *fls_callback_t)(void*);
+
+// pthread-key destructor: run FLS callbacks for non-NULL slots on thread exit.
+static void fls_thread_exit(void* /*unused*/) {
+  for( DWORD i = 0; i < FLS_MAX_SLOTS; ++i ) {
+    void* val = g_fls[i];
+    if( !val ) continue;
+    pthread_mutex_lock(&g_fls_mu);
+    bool live = (g_fls_used >> i) & 1;
+    void* cb  = live ? g_fls_callbacks[i] : NULL;
+    pthread_mutex_unlock(&g_fls_mu);
+    if( cb ) {
+      g_fls[i] = NULL;  // zero before callback to prevent re-entry
+      ((fls_callback_t)cb)(val);
+    }
+  }
+}
+
+static pthread_key_t  g_fls_exit_key;
+static pthread_once_t g_fls_exit_once = PTHREAD_ONCE_INIT;
+static void fls_exit_key_init(void) { pthread_key_create(&g_fls_exit_key, fls_thread_exit); }
+
+// Call once per thread to arm the FLS exit destructor.
+static void fls_register_thread(void) {
+  pthread_once(&g_fls_exit_once, fls_exit_key_init);
+  // Any non-NULL sentinel arms the destructor; the value itself is ignored.
+  if( !pthread_getspecific(g_fls_exit_key) )
+    pthread_setspecific(g_fls_exit_key, (void*)(uintptr_t)1);
+}
 
 extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
-  (void)callback;
   pthread_mutex_lock(&g_fls_mu);
   DWORD idx = 0xFFFFFFFF;
   for( DWORD i = 0; i<FLS_MAX_SLOTS; ++i ) {
     if( !(g_fls_used&(1ULL<<i)) ) {
       g_fls_used |= (1ULL<<i);
+      g_fls_callbacks[i] = callback;
       idx = i;
       break;
     }
@@ -2667,9 +2783,17 @@ extern "C" EXPORT BOOL kernel32_FlsFree(DWORD idx) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return FALSE;
   }
+  // Invoke the callback for the current thread's value, then clear the slot.
+  void* val = g_fls[idx];
   pthread_mutex_lock(&g_fls_mu);
+  void* cb = g_fls_callbacks[idx];
   g_fls_used &= ~(1ULL<<idx);
+  g_fls_callbacks[idx] = NULL;
   pthread_mutex_unlock(&g_fls_mu);
+  if( val && cb ) {
+    g_fls[idx] = NULL;
+    ((fls_callback_t)cb)(val);
+  }
   return TRUE;
 }
 
@@ -3152,17 +3276,22 @@ extern "C" EXPORT BOOL kernel32_DuplicateHandle(
   // Windows GetCurrentThread() returns the pseudo-handle -2. Translate it to
   // a real H_THREAD handle so pthreads-win32 implicit thread creation works.
   if( src == (HANDLE)(intptr_t)-2 ) {
+    pthread_once(&g_thread_key_once, thread_key_init);
     ThreadObj* obj = (ThreadObj*)pthread_getspecific(g_thread_obj_key);
     if( !obj ) {
       // Not a managed thread (main thread / external thread): create a minimal
       // wrapper. tid=0 tells sync_obj_destroy to skip join/detach.
+      // Cache it in g_thread_obj_key so repeated DuplicateHandle calls from
+      // the same thread share one ThreadObj rather than allocating a new one
+      // each time.
       obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
       if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return FALSE; }
       pthread_mutex_init(&obj->mu, nullptr);
       pthread_cond_init(&obj->cv, nullptr);
-      obj->refcount = 0; // bumped below under lock
+      obj->refcount = 1; // one ref held by g_thread_obj_key
       obj->done     = true;
       // obj->tid stays 0
+      pthread_setspecific(g_thread_obj_key, obj);
     }
     pthread_mutex_lock(&g_handles_mu);
     ++(obj->refcount);
@@ -3255,13 +3384,26 @@ extern "C" EXPORT DWORD kernel32_WaitForMultipleObjects(
       nanosleep(&ts, nullptr);
     }
   } else {
-    // Wait for all: wait on each in sequence with remaining timeout.
-    for( DWORD i = 0; i < count; ++i ) {
+    // Wait for all: poll each handle with 0 timeout each round.  If one
+    // fails, roll back the handles acquired so far before sleeping so no
+    // handle (e.g. a mutex) stays locked while we wait for the rest.
+    while( true ) {
+      DWORD n_acq = 0;
+      DWORD fail  = WAIT_OBJECT_0;
+      for( DWORD i = 0; i < count; ++i ) {
+        DWORD r = kernel32_WaitForSingleObject(handles[i], 0);
+        if( r == WAIT_OBJECT_0 ) { ++n_acq; }
+        else { fail = (r == WAIT_FAILED) ? WAIT_FAILED : WAIT_TIMEOUT; break; }
+      }
+      if( fail == WAIT_OBJECT_0 ) return WAIT_OBJECT_0;
+      for( DWORD j = 0; j < n_acq; ++j ) undo_wait_acquire(handles[j]);
+      if( fail == WAIT_FAILED ) return WAIT_FAILED;
       DWORD left = time_left_ms();
-      DWORD r = kernel32_WaitForSingleObject(handles[i], left);
-      if( r != WAIT_OBJECT_0 ) return r;
+      if( left == 0 ) return WAIT_TIMEOUT;
+      DWORD slice = (left == INFINITE || left > 1) ? 1 : left;
+      struct timespec ts = { 0, (long)slice * 1000000L };
+      nanosleep(&ts, nullptr);
     }
-    return WAIT_OBJECT_0;
   }
 }
 

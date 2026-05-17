@@ -216,7 +216,7 @@ struct PeImage {
         continue;
       uint32_t ilt_off = *ilt_off_opt;
 
-      for( uint32_t j = 0;; ++j ) {
+      for( uint32_t j = 0; j < 65536; ++j ) {
         auto* entry = buf.at<uint64_t>(ilt_off+j*8);
         if( !entry||*entry==0 )
           break;
@@ -281,8 +281,12 @@ struct PeImage {
     };
 
     uint32_t cur_off = *off_opt;
-    uint32_t end_off = cur_off+rel_dd->Size;
-    if( end_off>(uint32_t)buf.size() ) end_off = (uint32_t)buf.size();
+    uint64_t end_off_u64 = (uint64_t)cur_off + rel_dd->Size;
+    if( end_off_u64 < cur_off ) {
+      fprintf(stderr, "Warning: base reloc Size overflows uint32_t; skipping relocations\n");
+      return true;
+    }
+    uint32_t end_off = end_off_u64 > buf.size() ? (uint32_t)buf.size() : (uint32_t)end_off_u64;
 
     while( cur_off+sizeof(pe_base_reloc)<=end_off ) {
       auto* blk = buf.at<pe_base_reloc>(cur_off);
