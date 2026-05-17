@@ -108,6 +108,7 @@ static void tls_slots_dtor(void* p) {
   free(slots);
 }
 
+
 static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, tls_slots_dtor); }
 
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
@@ -317,17 +318,17 @@ extern "C" __attribute__((visibility("default")))
 int pthread_create(pthread_t* tid, const pthread_attr_t* attr,
                    void* (*fn)(void*), void* arg) {
   static real_pthread_create_t real_fn = NULL;
-  // Use acquire/release to avoid the data race on the first call.
-  if( !__atomic_load_n(&real_fn, __ATOMIC_ACQUIRE) ) {
-    real_pthread_create_t p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
+  real_pthread_create_t p = __atomic_load_n(&real_fn, __ATOMIC_ACQUIRE);
+  if( !p ) {
+    p = (real_pthread_create_t)dlsym(RTLD_NEXT, "pthread_create");
     __atomic_store_n(&real_fn, p, __ATOMIC_RELEASE);
   }
-  if( !real_fn ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
+  if( !p ) return ENOSYS;   // libpthread not reachable via RTLD_NEXT
   ShimThreadArgs* ta = (ShimThreadArgs*)malloc(sizeof(ShimThreadArgs));
   if( !ta ) return ENOMEM;
   ta->fn = fn;
   ta->arg = arg;
-  int ret = real_fn(tid, attr, shim_thread_trampoline, ta);
+  int ret = p(tid, attr, shim_thread_trampoline, ta);
   if( ret!=0 ) free(ta);   // trampoline never runs; we must free
   return ret;
 }
@@ -370,6 +371,8 @@ struct ThreadObj {
   pthread_cond_t  cv;
   int64_t         exit_code;
   bool            done;
+  sem_t           suspend_sem;   // posted by ResumeThread; waited by trampoline/signal-handler
+  int             suspend_count; // 1 when CREATE_SUSPENDED, bumped by SuspendThread
 };
 
 struct HandleSlot {
@@ -909,6 +912,9 @@ static void crash_handler(int sig, siginfo_t* si, void* ctx) {
   _exit(sig+128);
 }
 
+// forward declaration — defined in shim_kernel32_sync.hpp (included below)
+static void suspend_signal_handler(int);
+
 static void install_signal_handlers(void) {
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
@@ -919,6 +925,13 @@ static void install_signal_handlers(void) {
   sigaction(SIGFPE,  &sa, NULL);
   sigaction(SIGBUS,  &sa, NULL);
   sigaction(SIGABRT, &sa, NULL);
+  // Install SIGUSR1 handler process-wide so all threads (including freshly
+  // created ones) handle SuspendThread signals before the trampoline runs.
+  struct sigaction sa2 = {};
+  sa2.sa_handler = suspend_signal_handler;
+  sigemptyset(&sa2.sa_mask);
+  sa2.sa_flags = 0;  // no SA_RESTART so the signal can interrupt sem_wait
+  sigaction(SIGUSR1, &sa2, NULL);
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,7 +1030,8 @@ void shim_register_tls(const ShimTlsInfo* info) {
       tls_static_init_thread();
     }
   }
-  run_tls_callbacks(1);
+  run_tls_callbacks(1);   // DLL_PROCESS_ATTACH
+  atexit([]{ run_tls_callbacks(0); });  // DLL_PROCESS_DETACH at clean exit
 }
 
 typedef void (__attribute__((ms_abi)) *tls_callback_fn)(void*, uint32_t, void*);
@@ -3219,8 +3233,54 @@ extern "C" EXPORT HANDLE kernel32_GetCurrentThread(void) {
   return (HANDLE)(intptr_t)-2;   // Windows pseudo-handle convention
 }
 
-extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE /*h*/) { return 0; }
-extern "C" EXPORT DWORD kernel32_ResumeThread (HANDLE /*h*/) { return 1; }
+extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE h) {
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 || g_handles[idx].kind != H_THREAD ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return (DWORD)-1;
+  }
+  ThreadObj* obj = (ThreadObj*)g_handles[idx].ptr;
+  ++obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  DWORD prev = (DWORD)__atomic_fetch_add(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
+  if( prev == 0 ) pthread_kill(obj->tid, SIGUSR1);  // only signal when transitioning 0→1
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_THREAD, obj);
+  return prev;
+}
+
+extern "C" EXPORT DWORD kernel32_ResumeThread(HANDLE h) {
+  if( h == (HANDLE)(intptr_t)-2 ) return 0;  // GetCurrentThread() pseudo-handle
+
+  pthread_mutex_lock(&g_handles_mu);
+  int idx = handle_to_idx(h);
+  if( idx < 0 || g_handles[idx].kind != H_THREAD ) {
+    pthread_mutex_unlock(&g_handles_mu);
+    SET_LAST_ERROR(ERROR_INVALID_HANDLE); return (DWORD)-1;
+  }
+  ThreadObj* obj = (ThreadObj*)g_handles[idx].ptr;
+  ++obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+
+  int prev_i = __atomic_fetch_sub(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
+  DWORD prev = (DWORD)(prev_i < 0 ? 0 : prev_i);
+  if( prev_i <= 0 ) {
+    __atomic_fetch_add(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);  // undo: wasn't suspended
+  } else if( prev_i == 1 ) {
+    sem_post(&obj->suspend_sem);  // only post when transitioning 1→0
+  }
+
+  pthread_mutex_lock(&g_handles_mu);
+  int new_rc = --obj->refcount;
+  pthread_mutex_unlock(&g_handles_mu);
+  if( new_rc == 0 ) sync_obj_destroy(H_THREAD, obj);
+  return prev;
+}
 
 extern "C" EXPORT int  kernel32_GetThreadPriority(HANDLE /*h*/)              { return 0; }  // THREAD_PRIORITY_NORMAL
 extern "C" EXPORT BOOL kernel32_SetThreadPriority(HANDLE /*h*/, int /*pri*/) { return TRUE; }
@@ -3288,9 +3348,10 @@ extern "C" EXPORT BOOL kernel32_DuplicateHandle(
       if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return FALSE; }
       pthread_mutex_init(&obj->mu, nullptr);
       pthread_cond_init(&obj->cv, nullptr);
-      obj->refcount = 1; // one ref held by g_thread_obj_key
+      sem_init(&obj->suspend_sem, 0, 0);
+      obj->refcount = 0; // bumped below under lock
       obj->done     = true;
-      // obj->tid stays 0
+      // obj->tid stays 0; cache so further DuplicateHandle calls reuse this obj
       pthread_setspecific(g_thread_obj_key, obj);
     }
     pthread_mutex_lock(&g_handles_mu);

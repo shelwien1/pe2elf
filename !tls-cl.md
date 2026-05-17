@@ -163,6 +163,18 @@ static void* thread_trampoline(void* arg) {
   tls_static_init_thread();  // populate static TLS block
   pthread_once(&g_thread_key_once, thread_key_init);
   pthread_setspecific(g_thread_obj_key, ts.obj);
+
+  // Install SIGUSR1 handler for SuspendThread/ResumeThread.
+  struct sigaction sa = {};
+  sa.sa_handler = suspend_signal_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGUSR1, &sa, nullptr);
+
+  // Block here if created with CREATE_SUSPENDED.
+  if( ts.obj->suspend_count > 0 )
+    sem_wait(&ts.obj->suspend_sem);
+
   uint32_t ret = ts.fn(ts.param);
   run_tls_callbacks(3);      // DLL_THREAD_DETACH
   thread_finish(ts.obj, (int64_t)(uint32_t)ret);
@@ -171,9 +183,9 @@ static void* thread_trampoline(void* arg) {
 ```
 
 With respect to the Windows model this is correct in the *normal-return*
-case — TEB, callbacks, static block, then user fn, then detach
-callbacks. The exit-via-`ExitThread` case bypasses the post-fn steps
-(see below).
+case — TEB, callbacks, static block, suspend gate, then user fn, then
+detach callbacks. The exit-via-`ExitThread` case bypasses the post-fn
+steps (see below).
 
 `kernel32_CreateThread` (`shim_kernel32_sync.hpp`):
 
@@ -354,6 +366,7 @@ case H_THREAD: {
     if( done ) pthread_join(t->tid, nullptr);
     else        pthread_detach(t->tid);
   }
+  sem_destroy(&t->suspend_sem);
   pthread_mutex_destroy(&t->mu); pthread_cond_destroy(&t->cv); free(t);
   break;
 }
@@ -365,7 +378,15 @@ there.
 
 ### Issues
 
-1. **`CloseHandle` on a held mutex destroys a locked mutex.** Scenario:
+1. **TOCTOU in `GetExitCodeThread`.** `SetEvent`, `ResetEvent`,
+   `ReleaseSemaphore`, and `signal_handle` now lock `g_handles_mu` and
+   bump the object refcount before operating on the underlying sync
+   object. `GetExitCodeThread` still reads `g_handles[idx].kind` and
+   `g_handles[idx].ptr` without holding `g_handles_mu` and without a
+   refcount bump. A concurrent `CloseHandle` can free the `ThreadObj`
+   between the `handle_to_idx` call and the `pthread_mutex_lock(&t->mu)`
+   that follows, turning the lock into a use-after-free.
+2. **`CloseHandle` on a held mutex destroys a locked mutex.** Scenario:
    thread A `WaitForSingleObject(mutex, INFINITE)` returns
    `WAIT_OBJECT_0` (mutex locked, refcount back to 1 after Wait's own
    decrement); thread B then calls `CloseHandle(mutex)`, dropping the
@@ -374,11 +395,20 @@ there.
    Thread A's later `ReleaseMutex` finds the slot now `H_FREE` and
    returns `FALSE` with `ERROR_INVALID_HANDLE`. The application is
    misusing the API, but the resulting UB is in shim code.
-2. **`CREATE_SUSPENDED` is not implemented.** Passing the flag to
-   `kernel32_CreateThread` now calls `abort()` with a diagnostic message
-   rather than silently starting the thread immediately. Full
-   suspend/resume support is a future work item.
-3. **Mutexes are recursive** (`shim_kernel32_sync.hpp`). Windows
+3. **`GetCurrentThread()` pseudo-handle (`-2`).** `DuplicateHandle`
+   special-cases it. Most other thread APIs do not.
+   `GetExitCodeThread(GetCurrentThread(), …)` returns `FALSE` with
+   `ERROR_INVALID_HANDLE`, and `WaitForSingleObject(GetCurrentThread(),
+   0)` returns `WAIT_FAILED`. Real Windows accepts the pseudo-handle in
+   both.
+4. **`CreateThread` returns `INVALID_HANDLE_VALUE` (`-1`) on failure**.
+   Real Windows returns `NULL`. Code that checks `if (h == NULL)` will
+   think a failed `CreateThread` succeeded.
+5. **`CreateThread`'s `stack` size is ignored.** Threads always start
+   at the default pthread stack size. `CREATE_SUSPENDED` (flag `0x4`),
+   `SuspendThread`, and `ResumeThread` are now implemented via a
+   per-thread `sem_t` and `SIGUSR1`.
+6. **Mutexes are recursive** (`shim_kernel32_sync.hpp`). Windows
    mutex objects *are* recursive, so this is right.
 
 ---
@@ -415,6 +445,14 @@ The fake `PEB_LDR_DATA` lists are empty self-referencing rings, so a
 thread walking the loader's module list to find DLLs sees no modules.
 The PE binary itself isn't in the list.
 
+### The pthread_create override initialization (fixed)
+
+`pthread_create` now resolves `dlsym(RTLD_NEXT, "pthread_create")` on
+first call via `__atomic_load_n`/`__atomic_store_n` with `ACQUIRE`/
+`RELEASE` ordering into a local variable. All subsequent uses of the
+pointer (the `ENOSYS` guard and the actual call) go through the local,
+so no non-atomic read of the static remains after the first-call path.
+
 ### `fake_teb` may not be page-aligned
 
 `__thread uint8_t fake_teb[0x2000]` gets default alignment (16 on x86_64
@@ -444,10 +482,14 @@ index.
 | Functional bug | 64-slot ceiling: PE binaries with >63 dynamic TLS slots fail. |
 | Functional bug | Direct `pthread_create` threads skip `DLL_THREAD_ATTACH`/`DETACH` and static-TLS init. |
 | ABI bug | Inline `gs:[0x1480+idx*8]` slot reads/writes don't see `kernel32_Tls*` storage and vice versa. |
-| ABI bug | PEB has empty loader list — threads walking the module list see no modules. |
+| ABI bug | `CreateThread` returns `INVALID_HANDLE_VALUE` (`-1`) on failure instead of `NULL`. |
+| ABI bug | `GetCurrentThread()` pseudo-handle (`-2`) only honored by `DuplicateHandle`. |
+| ABI bug | `TEB+0x08`/`+0x10` (StackBase/StackLimit) are zero; PEB has empty loader list and hard-coded ImageBase. |
+| Race / UAF | `GetExitCodeThread` reads `g_handles[idx]` without `g_handles_mu` and without a refcount bump; concurrent `CloseHandle` can free the `ThreadObj` mid-call. (`SetEvent`, `ResetEvent`, `ReleaseSemaphore`, `signal_handle` were fixed.) |
 | Race / UAF | `CloseHandle` on a held mutex calls `pthread_mutex_destroy` on a locked mutex (POSIX UB); Wait's own exit path guards this, `CloseHandle`'s does not. |
 | Robustness | TLS callbacks run with no SEH/`try` isolation — a faulting callback aborts the process. |
-| Stub (DELAY) | `CREATE_SUSPENDED`: `kernel32_CreateThread` now aborts with a diagnostic when the flag is passed. Full suspend/resume support (`SuspendThread`/`ResumeThread`/`GetThreadContext`/`SetThreadContext`) is a future work item. |
 | Robustness | `fake_teb` is `__thread`-aligned (16 bytes), not page-aligned; `and rax,~0xFFF` round-down patterns fail. |
 | Correctness | `tls_static_init_thread` idempotency guard (`if slots[idx]`) can be defeated by a `TlsSetValue` on the static index before init runs. |
 | Partial | FLS: per-slot callbacks fire at `FlsFree` and at thread exit for the calling thread; cross-thread callback invocation at `FlsFree` time (full Windows guarantee) is not implemented. |
+| Stub | `GetThreadContext`/`SetThreadContext` remain stubs returning FALSE. `SetThreadPriority` remains a stub returning TRUE. |
+| Cosmetic | `GetCurrentThreadId` syscalls every call instead of reading `gs:[0x48]`. |
