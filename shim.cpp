@@ -1840,6 +1840,11 @@ extern "C" EXPORT BOOL kernel32_GetModuleHandleExW(DWORD flags, LPCWSTR name, HA
     *phModule = h;
   return h ? TRUE : FALSE;
 }
+extern "C" EXPORT BOOL kernel32_GetModuleHandleExA(DWORD flags, LPCSTR name, HANDLE* phModule) {
+  uint16_t wbuf[PATH_MAX];
+  if( name ) utf8_to_wchar(name, wbuf, PATH_MAX);
+  return kernel32_GetModuleHandleExW(flags, name ? wbuf : nullptr, phModule);
+}
 
 extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
   char tmp[PATH_MAX];
@@ -1975,6 +1980,9 @@ extern "C" EXPORT LPWSTR kernel32_GetEnvironmentStringsW(void) {
   if( !g_env_block_w )
     build_env_block();
   return g_env_block_w;
+}
+extern "C" EXPORT LPSTR kernel32_GetEnvironmentStringsA(void) {
+  return kernel32_GetEnvironmentStrings();
 }
 
 extern "C" EXPORT BOOL kernel32_FreeEnvironmentStringsA(LPSTR p) {
@@ -2868,6 +2876,13 @@ extern "C" EXPORT int kernel32_GetLocaleInfoA(DWORD locale, DWORD lctype, LPSTR 
   buf[size-1] = '\0';
   return (int)strlen(buf)+1;
 }
+extern "C" EXPORT int kernel32_GetLocaleInfoW(DWORD locale, DWORD lctype, uint16_t* buf, int size) {
+  char tmp[64];
+  int n = kernel32_GetLocaleInfoA(locale, lctype, tmp, sizeof(tmp));
+  if( !buf || size == 0 ) return n;
+  utf8_to_wchar(tmp, buf, (size_t)size);
+  return n;
+}
 
 // Expand Windows positional escapes (%1!s! %2!d! etc.) from a va_list.
 // Supports up to 9 positional args; reads them from args in declaration order.
@@ -2996,6 +3011,10 @@ extern "C" EXPORT BOOL kernel32_ReadConsoleInputA(HANDLE h, void* buf, DWORD cou
   *(uint16_t*)(rec+14) = (uint16_t)(uint8_t)ch; // AsciiChar
   if( nread ) *nread = 1;
   return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_ReadConsoleInputW(HANDLE h, void* buf, DWORD count, DWORD* nread) {
+  // Same as A; UnicodeChar overlaps AsciiChar at offset 14 in INPUT_RECORD
+  return kernel32_ReadConsoleInputA(h, buf, count, nread);
 }
 
 extern "C" EXPORT BOOL kernel32_SetHandleCount(DWORD n) {
@@ -3491,7 +3510,12 @@ extern "C" EXPORT BOOL kernel32_GetConsoleTitleA(LPSTR buf, DWORD sz) {
   if( buf && sz ) buf[0] = '\0';
   return TRUE;
 }
+extern "C" EXPORT DWORD kernel32_GetConsoleTitleW(uint16_t* buf, DWORD sz) {
+  if( buf && sz ) buf[0] = 0;
+  return 0;
+}
 extern "C" EXPORT BOOL kernel32_SetConsoleTitleA(LPCSTR /*title*/) { return TRUE; }
+extern "C" EXPORT BOOL kernel32_SetConsoleTitleW(const uint16_t* /*title*/) { return TRUE; }
 
 // CONSOLE_SCREEN_BUFFER_INFO layout (22 bytes):
 //  COORD dwSize(4), COORD dwCursorPosition(4), WORD wAttributes(2),
@@ -3514,6 +3538,9 @@ extern "C" EXPORT BOOL kernel32_GetConsoleScreenBufferInfo(HANDLE /*h*/, void* b
 
 extern "C" EXPORT void kernel32_OutputDebugStringA(LPCSTR s) {
   if( s ) log_always("[DBG] %s\n", s);
+}
+extern "C" EXPORT void kernel32_OutputDebugStringW(const uint16_t* s) {
+  if( s ) { char buf[1024]; wchar_to_utf8(s, buf, sizeof(buf)); log_always("[DBG] %s\n", buf); }
 }
 
 // ---------------------------------------------------------------------------
@@ -3558,6 +3585,20 @@ extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uin
   }
   if( out ) utf8_to_wchar(result, out, 260);
   return unique;
+}
+extern "C" EXPORT DWORD kernel32_GetTempPathA(DWORD sz, LPSTR buf) {
+  uint16_t wbuf[PATH_MAX];
+  DWORD n = kernel32_GetTempPathW((DWORD)(PATH_MAX), wbuf);
+  if( buf && sz ) wchar_to_utf8(wbuf, buf, sz);
+  return n;
+}
+extern "C" EXPORT UINT kernel32_GetTempFileNameA(LPCSTR path, LPCSTR prefix, UINT unique, LPSTR out) {
+  uint16_t wpath[PATH_MAX], wpfx[16], wout[PATH_MAX];
+  utf8_to_wchar(path,   wpath, PATH_MAX);
+  utf8_to_wchar(prefix, wpfx,  16);
+  UINT r = kernel32_GetTempFileNameW(wpath, wpfx, unique, wout);
+  if( out ) wchar_to_utf8(wout, out, PATH_MAX);
+  return r;
 }
 
 // ---------------------------------------------------------------------------
@@ -3676,6 +3717,12 @@ extern "C" EXPORT BOOL shlwapi_PathMatchSpecW(const uint16_t* path, const uint16
   base = base ? base+1 : path_u;
   return win_fnmatch(spec_u, base) ? TRUE : FALSE;
 }
+extern "C" EXPORT BOOL shlwapi_PathMatchSpecA(LPCSTR path, LPCSTR spec) {
+  uint16_t wpath[PATH_MAX], wspec[260];
+  utf8_to_wchar(path, wpath, PATH_MAX);
+  utf8_to_wchar(spec, wspec, 260);
+  return shlwapi_PathMatchSpecW(wpath, wspec);
+}
 
 // timeGetTime: milliseconds since system boot (same as GetTickCount).
 extern "C" EXPORT DWORD winmm_timeGetTime(void) {
@@ -3729,6 +3776,11 @@ extern "C" EXPORT BOOL kernel32_CreateHardLinkW(const uint16_t* lnk, const uint1
   win_path_to_posix(l8, lp, sizeof(lp)); win_path_to_posix(t8, tp, sizeof(tp));
   if( ::link(tp, lp) != 0 ) { set_errno_error(); return FALSE; }
   return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_CreateHardLinkA(LPCSTR lnk, LPCSTR tgt, void* sa) {
+  uint16_t wlnk[PATH_MAX], wtgt[PATH_MAX];
+  utf8_to_wchar(lnk, wlnk, PATH_MAX); utf8_to_wchar(tgt, wtgt, PATH_MAX);
+  return kernel32_CreateHardLinkW(wlnk, wtgt, sa);
 }
 
 // ---------------------------------------------------------------------------
@@ -3870,6 +3922,12 @@ extern "C" EXPORT UINT kernel32_GetSystemDirectoryW(uint16_t* buf, UINT size) {
   if( buf && size > n ) utf8_to_wchar(dir, buf, size);
   return n;
 }
+extern "C" EXPORT UINT kernel32_GetSystemDirectoryA(LPSTR buf, UINT size) {
+  const char* dir = "C:\\Windows\\System32";
+  UINT n = (UINT)strlen(dir);
+  if( buf && size > n ) { strncpy(buf, dir, size-1); buf[size-1] = '\0'; }
+  return n;
+}
 extern "C" EXPORT BOOL kernel32_GetVolumeInformationW(const uint16_t* /*root*/,
     uint16_t* volname, DWORD vsz, DWORD* serial, DWORD* max_comp, DWORD* flags,
     uint16_t* fsname, DWORD fssz) {
@@ -3878,6 +3936,16 @@ extern "C" EXPORT BOOL kernel32_GetVolumeInformationW(const uint16_t* /*root*/,
   if( max_comp  ) *max_comp = 255;
   if( flags     ) *flags    = 3u; // FILE_CASE_PRESERVED_NAMES | FILE_CASE_SENSITIVE_SEARCH
   if( fsname && fssz ) utf8_to_wchar("NTFS", fsname, fssz);
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetVolumeInformationA(LPCSTR /*root*/,
+    LPSTR volname, DWORD vsz, DWORD* serial, DWORD* max_comp, DWORD* flags,
+    LPSTR fsname, DWORD fssz) {
+  if( volname && vsz ) { strncpy(volname, "Volume", vsz-1); volname[vsz-1] = '\0'; }
+  if( serial    ) *serial   = 0x12345678u;
+  if( max_comp  ) *max_comp = 255;
+  if( flags     ) *flags    = 3u;
+  if( fsname && fssz ) { strncpy(fsname, "NTFS", fssz-1); fsname[fssz-1] = '\0'; }
   return TRUE;
 }
 extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceExW(const uint16_t* /*path*/,
@@ -3891,6 +3959,10 @@ extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceExW(const uint16_t* /*path*/,
   if( total     ) *total     = blk * vfs.f_blocks;
   if( totalfree ) *totalfree = blk * vfs.f_bfree;
   return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceExA(LPCSTR /*path*/,
+    uint64_t* avail, uint64_t* total, uint64_t* totalfree) {
+  return kernel32_GetDiskFreeSpaceExW(nullptr, avail, total, totalfree);
 }
 extern "C" EXPORT DWORD kernel32_GetDriveTypeW(const uint16_t* /*path*/) { return 3; } // DRIVE_FIXED
 
@@ -3924,6 +3996,16 @@ extern "C" EXPORT DWORD kernel32_GetLongPathNameW(const uint16_t* path, uint16_t
 }
 extern "C" EXPORT DWORD kernel32_GetShortPathNameW(const uint16_t* path, uint16_t* buf, DWORD sz) {
   return kernel32_GetLongPathNameW(path, buf, sz);
+}
+extern "C" EXPORT DWORD kernel32_GetLongPathNameA(LPCSTR path, LPSTR buf, DWORD sz) {
+  uint16_t wpath[PATH_MAX], wbuf[PATH_MAX];
+  utf8_to_wchar(path, wpath, PATH_MAX);
+  DWORD n = kernel32_GetLongPathNameW(wpath, wbuf, PATH_MAX);
+  if( buf && sz ) wchar_to_utf8(wbuf, buf, sz);
+  return n;
+}
+extern "C" EXPORT DWORD kernel32_GetShortPathNameA(LPCSTR path, LPSTR buf, DWORD sz) {
+  return kernel32_GetLongPathNameA(path, buf, sz);
 }
 
 // ---------------------------------------------------------------------------
@@ -3973,6 +4055,15 @@ extern "C" EXPORT int kernel32_FoldStringW(DWORD flags, const uint16_t* src, int
     dst[i] = c;
   }
   return w;
+}
+extern "C" EXPORT int kernel32_FoldStringA(DWORD flags, LPCSTR src, int src_len, LPSTR dst, int dst_size) {
+  if( !src ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  uint16_t wsrc[PATH_MAX], wdst[PATH_MAX];
+  int n = src_len < 0 ? (int)strlen(src)+1 : src_len;
+  utf8_to_wchar(src, wsrc, PATH_MAX);
+  int r = kernel32_FoldStringW(flags, wsrc, n, wdst, PATH_MAX);
+  if( dst && dst_size ) wchar_to_utf8(wdst, dst, (size_t)dst_size);
+  return r;
 }
 
 // ---------------------------------------------------------------------------
@@ -4078,6 +4169,10 @@ extern "C" EXPORT BOOL advapi32_CryptAcquireContextW(uintptr_t* phProv,
     const uint16_t* /*cont*/, const uint16_t* /*prov*/, DWORD /*type*/, DWORD /*flags*/) {
   if(phProv)*phProv=1; return TRUE;
 }
+extern "C" EXPORT BOOL advapi32_CryptAcquireContextA(uintptr_t* phProv,
+    LPCSTR /*cont*/, LPCSTR /*prov*/, DWORD /*type*/, DWORD /*flags*/) {
+  if(phProv)*phProv=1; return TRUE;
+}
 extern "C" EXPORT BOOL advapi32_CryptGenRandom(uintptr_t /*prov*/, DWORD len, BYTE* buf) {
   if(!buf) return FALSE;
   int fd=open("/dev/urandom",O_RDONLY); if(fd<0) return FALSE;
@@ -4156,11 +4251,24 @@ extern "C" EXPORT BOOL user32_CharToOemBuffW(const uint16_t* src, LPSTR dst, DWO
   char utf8[65536]; wchar_to_utf8(src, utf8, sizeof(utf8));
   size_t n=strlen(utf8); if(n>len)n=len; memcpy(dst,utf8,n); return TRUE;
 }
+extern "C" EXPORT BOOL user32_CharToOemW(const uint16_t* src, LPSTR dst) {
+  if(!src||!dst) return TRUE;
+  char utf8[65536]; wchar_to_utf8(src, utf8, sizeof(utf8));
+  strcpy(dst, utf8); return TRUE;
+}
 extern "C" EXPORT BOOL user32_OemToCharA(LPCSTR src, LPSTR dst) {
   return user32_CharToOemA(src, dst);
 }
+extern "C" EXPORT BOOL user32_OemToCharW(LPCSTR src, uint16_t* dst) {
+  if(!src||!dst) return TRUE;
+  utf8_to_wchar(src, dst, 65536); return TRUE;
+}
 extern "C" EXPORT BOOL user32_OemToCharBuffA(LPCSTR src, LPSTR dst, DWORD len) {
   return user32_CharToOemBuffA(src, dst, len);
+}
+extern "C" EXPORT BOOL user32_OemToCharBuffW(LPCSTR src, uint16_t* dst, DWORD len) {
+  if(!src||!dst) return TRUE;
+  utf8_to_wchar(src, dst, (size_t)len); return TRUE;
 }
 extern "C" EXPORT BOOL user32_ExitWindowsEx(UINT /*flags*/, DWORD /*reason*/) {
   _exit(0); return TRUE;
@@ -4320,6 +4428,12 @@ extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceA(LPCSTR /*root*/,
   if( free_clusters       ) *free_clusters       = (DWORD)vfs.f_bavail;
   if( total_clusters      ) *total_clusters      = (DWORD)vfs.f_blocks;
   return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceW(const uint16_t* /*root*/,
+    DWORD* sectors_per_cluster, DWORD* bytes_per_sector,
+    DWORD* free_clusters, DWORD* total_clusters) {
+  return kernel32_GetDiskFreeSpaceA(nullptr, sectors_per_cluster, bytes_per_sector,
+                                    free_clusters, total_clusters);
 }
 extern "C" EXPORT BOOL kernel32_GetVersionExA(void* buf) {
   if( !buf ) return FALSE;
