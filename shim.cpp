@@ -3267,11 +3267,12 @@ extern "C" EXPORT DWORD kernel32_ResumeThread(HANDLE h) {
   ++obj->refcount;
   pthread_mutex_unlock(&g_handles_mu);
 
-  int prev_i = __atomic_load_n(&obj->suspend_count, __ATOMIC_SEQ_CST);
-  DWORD prev = (DWORD)prev_i;
-  if( prev_i > 0 ) {
-    __atomic_fetch_sub(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
-    sem_post(&obj->suspend_sem);
+  int prev_i = __atomic_fetch_sub(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
+  DWORD prev = (DWORD)(prev_i < 0 ? 0 : prev_i);
+  if( prev_i <= 0 ) {
+    __atomic_fetch_add(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);  // undo: wasn't suspended
+  } else if( prev_i == 1 ) {
+    sem_post(&obj->suspend_sem);  // only post when transitioning 1→0
   }
 
   pthread_mutex_lock(&g_handles_mu);
