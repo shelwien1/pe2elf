@@ -108,6 +108,7 @@ static void tls_slots_dtor(void* p) {
   free(slots);
 }
 
+
 static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, tls_slots_dtor); }
 
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
@@ -1019,7 +1020,8 @@ void shim_register_tls(const ShimTlsInfo* info) {
       tls_static_init_thread();
     }
   }
-  run_tls_callbacks(1);
+  run_tls_callbacks(1);   // DLL_PROCESS_ATTACH
+  atexit([]{ run_tls_callbacks(0); });  // DLL_PROCESS_DETACH at clean exit
 }
 
 typedef void (__attribute__((ms_abi)) *tls_callback_fn)(void*, uint32_t, void*);
@@ -3334,9 +3336,10 @@ extern "C" EXPORT BOOL kernel32_DuplicateHandle(
       if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return FALSE; }
       pthread_mutex_init(&obj->mu, nullptr);
       pthread_cond_init(&obj->cv, nullptr);
-      obj->refcount = 1; // one ref held by g_thread_obj_key
+      sem_init(&obj->suspend_sem, 0, 0);
+      obj->refcount = 0; // bumped below under lock
       obj->done     = true;
-      // obj->tid stays 0
+      // obj->tid stays 0; cache so further DuplicateHandle calls reuse this obj
       pthread_setspecific(g_thread_obj_key, obj);
     }
     pthread_mutex_lock(&g_handles_mu);

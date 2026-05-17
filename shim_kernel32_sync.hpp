@@ -382,10 +382,6 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
                                                 void* param, DWORD flags, DWORD* tid_out) {
   (void)sa;
 #define CREATE_SUSPENDED 0x00000004
-  if( flags & CREATE_SUSPENDED ) {
-    fprintf(stderr, "[SHIM] FATAL: CreateThread called with CREATE_SUSPENDED — not implemented\n");
-    abort();
-  }
   ThreadObj* obj = (ThreadObj*)calloc(1, sizeof(ThreadObj));
   if( !obj ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
   obj->refcount = 1;
@@ -518,43 +514,4 @@ extern "C" EXPORT DWORD kernel32_SignalObjectAndWait(HANDLE signal, HANDLE wait,
   return kernel32_WaitForSingleObject(wait, ms);
 }
 
-// ---------------------------------------------------------------------------
-// undo_wait_acquire — roll back a WaitForSingleObject(h, 0) that returned
-// WAIT_OBJECT_0.  Used by the wait-all poll loop so no handle stays locked
-// while we sleep between retries.
-// ---------------------------------------------------------------------------
-static void undo_wait_acquire(HANDLE h) {
-  pthread_mutex_lock(&g_handles_mu);
-  int idx = handle_to_idx(h);
-  if( idx < 0 ) { pthread_mutex_unlock(&g_handles_mu); return; }
-  HandleKind kind = g_handles[idx].kind;
-  void* ptr = g_handles[idx].ptr;
-  ++(*(int*)ptr);
-  pthread_mutex_unlock(&g_handles_mu);
 
-  switch( kind ) {
-  case H_MUTEX:
-    pthread_mutex_unlock(&((MutexObj*)ptr)->mu);
-    break;
-  case H_EVENT: {
-    EventObj* ev = (EventObj*)ptr;
-    if( !ev->manual_reset ) {
-      pthread_mutex_lock(&ev->mu);
-      ev->signaled = true;
-      pthread_cond_broadcast(&ev->cv);
-      pthread_mutex_unlock(&ev->mu);
-    }
-    break;
-  }
-  case H_SEMAPHORE:
-    sem_post(&((SemaphoreObj*)ptr)->sem);
-    break;
-  default:
-    break;
-  }
-
-  pthread_mutex_lock(&g_handles_mu);
-  int new_rc = --(*(int*)ptr);
-  pthread_mutex_unlock(&g_handles_mu);
-  if( new_rc == 0 ) sync_obj_destroy(kind, ptr);
-}
