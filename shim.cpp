@@ -3738,14 +3738,29 @@ typedef BOOL (__attribute__((ms_abi)) *PHANDLER_ROUTINE)(DWORD);
 #define CTRL_C_EVENT     0
 #define CTRL_BREAK_EVENT 1
 
-static PHANDLER_ROUTINE g_ctrl_handler = nullptr;
+#define CTRL_HANDLER_MAX 8
+static PHANDLER_ROUTINE g_ctrl_handlers[CTRL_HANDLER_MAX];
+static int              g_ctrl_handler_count = 0;
+
 static void posix_sigint_handler(int /*sig*/) {
-  if( g_ctrl_handler ) g_ctrl_handler(CTRL_C_EVENT);
+  for( int i = g_ctrl_handler_count - 1; i >= 0; --i )
+    if( g_ctrl_handlers[i](CTRL_C_EVENT) ) return;
 }
 extern "C" EXPORT BOOL kernel32_SetConsoleCtrlHandler(PHANDLER_ROUTINE handler, BOOL add) {
   if( !handler ) { signal(SIGINT, add ? SIG_IGN : SIG_DFL); return TRUE; }
-  if( add ) { g_ctrl_handler = handler; signal(SIGINT, posix_sigint_handler); }
-  else { if( g_ctrl_handler == handler ) { g_ctrl_handler = nullptr; signal(SIGINT, SIG_DFL); } }
+  if( add ) {
+    if( g_ctrl_handler_count < CTRL_HANDLER_MAX )
+      g_ctrl_handlers[g_ctrl_handler_count++] = handler;
+    signal(SIGINT, posix_sigint_handler);
+  } else {
+    for( int i = 0; i < g_ctrl_handler_count; ++i ) {
+      if( g_ctrl_handlers[i] == handler ) {
+        g_ctrl_handlers[i] = g_ctrl_handlers[--g_ctrl_handler_count];
+        break;
+      }
+    }
+    if( g_ctrl_handler_count == 0 ) signal(SIGINT, SIG_DFL);
+  }
   return TRUE;
 }
 
@@ -4280,13 +4295,20 @@ struct ResDir    { uint32_t Chars,TS; uint16_t Maj,Min,Named,Id; };
 struct ResDirEnt { uint32_t Name, Offset; };
 struct ResData   { uint32_t RVA,Size,CodePage,Res; };
 
-static const uint8_t* res_find_id(const uint8_t* rsrc, uint32_t dir_off, uint16_t id) {
+static const uint8_t* res_find_id(const uint8_t* rsrc, uint32_t rsrc_size,
+                                   uint32_t dir_off, uint16_t id) {
+  if( dir_off + sizeof(ResDir) > rsrc_size ) return nullptr;
   const ResDir*    dir = (const ResDir*)(rsrc + dir_off);
-  const ResDirEnt* ent = (const ResDirEnt*)(dir + 1);
   uint32_t n = dir->Named + dir->Id;
+  uint32_t ent_off = dir_off + (uint32_t)sizeof(ResDir);
+  if( ent_off + n * (uint32_t)sizeof(ResDirEnt) > rsrc_size ) return nullptr;
+  const ResDirEnt* ent = (const ResDirEnt*)(rsrc + ent_off);
   for( uint32_t i = 0; i < n; ++i ) {
-    if( !(ent[i].Name >> 31) && (uint16_t)ent[i].Name == id )
-      return rsrc + (ent[i].Offset & 0x7FFFFFFFu);
+    if( !(ent[i].Name >> 31) && (uint16_t)ent[i].Name == id ) {
+      uint32_t off = ent[i].Offset & 0x7FFFFFFFu;
+      if( off >= rsrc_size ) return nullptr;
+      return rsrc + off;
+    }
   }
   return nullptr;
 }
@@ -4311,27 +4333,36 @@ static int load_string_impl(const void* hmod, UINT id, char* bufA, uint16_t* buf
   uint32_t rsrc_rva  = *(uint32_t*)(opt + 112 + 16);
   uint32_t rsrc_size = *(uint32_t*)(opt + 112 + 20);
   if( !rsrc_rva || !rsrc_size ) return 0;
-  const uint8_t* rsrc = base + rsrc_rva;
+  const uint8_t* rsrc     = base + rsrc_rva;
+  const uint8_t* rsrc_end = rsrc + rsrc_size;
   // Level 1: RT_STRING = 6
-  const uint8_t* l2ptr = res_find_id(rsrc, 0, 6);
+  const uint8_t* l2ptr = res_find_id(rsrc, rsrc_size, 0, 6);
   if( !l2ptr ) return 0;
   uint16_t block = (uint16_t)(id / 16 + 1);
-  const uint8_t* l3ptr = res_find_id(rsrc, (uint32_t)(l2ptr - rsrc), block);
+  const uint8_t* l3ptr = res_find_id(rsrc, rsrc_size, (uint32_t)(l2ptr - rsrc), block);
   if( !l3ptr ) return 0;
   // Level 3: take first language
+  if( l3ptr + sizeof(ResDir) + sizeof(ResDirEnt) > rsrc_end ) return 0;
   const ResDir*    ld  = (const ResDir*)l3ptr;
   if( ld->Named + ld->Id == 0 ) return 0;
   const ResDirEnt* le  = (const ResDirEnt*)(ld + 1);
-  const ResData*   rd  = (const ResData*)(rsrc + (le[0].Offset & 0x7FFFFFFFu));
-  const uint8_t*   blk = base + rd->RVA;
+  uint32_t data_off = le[0].Offset & 0x7FFFFFFFu;
+  if( data_off + sizeof(ResData) > rsrc_size ) return 0;
+  const ResData*   rd  = (const ResData*)(rsrc + data_off);
+  if( rd->RVA < rsrc_rva || rd->RVA - rsrc_rva + rd->Size > rsrc_size ) return 0;
+  const uint8_t* blk     = base + rd->RVA;
+  const uint8_t* blk_end = blk + rd->Size;
   // Walk 16-entry block to find string at index (id % 16)
   int idx = id % 16;
   for( int i = 0; i < idx; ++i ) {
+    if( blk + 2 > blk_end ) return 0;
     uint16_t slen = *(uint16_t*)blk;
     blk += 2 + slen * 2;
   }
+  if( blk + 2 > blk_end ) return 0;
   uint16_t slen = *(uint16_t*)blk;
   blk += 2;
+  if( blk + slen * 2 > blk_end ) slen = (uint16_t)((blk_end - blk) / 2);
   if( bufmax <= 0 ) return slen;
   int out = (slen < (uint16_t)(bufmax - 1)) ? slen : (bufmax - 1);
   if( bufW ) {
