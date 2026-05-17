@@ -1040,7 +1040,6 @@ void shim_register_tls(const ShimTlsInfo* info) {
     }
   }
   run_tls_callbacks(1);   // DLL_PROCESS_ATTACH
-  atexit([]{ run_tls_callbacks(0); });  // DLL_PROCESS_DETACH at clean exit
 }
 
 typedef void (__attribute__((ms_abi)) *tls_callback_fn)(void*, uint32_t, void*);
