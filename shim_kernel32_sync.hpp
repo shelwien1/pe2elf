@@ -361,14 +361,8 @@ static void* thread_trampoline(void* arg) {
   pthread_once(&g_thread_key_once, thread_key_init);
   pthread_setspecific(g_thread_obj_key, ts.obj);
 
-  // Install SIGUSR1 handler before any possible suspension wait.
-  struct sigaction sa = {};
-  sa.sa_handler = suspend_signal_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;   // no SA_RESTART: signal must be able to interrupt sem_wait
-  sigaction(SIGUSR1, &sa, nullptr);
-
   // If created with CREATE_SUSPENDED, block here until the first ResumeThread.
+  // SIGUSR1 handler is installed process-wide by install_signal_handlers().
   if( ts.obj->suspend_count > 0 )
     sem_wait(&ts.obj->suspend_sem);
 

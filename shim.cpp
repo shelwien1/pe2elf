@@ -912,6 +912,9 @@ static void crash_handler(int sig, siginfo_t* si, void* ctx) {
   _exit(sig+128);
 }
 
+// forward declaration — defined in shim_kernel32_sync.hpp (included below)
+static void suspend_signal_handler(int);
+
 static void install_signal_handlers(void) {
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
@@ -922,6 +925,13 @@ static void install_signal_handlers(void) {
   sigaction(SIGFPE,  &sa, NULL);
   sigaction(SIGBUS,  &sa, NULL);
   sigaction(SIGABRT, &sa, NULL);
+  // Install SIGUSR1 handler process-wide so all threads (including freshly
+  // created ones) handle SuspendThread signals before the trampoline runs.
+  struct sigaction sa2 = {};
+  sa2.sa_handler = suspend_signal_handler;
+  sigemptyset(&sa2.sa_mask);
+  sa2.sa_flags = 0;  // no SA_RESTART so the signal can interrupt sem_wait
+  sigaction(SIGUSR1, &sa2, NULL);
 }
 
 // ---------------------------------------------------------------------------
@@ -3235,7 +3245,7 @@ extern "C" EXPORT DWORD kernel32_SuspendThread(HANDLE h) {
   pthread_mutex_unlock(&g_handles_mu);
 
   DWORD prev = (DWORD)__atomic_fetch_add(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
-  pthread_kill(obj->tid, SIGUSR1);
+  if( prev == 0 ) pthread_kill(obj->tid, SIGUSR1);  // only signal when transitioning 0→1
 
   pthread_mutex_lock(&g_handles_mu);
   int new_rc = --obj->refcount;
@@ -3257,8 +3267,9 @@ extern "C" EXPORT DWORD kernel32_ResumeThread(HANDLE h) {
   ++obj->refcount;
   pthread_mutex_unlock(&g_handles_mu);
 
-  DWORD prev = (DWORD)obj->suspend_count;
-  if( obj->suspend_count > 0 ) {
+  int prev_i = __atomic_load_n(&obj->suspend_count, __ATOMIC_SEQ_CST);
+  DWORD prev = (DWORD)prev_i;
+  if( prev_i > 0 ) {
     __atomic_fetch_sub(&obj->suspend_count, 1, __ATOMIC_SEQ_CST);
     sem_post(&obj->suspend_sem);
   }
