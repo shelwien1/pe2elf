@@ -33,6 +33,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <wctype.h>
+#include <sys/statvfs.h>
 #include <termios.h>
 #include <ucontext.h>
 #include <unistd.h>
@@ -702,6 +703,7 @@ static char g_cmdline_w[65536]; // UTF-16LE
 static char* g_env_block = NULL;
 static uint16_t* g_env_block_w = NULL;
 static void* g_image_base = (void*)0x400000;  // default; overridden if needed
+static void* g_pe_base    = nullptr;          // PE header (MZ) base, for resource lookup
 
 // TLS slot allocator — used by PE TLS callbacks section and kernel32_Tls* below
 static pthread_mutex_t g_tls_alloc_mu = PTHREAD_MUTEX_INITIALIZER;
@@ -949,6 +951,13 @@ static int find_main_exe_base(struct dl_phdr_info* info, size_t /*sz*/, void* da
     if( info->dlpi_phdr[i].p_type==PT_LOAD ) {
       uintptr_t va = (uintptr_t)info->dlpi_addr + info->dlpi_phdr[i].p_vaddr;
       if( va<lowest ) lowest = va;
+      // Also look for the PE header (MZ signature) in any segment
+      if( !g_pe_base && info->dlpi_phdr[i].p_filesz >= 64 ) {
+        const uint8_t* seg = (const uint8_t*)va;
+        if( seg[0]=='M' && seg[1]=='Z' ) {
+          g_pe_base = (void*)va;
+        }
+      }
     }
   }
   if( lowest!=(uintptr_t)-1 )
@@ -1831,6 +1840,11 @@ extern "C" EXPORT BOOL kernel32_GetModuleHandleExW(DWORD flags, LPCWSTR name, HA
     *phModule = h;
   return h ? TRUE : FALSE;
 }
+extern "C" EXPORT BOOL kernel32_GetModuleHandleExA(DWORD flags, LPCSTR name, HANDLE* phModule) {
+  uint16_t wbuf[PATH_MAX];
+  if( name ) utf8_to_wchar(name, wbuf, PATH_MAX);
+  return kernel32_GetModuleHandleExW(flags, name ? wbuf : nullptr, phModule);
+}
 
 extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD size) {
   char tmp[PATH_MAX];
@@ -1966,6 +1980,9 @@ extern "C" EXPORT LPWSTR kernel32_GetEnvironmentStringsW(void) {
   if( !g_env_block_w )
     build_env_block();
   return g_env_block_w;
+}
+extern "C" EXPORT LPSTR kernel32_GetEnvironmentStringsA(void) {
+  return kernel32_GetEnvironmentStrings();
 }
 
 extern "C" EXPORT BOOL kernel32_FreeEnvironmentStringsA(LPSTR p) {
@@ -2485,6 +2502,13 @@ static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   return hret;
 }
 
+extern "C" EXPORT HANDLE kernel32_FindFirstFileExA(LPCSTR pattern, int /*lvl*/, WIN32_FIND_DATAA* pfd,
+    int /*srchas*/, void* /*filter*/, DWORD /*flags*/) {
+  char posix[PATH_MAX];
+  win_path_to_posix(pattern, posix, sizeof(posix));
+  return find_first_posix(posix, pfd);
+}
+
 extern "C" EXPORT HANDLE kernel32_FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATAA* pfd) {
   char posix[PATH_MAX];
   win_path_to_posix(pattern, posix, sizeof(posix));
@@ -2852,6 +2876,13 @@ extern "C" EXPORT int kernel32_GetLocaleInfoA(DWORD locale, DWORD lctype, LPSTR 
   buf[size-1] = '\0';
   return (int)strlen(buf)+1;
 }
+extern "C" EXPORT int kernel32_GetLocaleInfoW(DWORD locale, DWORD lctype, uint16_t* buf, int size) {
+  char tmp[64];
+  int n = kernel32_GetLocaleInfoA(locale, lctype, tmp, sizeof(tmp));
+  if( !buf || size == 0 ) return n;
+  utf8_to_wchar(tmp, buf, (size_t)size);
+  return n;
+}
 
 // Expand Windows positional escapes (%1!s! %2!d! etc.) from a va_list.
 // Supports up to 9 positional args; reads them from args in declaration order.
@@ -2980,6 +3011,10 @@ extern "C" EXPORT BOOL kernel32_ReadConsoleInputA(HANDLE h, void* buf, DWORD cou
   *(uint16_t*)(rec+14) = (uint16_t)(uint8_t)ch; // AsciiChar
   if( nread ) *nread = 1;
   return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_ReadConsoleInputW(HANDLE h, void* buf, DWORD count, DWORD* nread) {
+  // Same as A; UnicodeChar overlaps AsciiChar at offset 14 in INPUT_RECORD
+  return kernel32_ReadConsoleInputA(h, buf, count, nread);
 }
 
 extern "C" EXPORT BOOL kernel32_SetHandleCount(DWORD n) {
@@ -3475,7 +3510,12 @@ extern "C" EXPORT BOOL kernel32_GetConsoleTitleA(LPSTR buf, DWORD sz) {
   if( buf && sz ) buf[0] = '\0';
   return TRUE;
 }
+extern "C" EXPORT DWORD kernel32_GetConsoleTitleW(uint16_t* buf, DWORD sz) {
+  if( buf && sz ) buf[0] = 0;
+  return 0;
+}
 extern "C" EXPORT BOOL kernel32_SetConsoleTitleA(LPCSTR /*title*/) { return TRUE; }
+extern "C" EXPORT BOOL kernel32_SetConsoleTitleW(const uint16_t* /*title*/) { return TRUE; }
 
 // CONSOLE_SCREEN_BUFFER_INFO layout (22 bytes):
 //  COORD dwSize(4), COORD dwCursorPosition(4), WORD wAttributes(2),
@@ -3498,6 +3538,9 @@ extern "C" EXPORT BOOL kernel32_GetConsoleScreenBufferInfo(HANDLE /*h*/, void* b
 
 extern "C" EXPORT void kernel32_OutputDebugStringA(LPCSTR s) {
   if( s ) log_always("[DBG] %s\n", s);
+}
+extern "C" EXPORT void kernel32_OutputDebugStringW(const uint16_t* s) {
+  if( s ) { char buf[1024]; wchar_to_utf8(s, buf, sizeof(buf)); log_always("[DBG] %s\n", buf); }
 }
 
 // ---------------------------------------------------------------------------
@@ -3542,6 +3585,20 @@ extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uin
   }
   if( out ) utf8_to_wchar(result, out, 260);
   return unique;
+}
+extern "C" EXPORT DWORD kernel32_GetTempPathA(DWORD sz, LPSTR buf) {
+  uint16_t wbuf[PATH_MAX];
+  DWORD n = kernel32_GetTempPathW((DWORD)(PATH_MAX), wbuf);
+  if( buf && sz ) wchar_to_utf8(wbuf, buf, sz);
+  return n;
+}
+extern "C" EXPORT UINT kernel32_GetTempFileNameA(LPCSTR path, LPCSTR prefix, UINT unique, LPSTR out) {
+  uint16_t wpath[PATH_MAX], wpfx[16], wout[PATH_MAX];
+  utf8_to_wchar(path,   wpath, PATH_MAX);
+  utf8_to_wchar(prefix, wpfx,  16);
+  UINT r = kernel32_GetTempFileNameW(wpath, wpfx, unique, wout);
+  if( out ) wchar_to_utf8(wout, out, PATH_MAX);
+  return r;
 }
 
 // ---------------------------------------------------------------------------
@@ -3660,12 +3717,832 @@ extern "C" EXPORT BOOL shlwapi_PathMatchSpecW(const uint16_t* path, const uint16
   base = base ? base+1 : path_u;
   return win_fnmatch(spec_u, base) ? TRUE : FALSE;
 }
+extern "C" EXPORT BOOL shlwapi_PathMatchSpecA(LPCSTR path, LPCSTR spec) {
+  uint16_t wpath[PATH_MAX], wspec[260];
+  utf8_to_wchar(path, wpath, PATH_MAX);
+  utf8_to_wchar(spec, wspec, 260);
+  return shlwapi_PathMatchSpecW(wpath, wspec);
+}
 
 // timeGetTime: milliseconds since system boot (same as GetTickCount).
 extern "C" EXPORT DWORD winmm_timeGetTime(void) {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (DWORD)((uint64_t)ts.tv_sec * 1000ULL + (uint64_t)ts.tv_nsec / 1000000ULL);
+}
+
+// ---------------------------------------------------------------------------
+// SetConsoleCtrlHandler
+// ---------------------------------------------------------------------------
+typedef BOOL (__attribute__((ms_abi)) *PHANDLER_ROUTINE)(DWORD);
+#define CTRL_C_EVENT     0
+#define CTRL_BREAK_EVENT 1
+
+#define CTRL_HANDLER_MAX 8
+static PHANDLER_ROUTINE g_ctrl_handlers[CTRL_HANDLER_MAX];
+static int              g_ctrl_handler_count = 0;
+
+static void posix_sigint_handler(int /*sig*/) {
+  for( int i = g_ctrl_handler_count - 1; i >= 0; --i )
+    if( g_ctrl_handlers[i](CTRL_C_EVENT) ) return;
+}
+extern "C" EXPORT BOOL kernel32_SetConsoleCtrlHandler(PHANDLER_ROUTINE handler, BOOL add) {
+  if( !handler ) { signal(SIGINT, add ? SIG_IGN : SIG_DFL); return TRUE; }
+  if( add ) {
+    if( g_ctrl_handler_count < CTRL_HANDLER_MAX )
+      g_ctrl_handlers[g_ctrl_handler_count++] = handler;
+    signal(SIGINT, posix_sigint_handler);
+  } else {
+    for( int i = 0; i < g_ctrl_handler_count; ++i ) {
+      if( g_ctrl_handlers[i] == handler ) {
+        g_ctrl_handlers[i] = g_ctrl_handlers[--g_ctrl_handler_count];
+        break;
+      }
+    }
+    if( g_ctrl_handler_count == 0 ) signal(SIGINT, SIG_DFL);
+  }
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// DeleteFileW, RemoveDirectoryW, MoveFileW, CreateHardLinkW
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_DeleteFileW(const uint16_t* path) {
+  char utf8[PATH_MAX]; wchar_to_utf8(path, utf8, sizeof(utf8));
+  return kernel32_DeleteFileA(utf8);
+}
+extern "C" EXPORT BOOL kernel32_RemoveDirectoryW(const uint16_t* path) {
+  char utf8[PATH_MAX], posix[PATH_MAX];
+  wchar_to_utf8(path, utf8, sizeof(utf8));
+  win_path_to_posix(utf8, posix, sizeof(posix));
+  if( rmdir(posix) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_MoveFileW(const uint16_t* from, const uint16_t* to) {
+  char f8[PATH_MAX], t8[PATH_MAX], fp[PATH_MAX], tp[PATH_MAX];
+  wchar_to_utf8(from, f8, sizeof(f8)); wchar_to_utf8(to, t8, sizeof(t8));
+  win_path_to_posix(f8, fp, sizeof(fp)); win_path_to_posix(t8, tp, sizeof(tp));
+  if( rename(fp, tp) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_CreateHardLinkW(const uint16_t* lnk, const uint16_t* tgt, void* /*sa*/) {
+  char l8[PATH_MAX], t8[PATH_MAX], lp[PATH_MAX], tp[PATH_MAX];
+  wchar_to_utf8(lnk, l8, sizeof(l8)); wchar_to_utf8(tgt, t8, sizeof(t8));
+  win_path_to_posix(l8, lp, sizeof(lp)); win_path_to_posix(t8, tp, sizeof(tp));
+  if( ::link(tp, lp) != 0 ) { set_errno_error(); return FALSE; }
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_CreateHardLinkA(LPCSTR lnk, LPCSTR tgt, void* sa) {
+  uint16_t wlnk[PATH_MAX], wtgt[PATH_MAX];
+  utf8_to_wchar(lnk, wlnk, PATH_MAX); utf8_to_wchar(tgt, wtgt, PATH_MAX);
+  return kernel32_CreateHardLinkW(wlnk, wtgt, sa);
+}
+
+// ---------------------------------------------------------------------------
+// GetFileInformationByHandle
+// ---------------------------------------------------------------------------
+struct BY_HANDLE_FILE_INFORMATION {
+  DWORD    dwFileAttributes;
+  FILETIME ftCreationTime, ftLastAccessTime, ftLastWriteTime;
+  DWORD    dwVolumeSerialNumber, nFileSizeHigh, nFileSizeLow, nNumberOfLinks;
+  DWORD    nFileIndexHigh, nFileIndexLow;
+};
+extern "C" EXPORT BOOL kernel32_GetFileInformationByHandle(HANDLE h, BY_HANDLE_FILE_INFORMATION* info) {
+  int fd = get_fd(h);
+  if( fd < 0 || !info ) return FALSE;
+  struct stat st;
+  if( fstat(fd, &st) != 0 ) { set_errno_error(); return FALSE; }
+  memset(info, 0, sizeof(*info));
+  info->dwFileAttributes   = stat_to_win_attrs(&st, "");
+  info->ftCreationTime     = u64_to_ft((uint64_t)st.st_mtime * 10000000ULL + FILETIME_EPOCH);
+  info->ftLastAccessTime   = u64_to_ft((uint64_t)st.st_atime * 10000000ULL + FILETIME_EPOCH);
+  info->ftLastWriteTime    = u64_to_ft((uint64_t)st.st_mtime * 10000000ULL + FILETIME_EPOCH);
+  info->dwVolumeSerialNumber = (DWORD)(st.st_dev & 0xFFFFFFFFu);
+  info->nFileSizeHigh      = (DWORD)(st.st_size >> 32);
+  info->nFileSizeLow       = (DWORD)(st.st_size & 0xFFFFFFFFu);
+  info->nNumberOfLinks     = (DWORD)st.st_nlink;
+  info->nFileIndexHigh     = (DWORD)(st.st_ino >> 32);
+  info->nFileIndexLow      = (DWORD)(st.st_ino & 0xFFFFFFFFu);
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// GetFileTime
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GetFileTime(HANDLE h, FILETIME* ctime, FILETIME* atime, FILETIME* mtime) {
+  int fd = get_fd(h);
+  if( fd < 0 ) return FALSE;
+  struct stat st;
+  if( fstat(fd, &st) != 0 ) { set_errno_error(); return FALSE; }
+  FILETIME mt = u64_to_ft((uint64_t)st.st_mtime * 10000000ULL + FILETIME_EPOCH);
+  if( ctime ) *ctime = mt;
+  if( atime ) *atime = u64_to_ft((uint64_t)st.st_atime * 10000000ULL + FILETIME_EPOCH);
+  if( mtime ) *mtime = mt;
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// GetSystemTime, SystemTimeToFileTime, SystemTimeToTzSpecificLocalTime, TzSpecificLocalTimeToSystemTime
+// ---------------------------------------------------------------------------
+static void posix_time_to_systemtime(time_t t, DWORD ms, SYSTEMTIME* st) {
+  struct tm tm; gmtime_r(&t, &tm);
+  st->wYear = (WORD)(tm.tm_year + 1900); st->wMonth = (WORD)(tm.tm_mon + 1);
+  st->wDayOfWeek = (WORD)tm.tm_wday;     st->wDay   = (WORD)tm.tm_mday;
+  st->wHour      = (WORD)tm.tm_hour;     st->wMinute = (WORD)tm.tm_min;
+  st->wSecond    = (WORD)tm.tm_sec;      st->wMilliseconds = (WORD)ms;
+}
+static time_t systemtime_to_posix(const SYSTEMTIME* st) {
+  struct tm tm = {};
+  tm.tm_year = st->wYear - 1900; tm.tm_mon = st->wMonth - 1;
+  tm.tm_mday = st->wDay;         tm.tm_hour = st->wHour;
+  tm.tm_min  = st->wMinute;      tm.tm_sec  = st->wSecond;
+  return timegm(&tm);
+}
+extern "C" EXPORT void kernel32_GetSystemTime(SYSTEMTIME* st) {
+  if( !st ) return;
+  struct timespec ts; clock_gettime(CLOCK_REALTIME, &ts);
+  posix_time_to_systemtime(ts.tv_sec, (DWORD)(ts.tv_nsec / 1000000), st);
+}
+extern "C" EXPORT BOOL kernel32_SystemTimeToFileTime(const SYSTEMTIME* st, FILETIME* ft) {
+  if( !st || !ft ) return FALSE;
+  time_t t = systemtime_to_posix(st);
+  if( t == (time_t)-1 ) return FALSE;
+  uint64_t v = (uint64_t)t * 10000000ULL + FILETIME_EPOCH + (uint64_t)st->wMilliseconds * 10000ULL;
+  *ft = u64_to_ft(v); return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_SystemTimeToTzSpecificLocalTime(void* /*tz*/, const SYSTEMTIME* utc, SYSTEMTIME* local) {
+  if( !utc || !local ) return FALSE;
+  time_t t = systemtime_to_posix(utc);
+  struct tm loc; localtime_r(&t, &loc);
+  local->wYear = (WORD)(loc.tm_year + 1900); local->wMonth = (WORD)(loc.tm_mon + 1);
+  local->wDayOfWeek = (WORD)loc.tm_wday;     local->wDay   = (WORD)loc.tm_mday;
+  local->wHour      = (WORD)loc.tm_hour;     local->wMinute = (WORD)loc.tm_min;
+  local->wSecond    = (WORD)loc.tm_sec;      local->wMilliseconds = utc->wMilliseconds;
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_TzSpecificLocalTimeToSystemTime(void* /*tz*/, const SYSTEMTIME* local, SYSTEMTIME* utc) {
+  if( !local || !utc ) return FALSE;
+  struct tm tm = {};
+  tm.tm_year = local->wYear - 1900; tm.tm_mon = local->wMonth - 1;
+  tm.tm_mday = local->wDay;         tm.tm_hour = local->wHour;
+  tm.tm_min  = local->wMinute;      tm.tm_sec  = local->wSecond;
+  tm.tm_isdst = -1;
+  time_t t = mktime(&tm);
+  posix_time_to_systemtime(t, local->wMilliseconds, utc);
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// LocalFileTimeToFileTime
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_LocalFileTimeToFileTime(const FILETIME* local, FILETIME* utc) {
+  if( !local || !utc ) return FALSE;
+  time_t now = time(nullptr); struct tm loc; localtime_r(&now, &loc);
+  int64_t off = (int64_t)loc.tm_gmtoff * 10000000LL;
+  *utc = u64_to_ft(ft_to_u64(*local) - (uint64_t)off);
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// GetVersionExW — reports Windows 7 SP1 x64
+// OSVERSIONINFOW:  size 276 (4+4+4+4+4 + WCHAR[128]=256)
+// OSVERSIONINFOEXW: size 284 (+ WORD[3] + BYTE[2])
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_GetVersionExW(void* buf) {
+  if( !buf ) return FALSE;
+  uint32_t sz = *(uint32_t*)buf;
+  if( sz < 276 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  uint8_t* b = (uint8_t*)buf;
+  memset(b + 4, 0, sz - 4);
+  *(uint32_t*)(b+4)  = 6;    // dwMajorVersion
+  *(uint32_t*)(b+8)  = 1;    // dwMinorVersion
+  *(uint32_t*)(b+12) = 7601; // dwBuildNumber
+  *(uint32_t*)(b+16) = 2;    // dwPlatformId = VER_PLATFORM_WIN32_NT
+  // szCSDVersion[128] at offset 20 — already zero (L"")
+  if( sz >= 284 ) {
+    *(uint16_t*)(b+276) = 1; // wServicePackMajor
+    *(uint16_t*)(b+278) = 0; // wServicePackMinor
+    *(uint16_t*)(b+280) = 0; // wSuiteMask
+    *(uint8_t*) (b+282) = 1; // wProductType = VER_NT_WORKSTATION
+  }
+  return TRUE;
+}
+
+// ---------------------------------------------------------------------------
+// GetSystemDirectoryW, GetVolumeInformationW, GetDiskFreeSpaceExW, GetDriveTypeW
+// ---------------------------------------------------------------------------
+extern "C" EXPORT UINT kernel32_GetSystemDirectoryW(uint16_t* buf, UINT size) {
+  const char* dir = "C:\\Windows\\System32";
+  UINT n = (UINT)strlen(dir);
+  if( buf && size > n ) utf8_to_wchar(dir, buf, size);
+  return n;
+}
+extern "C" EXPORT UINT kernel32_GetSystemDirectoryA(LPSTR buf, UINT size) {
+  const char* dir = "C:\\Windows\\System32";
+  UINT n = (UINT)strlen(dir);
+  if( buf && size > n ) { strncpy(buf, dir, size-1); buf[size-1] = '\0'; }
+  return n;
+}
+extern "C" EXPORT BOOL kernel32_GetVolumeInformationW(const uint16_t* /*root*/,
+    uint16_t* volname, DWORD vsz, DWORD* serial, DWORD* max_comp, DWORD* flags,
+    uint16_t* fsname, DWORD fssz) {
+  if( volname && vsz ) utf8_to_wchar("Volume", volname, vsz);
+  if( serial    ) *serial   = 0x12345678u;
+  if( max_comp  ) *max_comp = 255;
+  if( flags     ) *flags    = 3u; // FILE_CASE_PRESERVED_NAMES | FILE_CASE_SENSITIVE_SEARCH
+  if( fsname && fssz ) utf8_to_wchar("NTFS", fsname, fssz);
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetVolumeInformationA(LPCSTR /*root*/,
+    LPSTR volname, DWORD vsz, DWORD* serial, DWORD* max_comp, DWORD* flags,
+    LPSTR fsname, DWORD fssz) {
+  if( volname && vsz ) { strncpy(volname, "Volume", vsz-1); volname[vsz-1] = '\0'; }
+  if( serial    ) *serial   = 0x12345678u;
+  if( max_comp  ) *max_comp = 255;
+  if( flags     ) *flags    = 3u;
+  if( fsname && fssz ) { strncpy(fsname, "NTFS", fssz-1); fsname[fssz-1] = '\0'; }
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceExW(const uint16_t* /*path*/,
+    uint64_t* avail, uint64_t* total, uint64_t* totalfree) {
+  struct statvfs vfs;
+  if( statvfs("/", &vfs) != 0 ) {
+    if(avail)*avail=0; if(total)*total=0; if(totalfree)*totalfree=0; return FALSE;
+  }
+  uint64_t blk = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
+  if( avail     ) *avail     = blk * vfs.f_bavail;
+  if( total     ) *total     = blk * vfs.f_blocks;
+  if( totalfree ) *totalfree = blk * vfs.f_bfree;
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceExA(LPCSTR /*path*/,
+    uint64_t* avail, uint64_t* total, uint64_t* totalfree) {
+  return kernel32_GetDiskFreeSpaceExW(nullptr, avail, total, totalfree);
+}
+extern "C" EXPORT DWORD kernel32_GetDriveTypeW(const uint16_t* /*path*/) { return 3; } // DRIVE_FIXED
+
+// ---------------------------------------------------------------------------
+// GetFullPathNameA
+// ---------------------------------------------------------------------------
+extern "C" EXPORT DWORD kernel32_GetFullPathNameA(LPCSTR path, DWORD size, LPSTR buf, LPSTR* filepart) {
+  uint16_t wpath[PATH_MAX], wbuf[PATH_MAX]; LPWSTR wfp = nullptr;
+  utf8_to_wchar(path, wpath, PATH_MAX);
+  DWORD r = kernel32_GetFullPathNameW(wpath, PATH_MAX, wbuf, &wfp);
+  char narrow[PATH_MAX]; wchar_to_utf8(wbuf, narrow, sizeof(narrow));
+  DWORD n = (DWORD)strlen(narrow);
+  if( buf && size > 0 ) {
+    strncpy(buf, narrow, size - 1); buf[size - 1] = '\0';
+    if( filepart ) {
+      char* s = strrchr(buf, '\\'); if(!s) s = strrchr(buf, '/');
+      *filepart = s ? s + 1 : buf;
+    }
+  }
+  (void)r; return n;
+}
+
+// ---------------------------------------------------------------------------
+// GetLongPathNameW / GetShortPathNameW — identity stubs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT DWORD kernel32_GetLongPathNameW(const uint16_t* path, uint16_t* buf, DWORD sz) {
+  if( !path ) return 0;
+  DWORD n = 0; while( path[n] ) n++;
+  if( buf && sz > n ) { for(DWORD i=0;i<=n;i++) buf[i]=path[i]; }
+  return n;
+}
+extern "C" EXPORT DWORD kernel32_GetShortPathNameW(const uint16_t* path, uint16_t* buf, DWORD sz) {
+  return kernel32_GetLongPathNameW(path, buf, sz);
+}
+extern "C" EXPORT DWORD kernel32_GetLongPathNameA(LPCSTR path, LPSTR buf, DWORD sz) {
+  uint16_t wpath[PATH_MAX], wbuf[PATH_MAX];
+  utf8_to_wchar(path, wpath, PATH_MAX);
+  DWORD n = kernel32_GetLongPathNameW(wpath, wbuf, PATH_MAX);
+  if( buf && sz ) wchar_to_utf8(wbuf, buf, sz);
+  return n;
+}
+extern "C" EXPORT DWORD kernel32_GetShortPathNameA(LPCSTR path, LPSTR buf, DWORD sz) {
+  return kernel32_GetLongPathNameA(path, buf, sz);
+}
+
+// ---------------------------------------------------------------------------
+// ExpandEnvironmentStringsW
+// ---------------------------------------------------------------------------
+extern "C" EXPORT DWORD kernel32_ExpandEnvironmentStringsW(const uint16_t* src, uint16_t* dst, DWORD size) {
+  char narrow[32768], out[32768];
+  wchar_to_utf8(src, narrow, sizeof(narrow));
+  const char* p = narrow; char* q = out; char* end = out + sizeof(out) - 1;
+  while( *p && q < end ) {
+    if( *p == '%' ) {
+      const char* ns = p + 1; const char* ne = strchr(ns, '%');
+      if( ne ) {
+        char name[256]; size_t nl = (size_t)(ne - ns);
+        if( nl < sizeof(name) ) {
+          memcpy(name, ns, nl); name[nl] = '\0';
+          const char* val = getenv(name);
+          if( val ) {
+            size_t vl = strlen(val);
+            if( q + vl < end ) { memcpy(q, val, vl); q += vl; }
+            p = ne + 1; continue;
+          }
+        }
+      }
+    }
+    *q++ = *p++;
+  }
+  *q = '\0';
+  if( !dst || size == 0 ) return (DWORD)(strlen(out) + 1);
+  return (DWORD)utf8_to_wchar(out, dst, size) + 1;
+}
+
+// ---------------------------------------------------------------------------
+// FoldStringW — best-effort case fold
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int kernel32_FoldStringW(DWORD flags, const uint16_t* src, int src_len,
+                                            uint16_t* dst, int dst_size) {
+  if( !src ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  int n = (src_len < 0) ? 0 : src_len;
+  if( src_len < 0 ) { while(src[n]) n++; n++; } // include NUL
+  if( !dst || dst_size == 0 ) return n;
+  int w = (n < dst_size) ? n : dst_size;
+  for( int i = 0; i < w; i++ ) {
+    uint16_t c = src[i];
+    if( flags & LCMAP_LOWERCASE ) c = (uint16_t)towlower(c);
+    else if( flags & LCMAP_UPPERCASE ) c = (uint16_t)towupper(c);
+    dst[i] = c;
+  }
+  return w;
+}
+extern "C" EXPORT int kernel32_FoldStringA(DWORD flags, LPCSTR src, int src_len, LPSTR dst, int dst_size) {
+  if( !src ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  uint16_t wsrc[PATH_MAX], wdst[PATH_MAX];
+  int n = src_len < 0 ? (int)strlen(src)+1 : src_len;
+  utf8_to_wchar(src, wsrc, PATH_MAX);
+  int r = kernel32_FoldStringW(flags, wsrc, n, wdst, PATH_MAX);
+  if( dst && dst_size ) wchar_to_utf8(wdst, dst, (size_t)dst_size);
+  return r;
+}
+
+// ---------------------------------------------------------------------------
+// CompareStringA
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int kernel32_CompareStringA(DWORD /*locale*/, DWORD flags,
+                                               LPCSTR s1, int n1, LPCSTR s2, int n2) {
+  if( !s1 || !s2 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  int r;
+  if( n1 < 0 && n2 < 0 ) {
+    r = (flags & NORM_IGNORECASE) ? strcasecmp(s1, s2) : strcmp(s1, s2);
+  } else {
+    size_t c1 = (n1<0) ? strlen(s1) : (size_t)n1;
+    size_t c2 = (n2<0) ? strlen(s2) : (size_t)n2;
+    r = (flags & NORM_IGNORECASE) ? strncasecmp(s1, s2, c1<c2?c1:c2) : strncmp(s1, s2, c1<c2?c1:c2);
+    if( r == 0 ) r = (int)c1 - (int)c2;
+  }
+  return (r<0) ? CSTR_LESS_THAN : (r>0) ? CSTR_GREATER_THAN : CSTR_EQUAL;
+}
+
+// ---------------------------------------------------------------------------
+// CreateEventW, CreateSemaphoreW, WaitForSingleObjectEx, LoadLibraryW
+// ---------------------------------------------------------------------------
+extern "C" EXPORT HANDLE kernel32_CreateEventW(void* sa, BOOL manual_reset, BOOL initial, const uint16_t* /*name*/) {
+  return kernel32_CreateEventA(sa, manual_reset, initial, nullptr);
+}
+extern "C" EXPORT HANDLE kernel32_CreateSemaphoreW(void* sa, LONG initial, LONG max_count, const uint16_t* /*name*/) {
+  return kernel32_CreateSemaphoreA(sa, initial, max_count, nullptr);
+}
+extern "C" EXPORT DWORD kernel32_WaitForSingleObjectEx(HANDLE h, DWORD ms, BOOL /*alertable*/) {
+  return kernel32_WaitForSingleObject(h, ms);
+}
+extern "C" EXPORT HANDLE kernel32_LoadLibraryW(const uint16_t* name) {
+  return kernel32_LoadLibraryExW(name, NULL, 0);
+}
+
+// ---------------------------------------------------------------------------
+// SetEnvironmentVariableA, IsDBCSLeadByte, SetErrorMode, SetPriorityClass,
+// SetThreadExecutionState, BackupRead, BackupSeek, DeviceIoControl
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_SetEnvironmentVariableA(LPCSTR name, LPCSTR value) {
+  if( !value ) { unsetenv(name); return TRUE; }
+  return setenv(name, value, 1) == 0 ? TRUE : FALSE;
+}
+extern "C" EXPORT BOOL kernel32_IsDBCSLeadByte(BYTE /*c*/) { return FALSE; }
+extern "C" EXPORT UINT kernel32_SetErrorMode(UINT /*mode*/) { return 0; }
+extern "C" EXPORT BOOL kernel32_SetPriorityClass(HANDLE /*h*/, DWORD /*cls*/) { return TRUE; }
+extern "C" EXPORT DWORD kernel32_SetThreadExecutionState(DWORD /*flags*/) { return 1; }
+extern "C" EXPORT BOOL kernel32_BackupRead(HANDLE /*h*/, BYTE* /*buf*/, DWORD /*n*/,
+    DWORD* nRead, BOOL /*abort*/, BOOL /*sec*/, void** /*ctx*/) {
+  if(nRead) *nRead=0; return FALSE;
+}
+extern "C" EXPORT BOOL kernel32_BackupSeek(HANDLE /*h*/, DWORD /*lo*/, DWORD /*hi*/,
+    DWORD* sl, DWORD* sh, void** /*ctx*/) {
+  if(sl)*sl=0; if(sh)*sh=0; return FALSE;
+}
+extern "C" EXPORT BOOL kernel32_DeviceIoControl(HANDLE /*h*/, DWORD /*code*/,
+    void* /*in*/, DWORD /*isz*/, void* /*out*/, DWORD /*osz*/,
+    DWORD* returned, void* /*ovl*/) {
+  if(returned)*returned=0; SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return FALSE;
+}
+
+// ---------------------------------------------------------------------------
+// advapi32
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL advapi32_AdjustTokenPrivileges(HANDLE /*tok*/, BOOL /*da*/,
+    void* /*ns*/, DWORD /*bl*/, void* /*ps*/, DWORD* /*rl*/) { return TRUE; }
+extern "C" EXPORT BOOL advapi32_AllocateAndInitializeSid(void* /*auth*/, BYTE /*cnt*/,
+    DWORD r0, DWORD r1, DWORD r2, DWORD r3, DWORD r4, DWORD r5, DWORD r6, DWORD r7,
+    void** sid) {
+  (void)r0;(void)r1;(void)r2;(void)r3;(void)r4;(void)r5;(void)r6;(void)r7;
+  if(sid){ *sid=calloc(1,64); return *sid!=nullptr; } return FALSE;
+}
+extern "C" EXPORT BOOL advapi32_CheckTokenMembership(HANDLE /*tok*/, void* /*sid*/, BOOL* member) {
+  if(member) *member=FALSE; return TRUE;
+}
+extern "C" EXPORT void advapi32_FreeSid(void* sid) { free(sid); }
+extern "C" EXPORT BOOL advapi32_GetFileSecurityW(const uint16_t* /*path*/, DWORD /*info*/,
+    void* sd, DWORD len, DWORD* needed) {
+  if(needed)*needed=20; if(!sd||len<20) return FALSE; memset(sd,0,20); return TRUE;
+}
+extern "C" EXPORT DWORD advapi32_GetSecurityDescriptorLength(void* /*sd*/) { return 20; }
+extern "C" EXPORT BOOL advapi32_LookupPrivilegeValueW(const uint16_t* /*sys*/,
+    const uint16_t* /*name*/, uint64_t* luid) {
+  if(luid)*luid=1; return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_OpenProcessToken(HANDLE /*proc*/, DWORD /*access*/, HANDLE* tok) {
+  if(tok)*tok=(HANDLE)(intptr_t)1; return TRUE;
+}
+extern "C" EXPORT LONG advapi32_RegCloseKey(HANDLE /*key*/) { return 0; }
+extern "C" EXPORT LONG advapi32_RegOpenKeyExW(HANDLE /*key*/, const uint16_t* /*sub*/,
+    DWORD /*opt*/, DWORD /*acc*/, HANDLE* res) {
+  if(res)*res=INVALID_HANDLE_VALUE; return 2; // ERROR_FILE_NOT_FOUND
+}
+extern "C" EXPORT LONG advapi32_RegQueryValueExW(HANDLE /*key*/, const uint16_t* /*name*/,
+    DWORD* /*res*/, DWORD* type, BYTE* /*data*/, DWORD* size) {
+  if(type)*type=1; if(size)*size=0; return 2; // ERROR_FILE_NOT_FOUND
+}
+extern "C" EXPORT BOOL advapi32_SetFileSecurityW(const uint16_t* /*path*/, DWORD /*info*/, void* /*sd*/) {
+  return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_CryptAcquireContextW(uintptr_t* phProv,
+    const uint16_t* /*cont*/, const uint16_t* /*prov*/, DWORD /*type*/, DWORD /*flags*/) {
+  if(phProv)*phProv=1; return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_CryptAcquireContextA(uintptr_t* phProv,
+    LPCSTR /*cont*/, LPCSTR /*prov*/, DWORD /*type*/, DWORD /*flags*/) {
+  if(phProv)*phProv=1; return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_CryptGenRandom(uintptr_t /*prov*/, DWORD len, BYTE* buf) {
+  if(!buf) return FALSE;
+  int fd=open("/dev/urandom",O_RDONLY); if(fd<0) return FALSE;
+  ssize_t r=read(fd,buf,len); close(fd); return r==(ssize_t)len;
+}
+extern "C" EXPORT BOOL advapi32_CryptReleaseContext(uintptr_t /*prov*/, DWORD /*flags*/) { return TRUE; }
+
+// ---------------------------------------------------------------------------
+// shell32 stubs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int shell32_SHFileOperationW(void* /*op*/) {
+  SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return 1;
+}
+extern "C" EXPORT BOOL shell32_SHGetPathFromIDListW(void* /*pidl*/, uint16_t* /*path*/) { return FALSE; }
+
+// Minimal IMalloc COM vtable so callers can safely call Free(ptr)
+static uint32_t __attribute__((ms_abi)) imalloc_AddRef(void*) { return 1; }
+static uint32_t __attribute__((ms_abi)) imalloc_Release(void*) { return 1; }
+static int32_t  __attribute__((ms_abi)) imalloc_QueryInterface(void*, const void*, void** pp) {
+  if(pp) *pp = nullptr; return (int32_t)0x80004002; // E_NOINTERFACE
+}
+static void* __attribute__((ms_abi)) imalloc_Alloc(void*, size_t cb) { return malloc(cb); }
+static void* __attribute__((ms_abi)) imalloc_Realloc(void*, void* p, size_t cb) { return realloc(p, cb); }
+static void  __attribute__((ms_abi)) imalloc_Free(void*, void* p) { free(p); }
+static size_t __attribute__((ms_abi)) imalloc_GetSize(void*, void* p) { return p ? malloc_usable_size(p) : (size_t)-1; }
+static int   __attribute__((ms_abi)) imalloc_DidAlloc(void*, void*) { return -1; }
+static void  __attribute__((ms_abi)) imalloc_HeapMinimize(void*) {}
+
+static void* g_imalloc_vtable[] = {
+  (void*)imalloc_QueryInterface,  // 0x00
+  (void*)imalloc_AddRef,          // 0x08
+  (void*)imalloc_Release,         // 0x10
+  (void*)imalloc_Alloc,           // 0x18
+  (void*)imalloc_Realloc,         // 0x20
+  (void*)imalloc_Free,            // 0x28
+  (void*)imalloc_GetSize,         // 0x30
+  (void*)imalloc_DidAlloc,        // 0x38
+  (void*)imalloc_HeapMinimize,    // 0x40
+};
+static void* g_imalloc_instance[] = { g_imalloc_vtable };
+
+extern "C" EXPORT LONG shell32_SHGetMalloc(void** pp) {
+  if(pp) *pp = g_imalloc_instance;
+  return 0; // S_OK
+}
+extern "C" EXPORT LONG shell32_SHGetSpecialFolderLocation(void* /*hwnd*/, int /*csidl*/, void** pp) {
+  if(pp) *pp = nullptr; return (LONG)0x80004005L; // E_FAIL
+}
+
+// ---------------------------------------------------------------------------
+// user32
+// ---------------------------------------------------------------------------
+extern "C" EXPORT LPSTR user32_CharLowerA(LPSTR s) {
+  if( (uintptr_t)s < 0x10000u ) return (LPSTR)(uintptr_t)tolower((unsigned char)(uintptr_t)s);
+  for(char* p=s; *p; p++) *p=(char)tolower((unsigned char)*p);
+  return s;
+}
+extern "C" EXPORT LPWSTR user32_CharLowerW(LPWSTR s) {
+  if( (uintptr_t)s < 0x10000u ) return (LPWSTR)(uintptr_t)towlower((wchar_t)(uintptr_t)s);
+  for(uint16_t* p=(uint16_t*)s; *p; p++) *p=(uint16_t)towlower(*p);
+  return s;
+}
+extern "C" EXPORT LPWSTR user32_CharUpperW(LPWSTR s) {
+  if( (uintptr_t)s < 0x10000u ) return (LPWSTR)(uintptr_t)towupper((wchar_t)(uintptr_t)s);
+  for(uint16_t* p=(uint16_t*)s; *p; p++) *p=(uint16_t)towupper(*p);
+  return s;
+}
+extern "C" EXPORT BOOL user32_CharToOemA(LPCSTR src, LPSTR dst) {
+  if(src&&dst) { size_t n=strlen(src)+1; memmove(dst,src,n); } return TRUE;
+}
+extern "C" EXPORT BOOL user32_CharToOemBuffA(LPCSTR src, LPSTR dst, DWORD len) {
+  if(src&&dst) memmove(dst,src,len); return TRUE;
+}
+extern "C" EXPORT BOOL user32_CharToOemBuffW(const uint16_t* src, LPSTR dst, DWORD len) {
+  if(!src||!dst) return FALSE;
+  char utf8[65536]; wchar_to_utf8(src, utf8, sizeof(utf8));
+  size_t n=strlen(utf8); if(n>len)n=len; memcpy(dst,utf8,n); return TRUE;
+}
+extern "C" EXPORT BOOL user32_CharToOemW(const uint16_t* src, LPSTR dst) {
+  if(!src||!dst) return TRUE;
+  char utf8[65536]; wchar_to_utf8(src, utf8, sizeof(utf8));
+  strcpy(dst, utf8); return TRUE;
+}
+extern "C" EXPORT BOOL user32_OemToCharA(LPCSTR src, LPSTR dst) {
+  return user32_CharToOemA(src, dst);
+}
+extern "C" EXPORT BOOL user32_OemToCharW(LPCSTR src, uint16_t* dst) {
+  if(!src||!dst) return TRUE;
+  utf8_to_wchar(src, dst, 65536); return TRUE;
+}
+extern "C" EXPORT BOOL user32_OemToCharBuffA(LPCSTR src, LPSTR dst, DWORD len) {
+  return user32_CharToOemBuffA(src, dst, len);
+}
+extern "C" EXPORT BOOL user32_OemToCharBuffW(LPCSTR src, uint16_t* dst, DWORD len) {
+  if(!src||!dst) return TRUE;
+  utf8_to_wchar(src, dst, (size_t)len); return TRUE;
+}
+extern "C" EXPORT BOOL user32_ExitWindowsEx(UINT /*flags*/, DWORD /*reason*/) {
+  _exit(0); return TRUE;
+}
+// ---------------------------------------------------------------------------
+// Resource directory parsing for LoadStringA/W
+// ---------------------------------------------------------------------------
+struct ResDir    { uint32_t Chars,TS; uint16_t Maj,Min,Named,Id; };
+struct ResDirEnt { uint32_t Name, Offset; };
+struct ResData   { uint32_t RVA,Size,CodePage,Res; };
+
+static const uint8_t* res_find_id(const uint8_t* rsrc, uint32_t rsrc_size,
+                                   uint32_t dir_off, uint16_t id) {
+  if( dir_off + sizeof(ResDir) > rsrc_size ) return nullptr;
+  const ResDir*    dir = (const ResDir*)(rsrc + dir_off);
+  uint32_t n = dir->Named + dir->Id;
+  uint32_t ent_off = dir_off + (uint32_t)sizeof(ResDir);
+  if( ent_off + n * (uint32_t)sizeof(ResDirEnt) > rsrc_size ) return nullptr;
+  const ResDirEnt* ent = (const ResDirEnt*)(rsrc + ent_off);
+  for( uint32_t i = 0; i < n; ++i ) {
+    if( !(ent[i].Name >> 31) && (uint16_t)ent[i].Name == id ) {
+      uint32_t off = ent[i].Offset & 0x7FFFFFFFu;
+      if( off >= rsrc_size ) return nullptr;
+      return rsrc + off;
+    }
+  }
+  return nullptr;
+}
+
+
+static int load_string_impl(const void* hmod, UINT id, char* bufA, uint16_t* bufW, int bufmax) {
+  const uint8_t* base = (const uint8_t*)hmod;
+  // Treat NULL or sentinel values (< 64 KiB, e.g. FAKE_WIN_MODULE) as "current image"
+  if( !base || (uintptr_t)base < 0x10000u ) base = (const uint8_t*)g_image_base;
+  if( !base ) return 0;
+  // If base doesn't point to a PE header, try the known PE base
+  if( *(uint16_t*)base != 0x5A4D ) {
+    if( g_pe_base ) base = (const uint8_t*)g_pe_base;
+    else return 0;
+  }
+  // Parse PE header to get resource RVA
+  if( *(uint16_t*)base != 0x5A4D ) return 0;
+  uint32_t pe_off = *(uint32_t*)(base + 60);
+  if( *(uint32_t*)(base + pe_off) != 0x00004550u ) return 0;
+  const uint8_t* opt = base + pe_off + 24;
+  if( *(uint16_t*)opt != 0x020B ) return 0;
+  uint32_t rsrc_rva  = *(uint32_t*)(opt + 112 + 16);
+  uint32_t rsrc_size = *(uint32_t*)(opt + 112 + 20);
+  if( !rsrc_rva || !rsrc_size ) return 0;
+  const uint8_t* rsrc     = base + rsrc_rva;
+  const uint8_t* rsrc_end = rsrc + rsrc_size;
+  // Level 1: RT_STRING = 6
+  const uint8_t* l2ptr = res_find_id(rsrc, rsrc_size, 0, 6);
+  if( !l2ptr ) return 0;
+  uint16_t block = (uint16_t)(id / 16 + 1);
+  const uint8_t* l3ptr = res_find_id(rsrc, rsrc_size, (uint32_t)(l2ptr - rsrc), block);
+  if( !l3ptr ) return 0;
+  // Level 3: take first language
+  if( l3ptr + sizeof(ResDir) + sizeof(ResDirEnt) > rsrc_end ) return 0;
+  const ResDir*    ld  = (const ResDir*)l3ptr;
+  if( ld->Named + ld->Id == 0 ) return 0;
+  const ResDirEnt* le  = (const ResDirEnt*)(ld + 1);
+  uint32_t data_off = le[0].Offset & 0x7FFFFFFFu;
+  if( data_off + sizeof(ResData) > rsrc_size ) return 0;
+  const ResData*   rd  = (const ResData*)(rsrc + data_off);
+  if( rd->RVA < rsrc_rva || rd->RVA - rsrc_rva + rd->Size > rsrc_size ) return 0;
+  const uint8_t* blk     = base + rd->RVA;
+  const uint8_t* blk_end = blk + rd->Size;
+  // Walk 16-entry block to find string at index (id % 16)
+  int idx = id % 16;
+  for( int i = 0; i < idx; ++i ) {
+    if( blk + 2 > blk_end ) return 0;
+    uint16_t slen = *(uint16_t*)blk;
+    blk += 2 + slen * 2;
+  }
+  if( blk + 2 > blk_end ) return 0;
+  uint16_t slen = *(uint16_t*)blk;
+  blk += 2;
+  if( blk + slen * 2 > blk_end ) slen = (uint16_t)((blk_end - blk) / 2);
+  if( bufmax <= 0 ) return slen;
+  int out = (slen < (uint16_t)(bufmax - 1)) ? slen : (bufmax - 1);
+  if( bufW ) {
+    const uint16_t* src = (const uint16_t*)blk;
+    for( int i = 0; i < out; ++i ) bufW[i] = src[i];
+    bufW[out] = 0;
+  } else if( bufA ) {
+    const uint16_t* src = (const uint16_t*)blk;
+    for( int i = 0; i < out; ++i ) bufA[i] = (char)(src[i] < 256 ? src[i] : '?');
+    bufA[out] = '\0';
+  }
+  return out;
+}
+
+extern "C" EXPORT int user32_LoadStringW(HANDLE hinst, UINT id, uint16_t* buf, int sz) {
+  return load_string_impl(hinst, id, nullptr, buf, sz);
+}
+extern "C" EXPORT int user32_LoadStringA(HANDLE hinst, UINT id, LPSTR buf, int sz) {
+  return load_string_impl(hinst, id, buf, nullptr, sz);
+}
+extern "C" EXPORT BOOL user32_MessageBeep(UINT /*type*/) { return TRUE; }
+
+// ---------------------------------------------------------------------------
+// user32_CharUpperA
+// ---------------------------------------------------------------------------
+extern "C" EXPORT LPSTR user32_CharUpperA(LPSTR s) {
+  if( (uintptr_t)s <= 0xFFFF ) return (LPSTR)(uintptr_t)toupper((int)(uintptr_t)s);
+  for( LPSTR p = s; *p; ++p ) *p = (char)toupper((unsigned char)*p);
+  return s;
+}
+
+// ---------------------------------------------------------------------------
+// kernel32 A-variant wrappers
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL kernel32_MoveFileA(LPCSTR from, LPCSTR to) {
+  char pf[PATH_MAX], pt[PATH_MAX];
+  win_path_to_posix(from, pf, sizeof(pf));
+  win_path_to_posix(to,   pt, sizeof(pt));
+  if( rename(pf, pt) == 0 ) return TRUE;
+  SET_LAST_ERROR(errno_to_win32(errno)); return FALSE;
+}
+extern "C" EXPORT BOOL kernel32_RemoveDirectoryA(LPCSTR path) {
+  char p[PATH_MAX]; win_path_to_posix(path, p, sizeof(p));
+  if( rmdir(p) == 0 ) return TRUE;
+  SET_LAST_ERROR(errno_to_win32(errno)); return FALSE;
+}
+extern "C" EXPORT BOOL kernel32_SetCurrentDirectoryA(LPCSTR path) {
+  char p[PATH_MAX]; win_path_to_posix(path, p, sizeof(p));
+  if( chdir(p) == 0 ) return TRUE;
+  SET_LAST_ERROR(errno_to_win32(errno)); return FALSE;
+}
+extern "C" EXPORT DWORD kernel32_ExpandEnvironmentStringsA(LPCSTR src, LPSTR dst, DWORD size) {
+  if( !src ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0; }
+  // Simple: expand %VAR% patterns using getenv
+  char out[PATH_MAX*2]; size_t pos = 0;
+  for( const char* p = src; *p && pos+2<sizeof(out); ) {
+    if( *p == '%' ) {
+      const char* e = strchr(p+1,'%');
+      if( e ) {
+        char var[256]; int vl = (int)(e-p-1); if(vl>=256) vl=255;
+        memcpy(var,p+1,vl); var[vl]='\0';
+        const char* val = getenv(var);
+        if( val ) { size_t vlen=strlen(val); if(pos+vlen<sizeof(out)){memcpy(out+pos,val,vlen);pos+=vlen;} }
+        else { if(pos+vl+2<sizeof(out)){out[pos++]='%';memcpy(out+pos,var,vl);pos+=vl;out[pos++]='%';} }
+        p = e+1; continue;
+      }
+    }
+    out[pos++] = *p++;
+  }
+  out[pos] = '\0';
+  DWORD need = (DWORD)(pos+1);
+  if( dst && size >= need ) { memcpy(dst, out, need); return need; }
+  if( dst && size > 0 ) { memcpy(dst, out, size-1); dst[size-1]='\0'; }
+  return need;
+}
+extern "C" EXPORT HANDLE kernel32_LoadLibraryExA(LPCSTR name, HANDLE /*reserved*/, DWORD flags) {
+  if( !name ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return NULL_HANDLE; }
+  uint16_t wname[PATH_MAX];
+  utf8_to_wchar(name, wname, PATH_MAX);
+  return kernel32_LoadLibraryExW(wname, NULL_HANDLE, flags);
+}
+extern "C" EXPORT DWORD kernel32_GetDriveTypeA(LPCSTR /*path*/) { return 3; } // DRIVE_FIXED
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceA(LPCSTR /*root*/,
+    DWORD* sectors_per_cluster, DWORD* bytes_per_sector,
+    DWORD* free_clusters, DWORD* total_clusters) {
+  struct statvfs vfs;
+  if( statvfs("/", &vfs) != 0 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  DWORD bps  = (DWORD)(vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize);
+  DWORD spc  = 1;
+  // Clamp to 32-bit friendly values
+  while( bps > 4096 && spc < 64 ) { bps /= 2; spc *= 2; }
+  if( sectors_per_cluster ) *sectors_per_cluster = spc;
+  if( bytes_per_sector    ) *bytes_per_sector    = bps;
+  if( free_clusters       ) *free_clusters       = (DWORD)vfs.f_bavail;
+  if( total_clusters      ) *total_clusters      = (DWORD)vfs.f_blocks;
+  return TRUE;
+}
+extern "C" EXPORT BOOL kernel32_GetDiskFreeSpaceW(const uint16_t* /*root*/,
+    DWORD* sectors_per_cluster, DWORD* bytes_per_sector,
+    DWORD* free_clusters, DWORD* total_clusters) {
+  return kernel32_GetDiskFreeSpaceA(nullptr, sectors_per_cluster, bytes_per_sector,
+                                    free_clusters, total_clusters);
+}
+extern "C" EXPORT BOOL kernel32_GetVersionExA(void* buf) {
+  if( !buf ) return FALSE;
+  uint32_t sz = *(uint32_t*)buf; uint8_t* b = (uint8_t*)buf;
+  if( sz < 148 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  memset(b+4, 0, sz-4);
+  *(uint32_t*)(b+4)  = 6;    // dwMajorVersion
+  *(uint32_t*)(b+8)  = 1;    // dwMinorVersion
+  *(uint32_t*)(b+12) = 7601; // dwBuildNumber
+  *(uint32_t*)(b+16) = 2;    // dwPlatformId = VER_PLATFORM_WIN32_NT
+  memcpy(b+20, "Service Pack 1\0", 15); // szCSDVersion[128]
+  if( sz >= 156 ) {
+    *(uint16_t*)(b+148) = 1; // wServicePackMajor
+    *(uint16_t*)(b+150) = 0; // wServicePackMinor
+    *(uint16_t*)(b+152) = 0; // wSuiteMask
+    *(uint8_t*) (b+154) = 1; // wProductType = VER_NT_WORKSTATION
+  }
+  return TRUE;
+}
+extern "C" EXPORT DWORD kernel32_GetVersion(void) {
+  // LOBYTE(LOWORD)=major=6, HIBYTE(LOWORD)=minor=1, HIWORD=build=7601
+  return (7601u << 16) | (1u << 8) | 6u;
+}
+extern "C" EXPORT DWORD kernel32_ReadConsoleA(HANDLE h, LPVOID buf, DWORD toread,
+    LPDWORD read_out, void* /*input_control*/) {
+  // Delegate to ReadFile on stdin handle
+  return kernel32_ReadFile(h, buf, toread, read_out, nullptr);
+}
+extern "C" EXPORT void kernel32_RtlFillMemory(void* dest, size_t len, uint8_t fill) {
+  if(dest && len) memset(dest, fill, len);
+}
+extern "C" EXPORT size_t kernel32_RtlCompareMemory(const void* s1, const void* s2, size_t len) {
+  const uint8_t* a = (const uint8_t*)s1;
+  const uint8_t* b = (const uint8_t*)s2;
+  size_t i = 0;
+  for(; i < len && a[i] == b[i]; ++i) {}
+  return i;
+}
+
+// ---------------------------------------------------------------------------
+// advapi32 A-variant stubs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT BOOL advapi32_GetFileSecurityA(LPCSTR /*path*/, DWORD /*info*/,
+    void* sd, DWORD len, DWORD* needed) {
+  const DWORD SD_SIZE = 20;
+  if(needed) *needed = SD_SIZE;
+  if(!sd || len < SD_SIZE) { SET_LAST_ERROR(122/*ERROR_INSUFFICIENT_BUFFER*/); return FALSE; }
+  memset(sd, 0, SD_SIZE);
+  *(uint8_t*)sd = 1; // Revision=1
+  return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_SetFileSecurityA(LPCSTR /*path*/, DWORD /*info*/, void* /*sd*/) {
+  return TRUE;
+}
+extern "C" EXPORT BOOL advapi32_LookupPrivilegeValueA(LPCSTR /*sys*/, LPCSTR /*name*/, void* luid) {
+  if(luid) *(uint64_t*)luid = 1;
+  return TRUE;
+}
+extern "C" EXPORT LONG advapi32_RegOpenKeyExA(void* /*key*/, LPCSTR /*subkey*/,
+    DWORD /*opts*/, DWORD /*access*/, void** result) {
+  if(result) *result = nullptr;
+  return 2; // ERROR_FILE_NOT_FOUND
+}
+extern "C" EXPORT LONG advapi32_RegQueryValueExA(void* /*key*/, LPCSTR /*name*/,
+    DWORD* /*reserved*/, DWORD* type, void* /*data*/, DWORD* size) {
+  if(type) *type = 1; if(size) *size = 0;
+  return 2; // ERROR_FILE_NOT_FOUND
+}
+
+// ---------------------------------------------------------------------------
+// shell32 A-variant stubs
+// ---------------------------------------------------------------------------
+extern "C" EXPORT int shell32_SHFileOperationA(void* /*op*/) {
+  SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED);
+  return 1;
+}
+extern "C" EXPORT BOOL shell32_SHGetPathFromIDListA(void* /*pidl*/, LPSTR /*path*/) {
+  return FALSE;
 }
 
 #include "shim_msvcrt.hpp"

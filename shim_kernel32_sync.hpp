@@ -195,6 +195,9 @@ extern "C" EXPORT HANDLE kernel32_CreateMutexA(void* sa, BOOL initial_owner, LPC
   if( h == INVALID_HANDLE_VALUE ) { pthread_mutex_destroy(&m->mu); free(m); }
   return h;
 }
+extern "C" EXPORT HANDLE kernel32_CreateMutexW(void* sa, BOOL initial_owner, const uint16_t* /*name*/) {
+  return kernel32_CreateMutexA(sa, initial_owner, nullptr);
+}
 
 extern "C" EXPORT BOOL kernel32_ReleaseMutex(HANDLE h) {
   pthread_mutex_lock(&g_handles_mu);

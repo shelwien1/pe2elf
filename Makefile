@@ -17,9 +17,13 @@ SHIM_LDFLAGS = -lpthread -ldl \
                -Wl,--version-script=shim.map \
                -Wl,-z,now \
                -Wl,-soname,winapi_shim.so
+SHIM_DBG_FLAGS = -g -O0 -fPIC -shared -m64 -std=c++17 \
+             -fvisibility=hidden \
+             -Wall -Wextra -Wno-unused-parameter \
+             -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 \
+             -I.
 SHIM_DBG_LDFLAGS = -lpthread -ldl \
                    -Wl,--version-script=shim.map \
-                   -Wl,-z,now \
                    -Wl,-soname,winapi_shim_dbg.so
 
 DUMMY_FLAGS   = -O2 -fPIC -shared -std=c++17
@@ -35,7 +39,7 @@ $(SHIM_OUT): $(SHIM_SRCS) shim_types.h shim.map
 	$(CC) $(SHIM_FLAGS) -o $@ $(SHIM_SRCS) $(SHIM_LDFLAGS)
 
 $(SHIM_DBG_OUT): $(SHIM_SRCS) shim_types.h shim.map
-	$(CC) $(SHIM_FLAGS) -DWINAPI_LOG_ENABLED -o $@ $(SHIM_SRCS) $(SHIM_DBG_LDFLAGS)
+	$(CC) $(SHIM_DBG_FLAGS) -DWINAPI_LOG_ENABLED -o $@ $(SHIM_SRCS) $(SHIM_DBG_LDFLAGS)
 
 $(DUMMY_OUT): $(DUMMY_SRCS)
 	$(CC) $(DUMMY_FLAGS) -o $@ $(DUMMY_SRCS) $(DUMMY_LDFLAGS)
