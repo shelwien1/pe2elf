@@ -325,7 +325,7 @@ extern "C" EXPORT BOOL kernel32_ReleaseSemaphore(HANDLE h, LONG count, LONG* pre
 // ---------------------------------------------------------------------------
 typedef uint32_t (__attribute__((ms_abi)) *win_thread_fn)(void*);
 
-struct ThreadStart { win_thread_fn fn; void* param; ThreadObj* obj; };
+struct ThreadStart { win_thread_fn fn; void* param; ThreadObj* obj; bool create_suspended; };
 
 static pthread_key_t  g_thread_obj_key;
 static pthread_once_t g_thread_key_once = PTHREAD_ONCE_INIT;
@@ -349,7 +349,7 @@ static void suspend_signal_handler(int /*sig*/) {
   pthread_once(&g_thread_key_once, thread_key_init);
   ThreadObj* obj = (ThreadObj*)pthread_getspecific(g_thread_obj_key);
   if( !obj ) return;
-  sem_wait(&obj->suspend_sem);
+  while( sem_wait(&obj->suspend_sem) == -1 && errno == EINTR );
 }
 
 static void* thread_trampoline(void* arg) {
@@ -362,9 +362,12 @@ static void* thread_trampoline(void* arg) {
   pthread_setspecific(g_thread_obj_key, ts.obj);
 
   // If created with CREATE_SUSPENDED, block here until the first ResumeThread.
-  // SIGUSR1 handler is installed process-wide by install_signal_handlers().
-  if( ts.obj->suspend_count > 0 )
-    sem_wait(&ts.obj->suspend_sem);
+  // Use the snapshot flag rather than re-reading mutable suspend_count: if
+  // ResumeThread posts the semaphore before we reach sem_wait, the wait
+  // returns immediately (correct); reading suspend_count would be racy and
+  // could leave a stale token that prematurely unblocks a future SuspendThread.
+  if( ts.create_suspended )
+    while( sem_wait(&ts.obj->suspend_sem) == -1 && errno == EINTR );
 
   uint32_t ret = ts.fn(ts.param);
   run_tls_callbacks(3);  // DLL_THREAD_DETACH — mirrors what Windows loader does
@@ -390,6 +393,7 @@ extern "C" EXPORT HANDLE kernel32_CreateThread(void* sa, size_t /*stack*/, win_t
     SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL;
   }
   ts->fn = fn; ts->param = param; ts->obj = obj;
+  ts->create_suspended = (flags & CREATE_SUSPENDED) != 0;
 
   HANDLE h = handle_alloc_sync(H_THREAD, obj);
   if( h == INVALID_HANDLE_VALUE ) {
