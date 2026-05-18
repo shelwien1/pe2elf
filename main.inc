@@ -37,8 +37,6 @@ typedef __attribute__((ms_abi)) int            t_ftell_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_fseek_main(FILE*, int, int);
 typedef __attribute__((ms_abi)) int            t_fflush_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_setvbuf_main(FILE*, char*, int, size_t);
-typedef __attribute__((ms_abi)) int            t_flsbuf_main(int, FILE*);
-typedef __attribute__((ms_abi)) int            t_filbuf_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_fileno_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_chsize_main(int, int);
 typedef __attribute__((ms_abi)) char*          t_strrchr_main(const char*, int);
@@ -70,8 +68,6 @@ static t_ftell_main&             __ftell_nolock      = *(t_ftell_main*)0x140012D
 static t_fseek_main&             __fseek_nolock      = *(t_fseek_main*)0x140012FC4;
 static t_fflush_main&            __fflush_nolock     = *(t_fflush_main*)0x1400130F4;
 static t_setvbuf_main&           __setvbuf           = *(t_setvbuf_main*)0x140012A80;
-static t_flsbuf_main&            __flsbuf            = *(t_flsbuf_main*)0x14001323C;
-static t_filbuf_main&            __filbuf            = *(t_filbuf_main*)0x1400133CC;
 static t_fileno_main&            __fileno            = *(t_fileno_main*)0x140017228;
 static t_chsize_main&            __chsize            = *(t_chsize_main*)0x14001D2A0;
 static t_strrchr_main&           __strrchr           = *(t_strrchr_main*)0x140012A28;
