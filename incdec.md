@@ -426,6 +426,20 @@ refers to `F` by its original name, and those macros map it to the now-real
 `__F` symbol. Ensure `F.inc` is `#include`d before `caller.inc` in
 `dummy.cpp`.
 
+**Call-site cast after cleanup.** After removing the typedef+static-ref, scan
+the caller body for C-style casts that pass a function pointer as this
+parameter. If the target parameter type carries `__attribute__((ms_abi))`,
+the cast expression must include it too, or g++ emits a `-fpermissive` warning
+about mismatched calling-convention attributes:
+
+```cpp
+// wrong — strips ms_abi, triggers warning:
+sub_140003530(f, g, (__int64(*)(FILE*, FILE*, __int64))PrintStats, 0);
+
+// correct:
+sub_140003530(f, g, (__attribute__((ms_abi)) __int64(*)(FILE*, FILE*, __int64))PrintStats, 0);
+```
+
 ### 6.4 WinAPI imports (via PE IAT slots)
 
 WinAPI functions are *not* present at their entry point inside `PPMonstr.exe`
@@ -675,6 +689,26 @@ gaps. Reproducing the exact frame in a portable C++ struct is brittle
 and undocumented; `memmove` against the conceptual source is both
 clearer and correct.
 
+The same UB pattern appears for **zeroing** (not just copying). The original
+asm uses `pxor xmm0,xmm0` followed by a stream of `movaps` to zero a
+contiguous region. Hex-Rays lifts this as a loop over overlapping `__int128`
+(xmmword) arrays with large, compiler-dependent offsets:
+
+```cpp
+// Hex-Rays zeroing expansion — DO NOT use:
+xmmword_140029500[64] = 0;
+xmmword_140029510[63] = 0;
+xmmword_140029520[62] = 0;
+xmmword_140029530[61] = 0;
+```
+
+Replace with a direct `memset` against the region's base address and byte
+count (both readable from the asm):
+
+```cpp
+memset((void*)0x140029540, 0, 0x400);
+```
+
 **B. `operator new`.**
 
 ```cpp
@@ -690,6 +724,48 @@ sites in the body:
 typedef __attribute__((ms_abi)) void* t_op_new(size_t);
 static t_op_new& __op_new = *(t_op_new*)0x140012768;   // ??2@YAPEAX_K@Z
 // in body:  v25 = (void **)__op_new(328u);
+```
+
+**C. Missing `ms_abi` on callback / function-pointer parameters.**
+
+Hex-Rays represents callback parameters as plain C function pointers with no
+calling-convention attribute:
+
+```cpp
+__int64 sub_140003530(FILE *f, FILE *g, __int64 (*a3)(FILE *, FILE *, __int64), int a4)
+```
+
+If `a3` will be called with a Win64-ABI target (e.g. `PrintStats` inside
+`PPMonstr.exe`), the parameter type must carry `__attribute__((ms_abi))`:
+
+```cpp
+__attribute__((ms_abi)) __int64 __sub_140003530(
+    FILE *f, FILE *g,
+    __attribute__((ms_abi)) __int64 (*a3)(FILE *, FILE *, __int64),
+    int a4)
+```
+
+Without it, the generated call instruction passes arguments in RDI/RSI
+(SysV) instead of RCX/RDX (Win64). The callee silently reads garbage; the
+symptom is wrong output rather than a crash, making this easy to miss. Apply
+`ms_abi` to every function-pointer parameter whose target lives in the PE
+image. (See also §6.3 for the corresponding call-site cast rule.)
+
+**D. Vftable address syntax.**
+
+Hex-Rays emits vftable addresses using MSVC decorated-name syntax that g++
+cannot parse:
+
+```cpp
+qword_141133780 = &std::bad_alloc::`vftable';   // syntax error in g++
+```
+
+Look up the vftable address in `PPMonstr.txt` (the symbol will be listed
+under the mangled name, e.g. `??_7bad_alloc@std@@6B@`) and replace with a
+numeric cast:
+
+```cpp
+qword_141133780 = (void*)0x140022990;   // &std::bad_alloc::`vftable'
 ```
 
 ### 8.5 `extract_fn.py` — automated `.inc` scaffolding
@@ -720,6 +796,14 @@ What it does **not** do:
   declarations (e.g. `_intel_new_proc_init`). The tool emits a TODO and
   a placeholder `void(...)` typedef.
 - Generate the `patch_jmp` call in `dummy.cpp` — add that by hand.
+- Detect self-recursive functions. For a function that calls itself,
+  the tool sees the recursive call as just another external callee and
+  emits a typedef + static ref pointing at the function's own VA. That
+  ref conflicts with the actual C++ definition and produces a
+  "redeclared as different kind of entity" compile error. Remove the
+  auto-generated typedef + static ref block for the function itself;
+  keep only the `#define name __name` line — the recursive call resolves
+  directly to the C++ symbol.
 
 The scaffold should be reviewed line-by-line before compiling: think of
 it as a first draft that already has the typed-ref boilerplate written
