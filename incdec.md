@@ -74,7 +74,13 @@ whole point of the protocol is that **every step ends with a green test**.
 
 1. **Pick the next function.** Start with leaves (functions that only call
    library code) and work upward toward `main`. This keeps the dependency
-   chain inside `dummy.so` acyclic and easy to debug.
+   chain inside `dummy.so` acyclic and easy to debug. Prefer functions that
+   are reachable on the hot path of the validation test (i.e., ones likely
+   to have a non-zero probe count after a successful run); a function with
+   probe count 0 passes the test trivially — the redirect may be wrong but
+   there is no execution to expose it. If a newly wired function shows
+   probe count 0, treat it as unverified and immediately continue to the
+   next candidate rather than stopping.
 
 2. **Locate the body** in `PPMonstr.cpp`. Grep for the definition
    (`^<rettype> <name>\b` or `^void <name>\b`), not the forward declaration.
@@ -119,6 +125,21 @@ whole point of the protocol is that **every step ends with a green test**.
 6. **Install the redirect** inside `dummy_init()` (see §5). After this step,
    any call to the original VA in `PPMonstr.elf` jumps to the `__`-prefixed
    reimplementation in `dummy.so`.
+
+6a. **Retroactive cleanup in existing `.inc` files.** Search every already-
+    committed `.inc` for a typedef+ref pair targeting the same VA as the
+    function just decompiled:
+
+    ```sh
+    grep -rn "0x<VA>\|<name>" *.inc
+    ```
+
+    For each hit in an existing caller's `.inc`, delete the
+    `typedef … t_<name>_<caller>(…);` line and the
+    `static t_<name>_<caller>& __<name> = *(…*)0x<VA>;` line (see §6.3).
+    Ensure the newly created `<name>.inc` is `#include`d before the caller's
+    `.inc` in `dummy.cpp`. Failure to do this causes a "redeclared as
+    different kind of entity" compile error.
 
 7. **Rebuild and re-test** (§2). If the test fails, the bug is in this single
    function or in its `.inc` dependency block — bisect there, not in earlier
@@ -318,6 +339,23 @@ use `__sub_YYYYYYYY(...)` directly. This keeps the dependency graph among
 
 Order `#include "<callee>.inc"` before `#include "<caller>.inc"` in
 `dummy.cpp` so the C++ name is in scope.
+
+**Retroactive cleanup — when a callee is decompiled after its caller.**
+`extract_fn.py` writes a typedef + static ref for every callee it finds at
+the time of extraction. If you later decompile callee `F`, its `.inc`
+defines `__F` as an actual C++ function; the old typedef+ref in
+`caller.inc` then produces a "redeclared as different kind of entity" error.
+Fix: in `caller.inc`, delete the two lines:
+
+```cpp
+typedef __attribute__((ms_abi)) <rettype> t_F_caller(<args>);
+static t_F_caller& __F = *(t_F_caller*)0x<VA>;
+```
+
+Leave the `#define F __F` and `#undef F` lines in place — the body still
+refers to `F` by its original name, and those macros map it to the now-real
+`__F` symbol. Ensure `F.inc` is `#include`d before `caller.inc` in
+`dummy.cpp`.
 
 ### 6.4 WinAPI imports (via PE IAT slots)
 
@@ -648,9 +686,18 @@ encoder flags, or `pe2elf` itself change.
 
 After a green run, the stderr line `[probe] ExitProcess(0), call counts:`
 plus the per-probe counts confirms which decompiled bodies were actually
-exercised by this corpus. A counter of `0` means the test does not cover
-that function — extend the corpus (or accept the gap explicitly) before
-treating that `.inc` as verified.
+exercised by this corpus. The per-iteration rule is:
+
+- **Probe count > 0 and `cmp` clean:** the function is verified. Stop this
+  iteration and commit.
+- **Probe count = 0 and `cmp` clean:** the redirect is wired but never
+  taken. The implementation is unverified — do not stop. Continue
+  immediately to the next candidate function without committing a new
+  iteration boundary (or commit with an explicit note that the function is
+  unverified). Such a function is eventually verified when a richer corpus
+  exercises it, or it stays in the "accepted gap" list in §10.
+- **`cmp` fails:** the function is broken. Revert and debug before
+  proceeding.
 
 If the test ever fails:
 1. The breakage is in the most recently added `.inc` or its redirect.
