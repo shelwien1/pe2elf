@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <x86intrin.h>
 
 #define _WINDOWS_
 #include "defs.h"
@@ -84,6 +85,7 @@ static void patch_iat_slot(void *slot, void *repl) {
 // Decompiled function bodies.
 
 #include "sub_140014894.inc"
+#include "main.inc"
 
 // ---------------------------------------------------------------------------
 // ExitProcess IAT hook. The shim's kernel32_ExitProcess ends in _exit(),
@@ -111,6 +113,7 @@ __attribute__((constructor)) static void dummy_init() {
   }
 
   patch_jmp((void*)0x140014894, (void*)&__sub_140014894);
+  patch_jmp((void*)0x140001000, (void*)&__main);
 
   patch_iat_slot((void*)0x140022068, (void*)&my_ExitProcess);
 }

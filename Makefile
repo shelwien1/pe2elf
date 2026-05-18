@@ -26,7 +26,7 @@ SHIM_DBG_LDFLAGS = -lpthread -ldl \
                    -Wl,--version-script=shim.map \
                    -Wl,-soname,winapi_shim_dbg.so
 
-DUMMY_FLAGS   = -O2 -fPIC -shared -std=c++17
+DUMMY_FLAGS   = -O2 -fPIC -shared -std=c++17 -fpermissive -Wno-narrowing -Wno-write-strings
 DUMMY_LDFLAGS = -Wl,-soname,dummy.so \
                 -Wl,-Ttext-segment=0xF0000000 \
                 -Wl,-z,max-page-size=0x1000
@@ -43,7 +43,7 @@ $(SHIM_OUT): $(SHIM_SRCS) shim_types.h shim.map
 $(SHIM_DBG_OUT): $(SHIM_SRCS) shim_types.h shim.map
 	$(CC) $(SHIM_DBG_FLAGS) -DWINAPI_LOG_ENABLED -o $@ $(SHIM_SRCS) $(SHIM_DBG_LDFLAGS)
 
-$(DUMMY_OUT): $(DUMMY_SRCS)
+$(DUMMY_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h
 	$(CC) $(DUMMY_FLAGS) -o $@ $(DUMMY_SRCS) $(DUMMY_LDFLAGS)
 
 $(PE2ELF_OUT): $(PE2ELF_SRCS)
