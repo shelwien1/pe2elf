@@ -12,8 +12,8 @@
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
 
 // ---- Data references --------------------------------------------------
-typedef int t_arch_hdr_main[16];
-static t_arch_hdr_main& __arch_hdr = *(t_arch_hdr_main*)0x140028E50;
+// arch_hdr is declared with __PE_DECL__ guards in sub_14000A4B0.inc
+// (included earlier in dummy.cpp), so no redeclaration here.
 static int& __f_ENC = *(int*)0x140028E48;
 static int& __f_LOG = *(int*)0x140028E4C;
 typedef void* t_Buffer_main;
