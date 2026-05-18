@@ -51,7 +51,7 @@ typedef __attribute__((ms_abi)) char*          t_movemask_loop_main(__int64, __i
 typedef __attribute__((ms_abi)) __int64        t_intel_new_proc_init_main(int, const char**, const char**);
 
 typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, int);
-typedef __attribute__((ms_abi)) __int64        t_Alloc_PPMblock_main(unsigned int, int, int);
+// t_Alloc_PPMblock_main removed: Alloc_PPMblock now has its own .inc
 typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 
 static t_printf_main&            __printf            = *(t_printf_main*)0x140011B20;
@@ -81,7 +81,7 @@ static t_movemask_loop_main&     __movemask_cmpeq_loop = *(t_movemask_loop_main*
 static t_intel_new_proc_init_main& __intel_new_proc_init = *(t_intel_new_proc_init_main*)0x14001D5F0;
 
 static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x1400028D0;
-static t_Alloc_PPMblock_main&    __Alloc_PPMblock    = *(t_Alloc_PPMblock_main*)0x140003480;
+// __Alloc_PPMblock static ref removed: now the C++ function in Alloc_PPMblock.inc
 static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
 
 #define printf                  __printf
