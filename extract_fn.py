@@ -276,14 +276,6 @@ def function_body_text(body):
     return body[i:] if i >= 0 else body
 
 
-def make_iat_decl(name, ret, args):
-    """Emit the typed-fn-pointer + reference for a WinAPI IAT slot."""
-    return (
-        f"typedef __attribute__((ms_abi)) {ret} (*pfn_{name})({args});\n"
-        f"static pfn_{name}& {name} = *(pfn_{name}*)0x{addrs[name]:X};\n"
-    )
-
-
 def emit_inc(fn_name, addr, body, addrs, protos, data_defs, winapi):
     sig = signature_line(body)
     ret, name, params = split_signature(sig)

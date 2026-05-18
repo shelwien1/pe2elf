@@ -9,7 +9,10 @@
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
 
 // ---- Data references ------------------------------------------------
+#ifndef __PE_DECL___dword_141134C28
+#define __PE_DECL___dword_141134C28
 static int& __dword_141134C28 = *(int*)0x141134C28;
+#endif
 #define dword_141134C28 __dword_141134C28
 
 PROBE_DECL(__sub_14001A5C0)
