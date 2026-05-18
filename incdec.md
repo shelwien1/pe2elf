@@ -32,6 +32,7 @@ from its known address (see §6.2) and leave the original code in place.
 | `PPMonstr.cpp` | Hex-Rays decompilation, used as the donor for function bodies. |
 | `PPMonstr.h`   | Hex-Rays type declarations included by `dummy.cpp`. |
 | `PPMonstr.txt` | Symbol-to-address table (`<8-hex VA>  <name>`, one per line). |
+| `PPMonstr.asm` | Full disassembly with symbols. Use this as a reference when the Hex-Rays output is ambiguous, when a decompiled function produces wrong output, or when `cmp` fails and the root cause is not obvious from the C pseudocode alone. Unlike raw `objdump` output, this listing retains named labels (function names, data symbols) which make it far easier to trace control flow and identify the intended operation. |
 | `pe2elf`       | Converter: `./pe2elf --inject=dummy.so PPMonstr.exe PPMonstr.elf` produces an ELF whose `DT_NEEDED` list contains `dummy.so`, so it is loaded at startup. |
 | `dummy.cpp`    | The growing shared library; built into `dummy.so` by `make`. |
 | `dummy_init()` | `__attribute__((constructor))` in `dummy.cpp`; runs once at process start, before `main`. This is where redirection patches are installed. |
@@ -776,6 +777,12 @@ If the test ever fails:
 3. Re-attempt the function with the discrepancy isolated. Alternatively,
    revert the git commit for that function instead of using the tar backup —
    both return you to the same known-good state.
+4. If the Hex-Rays pseudocode alone does not explain the discrepancy, consult
+   `PPMonstr.asm`. It contains the full disassembly with named symbols, which
+   makes it straightforward to cross-check control flow, spot arithmetic the
+   decompiler mis-typed, find byte-level constants, or verify which branch
+   path is actually taken. `objdump` on the ELF lacks these symbol names and
+   is a poor substitute.
 
 ## 10. Completion criterion
 
