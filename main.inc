@@ -56,7 +56,6 @@ typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, i
 typedef __attribute__((ms_abi)) __int64        t_Alloc_PPMblock_main(unsigned int, int, int);
 typedef __attribute__((ms_abi)) __int64        t_sub_140003530_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
-typedef __attribute__((ms_abi)) __int64        t_sub_140003370_main();
 typedef __attribute__((ms_abi)) __int64        t_sub_1400032F0_main();
 typedef __attribute__((ms_abi)) char (**       t_sub_140012804_main())[4096];
 
@@ -92,7 +91,6 @@ static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x14
 static t_Alloc_PPMblock_main&    __Alloc_PPMblock    = *(t_Alloc_PPMblock_main*)0x140003480;
 static t_sub_140003530_main&     __sub_140003530     = *(t_sub_140003530_main*)0x140003530;
 static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
-static t_sub_140003370_main&     __sub_140003370     = *(t_sub_140003370_main*)0x140003370;
 static t_sub_1400032F0_main&     __sub_1400032F0     = *(t_sub_1400032F0_main*)0x1400032F0;
 static t_sub_140012804_main&     __sub_140012804     = *(t_sub_140012804_main*)0x140012804;
 
