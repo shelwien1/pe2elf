@@ -27,7 +27,9 @@ SHIM_DBG_LDFLAGS = -lpthread -ldl \
                    -Wl,-soname,winapi_shim_dbg.so
 
 DUMMY_FLAGS   = -O2 -fPIC -shared -std=c++17
-DUMMY_LDFLAGS = -Wl,-soname,dummy.so
+DUMMY_LDFLAGS = -Wl,-soname,dummy.so \
+                -Wl,-Ttext-segment=0xF0000000 \
+                -Wl,-z,max-page-size=0x1000
 
 PE2ELF_OUT   = pe2elf
 PE2ELF_SRCS  = pe2elf.cpp
