@@ -295,18 +295,31 @@ and the matching line in `PPMonstr.txt`:
 emit in the `.inc`:
 
 ```cpp
+#ifndef __PE_DECL___arch_hdr
+#define __PE_DECL___arch_hdr
 typedef int t_arch_hdr[16];
-static t_arch_hdr& arch_hdr = *(t_arch_hdr*)0x140028E50;
+static t_arch_hdr& __arch_hdr = *(t_arch_hdr*)0x140028E50;
+#endif
+#define arch_hdr __arch_hdr
 ```
 
+The `#ifndef __PE_DECL___<sym>` / `#define __PE_DECL___<sym>` / `#endif`
+guard is mandatory. All `.inc` files are textually included into a single
+translation unit (`dummy.cpp`). If two functions reference the same PE
+global, the compiler sees two definitions of the same `static` variable and
+emits "redefinition of …" — even though `static` suppresses the linker-level
+ODR error, it does not suppress same-TU redefinition. The guard makes the
+second occurrence a no-op. The `#define <orig> __<orig>` mapping sits
+*outside* the guard so it is always active for the lexical scope of the
+current `.inc`; the matching `#undef` at the bottom of the file closes it.
+
 Rules:
-- The `typedef` names the *array/object type*, not a pointer to it.
-- The reference is `static` so two `.inc` files can each declare the same
-  symbol without ODR conflict.
+- The `typedef` names the *array/object type*, not a pointer to it. For
+  scalars, no `typedef` is needed: `static int& __f_LOG = *(int*)0x140028E4C;`.
+- The `__` prefix on the variable name follows the same convention as §6.5
+  (avoid shadowing libc names at global scope).
 - The address is taken **verbatim** from `PPMonstr.txt`. Do not guess from
   the name (`dword_140028E14` is not always at `0x140028E14` — confirm).
-- For scalar types use the same pattern:
-  `static int& f_LOG = *(int*)0x140028E4C;`.
 
 ### 6.2 Function symbols (callees that stay in the original binary)
 
@@ -331,9 +344,19 @@ and the address in `PPMonstr.txt`:
 Emit in the `.inc`:
 
 ```cpp
+#ifndef __PE_DECL___unknown_libname_22
+#define __PE_DECL___unknown_libname_22
 typedef __attribute__((ms_abi)) __int64 t_unknown_libname_22(_QWORD, _QWORD);
-static t_unknown_libname_22& unknown_libname_22 = *(t_unknown_libname_22*)0x140021696;
+static t_unknown_libname_22& __unknown_libname_22 = *(t_unknown_libname_22*)0x140021696;
+#endif
+#define unknown_libname_22 __unknown_libname_22
 ```
+
+Apply the same `#ifndef __PE_DECL___<sym>` guard as for data symbols (§6.1):
+two `.inc` files may each call the same PE function, and the guard prevents
+the "redefinition of …" compile error. The typedef name is `t_<sym>` (stable,
+no per-caller suffix) so the guarded block is identical across all callers
+and the first inclusion wins.
 
 Rules:
 - `typedef` the **function type**, then bind a reference (not a pointer) to
@@ -659,7 +682,9 @@ the looked-up address (with `__` prefix and `#define` mapping per §6.5).
 It distinguishes PE-internal functions, MSVC CRT entries, WinAPI IAT
 slots, and globals; falls back to underscore-prefixed lookups when the
 body name differs from the symbol-table name; and prefixes the body with
-`PROBE_DECL` / `PROBE_HIT`.
+`PROBE_DECL` / `PROBE_HIT`. Every static ref declaration is wrapped in a
+`#ifndef __PE_DECL___<sym>` guard (§6.1) so that two `.inc` files
+referencing the same PE global or function compile cleanly in the same TU.
 
 What it does **not** do:
 

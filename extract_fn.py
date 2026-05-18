@@ -376,42 +376,51 @@ def emit_inc(fn_name, addr, body, addrs, protos, data_defs, winapi):
         out.append("")
 
     # ---- Data refs ----
+    # Guards (__PE_DECL___<sym>) prevent "redefinition of static ref" errors
+    # when two .inc files in the same TU reference the same PE global.
     if pe_data:
         out.append("// ---- Data references ------------------------------------------------")
         for d in pe_data:
             type_text, is_array, sz = data_defs.get(d, ("void*", False, None))
-            tname = f"t_{d}_{fn_name}"
+            guard = f"__PE_DECL___{d}"
+            out.append(f"#ifndef {guard}")
+            out.append(f"#define {guard}")
             if is_array:
-                # Build array typedef. Use parsed size if known, else 1.
+                tname = f"t_{d}"
                 base = type_text.strip()
                 size = sz if sz else 1
                 out.append(f"typedef {base} {tname}[{size}];")
                 out.append(f"static {tname}& __{d} = *({tname}*)0x{resolved[d][0]:X};")
             else:
                 out.append(f"static {type_text}& __{d} = *({type_text}*)0x{resolved[d][0]:X};")
+            out.append(f"#endif")
             out.append(f"#define {d} __{d}")
         out.append("")
 
     # ---- PE function refs ----
+    # Same guard scheme: typedef name is t_<sym> (stable, not per-caller) so
+    # a second .inc that calls the same PE function reuses the same typedef.
     if pe_calls:
         out.append("// ---- PE-internal function references --------------------------------")
         for c in pe_calls:
+            guard = f"__PE_DECL___{c}"
+            tname = f"t_{c}"
             proto = protos.get(c)
+            out.append(f"#ifndef {guard}")
+            out.append(f"#define {guard}")
             if proto is None:
-                tname = f"t_{c}_{fn_name}"
                 out.append(f"// TODO: prototype for {c} not found; placeholder void(...) used.")
                 out.append(f"typedef __attribute__((ms_abi)) void {tname}(...);")
             else:
-                # split prototype into return + (args)
                 pm = re.match(r"^(.*?)\b" + re.escape(c) + r"\s*\((.*)\)\s*$", proto)
                 if pm:
                     ret_t = pm.group(1).strip()
                     args_t = pm.group(2).strip()
                 else:
                     ret_t, args_t = "void", "..."
-                tname = f"t_{c}_{fn_name}"
                 out.append(f"typedef __attribute__((ms_abi)) {ret_t} {tname}({args_t});")
             out.append(f"static {tname}& __{c} = *({tname}*)0x{resolved[c][0]:X};")
+            out.append(f"#endif")
             out.append(f"#define {c} __{c}")
         out.append("")
 
