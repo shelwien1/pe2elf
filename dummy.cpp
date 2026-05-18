@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <x86intrin.h>
+#include <xmmintrin.h>
 
 #define _WINDOWS_
 #include "defs.h"
@@ -92,9 +93,11 @@ static void patch_iat_slot(void *slot, void *repl) {
 #include "sub_140017A58.inc"
 #include "sub_140003530.inc"
 #include "sub_14000C560.inc"
+#include "sub_140011240.inc"
 #include "sub_14000A2B0.inc"
 #include "sub_140018048.inc"
 #include "sub_140021DB0.inc"
+#include "sub_1400183E4.inc"
 #include "sub_14000A4B0.inc"
 #include "main.inc"
 
@@ -135,6 +138,8 @@ __attribute__((constructor)) static void dummy_init() {
   patch_jmp((void*)0x140018048, (void*)&__sub_140018048);
   patch_jmp((void*)0x140021DB0, (void*)&__sub_140021DB0);
   patch_jmp((void*)0x14000A4B0, (void*)&__sub_14000A4B0);
+  patch_jmp((void*)0x1400183E4, (void*)&__sub_1400183E4);
+  patch_jmp((void*)0x140011240, (void*)&__sub_140011240);
   patch_jmp((void*)0x140001000, (void*)&__main);
 
   patch_iat_slot((void*)0x140022068, (void*)&my_ExitProcess);
