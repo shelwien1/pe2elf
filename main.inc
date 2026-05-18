@@ -52,7 +52,6 @@ typedef __attribute__((ms_abi)) __int64        t_intel_new_proc_init_main(int, c
 
 typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, int);
 typedef __attribute__((ms_abi)) __int64        t_Alloc_PPMblock_main(unsigned int, int, int);
-typedef __attribute__((ms_abi)) __int64        t_sub_140003530_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 
 static t_printf_main&            __printf            = *(t_printf_main*)0x140011B20;
@@ -83,7 +82,6 @@ static t_intel_new_proc_init_main& __intel_new_proc_init = *(t_intel_new_proc_in
 
 static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x1400028D0;
 static t_Alloc_PPMblock_main&    __Alloc_PPMblock    = *(t_Alloc_PPMblock_main*)0x140003480;
-static t_sub_140003530_main&     __sub_140003530     = *(t_sub_140003530_main*)0x140003530;
 static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
 
 #define printf                  __printf
@@ -915,7 +913,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
         }
         arch_hdr[5] = clock();
         arch_hdr[6] = ftell_nolock(v46);
-        sub_140003530(v46, v44, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+        sub_140003530(v46, v44, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
         if(ftell_nolock(v44) >= 0) {
           v50 = ftell_nolock(v46);
           if((unsigned int)(v50 - arch_hdr[6]) > (unsigned __int64)(ftell_nolock(v44) + 4LL)) {
