@@ -99,6 +99,7 @@ static void patch_iat_slot(void *slot, void *repl) {
 #include "sub_140021DB0.inc"
 #include "sub_1400183E4.inc"
 #include "sub_14000A4B0.inc"
+#include "Alloc_PPMblock.inc"
 #include "main.inc"
 
 // ---------------------------------------------------------------------------
@@ -140,6 +141,7 @@ __attribute__((constructor)) static void dummy_init() {
   patch_jmp((void*)0x14000A4B0, (void*)&__sub_14000A4B0);
   patch_jmp((void*)0x1400183E4, (void*)&__sub_1400183E4);
   patch_jmp((void*)0x140011240, (void*)&__sub_140011240);
+  patch_jmp((void*)0x140003480, (void*)&__Alloc_PPMblock);
   patch_jmp((void*)0x140001000, (void*)&__main);
 
   patch_iat_slot((void*)0x140022068, (void*)&my_ExitProcess);
