@@ -48,6 +48,28 @@ static void patch_jmp(void *orig, void *repl) {
 
 #include "sub_140014894.inc"
 
+extern unsigned long long __sub_140014894_calls;
+
+static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
+  fprintf(stderr, "[probe] ExitProcess(%u): __sub_140014894 called %llu times\n",
+          code, __sub_140014894_calls);
+  fflush(stderr);
+  _exit((int)code);
+}
+
+static void patch_iat_slot(void *slot, void *repl) {
+  long ps = sysconf(_SC_PAGESIZE);
+  uintptr_t a = (uintptr_t)slot;
+  uintptr_t page = a & ~(uintptr_t)(ps - 1);
+  size_t len = (a + sizeof(void*)) - page;
+  if (mprotect((void*)page, len, PROT_READ|PROT_WRITE) != 0) {
+    perror("patch_iat_slot: mprotect rw");
+    abort();
+  }
+  *(void**)slot = repl;
+  mprotect((void*)page, len, PROT_READ);
+}
+
 __attribute__((constructor)) static void dummy_init() {
   printf("Hello, world!!! dummy_init @ %p\n", (void*)&dummy_init);
   fflush(stdout);
@@ -61,4 +83,6 @@ __attribute__((constructor)) static void dummy_init() {
   }
 
   patch_jmp((void*)0x140014894, (void*)&__sub_140014894);
+
+  patch_iat_slot((void*)0x140022068, (void*)&my_ExitProcess);
 }
