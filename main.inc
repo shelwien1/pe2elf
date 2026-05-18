@@ -12,8 +12,8 @@
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
 
 // ---- Data references --------------------------------------------------
-typedef int t_arch_hdr_main[16];
-static t_arch_hdr_main& __arch_hdr = *(t_arch_hdr_main*)0x140028E50;
+// arch_hdr is declared with __PE_DECL__ guards in sub_14000A4B0.inc
+// (included earlier in dummy.cpp), so no redeclaration here.
 static int& __f_ENC = *(int*)0x140028E48;
 static int& __f_LOG = *(int*)0x140028E4C;
 typedef void* t_Buffer_main;
@@ -37,8 +37,6 @@ typedef __attribute__((ms_abi)) int            t_ftell_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_fseek_main(FILE*, int, int);
 typedef __attribute__((ms_abi)) int            t_fflush_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_setvbuf_main(FILE*, char*, int, size_t);
-typedef __attribute__((ms_abi)) int            t_flsbuf_main(int, FILE*);
-typedef __attribute__((ms_abi)) int            t_filbuf_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_fileno_main(FILE*);
 typedef __attribute__((ms_abi)) int            t_chsize_main(int, int);
 typedef __attribute__((ms_abi)) char*          t_strrchr_main(const char*, int);
@@ -54,9 +52,7 @@ typedef __attribute__((ms_abi)) __int64        t_intel_new_proc_init_main(int, c
 
 typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, int);
 typedef __attribute__((ms_abi)) __int64        t_Alloc_PPMblock_main(unsigned int, int, int);
-typedef __attribute__((ms_abi)) __int64        t_sub_140003530_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
-typedef __attribute__((ms_abi)) char (**       t_sub_140012804_main())[4096];
 
 static t_printf_main&            __printf            = *(t_printf_main*)0x140011B20;
 static t_sprintf_main&           __sprintf           = *(t_sprintf_main*)0x140013528;
@@ -71,8 +67,6 @@ static t_ftell_main&             __ftell_nolock      = *(t_ftell_main*)0x140012D
 static t_fseek_main&             __fseek_nolock      = *(t_fseek_main*)0x140012FC4;
 static t_fflush_main&            __fflush_nolock     = *(t_fflush_main*)0x1400130F4;
 static t_setvbuf_main&           __setvbuf           = *(t_setvbuf_main*)0x140012A80;
-static t_flsbuf_main&            __flsbuf            = *(t_flsbuf_main*)0x14001323C;
-static t_filbuf_main&            __filbuf            = *(t_filbuf_main*)0x1400133CC;
 static t_fileno_main&            __fileno            = *(t_fileno_main*)0x140017228;
 static t_chsize_main&            __chsize            = *(t_chsize_main*)0x14001D2A0;
 static t_strrchr_main&           __strrchr           = *(t_strrchr_main*)0x140012A28;
@@ -88,9 +82,7 @@ static t_intel_new_proc_init_main& __intel_new_proc_init = *(t_intel_new_proc_in
 
 static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x1400028D0;
 static t_Alloc_PPMblock_main&    __Alloc_PPMblock    = *(t_Alloc_PPMblock_main*)0x140003480;
-static t_sub_140003530_main&     __sub_140003530     = *(t_sub_140003530_main*)0x140003530;
 static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
-static t_sub_140012804_main&     __sub_140012804     = *(t_sub_140012804_main*)0x140012804;
 
 #define printf                  __printf
 #define sprintf                 __sprintf
@@ -921,7 +913,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
         }
         arch_hdr[5] = clock();
         arch_hdr[6] = ftell_nolock(v46);
-        sub_140003530(v46, v44, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+        sub_140003530(v46, v44, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
         if(ftell_nolock(v44) >= 0) {
           v50 = ftell_nolock(v46);
           if((unsigned int)(v50 - arch_hdr[6]) > (unsigned __int64)(ftell_nolock(v44) + 4LL)) {
