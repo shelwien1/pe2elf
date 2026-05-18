@@ -37,6 +37,26 @@ from its known address (see §6.2) and leave the original code in place.
 | `dummy_init()` | `__attribute__((constructor))` in `dummy.cpp`; runs once at process start, before `main`. This is where redirection patches are installed. |
 | `sub_XXXXXXXX.inc` | One file per moved function (see §4). |
 
+`dummy.so` is built at a **fixed preferred base address** below 4 GB
+(`0xF0000000`), so it is always within ±2 GB of the PPMonstr image (which
+loads at `0x140000000`). That range is what an `E9 rel32` near-jump can
+reach, which is what makes the 5-byte patching in §5 possible.
+
+Required linker flags in the `dummy.so` rule of `Makefile`:
+
+```
+-Wl,-Ttext-segment=0xF0000000 -Wl,-z,max-page-size=0x1000
+```
+
+This is a *preferred* base — glibc's `ld-linux` honors a non-zero
+`p_vaddr` on `ET_DYN` objects as long as the range is free and ASLR does
+not collide. The PPMonstr image occupies `0x140000000+`; nothing else in
+this project maps the `0xF0000000` window, so the request is honored in
+practice. `dummy_init()` must sanity-check the assumption at runtime by
+comparing the address of one of its own functions against the expected
+window and aborting with a clear message if the loader placed it elsewhere
+(then the build flag, not the protocol, is wrong).
+
 Build / run loop after any change to `dummy.cpp` or its includes:
 
 ```sh
@@ -122,37 +142,59 @@ whole point of the protocol is that **every step ends with a green test**.
 
 `dummy_init()` runs in the ELF's process **after** the loader has mapped the
 original `PPMonstr.exe` code pages at their image VAs but **before** `main`.
-For each moved function, `dummy_init()` overwrites the first bytes of the
-original function with an absolute jump to the new implementation.
-
-Use the 14-byte RIP-relative absolute jump, which works regardless of where
-`dummy.so` is loaded relative to the original image:
+For each moved function, `dummy_init()` overwrites the first **5 bytes** of
+the original function with a near jump to the new implementation:
 
 ```
-FF 25 00 00 00 00          jmp qword ptr [rip+0]
-<8 bytes: target address>
+E9 dd dd dd dd             jmp rel32     ; rel32 = target - (orig + 5)
 ```
 
-Steps for each redirect (do all of these inside `dummy_init()`):
+Five bytes is small enough to fit inside even short Hex-Rays stubs (e.g.
+`void sub_14001A5C0() { dword_141134C28 = 0; }`, ~11 bytes of code) without
+bleeding into the next function. A 14-byte absolute trampoline would not be
+safe here.
 
-1. Compute `void *orig = (void*)0x<VA>;` — the address from `PPMonstr.txt`.
-2. Make the page writable:
+This works only because `dummy.so` is pinned at `0xF0000000` (§2): the
+displacement between any byte of PPMonstr (`0x140000000`–`~0x14120????`)
+and any byte of `dummy.so` (`0xF0000000`–`0xF0??????`) is in the range
+roughly `-0x51200000`…`-0x4FFFF000`, well within signed 32-bit. If the
+preferred base is ever rejected by the loader, the rel32 may overflow and
+the patch will silently jump to nonsense — therefore each `patch_jmp` must
+compute the displacement, sign-check it against `INT32_MIN`/`INT32_MAX`,
+and abort the process on overflow rather than truncate.
+
+Steps for each redirect (encapsulated in `patch_jmp(orig, repl)`, called
+from `dummy_init()`):
+
+1. `void *orig = (void*)0x<VA>;` — the address from `PPMonstr.txt`.
+2. `int64_t disp = (int64_t)repl - ((int64_t)orig + 5);`
+   `assert(disp >= INT32_MIN && disp <= INT32_MAX);`
+3. Make the page writable:
    `mprotect(page_align(orig), len, PROT_READ|PROT_WRITE|PROT_EXEC);`
    where `page_align` rounds down to the system page size and `len` covers
-   the 14 bytes (handle the case where the patch straddles two pages).
-3. Write the 14-byte trampoline with `target = (uint64_t)&__sub_XXXXXXXX;`.
-4. Restore protection to `PROT_READ|PROT_EXEC` (optional but advised).
-5. Flush the instruction cache for the patched range (`__builtin___clear_cache`).
+   the 5 bytes (handle the rare case where the patch straddles two pages
+   by extending `len` accordingly).
+4. Write `E9` followed by `disp` as a little-endian `int32_t`.
+5. Restore protection to `PROT_READ|PROT_EXEC` (optional but advised).
+6. Flush the instruction cache for the patched range
+   (`__builtin___clear_cache(orig, (char*)orig + 5)`).
 
-A single helper in `dummy.cpp`, e.g. `patch_jmp(void *orig, void *repl)`,
-should encapsulate all of the above so each redirect is a one-liner:
+With the helper in place, each redirect is a one-liner:
 
 ```cpp
 patch_jmp((void*)0x14001A5C0, (void*)&__sub_14001A5C0);
 ```
 
-`dummy_init()` is therefore a list of `patch_jmp(...)` calls — one per moved
-function — in any order.
+`dummy_init()` is therefore a list of `patch_jmp(...)` calls — one per
+moved function — in any order.
+
+**Edge case: function smaller than 5 bytes.** A function whose entire body
+is shorter than the 5-byte JMP cannot be patched in place without
+overwriting the next function's prologue. None of the in-scope PPMonstr
+functions are known to be that small, but if one is encountered, do not
+patch it — leave the original in place and call the reimplementation
+explicitly from its (moved) callers instead. Document the exception in a
+comment in `dummy_init()`.
 
 ## 6. Dependency cookbook
 
