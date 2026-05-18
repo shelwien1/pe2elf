@@ -144,7 +144,28 @@ whole point of the protocol is that **every step ends with a green test**.
 7. **Rebuild and re-test** (§2). If the test fails, the bug is in this single
    function or in its `.inc` dependency block — bisect there, not in earlier
    `.inc` files. Do **not** proceed to the next function until the test is
-   green.
+   green. If the failure is hard to isolate, restore the last known-good
+   sources from the backup (see step 7a) and start over.
+
+7a. **Backup on green.** Immediately after the test passes, snapshot
+    the current `dummy.cpp` and all `.inc` files:
+
+    ```sh
+    tar Jcf backup dummy.cpp *.inc
+    ```
+
+    This produces a single `backup` file (xz-compressed tar) that captures
+    exactly the source state that is known good. The backup is overwritten
+    on every successful iteration, so it always reflects the latest verified
+    state. To restore after a failed attempt:
+
+    ```sh
+    tar Jxf backup
+    ```
+
+    This overwrites `dummy.cpp` and every `.inc` back to the last green
+    snapshot; rebuild and re-test to confirm the restored state is still
+    clean before reattempting the broken function.
 
 8. **Commit** the new `.inc`, the `#include` line, and the `dummy_init()`
    patch entry as one atomic change.
@@ -701,8 +722,11 @@ exercised by this corpus. The per-iteration rule is:
 
 If the test ever fails:
 1. The breakage is in the most recently added `.inc` or its redirect.
-2. Revert that single commit, re-run the test to confirm green baseline,
-   then re-attempt the function with the discrepancy isolated.
+2. Restore the last known-good snapshot: `tar Jxf backup` (see §3 step 7a),
+   then rebuild and re-test to confirm the baseline is clean again.
+3. Re-attempt the function with the discrepancy isolated. Alternatively,
+   revert the git commit for that function instead of using the tar backup —
+   both return you to the same known-good state.
 
 ## 10. Completion criterion
 
