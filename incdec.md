@@ -128,15 +128,41 @@ whole point of the protocol is that **every step ends with a green test**.
 - The `.inc` is a fragment, not a translation unit: no `#pragma once`, no
   include guards, no `#include` lines (those belong in `dummy.cpp`). It is
   textually inserted into `dummy.cpp` and compiled as part of it.
+- **The function definition must carry `__attribute__((ms_abi))`.** PPMonstr
+  is a Win64 binary and every call into a decompiled body — whether through
+  the patched JMP or through a moved-callee direct call — uses the
+  Microsoft x64 calling convention (RCX, RDX, R8, R9; 32-byte shadow space;
+  callee-saved RSI/RDI). `dummy.so` itself is built as SysV. Without
+  `ms_abi`, arguments are read from the wrong registers and the body silently
+  consumes garbage. **A no-argument or write-only-to-globals function may
+  appear to work without `ms_abi` — that is luck, not correctness.** Apply
+  the attribute unconditionally to every `__sub_*` (and to any function
+  pointer that will be installed in an IAT slot, see §7).
 - Order inside the file:
   1. Typed references for data symbols this function reads/writes (§6.1).
   2. Typed references for functions this function calls — *only* for
      functions not yet moved into `dummy.so` (§6.2). Once a callee has its
      own `.inc`, drop its reference here and rely on the `__`-prefixed C++
      symbol instead (and update call sites accordingly).
-  3. The function body, with signature changed only by the `__` prefix on
-     the name; argument and return types stay byte-identical to the
-     `PPMonstr.cpp` declaration.
+  3. `PROBE_DECL(__sub_XXXXXXXX)` — registers a counter for this function
+     in the global probe list. The `PROBE_DECL` / `PROBE_HIT` macros and
+     the `Probe` registry live in `dummy.cpp` (§7).
+  4. The function body, with signature changed only by adding the `__`
+     prefix and the `ms_abi` attribute; argument and return types stay
+     byte-identical to the `PPMonstr.cpp` declaration. The first statement
+     in the body is `PROBE_HIT(__sub_XXXXXXXX);`.
+
+Template for a freshly extracted function:
+
+```cpp
+// data and function typedef-refs go here, then:
+
+PROBE_DECL(__sub_14001A5C0)
+__attribute__((ms_abi)) void __sub_14001A5C0() {
+  PROBE_HIT(__sub_14001A5C0);
+  // ... original body, with external names already rewritten ...
+}
+```
 
 ## 5. Redirection: patching a JMP at the original VA
 
@@ -255,7 +281,7 @@ and the address in `PPMonstr.txt`:
 Emit in the `.inc`:
 
 ```cpp
-typedef __int64 t_unknown_libname_22(_QWORD, _QWORD);
+typedef __attribute__((ms_abi)) __int64 t_unknown_libname_22(_QWORD, _QWORD);
 static t_unknown_libname_22& unknown_libname_22 = *(t_unknown_libname_22*)0x140021696;
 ```
 
@@ -263,8 +289,14 @@ Rules:
 - `typedef` the **function type**, then bind a reference (not a pointer) to
   the address. Calling `unknown_libname_22(...)` then resolves to a direct
   call through the typed reference.
+- **The function-type `typedef` must carry `__attribute__((ms_abi))`** —
+  the target is Win64-ABI code inside `PPMonstr.exe`, so the call site
+  needs to marshal arguments into RCX/RDX/R8/R9 and reserve the 32-byte
+  shadow space. Without it, the call corrupts the stack and/or passes
+  arguments in the wrong registers. This applies even to "library"
+  callees like `unknown_libname_*` because they too live in the PE image.
 - Argument and return types must match the prototype in `PPMonstr.cpp` byte
-  for byte (calling convention, widths, `_QWORD` vs `void*`, etc.).
+  for byte (widths, `_QWORD` vs `void*`, etc.).
 - Use the address of the **function entry**, not of any thunk or IAT slot.
   `PPMonstr.txt` already lists entries.
 
@@ -279,21 +311,126 @@ use `__sub_YYYYYYYY(...)` directly. This keeps the dependency graph among
 Order `#include "<callee>.inc"` before `#include "<caller>.inc"` in
 `dummy.cpp` so the C++ name is in scope.
 
-## 7. Verification
+## 7. `dummy.cpp` infrastructure (probe registry + ExitProcess hook)
+
+`dummy.cpp` provides three pieces of infrastructure that every `.inc` relies
+on. None of this needs to be reinvented per function; the snippets below
+already live in the file.
+
+### 7.1 Probe registry
+
+Each decompiled function declares a `Probe` via `PROBE_DECL` and bumps its
+counter on entry via `PROBE_HIT`. The registry is a singly-linked list built
+at static-init time:
+
+```cpp
+struct Probe {
+  Probe* next;
+  const char* name;
+  unsigned long long count;
+  Probe(const char* n);
+};
+static Probe* g_probes = nullptr;
+Probe::Probe(const char* n) : next(g_probes), name(n), count(0) { g_probes = this; }
+
+#define PROBE_DECL(sym) static Probe sym##_probe(#sym);
+#define PROBE_HIT(sym)  __sync_fetch_and_add(&sym##_probe.count, 1ULL)
+```
+
+`PROBE_HIT` is an atomic increment so it is safe under any threading the
+program does. The counter pattern is mandatory for every `.inc` — it is the
+only built-in way to confirm that the rel32 redirect is actually being
+taken at runtime (a function that is never called cannot tell us if its
+patch is wrong).
+
+### 7.2 ExitProcess IAT hook
+
+`dummy.cpp` cannot rely on `__attribute__((destructor))` or `atexit()` to
+dump the counters. The shim's `kernel32_ExitProcess` calls `_exit()` (see
+`shim.cpp:1136`), which bypasses both DT_FINI and the atexit chain. The
+program's normal termination path goes
+`main → MS CRT → ExitProcess → _exit`, so by the time glibc's exit
+machinery would have run, the process is already gone.
+
+Workaround: overwrite the **IAT slot** for `ExitProcess` so PPMonstr calls
+our wrapper instead. The slot is at the address listed for `ExitProcess` in
+`PPMonstr.txt` (currently `0x140022068`):
+
+```cpp
+static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
+  fprintf(stderr, "[probe] ExitProcess(%u), call counts:\n", code);
+  for (Probe* p = g_probes; p; p = p->next)
+    fprintf(stderr, "[probe]   %-32s %llu\n", p->name, p->count);
+  fflush(stderr);
+  _exit((int)code);
+}
+```
+
+Notes:
+- The wrapper **must** be `ms_abi`. The call site uses Win64 (first arg in
+  RCX, not RDI). A SysV-ABI wrapper here will read garbage and `_exit`
+  with a nonsense code — the exact symptom that exposed why every
+  decompiled body also needs `ms_abi` (see §4).
+- Patching uses a separate helper `patch_iat_slot(slot, repl)` that just
+  `mprotect`s the page, writes a pointer, and restores. No rel32 reach
+  problem because we are writing data, not code.
+- Output goes to **stderr** so the file-comparison part of the test
+  (`cmp 1.pmm 1.ppm`) is unaffected.
+
+### 7.3 `dummy_init()` checklist
+
+Order of operations in the constructor:
+
+1. Print `&dummy_init` and assert it falls inside `[0xF0000000,
+   0x100000000)` (see §2). Abort if not — every `patch_jmp` would
+   silently produce wrong displacements.
+2. One `patch_jmp((void*)0x<VA>, (void*)&__sub_XXXXXXXX);` per moved
+   function.
+3. `patch_iat_slot((void*)<ExitProcess slot VA>, (void*)&my_ExitProcess);`
+   exactly once. (Other IAT hooks may be added later in the same way.)
+
+## 8. Verification
 
 The "test" referenced throughout this document is a **fixed, reproducible
-end-to-end run** of `PPMonstr.elf` — typically compression + decompression of
-a known corpus followed by a byte-for-byte comparison against the expected
-output. The exact command line is project-defined; what matters is that the
-same command runs after every step and is the sole gate for promoting an
-`.inc` from "drafted" to "accepted".
+end-to-end run** of `PPMonstr.elf`: compress a known input, then compare
+byte-for-byte against the reference output produced by the un-injected
+baseline.
+
+Baseline (run once, captures `1.ppm` as the reference):
+
+```sh
+make && ./pe2elf PPMonstr.exe PPMonstr.elf \
+  && rm -v 1.ppm \
+  && ./PPMonstr.elf e -o128 -m1 -r1 -f1.ppm rar550.exe
+```
+
+Validation (run after every `.inc` change):
+
+```sh
+make && ./pe2elf --inject=dummy.so PPMonstr.exe PPMonstr.elf \
+  && rm -v 1.pmm \
+  && ./PPMonstr.elf e -o128 -m1 -r1 -f1.pmm rar550.exe \
+  && cmp 1.pmm 1.ppm
+```
+
+The validation command is the sole gate for promoting an `.inc` from
+"drafted" to "accepted". Note the deliberate filename split: the baseline
+writes `1.ppm`, the injected build writes `1.pmm`, and `cmp` enforces
+equality. Re-run the baseline only when `PPMonstr.exe`, `rar550.exe`, the
+encoder flags, or `pe2elf` itself change.
+
+After a green run, the stderr line `[probe] ExitProcess(0), call counts:`
+plus the per-probe counts confirms which decompiled bodies were actually
+exercised by this corpus. A counter of `0` means the test does not cover
+that function — extend the corpus (or accept the gap explicitly) before
+treating that `.inc` as verified.
 
 If the test ever fails:
 1. The breakage is in the most recently added `.inc` or its redirect.
 2. Revert that single commit, re-run the test to confirm green baseline,
    then re-attempt the function with the discrepancy isolated.
 
-## 8. Completion criterion
+## 9. Completion criterion
 
 The decompilation is complete when:
 
@@ -301,6 +438,9 @@ The decompilation is complete when:
 - `dummy.cpp` `#include`s all of them.
 - `dummy_init()` patches a redirect for each one.
 - The test passes.
+- Every probe in the ExitProcess dump reports a non-zero count, **or** the
+  zero-count function is explicitly listed as not exercised by the chosen
+  corpus (and a corpus extension is filed as future work).
 
 At that point the bodies in `PPMonstr.cpp` are dead code (every entry has
 been overwritten by a JMP at runtime), and the `.inc` set is a standalone

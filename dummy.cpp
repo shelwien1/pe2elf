@@ -23,6 +23,27 @@
 #undef __declspec
 #endif
 
+// ---------------------------------------------------------------------------
+// Probe registry. Each decompiled function declares a Probe via PROBE_DECL
+// and bumps its counter on entry via PROBE_HIT. The ExitProcess hook walks
+// the linked list and prints all counters before the process dies.
+
+struct Probe {
+  Probe* next;
+  const char* name;
+  unsigned long long count;
+  Probe(const char* n);
+};
+
+static Probe* g_probes = nullptr;
+Probe::Probe(const char* n) : next(g_probes), name(n), count(0) { g_probes = this; }
+
+#define PROBE_DECL(sym) static Probe sym##_probe(#sym);
+#define PROBE_HIT(sym)  __sync_fetch_and_add(&sym##_probe.count, 1ULL)
+
+// ---------------------------------------------------------------------------
+// Patching helpers.
+
 static void patch_jmp(void *orig, void *repl) {
   long long disp = (long long)(uintptr_t)repl - (long long)((uintptr_t)orig + 5);
   if (disp < -0x80000000LL || disp > 0x7FFFFFFFLL) {
@@ -46,17 +67,6 @@ static void patch_jmp(void *orig, void *repl) {
   __builtin___clear_cache((char*)orig, (char*)orig + 5);
 }
 
-#include "sub_140014894.inc"
-
-extern unsigned long long __sub_140014894_calls;
-
-static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
-  fprintf(stderr, "[probe] ExitProcess(%u): __sub_140014894 called %llu times\n",
-          code, __sub_140014894_calls);
-  fflush(stderr);
-  _exit((int)code);
-}
-
 static void patch_iat_slot(void *slot, void *repl) {
   long ps = sysconf(_SC_PAGESIZE);
   uintptr_t a = (uintptr_t)slot;
@@ -68,6 +78,24 @@ static void patch_iat_slot(void *slot, void *repl) {
   }
   *(void**)slot = repl;
   mprotect((void*)page, len, PROT_READ);
+}
+
+// ---------------------------------------------------------------------------
+// Decompiled function bodies.
+
+#include "sub_140014894.inc"
+
+// ---------------------------------------------------------------------------
+// ExitProcess IAT hook. The shim's kernel32_ExitProcess ends in _exit(),
+// which bypasses both DT_FINI and atexit, so we hook the IAT slot directly.
+// The wrapper must be ms_abi: PPMonstr calls through the IAT using Win64.
+
+static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
+  fprintf(stderr, "[probe] ExitProcess(%u), call counts:\n", code);
+  for (Probe* p = g_probes; p; p = p->next)
+    fprintf(stderr, "[probe]   %-32s %llu\n", p->name, p->count);
+  fflush(stderr);
+  _exit((int)code);
 }
 
 __attribute__((constructor)) static void dummy_init() {
