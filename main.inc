@@ -52,7 +52,6 @@ typedef __attribute__((ms_abi)) __int64        t_intel_new_proc_init_main(int, c
 
 typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, int);
 // t_Alloc_PPMblock_main removed: Alloc_PPMblock now has its own .inc
-typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 
 static t_printf_main&            __printf            = *(t_printf_main*)0x140011B20;
 static t_sprintf_main&           __sprintf           = *(t_sprintf_main*)0x140013528;
@@ -82,7 +81,6 @@ static t_intel_new_proc_init_main& __intel_new_proc_init = *(t_intel_new_proc_in
 
 static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x1400028D0;
 // __Alloc_PPMblock static ref removed: now the C++ function in Alloc_PPMblock.inc
-static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
 
 #define printf                  __printf
 #define sprintf                 __sprintf
@@ -633,7 +631,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
                     fclose_nolock(v86);
                   }
                 } else {
-                  sub_14000C310(v71, v52, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+                  sub_14000C310(v71, v52, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
                 }
                 flag = v52->_flag;
                 if((((unsigned __int8)flag | LOBYTE(v71->_flag)) & 0x20) != 0 || (flag & 0x10) != 0) {
@@ -776,7 +774,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
                       fclose_nolock(v117);
                     }
                   } else {
-                    sub_14000C310(v94, v52, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+                    sub_14000C310(v94, v52, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
                   }
                   v118 = v52->_flag;
                   if((((unsigned __int8)v118 | LOBYTE(v94->_flag)) & 0x20) != 0 || (v118 & 0x10) != 0) {
