@@ -52,11 +52,6 @@ static __int128& __xmmword_141133520 = *(__int128*)0x141133520;
 // body refers to sub_14000A4B0 which the #define below maps to the
 // real C++ function symbol __sub_14000A4B0.)
 #define sub_14000A4B0 __sub_14000A4B0
-#ifndef __PE_DECL___sub_140011920
-#define __PE_DECL___sub_140011920
-typedef __attribute__((ms_abi)) char * t_sub_140011920(__int64 a1, unsigned int a2);
-static t_sub_140011920& __sub_140011920 = *(t_sub_140011920*)0x140011920;
-#endif
 #define sub_140011920 __sub_140011920
 
 PROBE_DECL(__sub_14000A4B0)
