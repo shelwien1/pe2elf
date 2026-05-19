@@ -14,10 +14,19 @@
 // ---- Data references --------------------------------------------------
 // arch_hdr is declared with __PE_DECL__ guards in sub_14000A4B0.inc
 // (included earlier in dummy.cpp), so no redeclaration here.
+#ifndef __PE_DECL___f_ENC
+#define __PE_DECL___f_ENC
 static int& __f_ENC = *(int*)0x140028E48;
+#endif
+#ifndef __PE_DECL___f_LOG
+#define __PE_DECL___f_LOG
 static int& __f_LOG = *(int*)0x140028E4C;
+#endif
+#ifndef __PE_DECL___Buffer
+#define __PE_DECL___Buffer
 typedef void* t_Buffer_main;
 static t_Buffer_main& __Buffer = *(t_Buffer_main*)0x140028E40;
+#endif
 
 #define arch_hdr __arch_hdr
 #define f_ENC    __f_ENC
@@ -50,28 +59,50 @@ typedef __attribute__((ms_abi)) int            t_deletefile_main(wchar_t*);
 typedef __attribute__((ms_abi)) char*          t_movemask_loop_main(__int64, __int64);
 typedef __attribute__((ms_abi)) __int64        t_intel_new_proc_init_main(int, const char**, const char**);
 
-typedef __attribute__((ms_abi)) __int64        t_PrintStats_main(FILE*, FILE*, int);
 // t_Alloc_PPMblock_main removed: Alloc_PPMblock now has its own .inc
-typedef __attribute__((ms_abi)) __int64        t_sub_14000C310_main(FILE*, FILE*, __int64(*)(FILE*, FILE*, __int64), int);
 
+#ifndef __PE_DECL___printf
+#define __PE_DECL___printf
 static t_printf_main&            __printf            = *(t_printf_main*)0x140011B20;
+#endif
+#ifndef __PE_DECL___sprintf
+#define __PE_DECL___sprintf
 static t_sprintf_main&           __sprintf           = *(t_sprintf_main*)0x140013528;
+#endif
+#ifndef __PE_DECL___fprintf
+#define __PE_DECL___fprintf
 static t_fprintf_main&           __fprintf           = *(t_fprintf_main*)0x1400135C4;
+#endif
 static t_toupper_main&           __toupper           = *(t_toupper_main*)0x140011E14;
 static t_atoi_main&              __atoi              = *(t_atoi_main*)0x140011E3C;
+#ifndef __PE_DECL___fopen
+#define __PE_DECL___fopen
 static t_fopen_main&             __fopen             = *(t_fopen_main*)0x140011F80;
+#endif
 static t_fread_main&             __fread_nolock      = *(t_fread_main*)0x1400121EC;
 static t_fwrite_main&            __fwrite_nolock     = *(t_fwrite_main*)0x140012BEC;
+#ifndef __PE_DECL___fclose_nolock
+#define __PE_DECL___fclose_nolock
 static t_fclose_main&            __fclose_nolock     = *(t_fclose_main*)0x1400125F4;
+#endif
+#ifndef __PE_DECL___ftell_nolock
+#define __PE_DECL___ftell_nolock
 static t_ftell_main&             __ftell_nolock      = *(t_ftell_main*)0x140012DF8;
+#endif
 static t_fseek_main&             __fseek_nolock      = *(t_fseek_main*)0x140012FC4;
+#ifndef __PE_DECL___fflush_nolock
+#define __PE_DECL___fflush_nolock
 static t_fflush_main&            __fflush_nolock     = *(t_fflush_main*)0x1400130F4;
+#endif
 static t_setvbuf_main&           __setvbuf           = *(t_setvbuf_main*)0x140012A80;
 static t_fileno_main&            __fileno            = *(t_fileno_main*)0x140017228;
 static t_chsize_main&            __chsize            = *(t_chsize_main*)0x14001D2A0;
 static t_strrchr_main&           __strrchr           = *(t_strrchr_main*)0x140012A28;
 static t_memmove_main&           __memmove           = *(t_memmove_main*)0x140019270;
+#ifndef __PE_DECL___clock
+#define __PE_DECL___clock
 static t_clock_main&             __clock             = *(t_clock_main*)0x140012D88;
+#endif
 static t_exit_main&              __exit              = *(t_exit_main*)0x140012554;
 static t_getch_main&             __getch             = *(t_getch_main*)0x140021A08;
 static t_op_new_main&            __op_new            = *(t_op_new_main*)0x140012768;
@@ -80,9 +111,7 @@ static t_deletefile_main&        __deletefile        = *(t_deletefile_main*)0x14
 static t_movemask_loop_main&     __movemask_cmpeq_loop = *(t_movemask_loop_main*)0x14001D700;
 static t_intel_new_proc_init_main& __intel_new_proc_init = *(t_intel_new_proc_init_main*)0x14001D5F0;
 
-static t_PrintStats_main&        __PrintStats        = *(t_PrintStats_main*)0x1400028D0;
 // __Alloc_PPMblock static ref removed: now the C++ function in Alloc_PPMblock.inc
-static t_sub_14000C310_main&     __sub_14000C310     = *(t_sub_14000C310_main*)0x14000C310;
 
 #define printf                  __printf
 #define sprintf                 __sprintf
@@ -633,7 +662,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
                     fclose_nolock(v86);
                   }
                 } else {
-                  sub_14000C310(v71, v52, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+                  sub_14000C310(v71, v52, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
                 }
                 flag = v52->_flag;
                 if((((unsigned __int8)flag | LOBYTE(v71->_flag)) & 0x20) != 0 || (flag & 0x10) != 0) {
@@ -776,7 +805,7 @@ __attribute__((ms_abi)) int __main(int argc, const char **argv, const char **env
                       fclose_nolock(v117);
                     }
                   } else {
-                    sub_14000C310(v94, v52, (__int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
+                    sub_14000C310(v94, v52, (__attribute__((ms_abi)) __int64(*)(FILE *, FILE *, __int64))PrintStats, 0);
                   }
                   v118 = v52->_flag;
                   if((((unsigned __int8)v118 | LOBYTE(v94->_flag)) & 0x20) != 0 || (v118 & 0x10) != 0) {

@@ -64,23 +64,8 @@ typedef __attribute__((ms_abi)) int t_flsbuf(int Ch, FILE *File);
 static t_flsbuf& __flsbuf = *(t_flsbuf*)0x14001323C;
 #endif
 #define flsbuf __flsbuf
-#ifndef __PE_DECL___sub_1400037A0
-#define __PE_DECL___sub_1400037A0
-typedef __attribute__((ms_abi)) int t_sub_1400037A0(FILE *a1, FILE *a2);
-static t_sub_1400037A0& __sub_1400037A0 = *(t_sub_1400037A0*)0x1400037A0;
-#endif
 #define sub_1400037A0 __sub_1400037A0
-#ifndef __PE_DECL___sub_140010A40
-#define __PE_DECL___sub_140010A40
-typedef __attribute__((ms_abi)) __int64 t_sub_140010A40(int a1);
-static t_sub_140010A40& __sub_140010A40 = *(t_sub_140010A40*)0x140010A40;
-#endif
 #define sub_140010A40 __sub_140010A40
-#ifndef __PE_DECL___sub_14001D7A0
-#define __PE_DECL___sub_14001D7A0
-typedef __attribute__((ms_abi)) __int64 t_sub_14001D7A0(int *a1, unsigned __int8 a2, __int64 a3);
-static t_sub_14001D7A0& __sub_14001D7A0 = *(t_sub_14001D7A0*)0x14001D7A0;
-#endif
 #define sub_14001D7A0 __sub_14001D7A0
 
 PROBE_DECL(__sub_140003530)

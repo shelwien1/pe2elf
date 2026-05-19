@@ -85,24 +85,42 @@ static void patch_iat_slot(void *slot, void *repl) {
 // ---------------------------------------------------------------------------
 // Decompiled function bodies.
 
+#include "sub_140002AD0.inc"
 #include "sub_140014894.inc"
 #include "sub_14001A5C0.inc"
 #include "sub_140003370.inc"
 #include "sub_1400032F0.inc"
 #include "sub_140012804.inc"
 #include "sub_140017A58.inc"
-#include "sub_140003530.inc"
+#include "sub_14000C0E0.inc"
+#include "sub_14000B750.inc"
+#include "sub_140010730.inc"
 #include "sub_140010850.inc"
-#include "sub_14000C560.inc"
 #include "sub_140011240.inc"
+#include "sub_140021280.inc"
+#include "sub_14001D7A0.inc"
+#include "sub_140010A40.inc"
 #include "sub_14000A2B0.inc"
 #include "sub_140018048.inc"
 #include "sub_140021DB0.inc"
 #include "sub_1400183E4.inc"
+#include "sub_14001570C.inc"
+#include "sub_140011920.inc"
 #include "sub_14000A4B0.inc"
+#include "sub_140009620.inc"
+#include "sub_140007B80.inc"
+#include "sub_1400037A0.inc"
+#include "sub_14000C560.inc"
+#include "sub_140003530.inc"
 #include "sub_140017DC8.inc"
 #include "sub_14001D730.inc"
+#include "sub_1400126F8.inc"
+#include "sub_140018050.inc"
+#include "sub_140018098.inc"
+#include "sub_140018058.inc"
+#include "sub_14000C310.inc"
 #include "Alloc_PPMblock.inc"
+#include "PrintStats.inc"
 #include "main.inc"
 
 // ---------------------------------------------------------------------------
@@ -130,21 +148,39 @@ __attribute__((constructor)) static void dummy_init() {
     abort();
   }
 
+  patch_jmp((void*)0x140002AD0, (void*)&__sub_140002AD0);
   patch_jmp((void*)0x140014894, (void*)&__sub_140014894);
   patch_jmp((void*)0x14001A5C0, (void*)&__sub_14001A5C0);
   patch_jmp((void*)0x140003370, (void*)&__sub_140003370);
   patch_jmp((void*)0x1400032F0, (void*)&__sub_1400032F0);
   patch_jmp((void*)0x140012804, (void*)&__sub_140012804);
   patch_jmp((void*)0x140017A58, (void*)&__sub_140017A58);
+  patch_jmp((void*)0x14001570C, (void*)&__sub_14001570C);
+  patch_jmp((void*)0x140011920, (void*)&__sub_140011920);
+  patch_jmp((void*)0x14000C0E0, (void*)&__sub_14000C0E0);
+  patch_jmp((void*)0x14000B750, (void*)&__sub_14000B750);
+  patch_jmp((void*)0x140010730, (void*)&__sub_140010730);
+  patch_jmp((void*)0x140007B80, (void*)&__sub_140007B80);
+  patch_jmp((void*)0x1400037A0, (void*)&__sub_1400037A0);
+  patch_jmp((void*)0x140010A40, (void*)&__sub_140010A40);
   patch_jmp((void*)0x140003530, (void*)&__sub_140003530);
+  patch_jmp((void*)0x14000C310, (void*)&__sub_14000C310);
   patch_jmp((void*)0x14000C560, (void*)&__sub_14000C560);
   patch_jmp((void*)0x14000A2B0, (void*)&__sub_14000A2B0);
   patch_jmp((void*)0x140018048, (void*)&__sub_140018048);
   patch_jmp((void*)0x140021DB0, (void*)&__sub_140021DB0);
   patch_jmp((void*)0x14000A4B0, (void*)&__sub_14000A4B0);
+  patch_jmp((void*)0x140009620, (void*)&__sub_140009620);
   patch_jmp((void*)0x1400183E4, (void*)&__sub_1400183E4);
   patch_jmp((void*)0x140011240, (void*)&__sub_140011240);
+  patch_jmp((void*)0x1400126F8, (void*)&__sub_1400126F8);
+  patch_jmp((void*)0x140021280, (void*)&__sub_140021280);
+  patch_jmp((void*)0x14001D7A0, (void*)&__sub_14001D7A0);
+  patch_jmp((void*)0x140018050, (void*)&__sub_140018050);
+  patch_jmp((void*)0x140018098, (void*)&__sub_140018098);
+  patch_jmp((void*)0x140018058, (void*)&__sub_140018058);
   patch_jmp((void*)0x140003480, (void*)&__Alloc_PPMblock);
+  patch_jmp((void*)0x1400028D0, (void*)&__PrintStats);
   patch_jmp((void*)0x140017DC8, (void*)&__sub_140017DC8);
   patch_jmp((void*)0x14001D730, (void*)&__sub_14001D730);
   patch_jmp((void*)0x140010850, (void*)&__sub_140010850);
