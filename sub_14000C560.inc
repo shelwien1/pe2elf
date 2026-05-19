@@ -768,11 +768,6 @@ static t_sub_14000B750& __sub_14000B750 = *(t_sub_14000B750*)0x14000B750;
 #endif
 #define sub_14000B750 __sub_14000B750
 #define sub_14000C0E0 __sub_14000C0E0
-#ifndef __PE_DECL___sub_140010730
-#define __PE_DECL___sub_140010730
-typedef __attribute__((ms_abi)) __int64 t_sub_140010730(__int64 a1);
-static t_sub_140010730& __sub_140010730 = *(t_sub_140010730*)0x140010730;
-#endif
 #define sub_140010730 __sub_140010730
 #ifndef __PE_DECL___sub_140010850
 #define __PE_DECL___sub_140010850
