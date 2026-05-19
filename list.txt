@@ -1,4 +1,3 @@
 PrintStats
 sub_140007B80
-sub_140010A40
 sub_14001D7A0

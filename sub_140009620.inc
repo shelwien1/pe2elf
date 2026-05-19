@@ -122,11 +122,6 @@ static __int128& __xmmword_141133520 = *(__int128*)0x141133520;
 // ---- PE-internal function references --------------------------------
 #define sub_14000A2B0 __sub_14000A2B0
 #define sub_14000A4B0 __sub_14000A4B0
-#ifndef __PE_DECL___sub_140010A40
-#define __PE_DECL___sub_140010A40
-typedef __attribute__((ms_abi)) __int64 t_sub_140010A40(int a1);
-static t_sub_140010A40& __sub_140010A40 = *(t_sub_140010A40*)0x140010A40;
-#endif
 #define sub_140010A40 __sub_140010A40
 #define sub_140011240 __sub_140011240
 

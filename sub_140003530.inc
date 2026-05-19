@@ -65,11 +65,6 @@ static t_flsbuf& __flsbuf = *(t_flsbuf*)0x14001323C;
 #endif
 #define flsbuf __flsbuf
 #define sub_1400037A0 __sub_1400037A0
-#ifndef __PE_DECL___sub_140010A40
-#define __PE_DECL___sub_140010A40
-typedef __attribute__((ms_abi)) __int64 t_sub_140010A40(int a1);
-static t_sub_140010A40& __sub_140010A40 = *(t_sub_140010A40*)0x140010A40;
-#endif
 #define sub_140010A40 __sub_140010A40
 #ifndef __PE_DECL___sub_14001D7A0
 #define __PE_DECL___sub_14001D7A0

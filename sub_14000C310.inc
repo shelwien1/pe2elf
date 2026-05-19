@@ -70,11 +70,6 @@ static t_filbuf& __filbuf = *(t_filbuf*)0x1400133CC;
 #endif
 #define filbuf __filbuf
 #define sub_14000C560 __sub_14000C560
-#ifndef __PE_DECL___sub_140010A40
-#define __PE_DECL___sub_140010A40
-typedef __attribute__((ms_abi)) __int64 t_sub_140010A40(int a1);
-static t_sub_140010A40& __sub_140010A40 = *(t_sub_140010A40*)0x140010A40;
-#endif
 #define sub_140010A40 __sub_140010A40
 #ifndef __PE_DECL___sub_14001D7A0
 #define __PE_DECL___sub_14001D7A0
