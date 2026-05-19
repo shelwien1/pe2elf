@@ -101,6 +101,7 @@ static void patch_iat_slot(void *slot, void *repl) {
 #include "sub_140018048.inc"
 #include "sub_140021DB0.inc"
 #include "sub_1400183E4.inc"
+#include "sub_14001570C.inc"
 #include "sub_140011920.inc"
 #include "sub_14000A4B0.inc"
 #include "sub_140017DC8.inc"
@@ -140,6 +141,7 @@ __attribute__((constructor)) static void dummy_init() {
   patch_jmp((void*)0x1400032F0, (void*)&__sub_1400032F0);
   patch_jmp((void*)0x140012804, (void*)&__sub_140012804);
   patch_jmp((void*)0x140017A58, (void*)&__sub_140017A58);
+  patch_jmp((void*)0x14001570C, (void*)&__sub_14001570C);
   patch_jmp((void*)0x140011920, (void*)&__sub_140011920);
   patch_jmp((void*)0x14000C0E0, (void*)&__sub_14000C0E0);
   patch_jmp((void*)0x1400037A0, (void*)&__sub_1400037A0);
