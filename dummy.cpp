@@ -85,6 +85,7 @@ static void patch_iat_slot(void *slot, void *repl) {
 // ---------------------------------------------------------------------------
 // Decompiled function bodies.
 
+#include "sub_140002AD0.inc"
 #include "sub_140014894.inc"
 #include "sub_14001A5C0.inc"
 #include "sub_140003370.inc"
@@ -140,6 +141,7 @@ __attribute__((constructor)) static void dummy_init() {
     abort();
   }
 
+  patch_jmp((void*)0x140002AD0, (void*)&__sub_140002AD0);
   patch_jmp((void*)0x140014894, (void*)&__sub_140014894);
   patch_jmp((void*)0x14001A5C0, (void*)&__sub_14001A5C0);
   patch_jmp((void*)0x140003370, (void*)&__sub_140003370);

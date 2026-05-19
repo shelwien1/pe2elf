@@ -5,9 +5,6 @@
 
 #define FILE FILE1
 
-#define _BitScanForward(idx_ptr, mask_val) \
-  ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
-
 // ---- TODO: unresolved identifiers (locals, intrinsics, or typos) ----
 //   call:  _mm_add_epi32
 //   call:  _mm_add_epi8
@@ -72,7 +69,8 @@ static t_byte_140029240& __byte_140029240 = *(t_byte_140029240*)0x140029240;
 #define byte_140029240 __byte_140029240
 #ifndef __PE_DECL___byte_1400292C0
 #define __PE_DECL___byte_1400292C0
-static _UNKNOWN& __byte_1400292C0 = *(_UNKNOWN*)0x1400292C0;
+typedef char t_byte_1400292C0[256];
+static t_byte_1400292C0& __byte_1400292C0 = *(t_byte_1400292C0*)0x1400292C0;
 #endif
 #define byte_1400292C0 __byte_1400292C0
 #ifndef __PE_DECL___byte_1400293C0
@@ -169,7 +167,8 @@ static t_xmmword_140029100& __xmmword_140029100 = *(t_xmmword_140029100*)0x14002
 #define xmmword_140029100 __xmmword_140029100
 #ifndef __PE_DECL___xmmword_140029110
 #define __PE_DECL___xmmword_140029110
-static _UNKNOWN& __xmmword_140029110 = *(_UNKNOWN*)0x140029110;
+typedef __int128 t_xmmword_140029110[16];
+static t_xmmword_140029110& __xmmword_140029110 = *(t_xmmword_140029110*)0x140029110;
 #endif
 #define xmmword_140029110 __xmmword_140029110
 #ifndef __PE_DECL___xmmword_140029120
@@ -487,7 +486,7 @@ __attribute__((ms_abi)) __int64 __sub_140002AD0() {
   byte_140029000[0] = 1;
   v74 = 2;
   v75 = 2;
-  MEMORY[0x140029001] = 2;
+  *(char*)0x140029001 = 2;
   v76 = 1;
   result = 1;
   v78 = 1;
@@ -499,14 +498,14 @@ __attribute__((ms_abi)) __int64 __sub_140002AD0() {
     }
     v74 = ii + 1;
   }
-  MEMORY[0x1400290FF] = 24;
+  *(char*)0x1400290FF = 24;
   BYTE2(xmmword_140029100[0]) = 2;
   LOWORD(xmmword_140029100[0]) = 512;
   *(_QWORD *)((char *)xmmword_140029100 + 3) = 0x404040404040404LL;
   *(_QWORD *)((char *)xmmword_140029100 + 11) = 0x404040404040404LL;
-  MEMORY[0x140029113] = 0x404040404040404LL;
-  MEMORY[0x14002911B] = 67372036;
-  MEMORY[0x14002911F] = 4;
+  *(__int64*)0x140029113 = 0x404040404040404LL;
+  *(int*)0x14002911B = 67372036;
+  *(char*)0x14002911F = 4;
   LODWORD(xmmword_140029120[0]) = 67372036;
   WORD2(xmmword_140029120[0]) = 1028;
   v80 = _mm_load_si128((const __m128i *)&xmmword_1400228E0);
@@ -518,9 +517,9 @@ __attribute__((ms_abi)) __int64 __sub_140002AD0() {
     xmmword_140029100[v81] = (__int128)v80;
     v81 -= 4;
   } while(v81 * 16);
-  *(_QWORD *)((char *)xmmword_140029120 + 6) = v80.m128i_i64[0];
-  *(_QWORD *)((char *)xmmword_140029120 + 14) = v80.m128i_i64[0];
-  *(_QWORD *)((char *)xmmword_140029130 + 6) = v80.m128i_i64[0];
+  *(_QWORD *)((char *)xmmword_140029120 + 6) = _mm_cvtsi128_si64(v80);
+  *(_QWORD *)((char *)xmmword_140029120 + 14) = _mm_cvtsi128_si64(v80);
+  *(_QWORD *)((char *)xmmword_140029130 + 6) = _mm_cvtsi128_si64(v80);
   HIWORD(xmmword_140029130[0]) = 1542;
   v82 = _mm_load_si128((const __m128i *)&xmmword_140022870);
   v83 = _mm_load_si128((const __m128i *)&xmmword_140022880);
@@ -529,16 +528,16 @@ __attribute__((ms_abi)) __int64 __sub_140002AD0() {
   v86 = _mm_load_si128((const __m128i *)&xmmword_1400228B0);
   v87 = _mm_load_si128((const __m128i *)&xmmword_1400228C0);
   v88 = 0;
-  v89 = 0;
+  v89 = _mm_setzero_si128();
   do {
     v90 = _mm_cmpeq_epi32(_mm_and_si128(v83, v84), v84);
-    v91 = _mm_cmpeq_epi32(_mm_and_si128(v83, v82), (__m128i)0LL);
-    v92 = _mm_cmpeq_epi32(_mm_and_si128(v83, v85), (__m128i)0LL);
+    v91 = _mm_cmpeq_epi32(_mm_and_si128(v83, v82), _mm_setzero_si128());
+    v92 = _mm_cmpeq_epi32(_mm_and_si128(v83, v85), _mm_setzero_si128());
     v93 = _mm_and_si128(v90, v91);
     v83 = _mm_add_epi32(v83, v82);
-    v94 = _mm_or_si128(_mm_xor_si128((__m128i)-1LL, v90), v91);
+    v94 = _mm_or_si128(_mm_xor_si128(_mm_set1_epi32(-1), v90), v91);
     v95 = _mm_andnot_si128(v91, v90);
-    v89 = _mm_and_si128(_mm_or_si128(_mm_and_si128(v86, v93), _mm_andnot_si128(v93, _mm_or_si128(_mm_and_si128(_mm_or_si128(_mm_and_si128(v89, _mm_or_si128(v94, v92)), _mm_and_si128(_mm_andnot_si128(v92, v95), v84)), _mm_or_si128(v94, _mm_xor_si128((__m128i)-1LL, v92))), _mm_and_si128(_mm_and_si128(v95, v92), v87)))), v90);
+    v89 = _mm_and_si128(_mm_or_si128(_mm_and_si128(v86, v93), _mm_andnot_si128(v93, _mm_or_si128(_mm_and_si128(_mm_or_si128(_mm_and_si128(v89, _mm_or_si128(v94, v92)), _mm_and_si128(_mm_andnot_si128(v92, v95), v84)), _mm_or_si128(v94, _mm_xor_si128(_mm_set1_epi32(-1), v92))), _mm_and_si128(_mm_and_si128(v95, v92), v87)))), v90);
     xmmword_140029200[v88++] = (__int128)_mm_slli_epi32(v89, 9u);
   } while(v88 < 4);
   v96 = 0;
@@ -628,5 +627,4 @@ __attribute__((ms_abi)) __int64 __sub_140002AD0() {
 #undef xmmword_140029130
 #undef xmmword_140029200
 #undef xmmword_141133520
-#undef _BitScanForward
 #undef FILE
