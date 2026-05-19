@@ -1,3 +1,0 @@
-# Functions attempted but not yet working.
-# Format: <name>  <reason>
-Alloc_PPMblock  SIGSEGV in sub_1400037A0 at +0x4D8 after decompilation; root cause unknown
