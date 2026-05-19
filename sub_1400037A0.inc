@@ -777,11 +777,6 @@ typedef __attribute__((ms_abi)) __int64 t_sub_14000B750(unsigned __int8 *a1);
 static t_sub_14000B750& __sub_14000B750 = *(t_sub_14000B750*)0x14000B750;
 #endif
 #define sub_14000B750 __sub_14000B750
-#ifndef __PE_DECL___sub_14000C0E0
-#define __PE_DECL___sub_14000C0E0
-typedef __attribute__((ms_abi)) __int64 t_sub_14000C0E0(unsigned __int8 *a1);
-static t_sub_14000C0E0& __sub_14000C0E0 = *(t_sub_14000C0E0*)0x14000C0E0;
-#endif
 #define sub_14000C0E0 __sub_14000C0E0
 #ifndef __PE_DECL___sub_140010730
 #define __PE_DECL___sub_140010730
