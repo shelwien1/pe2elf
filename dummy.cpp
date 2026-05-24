@@ -447,6 +447,14 @@ struct MEM_BLK {
     return p;
   }
 
+  // unlink(): remove this block from its doubly-linked list. The caller is
+  // responsible for adjusting any QueueSize counter; this only fixes the
+  // forward/back pointers of the immediate neighbours.
+  void unlink() {
+    next()->Prev = Prev;
+    prev()->Next = Next;
+  }
+
   uint canMerge() const {
     return (Stamp==byte(-1));
   }
@@ -1475,8 +1483,6 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   sqword blockIdx;
   sqword sizeClassSaved;
   sqword byteOff12;
-  byte* i;
-  sqword freelistByteOff;
   uint sizeClassEntry;
   uint chunkLoopI;
   int chunkLoopJ;
@@ -1496,12 +1502,17 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   blockIdx = blockAddr-HeapNull;
   sizeClassSaved = sizeClass;
   byteOff12 = 12LL*sizeClass;
-  for( i = (byte*)(blockAddr+byteOff12); *(byte*)(blockAddr+byteOff12+1)==255; i = (byte*)(blockAddr+byteOff12) ) {
-    *(uint*)(*((uint*)i+1)+heapNull+8) = *((uint*)i+2);
-    *(uint*)(*((uint*)i+2)+heapNull+4) = *((uint*)i+1);
-    freelistByteOff = 12LL**(Units2Indx+*i+3);
-    --*(uint*)(freelistByteOff+bListSaved);
-    sizeClass += *(byte*)(blockAddr+byteOff12);
+  // Coalesce: walk trailing blocks whose Stamp is 0xFF, unlinking each from
+  // its size-class queue and absorbing its units into our running size.
+  {
+    MEM_BLK* bList = (MEM_BLK*)bListSaved;
+    while (true) {
+      MEM_BLK* probe = (MEM_BLK*)(blockAddr + 12LL*sizeClass);
+      if (probe->Stamp != (byte)-1) break;
+      probe->unlink();
+      --bList[Units2Indx[probe->NU + 3]].QueueSize;
+      sizeClass += probe->NU;
+    }
     sizeClassSaved = sizeClass;
     byteOff12 = 12LL*sizeClass;
   }
