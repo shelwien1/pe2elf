@@ -219,6 +219,15 @@ extern "C" EXPORT DWORD winmm_timeGetTime(void) {
 
 // ---------------------------------------------------------------------------
 // SetConsoleCtrlHandler
+//
+// POSIX async-signal-safety: the SIGINT handler can interrupt almost any
+// code, including a thread mid-malloc or holding a pthread_mutex.  We
+// can't safely invoke user-supplied Windows callbacks (which may do both)
+// from inside the signal handler.  Instead, write() one byte to a self-
+// pipe (write of <=PIPE_BUF is atomic and on the async-signal-safe list)
+// and dispatch from a background thread.  An explicit ms_abi trampoline
+// makes the SysV (pthread) → ms_abi (PHANDLER_ROUTINE) ABI transition
+// obvious to readers and to the compiler.
 // ---------------------------------------------------------------------------
 typedef BOOL (__attribute__((ms_abi)) *PHANDLER_ROUTINE)(DWORD);
 #define CTRL_C_EVENT     0
@@ -227,17 +236,55 @@ typedef BOOL (__attribute__((ms_abi)) *PHANDLER_ROUTINE)(DWORD);
 #define CTRL_HANDLER_MAX 8
 static PHANDLER_ROUTINE g_ctrl_handlers[CTRL_HANDLER_MAX];
 static int              g_ctrl_handler_count = 0;
+static pthread_mutex_t  g_ctrl_mu = PTHREAD_MUTEX_INITIALIZER;
+static int              g_ctrl_pipe[2] = { -1, -1 };
+static pthread_once_t   g_ctrl_init_once = PTHREAD_ONCE_INIT;
+
+// Explicit ABI-conversion trampoline.  Called from the dispatcher thread
+// (SysV ABI); the indirect call through `fn` switches to ms_abi for the
+// duration of the user handler.
+static BOOL ctrl_invoke(PHANDLER_ROUTINE fn, DWORD ev) {
+  return fn(ev);
+}
+
+static void* ctrl_dispatcher_thread(void*) {
+  char b;
+  while( read(g_ctrl_pipe[0], &b, 1)==1 ) {
+    DWORD ev = (DWORD)(unsigned char)b;
+    // Snapshot under the lock so SetConsoleCtrlHandler can mutate the
+    // list concurrently without us calling through a freed pointer.
+    PHANDLER_ROUTINE local[CTRL_HANDLER_MAX];
+    int n;
+    pthread_mutex_lock(&g_ctrl_mu);
+    n = g_ctrl_handler_count;
+    memcpy(local, g_ctrl_handlers, (size_t)n*sizeof(PHANDLER_ROUTINE));
+    pthread_mutex_unlock(&g_ctrl_mu);
+    for( int i = n-1; i>=0; --i )
+      if( ctrl_invoke(local[i], ev) ) break;
+  }
+  return nullptr;
+}
+
+static void ctrl_init(void) {
+  if( pipe(g_ctrl_pipe)!=0 ) return;
+  pthread_t t;
+  if( pthread_create(&t, nullptr, ctrl_dispatcher_thread, nullptr)==0 )
+    pthread_detach(t);
+}
 
 static void posix_sigint_handler(int /*sig*/) {
-  for( int i = g_ctrl_handler_count - 1; i >= 0; --i )
-    if( g_ctrl_handlers[i](CTRL_C_EVENT) ) return;
+  if( g_ctrl_pipe[1]<0 ) return;
+  char c = (char)CTRL_C_EVENT;
+  ssize_t _w = write(g_ctrl_pipe[1], &c, 1);  // async-signal-safe
+  (void)_w;
 }
 extern "C" EXPORT BOOL kernel32_SetConsoleCtrlHandler(PHANDLER_ROUTINE handler, BOOL add) {
   if( !handler ) { signal(SIGINT, add ? SIG_IGN : SIG_DFL); return TRUE; }
+  pthread_once(&g_ctrl_init_once, ctrl_init);
+  pthread_mutex_lock(&g_ctrl_mu);
   if( add ) {
     if( g_ctrl_handler_count < CTRL_HANDLER_MAX )
       g_ctrl_handlers[g_ctrl_handler_count++] = handler;
-    signal(SIGINT, posix_sigint_handler);
   } else {
     for( int i = 0; i < g_ctrl_handler_count; ++i ) {
       if( g_ctrl_handlers[i] == handler ) {
@@ -245,8 +292,10 @@ extern "C" EXPORT BOOL kernel32_SetConsoleCtrlHandler(PHANDLER_ROUTINE handler, 
         break;
       }
     }
-    if( g_ctrl_handler_count == 0 ) signal(SIGINT, SIG_DFL);
   }
+  int n = g_ctrl_handler_count;
+  pthread_mutex_unlock(&g_ctrl_mu);
+  signal(SIGINT, n>0 ? posix_sigint_handler : SIG_DFL);
   return TRUE;
 }
 
