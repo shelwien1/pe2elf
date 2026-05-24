@@ -2551,7 +2551,7 @@ qword MixUpdate(byte* ctxBytes) {
   int    recentForHi;      // SseCtx0_1[(int)matchHi]
   int    dt;               // symEpoch - recentEpoch
   int    bdiff;            // (byte)(sym - matchHi)
-  int    predV38;          // running guess for FoundSymbol
+  int    predGuessSym;          // running guess for FoundSymbol
 
   // ---- recent-pos chain walk (rp = walker, hashByte = MatchPosHash lookup)
   int    rp, rp1, rp2;
@@ -2743,18 +2743,18 @@ qword MixUpdate(byte* ctxBytes) {
                + (matchDelta < 7));
   if( (uint)(symEpoch-matchPrev)>=0x1000 ) {
     Order1Ctx = 0;
-    predV38 = 0;
+    predGuessSym = 0;
     matchHintByte = -1;
   } else {
-    predV38 = (byte)MatchPosHash[(matchPrev+2)&0x1FFFF];
-    Order1Ctx = predV38;
+    predGuessSym = (byte)MatchPosHash[(matchPrev+2)&0x1FFFF];
+    Order1Ctx = predGuessSym;
     matchHintByte = (byte)MatchPosHash[(MatchPosPrev[matchPrev&0x1FFFF]+2)&0x1FFFF];
-    if( predV38==matchHintByte ) {
-      MatchPosBySym[predV38] = sc;
-      predV38 = Order1Ctx;
+    if( predGuessSym==matchHintByte ) {
+      MatchPosBySym[predGuessSym] = sc;
+      predGuessSym = Order1Ctx;
     }
     if( matchDelta>=0x240 )
-      predV38 = 0;
+      predGuessSym = 0;
   }
   rsCtx = RSContext;
   newQ12Sel = 2*q12BaseSel;
@@ -2808,8 +2808,8 @@ qword MixUpdate(byte* ctxBytes) {
   SymEpoch = symEpoch+1;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
-      predV38 = (byte)(2*sym-matchHi);
-      FoundSymbol = predV38;
+      predGuessSym = (byte)(2*sym-matchHi);
+      FoundSymbol = predGuessSym;
       goto LABEL_94;
     }
     FoundSymbol = -1;
@@ -2851,8 +2851,8 @@ qword MixUpdate(byte* ctxBytes) {
       SymLastCtx[256 * (sc == SymLastCtx[vh]) + vh] = sc;
     }
   } else {
-    predV38 = (byte)(2*ssem3-ssem7);
-    FoundSymbol = predV38;
+    predGuessSym = (byte)(2*ssem3-ssem7);
+    FoundSymbol = predGuessSym;
   }
 LABEL_94:
   m2_prev1 = MatchPosPrev[(symEpoch-2)&0x1FFFF];
@@ -2944,20 +2944,20 @@ LABEL_94:
       MatchPosBySym[*(byte*)q26] = sc;
     }
     if( b1==b2&&b2==b3 ) {
-      PrevSymbol = predV38;
+      PrevSymbol = predGuessSym;
       FoundSymbol = b1;
       MatchPosBySym[(byte)(b1+1)] = sc;
       SymLastCtx2[(byte)(b1-1)] = sc;
     } else if( FoundSymbol<0 ) {
       if( b1==b2||b2==b3 ) {
-        PrevSymbol = predV38;
+        PrevSymbol = predGuessSym;
         FoundSymbol = b1;
         SymLastCtx2[(byte)(b3+1)] = sc;
         MatchPosBySym[(byte)(b1+1)] = sc;
         SymLastCtx2[(byte)(b1-1)] = sc;
         MatchPosBySym[b3] = sc;
       } else if( b1==b3 ) {
-        PrevSymbol = predV38;
+        PrevSymbol = predGuessSym;
         if( b2==(byte)bmPtr[-4*MixScale]&&(byte)bmPtr[-5*MixScale]==b3 )
           b1 = b2;
         FoundSymbol = b1;
@@ -2965,7 +2965,7 @@ LABEL_94:
       } else {
         predDelta = b1+b3-2*b2;
         if( predDelta ) {
-          PrevSymbol = predV38;
+          PrevSymbol = predGuessSym;
           if( *(byte*)(q26+3)<=0x10u ) {
             if( (byte)(predDelta+19)<=0x26u ) {
               predA = 2*b1-b2;
@@ -2996,10 +2996,10 @@ LABEL_94:
         }
       }
     } else {
-      PrevSymbol = predV38;
+      PrevSymbol = predGuessSym;
     }
   } else {
-    PrevSymbol = predV38;
+    PrevSymbol = predGuessSym;
     MixScale = 1024;
     if( FoundSymbol<0 )
       FoundSymbol = HashSeed1;
