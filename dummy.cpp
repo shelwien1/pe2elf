@@ -2293,13 +2293,13 @@ LABEL_11:
           stateIdxU = *((uint*)ctxBW+1);
           statesPtr = (uint*)(heapNull+stateIdxU);
           uint halfNStatesP1 = nStatesP1>>1;
-          sizeClassP = *(Units2Indx+halfNStatesP1+3);
-          if( sizeClassP!=*(Units2Indx4+halfNStatesP1) ) {
-            sizeClass4P = *(Units2Indx4+halfNStatesP1);
+          sizeClassP = Units2Indx[halfNStatesP1 + 3];
+          if (sizeClassP != Units2Indx4[halfNStatesP1]) {
+            sizeClass4P = Units2Indx4[halfNStatesP1];
             newStatesPtr = (uint*)AllocUnits_((uint)sizeClass4P);
             // AllocUnits_ may have called AllocUnitsRare which clobbers sizeClassP;
             // recompute (matches the inlined pattern's restoration).
-            sizeClassP = *(Units2Indx+halfNStatesP1+3);
+            sizeClassP = Units2Indx[halfNStatesP1 + 3];
             if( newStatesPtr ) {
               // Copy nStatesP1/2 units (each = 2 STATEs) from the old block to
               // the new one, then free the old block. The unit count matches
