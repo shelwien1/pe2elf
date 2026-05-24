@@ -167,6 +167,10 @@ extern "C" EXPORT BOOL kernel32_DuplicateHandle(
     // Handle table full — undo the refcount bump and clean up if new obj.
     if( --(obj->refcount) == 0 ) {
       pthread_mutex_unlock(&g_handles_mu);
+      // Clear the TLS cache before freeing so the next DuplicateHandle on
+      // this thread doesn't read a dangling pointer and skip the
+      // "no managed thread → allocate" branch.
+      pthread_setspecific(g_thread_obj_key, nullptr);
       pthread_mutex_destroy(&obj->mu); pthread_cond_destroy(&obj->cv); free(obj);
     } else {
       pthread_mutex_unlock(&g_handles_mu);

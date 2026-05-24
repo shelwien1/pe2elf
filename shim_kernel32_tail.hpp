@@ -448,7 +448,10 @@ extern "C" EXPORT BOOL kernel32_GetVersionExW(void* buf) {
   uint32_t sz = *(uint32_t*)buf;
   if( sz < 276 ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
   uint8_t* b = (uint8_t*)buf;
-  memset(b + 4, 0, sz - 4);
+  // Cap the memset at OSVERSIONINFOEXW (284 bytes); a bogus dwOSVersionInfoSize
+  // larger than the caller's actual buffer must not be allowed to overflow it.
+  uint32_t fill_sz = sz < 284 ? sz : 284;
+  memset(b + 4, 0, fill_sz - 4);
   *(uint32_t*)(b+4)  = 6;    // dwMajorVersion
   *(uint32_t*)(b+8)  = 1;    // dwMinorVersion
   *(uint32_t*)(b+12) = 7601; // dwBuildNumber
