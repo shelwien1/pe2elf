@@ -3022,8 +3022,8 @@ LABEL_94:
           }
         }
       }
-      trailStatesIdx = *((uint*)walkCtx+1);
-      trailFlags = walkCtx[1];
+      trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
+      trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
       goto LABEL_165;
     }
     mixWeight = 2;
