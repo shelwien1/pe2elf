@@ -2101,7 +2101,7 @@ sqword ReduceOrder() {
   orderFall = OrderFall;
   maxOrder = MaxOrder;
   succIdxW = ((STATE*)q9)->iSuccessor;
-  foundSymFreq = *(word*)q9;
+  foundSymFreq = *(word*)q9;       // Symbol (low byte) + Freq (high byte)
   ctxBW = (byte*)RootContext;
   rootCtxSaved = RootContext;
   sse0Bit = ((byte*)SSE0)[((STATE*)q9)->Symbol];
