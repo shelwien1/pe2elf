@@ -734,7 +734,17 @@ TARGET_SCALE_FALLBACK:
   }
 
   uint scale_diff = summ_freq-freq_bound;
-  uint path_threshold = (6*scale_diff<freq_bound)+(15*scale_diff<4*freq_bound)+(9*scale_diff<4*freq_bound)+(13*scale_diff<8*freq_bound)+(scale_diff<freq_bound)+(scale_diff<2*freq_bound)+(scale_diff<6*freq_bound)+(35*scale_diff<4*freq_bound)+1;
+  // Count how many of these 8 "scale_diff under k * freq_bound" thresholds
+  // pass, then bias by +1. Each pass adds 1, giving a path_threshold in [1, 9].
+  uint path_threshold = 1
+    + (35*scale_diff <  4*freq_bound)   // <  ~1/9
+    + (15*scale_diff <  4*freq_bound)   // <  ~4/15
+    + (13*scale_diff <  8*freq_bound)   // <  ~8/13
+    + ( 9*scale_diff <  4*freq_bound)   // <  ~4/9
+    + ( 6*scale_diff <    freq_bound)   // <  ~1/6
+    + (   scale_diff <    freq_bound)   // <  1
+    + (   scale_diff <  2*freq_bound)   // <  2
+    + (   scale_diff <  6*freq_bound);  // <  6
 
   // Save initial path threshold expression result for global metrics
   uint initial_threshold = path_threshold;
