@@ -78,14 +78,11 @@ __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...
   (void)_wr;
 }
 
-#ifdef WINAPI_LOG_ENABLED
+// Single logging entrypoint.  log_write itself runtime-gates on g_log_fd,
+// so this is cheap when WINAPI_SHIM_LOG isn't set.  WINAPI_LOG_ENABLED
+// (the debug build) only forces the file open in log_init and switches on
+// the extra stack dump inside RtlCaptureContext.
 #define log_always log_write
-#define LOG(name, fmt, ...) \
-  log_write("[%d] " name "(" fmt ")\n", (int)getpid(), ##__VA_ARGS__)
-#else
-#define log_always log_write
-#define LOG(name, fmt, ...)  ((void)0)
-#endif
 
 // ---------------------------------------------------------------------------
 // Thread-local last error
@@ -1108,7 +1105,7 @@ __attribute__((constructor)) static void shim_init(void) {
 // 7.1 Process / Identity
 // ---------------------------------------------------------------------------
 extern "C" EXPORT HANDLE kernel32_GetCurrentProcess(void) {
-  LOG("GetCurrentProcess", "");
+  log_always("[SHIM] GetCurrentProcess()\n");
   return PROCESS_PSEUDO_HANDLE;
 }
 
@@ -1140,7 +1137,25 @@ static void log_backtrace(void) {
     log_always("[SHIM]  bt[%02d]: %p\n", i, bt[i]);
 }
 #else
-static void log_backtrace(void) {}
+// musl path: glibc's <execinfo.h> isn't available, but libgcc's
+// _Unwind_Backtrace is, and that's actually how glibc's backtrace() walks
+// the stack internally.  Frame symbolication isn't done either way for
+// log_backtrace; we just need the IPs.
+#include <unwind.h>
+struct bt_state { void** bt; int n; int max; };
+static _Unwind_Reason_Code log_backtrace_cb(struct _Unwind_Context* ctx, void* arg) {
+  bt_state* s = (bt_state*)arg;
+  if( s->n >= s->max ) return _URC_END_OF_STACK;
+  s->bt[s->n++] = (void*)(uintptr_t)_Unwind_GetIP(ctx);
+  return _URC_NO_REASON;
+}
+static void log_backtrace(void) {
+  void* bt[32];
+  bt_state s = { bt, 0, 32 };
+  _Unwind_Backtrace(log_backtrace_cb, &s);
+  for( int i = 0; i < s.n; ++i )
+    log_always("[SHIM]  bt[%02d]: %p\n", i, bt[i]);
+}
 // musl doesn't provide malloc_usable_size; return 0 so HeapSize is a stub
 // and HeapReAlloc zero-fills conservatively
 static size_t malloc_usable_size(void* /*p*/) { return 0; }
@@ -2319,10 +2334,13 @@ extern "C" EXPORT LPVOID kernel32_DecodePointer(LPVOID p) {
 // ---------------------------------------------------------------------------
 // 7.15 Exception / SEH stubs
 // ---------------------------------------------------------------------------
+typedef LONG (__attribute__((ms_abi)) *unhandled_filter_t)(void*);
+static LONG run_vectored_handlers(void*);   // defined with the VEH section below
+
 extern "C" EXPORT LPVOID kernel32_SetUnhandledExceptionFilter(LPVOID filter) {
   log_always("[SHIM] SetUnhandledExceptionFilter(%p)\n", filter);
-  void* old = g_unhandled_filter;
-  g_unhandled_filter = filter;
+  // Atomic swap so concurrent set/get can't tear the pointer.
+  void* old = __atomic_exchange_n(&g_unhandled_filter, filter, __ATOMIC_ACQ_REL);
   return old;
 }
 
@@ -2340,10 +2358,25 @@ extern "C" EXPORT LONG kernel32_UnhandledExceptionFilter(void* pExcept) {
   } else {
     log_always("[SHIM] UnhandledExceptionFilter(NULL)\n");
   }
-  // Chain to registered filter if set; otherwise signal fatal error (B36/R36)
-  if( g_unhandled_filter ) {
-    // Cannot call ms_abi safely here — just log and terminate
-    log_always("[SHIM] UnhandledExceptionFilter: filter registered but cannot safely call; terminating\n");
+  // Run vectored handlers first (Windows dispatch order: VEH → SEH → TLEF).
+  // If any handler returns EXCEPTION_CONTINUE_EXECUTION, propagate so the
+  // caller can resume.
+  LONG vr = run_vectored_handlers(pExcept);
+  if( vr == -1 ) return vr;
+
+  // Invoke the registered top-level filter if one exists.  The filter
+  // is itself an ms_abi function (Windows TLEF prototype), so calling
+  // it from this ms_abi entrypoint is ABI-safe — the unsafe path is
+  // calling it from a POSIX signal handler, which crash_handler avoids.
+  // Honour the return:
+  //   EXCEPTION_CONTINUE_EXECUTION (-1) → caller may continue; return.
+  //   EXCEPTION_EXECUTE_HANDLER     (1) → handled; terminate.
+  //   EXCEPTION_CONTINUE_SEARCH     (0) → no other handler; terminate.
+  void* fp = __atomic_load_n(&g_unhandled_filter, __ATOMIC_ACQUIRE);
+  if( fp ) {
+    LONG r = ((unhandled_filter_t)fp)(pExcept);
+    log_always("[SHIM] top-level filter returned %ld\n", (long)r);
+    if( r == -1 /*EXCEPTION_CONTINUE_EXECUTION*/ ) return r;
   }
   _exit(1);
   return EXCEPTION_EXECUTE_HANDLER;
@@ -2421,12 +2454,38 @@ extern "C" EXPORT LPVOID kernel32_RtlPcToFileHeader(LPVOID pc, LPVOID* pbase) {
 }
 
 extern "C" EXPORT void kernel32_RaiseException(DWORD code, DWORD flags, DWORD nargs, const ULONG_PTR* args) {
-  (void)args;
-  (void)nargs;
-  log_always("[SHIM] RaiseException code=0x%08x flags=0x%x\n", code, flags);
-  if( flags&EXCEPTION_NONCONTINUABLE ) {
+  log_always("[SHIM] RaiseException code=0x%08x flags=0x%x nargs=%u\n", code, flags, nargs);
+
+  // Synthesise an EXCEPTION_POINTERS so the VEH chain has something to
+  // inspect.  Layout below matches Windows x64 EXCEPTION_RECORD /
+  // EXCEPTION_POINTERS so existing handler code can dereference it.
+  struct ExceptionRecord {
+    uint32_t code;
+    uint32_t flags;
+    void* record;
+    void* addr;
+    uint32_t nparams;
+    uint32_t pad;
+    uint64_t params[15];
+  };
+  ExceptionRecord rec = {};
+  rec.code = code;
+  rec.flags = flags;
+  rec.addr = __builtin_return_address(0);
+  uint32_t n = (nargs > 15) ? 15 : nargs;
+  rec.nparams = n;
+  for( uint32_t i = 0; i < n && args; i++ ) rec.params[i] = (uint64_t)args[i];
+  void* eptr[2] = { &rec, nullptr };  // ContextRecord left NULL
+
+  LONG vr = run_vectored_handlers(eptr);
+  if( vr == -1 /*EXCEPTION_CONTINUE_EXECUTION*/ ) return;
+
+  if( flags & EXCEPTION_NONCONTINUABLE ) {
     _exit((int)code);
   }
+  // For continuable exceptions with no handler interested: no SEH chain
+  // to walk in this shim, so just return — caller's __try/__except
+  // scaffolding (if any) will run next on the original control flow.
 }
 
 // ---------------------------------------------------------------------------
@@ -3321,11 +3380,21 @@ extern "C" EXPORT DWORD kernel32_ResumeThread(HANDLE h) {
 extern "C" EXPORT int  kernel32_GetThreadPriority(HANDLE /*h*/)              { return 0; }  // THREAD_PRIORITY_NORMAL
 extern "C" EXPORT BOOL kernel32_SetThreadPriority(HANDLE /*h*/, int /*pri*/) { return TRUE; }
 
-extern "C" EXPORT BOOL kernel32_GetThreadContext(HANDLE /*h*/, void* /*ctx*/) {
+extern "C" EXPORT BOOL kernel32_GetThreadContext(HANDLE h, void* ctx) {
+  if( !ctx ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  // Current-thread pseudo-handle: same fill RtlCaptureContext does.
+  // Cross-thread context capture would need SIGUSR1 + ucontext save from
+  // the target's signal handler — not implemented.
+  if( h == (HANDLE)(intptr_t)-2 ) {
+    kernel32_RtlCaptureContext(ctx);
+    return TRUE;
+  }
   SET_LAST_ERROR(1); return FALSE;   // ERROR_INVALID_FUNCTION
 }
 extern "C" EXPORT BOOL kernel32_SetThreadContext(HANDLE /*h*/, const void* /*ctx*/) {
-  SET_LAST_ERROR(1); return FALSE;
+  // Setting another thread's RIP/RSP requires either ptrace or a
+  // signal-handler hand-off neither of which is in scope.
+  SET_LAST_ERROR(1); return FALSE;   // ERROR_INVALID_FUNCTION
 }
 
 extern "C" EXPORT BOOL kernel32_GetProcessAffinityMask(HANDLE /*h*/, uint64_t* proc_mask, uint64_t* sys_mask) {
@@ -3545,12 +3614,81 @@ extern "C" EXPORT void kernel32_OutputDebugStringW(const uint16_t* s) {
 }
 
 // ---------------------------------------------------------------------------
-// Vectored Exception Handler — stubs (no VEH on Linux)
+// Vectored Exception Handler
+// Dispatched only from the ms_abi entrypoints (UnhandledExceptionFilter,
+// RaiseException), not from the POSIX signal handler — calling user ms_abi
+// code from a signal context isn't AS-safe.
 // ---------------------------------------------------------------------------
-extern "C" EXPORT void* kernel32_AddVectoredExceptionHandler(DWORD /*first*/, void* /*handler*/) {
-  return (void*)1;   // non-NULL = success
+typedef LONG (__attribute__((ms_abi)) *vectored_handler_t)(void*);
+
+struct VEHEntry {
+  VEHEntry* prev;
+  VEHEntry* next;
+  vectored_handler_t fn;
+};
+
+static pthread_mutex_t g_veh_mu = PTHREAD_MUTEX_INITIALIZER;
+static VEHEntry* g_veh_head = nullptr;
+static VEHEntry* g_veh_tail = nullptr;
+
+extern "C" EXPORT void* kernel32_AddVectoredExceptionHandler(DWORD first, void* handler) {
+  if( !handler ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return nullptr; }
+  VEHEntry* e = (VEHEntry*)malloc(sizeof(VEHEntry));
+  if( !e ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return nullptr; }
+  e->fn = (vectored_handler_t)handler;
+  pthread_mutex_lock(&g_veh_mu);
+  if( first ) {
+    e->prev = nullptr;
+    e->next = g_veh_head;
+    if( g_veh_head ) g_veh_head->prev = e;
+    g_veh_head = e;
+    if( !g_veh_tail ) g_veh_tail = e;
+  } else {
+    e->next = nullptr;
+    e->prev = g_veh_tail;
+    if( g_veh_tail ) g_veh_tail->next = e;
+    g_veh_tail = e;
+    if( !g_veh_head ) g_veh_head = e;
+  }
+  pthread_mutex_unlock(&g_veh_mu);
+  return e;   // entry pointer doubles as the opaque handle
 }
-extern "C" EXPORT DWORD kernel32_RemoveVectoredExceptionHandler(void* /*handle*/) { return 1; }
+
+extern "C" EXPORT DWORD kernel32_RemoveVectoredExceptionHandler(void* handle) {
+  if( !handle ) return 0;
+  VEHEntry* e = (VEHEntry*)handle;
+  pthread_mutex_lock(&g_veh_mu);
+  bool found = false;
+  for( VEHEntry* p = g_veh_head; p; p = p->next ) {
+    if( p == e ) { found = true; break; }
+  }
+  if( found ) {
+    if( e->prev ) e->prev->next = e->next; else g_veh_head = e->next;
+    if( e->next ) e->next->prev = e->prev; else g_veh_tail = e->prev;
+  }
+  pthread_mutex_unlock(&g_veh_mu);
+  if( !found ) return 0;
+  free(e);
+  return 1;
+}
+
+// Snapshot the handler list and call each in order.  Returns -1 if any
+// handler said EXCEPTION_CONTINUE_EXECUTION, 0 otherwise.  Releases the
+// mutex before dispatch so handlers may add/remove without deadlock.
+#define MAX_VEH_SNAPSHOT 32
+static LONG run_vectored_handlers(void* pExcept) {
+  vectored_handler_t snap[MAX_VEH_SNAPSHOT];
+  size_t n = 0;
+  pthread_mutex_lock(&g_veh_mu);
+  for( VEHEntry* p = g_veh_head; p && n < MAX_VEH_SNAPSHOT; p = p->next )
+    snap[n++] = p->fn;
+  pthread_mutex_unlock(&g_veh_mu);
+  for( size_t i = 0; i < n; i++ ) {
+    LONG r = snap[i](pExcept);
+    if( r == -1 /*EXCEPTION_CONTINUE_EXECUTION*/ ) return r;
+  }
+  return 0;
+}
 
 // ---------------------------------------------------------------------------
 // Temp file/path
