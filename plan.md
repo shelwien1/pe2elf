@@ -290,7 +290,11 @@ helpers:
   GlueFreeBlocks inner loop, ReduceOrder binary-context restore,
   ReduceOrder PrepareNextStep). All now call `FreeUnitsRare` directly.
 - `AllocUnits_` (try freelist queue, else bump LoUnit, else
-  AllocUnitsRare) factored out and used at 3 sites.
+  AllocUnitsRare) factored out and used at 4 sites (AllocUnitsRare
+  bottom, two PrepareNextStep sites, StartModelRare init).
+- `AllocContext_` (HiUnit-bump or BList[0].unlinkPrev or
+  AllocUnitsRare(0)) factored out for CreateSuccessors's per-context
+  alloc loop.
 - `UnitsCpy_` replaces the inline 6-uint-per-iter state-copy in
   PrepareNextStep.
 - `emitOneByte` factored out as the shared body of Rangecoder's
@@ -300,7 +304,16 @@ helpers:
 - `SseIdx` was moved to file scope (was anonymous-namespace before
   RealProcess only) and is now used by PPMContextWalk and MixUpdate
   to build composite bitfield indices (mixCtxComposite, matchScore,
-  OrderCtxSeed, SseSeed, MixCtxExtra, bmComposite).
+  OrderCtxSeed, SseSeed, MixCtxExtra, bmComposite, sparseFlags).
+- `MEM_BLK::unlink()` method added; the FreeUnitsRare coalesce loop and
+  the AllocUnitsRare GlueFreeBlocks sentinel walk now use it.
+- `PopCountWeighted_`, `ClampMixWeight_`, `InitMixCell_` factor the
+  two mix-model init loops in StartModelRare; an `initSseCells` lambda
+  collapses four parallel SSE-cell init loops.
+- Byte-offset PPM_CONTEXT / STATE access (`*(uint*)(p + 4)` etc.) is
+  largely converted to typed `ctx->iStates` / `state->iSuccessor` etc.
+  across ReduceOrder, CreateSuccessors, MixUpdate, StartModelRare,
+  PPMContextWalk.
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
