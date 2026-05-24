@@ -53,7 +53,14 @@ extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uin
     snprintf(result, sizeof(result), "%s/%sXXXXXX.tmp", dir, pfx);
     int fd = mkstemps(result, 4);
     if( fd >= 0 ) close(fd);
-    unique = (UINT)(uintptr_t)strrchr(result, '/');  // use addr as pseudo-unique
+    // Recover the unique id from the hex digits mkstemps filled in.  A
+    // previous version returned the lower 32 bits of `strrchr(...)` as
+    // pseudo-unique, but heap/mmap addresses are 0x7f… so the low 32 bits
+    // collide between calls.
+    const char* slash = strrchr(result, '/');
+    const char* stem  = slash ? slash+1 : result;
+    const char* digits = stem + strlen(pfx);  // skip the 3-byte prefix
+    unique = (UINT)strtoul(digits, nullptr, 16);
   }
   if( out ) utf8_to_wchar(result, out, 260);
   return unique;
@@ -104,9 +111,16 @@ extern "C" EXPORT BOOL kernel32_FileTimeToLocalFileTime(const FILETIME* utc, FIL
 extern "C" EXPORT BOOL kernel32_GlobalMemoryStatusEx(uint8_t* buf) {
   if( !buf ) return FALSE;
   uint32_t caller_len = *(uint32_t*)(buf+0);
-  uint32_t sz = (caller_len >= 64) ? caller_len : 64;
+  // Windows rejects buffers smaller than the published struct size; mirror
+  // that.  Cap writes at 64 regardless of what dwLength claims, so a
+  // bogus length larger than the actual buffer can't overflow.
+  if( caller_len < 64 ) {
+    SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
+    return FALSE;
+  }
+  uint32_t sz = 64;
   memset(buf, 0, sz);
-  *(uint32_t*)(buf+0) = sz;                     // dwLength (echo caller's value)
+  *(uint32_t*)(buf+0) = caller_len;             // dwLength (echo caller's value)
   struct sysinfo si;
   if( sysinfo(&si) == 0 ) {
     uint64_t total = (uint64_t)si.totalram  * si.mem_unit;

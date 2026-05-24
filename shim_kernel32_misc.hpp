@@ -10,7 +10,8 @@
 // References from shim.cpp: g_image_base, FAKE_WIN_MODULE,
 // win_path_to_posix, posix_to_win_path, utf8_to_wchar, wchar_to_utf8,
 // prot_from_protect, set_errno_error, kernel32_FindFirstFileExW,
-// kernel32_FormatMessageA.
+// kernel32_FormatMessageA, win_dll_basename, win_dll_classify,
+// WIN_MODULE_HANDLE.
 
 extern "C" EXPORT HANDLE kernel32_GetModuleHandleA(LPCSTR name) {
   if( !name ) return (HANDLE)g_image_base;
@@ -18,8 +19,19 @@ extern "C" EXPORT HANDLE kernel32_GetModuleHandleA(LPCSTR name) {
   win_path_to_posix(name, posix, sizeof(posix));
   void* h = dlopen(posix, RTLD_NOLOAD|RTLD_LAZY);
   if( h ) return h;
+  // Mirror the W variant: classify the name and return a per-DLL
+  // sentinel; anything we don't recognise must report not-found, not a
+  // generic kernel32 handle (which would mis-route subsequent
+  // GetProcAddress lookups).
+  char base[64];
+  win_dll_basename(name, base, sizeof(base));
+  int wm = win_dll_classify(base);
+  if( wm < 0 ) {
+    SET_LAST_ERROR(ERROR_MOD_NOT_FOUND);
+    return NULL;
+  }
   SET_LAST_ERROR(ERROR_SUCCESS);
-  return FAKE_WIN_MODULE;
+  return WIN_MODULE_HANDLE(wm);
 }
 extern "C" EXPORT BOOL kernel32_IsDBCSLeadByteEx(UINT /*cp*/, BYTE /*b*/) { return FALSE; }
 extern "C" EXPORT BOOL kernel32_VirtualProtect(LPVOID addr, size_t size, DWORD np, DWORD* op) {
