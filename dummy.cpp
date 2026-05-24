@@ -1492,11 +1492,6 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   sqword biggerSizeClass;
   sqword biggerUnits;
   int deltaUnits;
-  uint* biggerFreelist;
-  sqword splitBlockAddr;
-  uint* finalFreelist;
-  int nextFreeIdx;
-  int blockIdxFinal;
   bListSaved = BList;
   heapNull = HeapNull;
   blockIdx = blockAddr-HeapNull;
@@ -1542,34 +1537,20 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
       ++chunkLoopK;
     } while( chunkLoopK<(uint)chunksOver128 );
   }
-  biggerSizeClass = *(Units2Indx+sizeClass+3);
-  LODWORD(biggerUnits) = *((byte*)&Indx2Units+biggerSizeClass);
-  if( sizeClass!=(uint)biggerUnits ) {
-    biggerSizeClass = (uint)(biggerSizeClass-1);
-    biggerUnits = *((byte*)&Indx2Units+biggerSizeClass);
-    deltaUnits = sizeClass-biggerUnits;
-    biggerFreelist = (uint*)(bListSaved+12LL*(uint)(deltaUnits-1));
-    splitBlockAddr = blockAddr+12*biggerUnits;
-    *(byte*)(splitBlockAddr+1) = -1;
-    *(byte*)splitBlockAddr = deltaUnits;
-    *(uint*)(splitBlockAddr+8) = bListSaved+12*(deltaUnits-1)-heapNull;
-    *(uint*)(splitBlockAddr+4) = biggerFreelist[1];
-    LODWORD(splitBlockAddr) = splitBlockAddr-heapNull;
-    *(uint*)((uint)biggerFreelist[1]+heapNull+8) = splitBlockAddr;
-    biggerFreelist[1] = splitBlockAddr;
-    ++*biggerFreelist;
+  // Tail-split + insert: figure out the right size-class queue for the
+  // remaining block, optionally split off any leftover into a separate
+  // freelist entry, then push the block onto its queue.
+  MEM_BLK* bList = (MEM_BLK*)bListSaved;
+  biggerSizeClass = Units2Indx[sizeClass+3];
+  biggerUnits = Indx2Units[biggerSizeClass];
+  if (sizeClass != (uint)biggerUnits) {
+    --biggerSizeClass;
+    biggerUnits = Indx2Units[biggerSizeClass];
+    deltaUnits = sizeClass - biggerUnits;
+    bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + 12*biggerUnits), deltaUnits);
   }
-  *(byte*)(blockAddr+1) = -1;
-  finalFreelist = (uint*)(12*biggerSizeClass+bListSaved);
-  nextFreeIdx = finalFreelist[1];
-  *(byte*)blockAddr = biggerUnits;
-  *(uint*)(blockAddr+8) = (uint)(uintptr_t)finalFreelist-heapNull;
-  *(uint*)(blockAddr+4) = nextFreeIdx;
-  blockIdxFinal = blockAddr-heapNull;
-  *(uint*)((uint)finalFreelist[1]+heapNull+8) = blockIdxFinal;
-  finalFreelist[1] = blockIdxFinal;
-  ++*finalFreelist;
-  return (char*)finalFreelist-heapNull;
+  bList[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
+  return (char*)&bList[biggerSizeClass] - heapNull;
 }
 //--- #return
 //--- #include "subs_startmodel1.inc"
