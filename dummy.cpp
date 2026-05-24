@@ -1406,17 +1406,6 @@ sqword AllocUnitsRare(uint unitsIdx) {
   sqword result;
   int biggerUnits;
   sqword textBufBytes;
-  char* sentinel;
-  sqword heapNullCopy;
-  int sentinelIdx;
-  sqword queueIdxOuter;
-  uint queueLoopCnt;
-  int bListCountIdx2;
-  uint* queueFreelist;
-  int queueNextIdx;
-  int queueHeadIdx;
-  sqword queueNextEntry;
-  char* blockWalker;
   uint unitsInRun;
   int reqUnitsByte;
   int sentinelField2;
@@ -1449,45 +1438,41 @@ sqword AllocUnitsRare(uint unitsIdx) {
       UnitsStart -= textBufBytes;
     }
   } else {
-    sentinel = (char*)HeapStart+SubAllocatorSize-12;
-    heapNullCopy = HeapNull;
-    sentinelField2 = *((uint*)sentinel+2);
+    // GlueFreeBlocks: walk every BList[0..37] queue, draining it into
+    // FreeUnitsRare so coalesce/split decisions get re-evaluated. The
+    // sentinel block (a dummy at the end of the heap) serves as the loop
+    // terminator: we insert it at each queue's head, then walk backward
+    // (via Prev) from the queue's original tail until we loop back to it.
+    MEM_BLK* sentinel = (MEM_BLK*)((char*)HeapStart + SubAllocatorSize - 12);
+    sentinelField2 = sentinel->Prev;
     sentinelField1 = *(qword*)sentinel;
-    sentinelIdx = (uint)(uintptr_t)HeapStart+SubAllocatorSize-12-HeapNull;
     reqSizeIdx2 = reqSizeIdx;
-    queueIdxOuter = 0;
-    queueLoopCnt = 0;
-    bListCountIdx2 = BList-HeapNull+444;
-    do {
-      sentinel[1] = -2;
-      queueFreelist = (uint*)(bListSaved+12*queueIdxOuter);
-      queueNextIdx = queueFreelist[1];
-      *sentinel = 1;
-      queueHeadIdx = bListSaved+12*queueIdxOuter-heapNullCopy;
-      *((uint*)sentinel+2) = queueHeadIdx;
-      *((uint*)sentinel+1) = queueNextIdx;
-      *(uint*)((uint)queueFreelist[1]+heapNullCopy+8) = sentinelIdx;
-      queueNextEntry = (uint)queueFreelist[2];
-      ++*queueFreelist;
-      queueFreelist[1] = sentinelIdx;
-      blockWalker = (char*)(heapNullCopy+queueNextEntry);
-      queueFreelist[2] = *((uint*)blockWalker+2);
-      *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
-      --*queueFreelist;
-      for(; blockWalker!=sentinel; --*queueFreelist ) {
+    MEM_BLK* bList = (MEM_BLK*)bListSaved;
+    for (uint queueIdxOuter = 0; queueIdxOuter < 0x26; ++queueIdxOuter) {
+      MEM_BLK* queue = &bList[queueIdxOuter];
+      // Push sentinel at the head; pop the (original) tail as our starting
+      // walk position.
+      queue->linkNext(sentinel, 1, /*Stamp=*/(byte)-2);
+      MEM_BLK* blockWalker = queue->unlinkPrev();
+      // QueueSize was just incremented by linkNext and decremented by
+      // unlinkPrev; the for-loop's iteration step keeps it dropping as we
+      // consume entries.
+      for (; blockWalker != sentinel; --queue->QueueSize) {
         // Re-classify this block: free it via the shared coalesce/chunk/split
         // path. FreeUnitsRare will reinsert into whatever queue ends up right
-        // (possibly different from the current sizeClassW after coalescing).
-        unitsInRun = *((byte*)&Indx2Units + *(Units2Indx + (uint)(byte)*blockWalker + 3));
+        // (possibly different from the current size class after coalescing).
+        unitsInRun = Indx2Units[Units2Indx[blockWalker->NU + 3]];
         FreeUnitsRare((sqword)blockWalker, unitsInRun);
-        blockWalker = (char*)(heapNullCopy+(uint)queueFreelist[2]);
-        queueFreelist[2] = *((uint*)blockWalker+2);
-        *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
+        // Walk to next entry (= the new tail of queue); manual inlined
+        // unlinkPrev minus the QueueSize-- (the for-step does that).
+        MEM_BLK* prevBlk = queue->prev();
+        queue->Prev = prevBlk->Prev;
+        prevBlk->prev()->Next = Ptr2Indx(queue);
+        blockWalker = prevBlk;
       }
-      queueIdxOuter = ++queueLoopCnt;
-    } while( queueLoopCnt<0x26 );
+    }
     *(qword*)sentinel = sentinelField1;
-    *((uint*)sentinel+2) = sentinelField2;
+    sentinel->Prev = sentinelField2;
     reqUnitsByte = *((byte*)&Indx2Units+reqSizeIdx2);
     CutOffCount = 1;
     result = AllocUnits_(Units2Indx4[reqUnitsByte - 1]);
