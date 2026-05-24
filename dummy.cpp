@@ -2152,10 +2152,7 @@ sqword ReduceOrder() {
   uint sizeClassP;
   sqword halfNStatesP1_b;
   sqword sizeClass4P;
-  uint* queueEntryP;
   uint* newStatesPtr;
-  qword byteOff12P;
-  bool isExactBoundary;
   uint* newStatesTail;
   sqword srcStatesAddr;
   uint copyLoopI;
@@ -2164,10 +2161,7 @@ sqword ReduceOrder() {
   sqword newStatesIdx2;
   qword newStateEnd;
   int prevStateSucc;
-  uint* freelistEntryS;
   sqword allocedUnit;
-  sqword byteOffS;
-  bool isBoundary;
   int freqBoost;
   int newStateFreq;
   char upperFlagBits;
@@ -2185,17 +2179,13 @@ sqword ReduceOrder() {
   sqword stateIStates;
   sqword stateIStatesAddr;
   qword mismatchOff;
-  sqword allocResult;
   int symPeek;
-  uint sizeClassPSaved;
   sqword pTextSaveCS;
   byte* chainStatePtr;
   sqword* chainPtrSave;
   char sse0BitSaveAU;
   char sse0BitSaveCS;
   uint v13SaveCS;
-  uint v20SaveAU;
-  uint v20SaveAU2;
   uint newByteIdxSaveCS;
   byte* ctxBSaveAU;
   byte* ctxBSaveCS;
@@ -2204,7 +2194,6 @@ sqword ReduceOrder() {
   sqword ctxSaved;
   int bListCountIdx;
   sqword escIdxClipped;
-  qword hiUnitSaved;
   sqword bListSaved;
   sqword succAddrSaved;
   sqword rootCtxSaved;
@@ -2369,7 +2358,6 @@ LABEL_11:
   result = *(uint*)(succIdx+heapNull+4);
   (void)(result+heapNull); // prefetch hint removed
   if( rootCtxW!=maxCtxStart ) {
-    hiUnitSaved = HiUnit;
     escIdx = EscIndexSeed+8;
     bListSaved = BList;
     succAddrSaved = heapNull+succIdx;
@@ -2395,28 +2383,10 @@ LABEL_11:
           halfNStatesP1_b = nStatesP1>>1;
           if( sizeClassP!=*(Units2Indx4+halfNStatesP1_b) ) {
             sizeClass4P = *(Units2Indx4+halfNStatesP1_b);
-            queueEntryP = (uint*)(bListSaved+12*sizeClass4P);
-            if( *queueEntryP ) {
-              newStatesPtr = (uint*)(heapNull+(uint)queueEntryP[1]);
-              queueEntryP[1] = newStatesPtr[1];
-              *(uint*)((uint)newStatesPtr[1]+heapNull+8) = (uint)(uintptr_t)queueEntryP-heapNull;
-              --*queueEntryP;
-            } else {
-              newStatesPtr = (uint*)LoUnit;
-              byteOff12P = 12*(uint)*((byte*)&Indx2Units+sizeClass4P);
-              isExactBoundary = LoUnit+byteOff12P==hiUnitSaved;
-              if( LoUnit+byteOff12P>hiUnitSaved ) {
-                sizeClassPSaved = *(Units2Indx+halfNStatesP1+3);
-                v20SaveAU = succIdxSaved;
-                newStatesPtr = (uint*)AllocUnitsRare(sizeClass4P);
-                succIdxSaved = v20SaveAU;
-                sizeClassP = sizeClassPSaved;
-              } else {
-                LoUnit += byteOff12P;
-                if( !isExactBoundary )
-                  newStatesPtr[byteOff12P/4] = 0;
-              }
-            }
+            newStatesPtr = (uint*)AllocUnits_((uint)sizeClass4P);
+            // AllocUnits_ may have called AllocUnitsRare which clobbers sizeClassP;
+            // recompute (matches the inlined pattern's restoration).
+            sizeClassP = *(Units2Indx+halfNStatesP1+3);
             if( newStatesPtr ) {
               newStatesTail = newStatesPtr;
               srcStatesAddr = heapNull+stateIdxU;
@@ -2466,27 +2436,7 @@ LABEL_11:
           } while( newStateEnd>heapNull+(qword)*((uint*)ctxBW+1)+42 );
         }
       } else {
-        freelistEntryS = (uint*)(bListSaved+12LL*Units2Indx4[0]);
-        if( *freelistEntryS ) {
-          allocedUnit = heapNull+(uint)freelistEntryS[1];
-          freelistEntryS[1] = *(uint*)(allocedUnit+4);
-          *(uint*)(*(uint*)(allocedUnit+4)+heapNull+8) = (uint)(uintptr_t)freelistEntryS-heapNull;
-          --*freelistEntryS;
-        } else {
-          allocedUnit = LoUnit;
-          byteOffS = 12*(uint)*((byte*)&Indx2Units+Units2Indx4[0]);
-          isBoundary = LoUnit+byteOffS==hiUnitSaved;
-          if( LoUnit+byteOffS>hiUnitSaved ) {
-            v20SaveAU2 = succIdxSaved;
-            allocResult = AllocUnitsRare(Units2Indx4[0]);
-            succIdxSaved = v20SaveAU2;
-            allocedUnit = allocResult;
-          } else {
-            LoUnit += byteOffS;
-            if( !isBoundary )
-              *(uint*)(byteOffS+allocedUnit) = 0;
-          }
-        }
+        allocedUnit = AllocUnits_(Units2Indx4[0]);
         if( !allocedUnit ) {
 LABEL_99:
           rootCtxW = rootCtxSaveLab99;
