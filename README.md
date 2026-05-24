@@ -1,31 +1,61 @@
 # pe2elf
 
 Converts PE32+ (Windows x64) executables to ELF64 (Linux x86-64) binaries
-that run natively under `ld-linux-x86-64.so.2` with a companion WinAPI shim.
+that run natively under `ld-linux-x86-64.so.2` with a companion WinAPI shim
+— no Wine, no kernel module, no emulation.
+
+The converter leaves the original PE code and data untouched; it only
+rewrites the file wrapper (ELF header, program headers, dynamic section)
+and zeroes the IAT so the dynamic linker can fill it from `winapi_shim.so`.
+The shim implements ~360 Windows API entry points using `__attribute__((ms_abi))`
+and translates them to POSIX equivalents at runtime.
+
+End-to-end this is enough to convert and run real-world tools — `t.sh`
+exercises rar390, rar550a, and rar701a, each invoked as
+`./rar.elf a -m5 archive *.so` and checked for `Done` + a non-empty `.rar`.
 
 ## How it works
-
-`pe2elf` rewrites the file format without touching the PE code or data:
 
 1. **ELF wrapper** — an ELF header, program headers, and a small synthetic
    segment are prepended below `ImageBase`. The synthetic segment holds
    `.interp`, `.dynsym`, `.dynstr`, `.rela.dyn`, `.dynamic`, and a
    9-byte trampoline (`sub rsp, 8 ; jmp pe_entry`) that reconciles the
-   SysV vs MSVC stack-alignment convention.
+   SysV vs MSVC stack-alignment convention before transferring control to
+   the PE entry point.
 
-2. **IAT patching** — IAT slots in the `.rdata` section are zeroed and
-   covered by `R_X86_64_64` relocations in `.rela.dyn`. At load time
-   `ld.so` fills each slot with the address of the matching symbol from
-   `winapi_shim.so`.
+2. **IAT patching** — every IAT slot in `.rdata` is zeroed and covered by
+   an `R_X86_64_64` relocation in `.rela.dyn`. At load time `ld.so` fills
+   each slot with the address of the matching `kernel32_`/`user32_`/…
+   prefixed symbol exported by `winapi_shim.so`.
 
-3. **PE headers preserved** — the original PE headers are mapped at
-   `ImageBase` so the MSVC CRT can walk data directories at startup.
+3. **Ordinal imports** — PE binaries that import by ordinal rather than
+   by name are resolved by parsing the matching DLL file kept under
+   `dll/<lowercase-name>.dll`. The converter walks the DLL's export
+   directory once to build an ordinal → name map, then writes a normal
+   named import.
 
-4. **`winapi_shim.so`** — a companion shared library that implements
-   ~100 Windows API functions using `__attribute__((ms_abi))`, translating
-   Win32 calls into POSIX equivalents at runtime.
+4. **TLS** — the PE `IMAGE_TLS_DIRECTORY` is preserved as-is in `.tls`.
+   At runtime the shim's `shim_register_tls` (invoked by an ELF
+   constructor that the converter injects into the entry trampoline)
+   reads the template, allocates per-thread storage, and runs PE TLS
+   callbacks with `DLL_PROCESS_ATTACH`/`DLL_THREAD_ATTACH` as appropriate.
 
-The resulting binary loads and executes without Wine or a kernel module.
+5. **PE headers preserved** — the original PE headers stay mapped at
+   `ImageBase` so the MSVC CRT can walk data directories at startup
+   (`cmp WORD PTR [rax], 'MZ'` in `_acrt_initialize`).
+
+6. **Base relocs** — applied either at conversion time (`--base=<addr>`
+   to rebase) or via `R_X86_64_RELATIVE` in `.rela.dyn` (`--pie` to
+   produce ASLR-compatible ET_DYN output).
+
+7. **`winapi_shim.so`** — the companion shared library. Exports are
+   prefixed with the originating DLL name (`kernel32_GetLastError`,
+   `oleaut32_SysAllocString`, …) so converter-generated IAT relocations
+   land on the right function unambiguously. Runtime
+   `GetProcAddress(LoadLibraryW(L"kernel32"), "GetLastError")` is
+   routed by per-handle prefix sentinels — each Windows DLL name we
+   recognize gets a unique pseudo-handle that records which prefix
+   `GetProcAddress` should stamp onto the looked-up name.
 
 ## Requirements
 
@@ -45,9 +75,11 @@ Produces:
 | Output | Description |
 |---|---|
 | `pe2elf` | The converter (statically linked) |
-| `winapi_shim.so` | WinAPI shim — silent, for production use |
-| `winapi_shim_dbg.so` | WinAPI shim — full call logging to `/tmp/shimlog.txt` and stderr |
+| `winapi_shim.so` | WinAPI shim — production build, logging disabled by default |
+| `winapi_shim_dbg.so` | Same shim, built with `-DWINAPI_LOG_ENABLED -O0 -g`; logs to `/tmp/shimlog.txt` unconditionally |
 | `dummy.so` | Example injection library (prints `Hello, world!!!` at startup) |
+
+`make pe2elf winapi_shim.so` skips the debug build and `dummy.so`.
 
 ## Usage
 
@@ -63,6 +95,8 @@ pe2elf <input.exe> <output.elf> [options]
 | `--inject=<soname>` | — | Add a second `DT_NEEDED` entry (e.g. a custom injection library) |
 | `--strip-pdata` | off | Drop the `.pdata` section (saves space; disables Windows-style SEH unwinding) |
 | `--no-shdr` | off | Omit section headers (slightly smaller output) |
+| `--pie` | off | Emit `ET_DYN` (PIE/ASLR-capable) instead of `ET_EXEC` |
+| `--base=<addr>` | — | Rebase to `<addr>`, patching relocs in-place. Errors if the original base differs and no `.reloc` data is present. |
 
 The output ELF embeds `DT_RUNPATH=$ORIGIN`, so `ld.so` looks for the shim
 next to the ELF at runtime. Place `winapi_shim.so` (or `winapi_shim_dbg.so`)
@@ -80,7 +114,7 @@ cp winapi_shim.so /path/to/program/
 ./pe2elf program.exe program.elf --dbg
 cp winapi_shim_dbg.so /path/to/program/
 ./program.elf
-# WinAPI calls are traced to /tmp/shimlog.txt and stderr
+# WinAPI calls trace to /tmp/shimlog.txt
 
 # Inject an extra shared library at startup
 ./pe2elf program.exe program.elf --inject=dummy.so
@@ -88,34 +122,90 @@ cp winapi_shim.so dummy.so /path/to/program/
 ./program.elf
 ```
 
-## Logging
+### Ordinal imports
 
-Build `winapi_shim_dbg.so` is compiled with `-DWINAPI_LOG_ENABLED`. It traces
-every shim call to `/tmp/shimlog.txt` and to stderr. Use `--dbg` when converting
-to bind the output ELF to the debug build:
+If the PE imports functions by ordinal, drop the matching DLL under
+`dll/<lowercase-name>.dll` so the converter can parse its export
+directory:
 
 ```sh
-./pe2elf program.exe program.elf --dbg
-./program.elf 2>/dev/null   # trace goes to /tmp/shimlog.txt
+# rar701a imports SysAllocString/SysFreeString/VariantClear by ordinal
+cp /path/to/oleaut32.dll dll/oleaut32.dll
+./pe2elf exe/rar701a.exe rar701a.elf
 ```
 
-The production `winapi_shim.so` contains no logging code at all.
+A missing or wrong-version DLL is reported with the expected location
+in the error message rather than silently producing a broken ELF.
+
+## Logging
+
+`winapi_shim.so` (production build) ships with a runtime-toggleable trace:
+
+```sh
+WINAPI_SHIM_LOG=stderr        ./program.elf       # trace to stderr
+WINAPI_SHIM_LOG=/tmp/x.log    ./program.elf       # trace to a file
+./program.elf                                     # no trace, no overhead
+```
+
+`winapi_shim_dbg.so` (`make winapi_shim_dbg.so`) is compiled with
+`-DWINAPI_LOG_ENABLED -O0 -g`. It writes to `/tmp/shimlog.txt`
+unconditionally and is built for diagnosis under gdb, not production.
+Use `--dbg` when converting to bind the ELF to the debug build.
+
+## Tests
+
+`t.sh` runs the full end-to-end smoke test against three RAR builds:
+
+```sh
+./t.sh
+```
+
+For each target it converts `exe/<name>.exe → <name>.elf`, runs
+`./<name>.elf a -m5 archive_<name> *.so`, and asserts the run exits 0,
+stdout contains `Done`, and the resulting `.rar` is non-empty.
+Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
+
+## Supported features
+
+- **Named and ordinal imports** — ordinal lookup needs the matching
+  side-DLL under `dll/`.
+- **Base relocations** — applied at conversion via `--base=<addr>`
+  (rebase) or emitted as `R_X86_64_RELATIVE` via `--pie`.
+- **PE TLS directory** — template, callbacks, and TLS index are all
+  hooked. Per-thread TLS storage uses a pthread key; static TLS slots
+  reuse the same per-thread block.
+- **Fiber Local Storage (FLS)** — `FlsAlloc`/`FlsGetValue`/`FlsSetValue`/
+  `FlsFree` share the slot namespace with `TlsAlloc`. Per-slot
+  destructors run on thread exit (required by the MSVC CRT PTD lifecycle).
+- **CRITICAL_SECTION** — recursive `pthread_mutex_t` underneath.
+- **Vectored exception handlers** — `AddVectoredExceptionHandler`,
+  `RemoveVectoredExceptionHandler`, and `SetUnhandledExceptionFilter` are
+  honored on POSIX-signal-converted exceptions.
+- **`__try`/`__except` SEH** — minimal support via `RtlVirtualUnwind`,
+  `RtlLookupFunctionEntry`, `RtlUnwindEx`, `RaiseException`. Requires
+  `.pdata` (do NOT pass `--strip-pdata`).
+- **Backtraces on crash** — the shim installs SIGSEGV/SIGBUS/SIGILL/SIGFPE
+  handlers that dump RIP/RSP/RBP, register state, and a libgcc-based
+  unwind backtrace.
+- **TEB/PEB at GS:[0]** — a fake TEB is allocated per thread and pointed
+  to via `arch_prctl(ARCH_SET_GS)` so `__readgsqword` PE code works.
 
 ## Limitations
 
-- **Named imports only** — ordinal imports are not supported; `pe2elf`
-  exits with an error if any are present.
-- **No ASLR / base relocation** — the PE must load at its preferred
-  `ImageBase`. Binaries that require relocation (`.reloc` directory
-  populated, no `IMAGE_FILE_RELOCS_STRIPPED`) may not work correctly.
-- **No TLS** — binaries using `__declspec(thread)` / `IMAGE_TLS_DIRECTORY`
-  will malfunction silently.
 - **Single IAT section** — split IAT layouts (IAT slots spanning more
-  than one PE section) are rejected with an error.
+  than one PE section) are rejected.
 - **AMD64 only** — both the converter and the shim target x86-64
-  exclusively.
+  exclusively. AArch64 has a partial TEB-equivalent (`x18`), no exports.
+- **Subset of WinAPI** — the shim covers what the test binaries (rar,
+  ppmonstr, nz, rz, etc.) need. Many functions are stubs that return
+  sensible defaults; see `!shim-plan.md` for the full surface map.
+- **No DLL loading at runtime** — `LoadLibraryExW` of an actual Windows
+  DLL fails (returns NULL for `*-ms-win-*` API sets, a prefix sentinel
+  for known DLLs); the PE import graph must be resolved at conversion.
 
 ## Source layout
+
+### Converter
 
 | File | Purpose |
 |---|---|
@@ -123,11 +213,32 @@ The production `winapi_shim.so` contains no logging code at all.
 | `util.hpp` | `Buffer`, `OutBuf`, `align_up` |
 | `pe_types.hpp` | PE structs and constants (`#pragma pack`) |
 | `elf_types.hpp` | ELF structs and constants |
-| `pe_image.hpp` | `PeImage`: PE parsing, section map, import collection |
+| `pe_image.hpp` | `PeImage`: PE parsing, section map, import collection, **`OrdinalResolver`** |
 | `elf_plan.hpp` | `compute_plan()`: VA and file-offset layout |
 | `elf_build.hpp` | `Builder`: synthetic sections, program headers, section headers |
 | `elf_write.hpp` | `Writer`: ELF serialization and file output |
-| `shim.cpp` | `winapi_shim.so` / `winapi_shim_dbg.so` implementation |
-| `shim_types.h` | Win32 type definitions for the shim |
-| `shim.map` | Linker version script (controls symbol visibility) |
+| `pedump.cpp` | Standalone PE inspector (not part of the conversion pipeline) |
+
+### Shim
+
+| File | Purpose |
+|---|---|
+| `shim.cpp` | Top-level shim: TEB/PEB setup, handle table, fake heap, logging, signal handlers, TLS callbacks. Includes the per-feature headers. |
+| `shim_types.h` | Win32 type and constant definitions for the shim |
+| `shim.map` | Linker version script (`global:`/`local:`) controlling exported symbols |
+| `shim_kernel32_*.hpp` | kernel32 surface split per feature: `proc`, `mem`, `file`, `console`, `module`, `startup`, `critsec`, `string`, `except`, `fls`, `locale`, `sync`, `sysinfo`, `thread`, `veh`, `tail`, … |
+| `shim_advapi32.hpp` | Registry, crypto, security descriptor, privileges |
+| `shim_shell32.hpp` | `SHFileOperation`, `SHGetMalloc` (IMalloc vtable), `SHGetPathFromIDList`, … |
+| `shim_user32.hpp` | `MessageBox`, `CharLower`, `CharToOem`, … |
+| `shim_msvcrt.hpp` | C runtime entry points (`printf`, `sprintf`, `strcmp`, `_beginthreadex`, `_setjmp`/`longjmp`, …) |
+| `shim_misc_dlls.hpp` | ole32, oleaut32 (BSTR/VARIANT), powrprof |
+| `!shim-plan.md` | Architecture map: every shim section, what it implements, what's stubbed |
 | `dummy.cpp` | Example injection library built as `dummy.so` |
+
+### Repo data
+
+| Path | Purpose |
+|---|---|
+| `exe/` | Windows test binaries (rar390, rar550a, rar701a, …) |
+| `dll/` | Side-loaded Windows DLLs used only for ordinal-to-name resolution at conversion time |
+| `t.sh` | End-to-end smoke test: build, convert, run, check `Done` + non-empty `.rar` |
