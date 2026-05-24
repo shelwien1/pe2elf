@@ -3037,16 +3037,16 @@ LABEL_94:
     ofallP1 = OrderFall+1;
     depth3 = 3*OrderFall;
     do {
-      deepStatesIdx = *((uint*)walkCtx+1);
-      deepFlags = walkCtx[1];
-      if( !*(byte*)(heap+deepStatesIdx+6LL*(deepFlags&0xF)+1) ) {
+      deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
+      deepFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+      if (!*(byte*)(heap + deepStatesIdx + 6LL*(deepFlags & 0xF) + 1)) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
-        deepStatesIdx = *((uint*)walkCtx+1);
-        deepFlags = walkCtx[1];
+        deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
+        deepFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
       }
-      walkCtx[1] = deepFlags&0xF0;
-      deepStatesPtr = heap+deepStatesIdx;
+      ((PPM_CONTEXT*)walkCtx)->Flags = deepFlags & 0xF0;
+      deepStatesPtr = heap + deepStatesIdx;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx[1], 13);
       foundFreq = foundState[1];
