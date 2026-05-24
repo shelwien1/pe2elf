@@ -3690,6 +3690,30 @@ inline void Sse1Step_(int* slot, uint hits, int& cumWeight, int& cumFreq) {
   cumFreq   = clamp + cumIn;
 }
 
+// Sse2 stage shared between regions A and F: clamp the cell against the
+// current (sseCum, sseTot) probability gap, accumulate, and commit a
+// MixUpdate. Returns the clamp value so callers can capture intermediates.
+// On exit: sseTot += clamp; sseCum unchanged. The captured totFreq value
+// (clamp + sseTot_old) equals sseTot_new, so callers should read sseTot.
+inline int Sse2Step_(int* slot) {
+  int cumIn = sseCum;
+  int clamp = SseClampMean_(slot, sseTot - cumIn, cumIn - sseTot + 1, 0x40000);
+  sseTot += clamp;
+  SseMixUpdate_(slot, 2 * cumIn, 1);
+  return clamp;
+}
+
+// Sse3 stage shared between regions A and F: similar to Sse2Step_ but uses a
+// different scale (totFreq - sse2CumIn) and a different absThresh.
+// On exit: sseTot += clamp; sseCum unchanged. Caller passes the captured
+// pre-Sse2 cumFreq (sse2CumIn) since Sse3 wants to scale by that.
+inline int Sse3Step_(int* slot, int sse2CumIn, int totFreqPreSse3) {
+  int clamp = SseClampMean_(slot, totFreqPreSse3 - sse2CumIn, sseCum - sseTot + 1, 0x80000);
+  sseTot += clamp;
+  SseMixUpdate_(slot, sse2CumIn, 2);
+  return clamp;
+}
+
 // "Rewind" a predictor slot in the LABEL_128 escape path:
 //   freq0 (offset 4, word) -= delta
 //   sum   (offset 0, uint) += delta * mult
@@ -3712,8 +3736,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
   int cumWeightB, cumFreqB, escSymB;
   int matchCumInA, sseMatchClampA, sseSum2A;
-  int sse2CumInA, sse2ClampA, totFreqA;
-  int cumFreq, sse3ClampA, oneStateFreqF;
+  int sse2CumInA, totFreqA;
+  int cumFreq, oneStateFreqF;
   int sortPriorityC;
   int sxNStatesC, mixFreqC;
   int oneStateFreqCachedF;
@@ -4111,10 +4135,8 @@ LABEL_58:
     sse2SlotA = &Sse2[2*sse2IdxA];
     sse2Slot = sse2SlotA;
     sse2CumInA = sseSum2A;
-    sse2ClampA = SseClampMean_(sse2SlotA, sseTot-sseSum2A, sseSum2A-sseTot+1, 0x40000);
-    totFreqA = sse2ClampA+sseTot;
-    sseTot += sse2ClampA;
-    SseMixUpdate_(sse2SlotA, 2*sseSum2A, 1);
+    Sse2Step_(sse2SlotA);
+    totFreqA = sseTot;
     predWeightDelta = totFreqA;
     {
       // Scope-locals so the goto-into-LABEL_59 path doesn't trip
@@ -4134,10 +4156,8 @@ LABEL_58:
     }
     sse3Slot = sse3SlotA;
     cumFreq = sseCum;
-    sse3ClampA = SseClampMean_(sse3SlotA, totFreqA-sse2CumInA, sseCum-sseTot+1, 0x80000);
-    totFreq = sse3ClampA+sseTot;
-    sseTot += sse3ClampA;
-    SseMixUpdate_(sse3SlotA, sse2CumInA, 2);
+    Sse3Step_(sse3SlotA, sse2CumInA, totFreqA);
+    totFreq = sseTot;
 
     subRange = rc.getSubRange(cumFreq, totFreq);
     if( f_DEC ? !rc.IsDecodeMatched(subRange) : (inputByte != MinContext->oneState().Symbol) ) {
@@ -4556,10 +4576,8 @@ LABEL_59:
         sse2SlotF = &Sse2[2*sse2IdxF];
         sse2Slot = sse2SlotF;
         int sse2CumInF  = cumWeightF;
-        int sse2ClampF  = SseClampMean_(sse2SlotF, sseTot-cumWeightF, cumWeightF-sseTot+1, 0x40000);
-        int sse2CumTotF = sse2ClampF+sseTot;
-        sseTot += sse2ClampF;
-        SseMixUpdate_(sse2SlotF, 2*cumWeightF, 1);
+        Sse2Step_(sse2SlotF);
+        int sse2CumTotF = sseTot;
         int  sse2HistByteF = sse2Base[((word)candSymbol-(word)RSContext)&0x1FF];
         uint sse2Counter   = *(uint*)(sse2Base+512);
         predWeightDelta = sse2CumTotF;
@@ -4575,10 +4593,8 @@ LABEL_59:
           .raw         (MixCtxExtra))];                        // pre-positioned multi-bit accumulator
         sse3Slot = sse3SlotF;
         cumFreqC = sseCum;
-        int sse3ClampF = SseClampMean_(sse3SlotF, sse2CumTotF-sse2CumInF, sseCum-sseTot+1, 0x80000);
-        totFreqC = sse3ClampF+sseTot;
-        sseTot += sse3ClampF;
-        SseMixUpdate_(sse3SlotF, sse2CumInF, 2);
+        Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
+        totFreqC = sseTot;
         subRangeC = rc.getSubRange(cumFreqC, totFreqC);
         if( f_DEC ? !rc.IsDecodeMatched(subRangeC) : (inputByte != candSymbol) ) {
           priorFoundStateF = q9;
