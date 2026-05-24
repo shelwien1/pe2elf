@@ -1607,27 +1607,10 @@ sqword StartModelRare(int mode) {
     sqword preferredIndex = (byte)b11;
     NMasked = 255;
     rootCtxP->NStates = (byte)-1;           // NStates = 255 (256 states)
-    uint* targetQueue = &heapBlocks[3 * preferredIndex];
-
-    sqword stateStorageAddr;
-    if (*targetQueue) {
-      stateStorageAddr = (sqword)heapBlocks + (uint)targetQueue[1] - 1;
-      byte* pStateStorage = (byte*)stateStorageAddr;
-      targetQueue[1] = *(uint*)(pStateStorage + 4);
-      *(uint*)&heapNullOffset[*(uint*)(pStateStorage + 4) + 8] = (uint)(uintptr_t)targetQueue - (uint)(uintptr_t)heapNullOffset;
-      --*targetQueue;
-    } else {
-      stateStorageAddr = LoUnit;
-      sqword sizeInBytes = 12 * (uint)Indx2Units[preferredIndex];
-      bool isAtBoundary = LoUnit + sizeInBytes == (qword)heapEnd;
-      if (LoUnit + sizeInBytes > (qword)heapEnd) {
-        stateStorageAddr = AllocUnitsRare(preferredIndex);
-      } else {
-        LoUnit += sizeInBytes;
-        if (!isAtBoundary)
-          *(uint*)(sizeInBytes + stateStorageAddr) = 0;
-      }
-    }
+    // Allocate the root context's STATE[] storage. HiUnit was just set to
+    // heapEnd above, so AllocUnits_ uses the same boundary the inlined code
+    // would have used.
+    sqword stateStorageAddr = AllocUnits_((uint)preferredIndex);
 
     q9 = stateStorageAddr;
     rootCtxP->iStates = (uint)(stateStorageAddr - (uint)(uintptr_t)heapNullOffset);
