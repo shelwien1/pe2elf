@@ -790,11 +790,11 @@ sqword InitTables() {
   // some quantization table
   // 0.220238 + 2.05508*i^0.444477
   // 2.0661 + 1.4084*Sqrt[0.4681+i] also fits, and is a better fit for algorithm below
-  int v76=1, v78=1;
+  int quantStepSize=1, stepRemaining=1;
   SymType[0] = 1; SymType[1] = 2;
   for( i=2,j=2,k=2; i < 0x100; ++i ) {
     SymType[j] = k + 1;
-    if( --v78==0 ) { ++k; v78 = ++v76; }
+    if( --stepRemaining==0 ) { ++k; stepRemaining = ++quantStepSize; }
     j = i + 1;
   }
   SymType[0xFF] = 24;
@@ -1826,10 +1826,10 @@ sqword StartModelRare(int mode) {
 
       // Calculate predictor distributions for primary mix model spaces
       MixModel* mix1 = (MixModel*)MixWeight1;
-      for (int v28 = 0; v28 < 0x4000; ++v28) {
+      for (int outerIdx = 0; outerIdx < 0x4000; ++outerIdx) {
         int bitSum = 0;
-        if (v28 > 0) {
-          int trackingBits = v28;
+        if (outerIdx > 0) {
+          int trackingBits = outerIdx;
           int tableIdx = 0;
           while (trackingBits > 0) {
             bitSum += b17[tableIdx++] * (trackingBits & 1);
@@ -1837,19 +1837,19 @@ sqword StartModelRare(int mode) {
           }
         }
 
-        for (int v35 = 0; v35 < 14; ++v35) {
-          int scaleFactor = (byte)b18[v35];
+        for (int mixDimIdx = 0; mixDimIdx < 14; ++mixDimIdx) {
+          int scaleFactor = (byte)b18[mixDimIdx];
           int weightScalar = bitSum + scaleFactor;
           if (weightScalar >= 241) weightScalar = 241;
           if (weightScalar < 9) weightScalar = 9;
           
-          int idx = (v35 + 1) * 0x4000 + v28;
+          int idx = (mixDimIdx + 1) * 0x4000 + outerIdx;
           mix1[idx].freq0 = 18432;
           mix1[idx].freq1 = 5120;
           mix1[idx].weight = (weightScalar << 23) | (72 * weightScalar);
         }
-        MixBound1[4 * v28] = 1024;
-        MixFreq1_1[4 * v28] = 1024;
+        MixBound1[4 * outerIdx] = 1024;
+        MixFreq1_1[4 * outerIdx] = 1024;
       }
 
       memset((int*)d27, 0, 0x20000);
@@ -1857,10 +1857,10 @@ sqword StartModelRare(int mode) {
       
       // Calculate distributions for secondary mix model spaces
       MixModel* mix2 = (MixModel*)&d27;
-      for (int v38 = 0; v38 < 0x2000; ++v38) {
+      for (int outerIdx2 = 0; outerIdx2 < 0x2000; ++outerIdx2) {
         int secondaryBitSum = 0;
-        if (v38 > 0) {
-          int secondaryTrackingBits = v38;
+        if (outerIdx2 > 0) {
+          int secondaryTrackingBits = outerIdx2;
           int secondaryTableIdx = 0;
           while (secondaryTrackingBits > 0) {
             secondaryBitSum += b20[secondaryTableIdx++] * (secondaryTrackingBits & 1);
@@ -1868,52 +1868,52 @@ sqword StartModelRare(int mode) {
           }
         }
 
-        for (int v45 = 0; v45 < 24; ++v45) {
-          int scaleOffset = (byte)b21[v45];
+        for (int mixDim2Idx = 0; mixDim2Idx < 24; ++mixDim2Idx) {
+          int scaleOffset = (byte)b21[mixDim2Idx];
           int weightValue = secondaryBitSum + scaleOffset;
           if (weightValue >= 241) weightValue = 241;
           if (weightValue < 9) weightValue = 9;
           
-          int idx = 0x4000 + v45 * 0x2000 + v38;
+          int idx = 0x4000 + mixDim2Idx * 0x2000 + outerIdx2;
           mix2[idx].freq0 = 18432;
           mix2[idx].freq1 = 5120;
           mix2[idx].weight = (weightValue << 23) | (72 * weightValue);
         }
-        MixBound4[4 * v38] = 1024;
-        MixBound5[4 * v38] = 1024;
-        MixBound6[4 * v38] = 1024;
-        MixBound3[4 * v38] = 1024;
+        MixBound4[4 * outerIdx2] = 1024;
+        MixBound5[4 * outerIdx2] = 1024;
+        MixBound6[4 * outerIdx2] = 1024;
+        MixBound3[4 * outerIdx2] = 1024;
       }
 
       MixModel* mix3 = (MixModel*)&MixWeight2;
       MixModel* mix4 = (MixModel*)&d29;
-      for (int v48 = 0; v48 < 16; ++v48) {
-        for (int v51 = 0; v51 < 1024; ++v51) {
-          int idx = v48 * 0x400 + v51;
+      for (int ctxBucket = 0; ctxBucket < 16; ++ctxBucket) {
+        for (int mixCellIdx = 0; mixCellIdx < 1024; ++mixCellIdx) {
+          int idx = ctxBucket * 0x400 + mixCellIdx;
           mix3[idx].weight = 20480;
           mix3[idx].freq0 = 2048;
           mix3[idx].freq1 = 2048;
         }
-        for (int v53 = 0; v53 < 256; ++v53) {
-          int idx = v48 * 256 + v53;
+        for (int mixCellIdx2 = 0; mixCellIdx2 < 256; ++mixCellIdx2) {
+          int idx = ctxBucket * 256 + mixCellIdx2;
           mix4[idx].weight = 20480;
           mix4[idx].freq0 = 2048;
           mix4[idx].freq1 = 2048;
         }
       }
 
-      for (int v55 = 0; v55 < 5; ++v55) {
-        int initialSseValue = 49 * (byte)b22[v55];
-        for (int v58 = 0; v58 < 128; ++v58) {
-          BinSse[v55 * 128 + v58] = initialSseValue;
+      for (int contextSize = 0; contextSize < 5; ++contextSize) {
+        int initialSseValue = 49 * (byte)b22[contextSize];
+        for (int sseInitIdx = 0; sseInitIdx < 128; ++sseInitIdx) {
+          BinSse[contextSize * 128 + sseInitIdx] = initialSseValue;
         }
       }
 
-      for (int v60 = 0; v60 < 5; ++v60) {
-        int baseWeight = 48 * (byte)b23[v60];
-        for (int v62 = 0; v62 < 256; ++v62) {
-          PredWeight[v60 * 512 + v62 * 2] = baseWeight;
-          PredWeight[v60 * 512 + v62 * 2 + 1] = 15104;
+      for (int contextSize2 = 0; contextSize2 < 5; ++contextSize2) {
+        int baseWeight = 48 * (byte)b23[contextSize2];
+        for (int predIdx = 0; predIdx < 256; ++predIdx) {
+          PredWeight[contextSize2 * 512 + predIdx * 2] = baseWeight;
+          PredWeight[contextSize2 * 512 + predIdx * 2 + 1] = 15104;
         }
       }
 
@@ -3570,25 +3570,25 @@ LABEL_165:
 
 sqword PPMIIGetCurrentModelSize() {
   sqword result;
-  sqword v1;
+  sqword entryIdx;
   uint i;
-  int v3;
+  int bytesUsed;
   if( !SubAllocatorSize )
     return 0;
-  v1 = 0;
+  entryIdx = 0;
   LODWORD(result) = pText-UnitsStart+LoUnit+SubAllocatorSize-HiUnit;
   for( i = 0; i<0x26; ++i ) {
-    v3 = *(uint*)(BList+12*v1)*12**((byte*)&Indx2Units+v1);
-    v1 = i+1;
-    result = (uint)(result-v3);
+    bytesUsed = *(uint*)(BList+12*entryIdx)*12**((byte*)&Indx2Units+entryIdx);
+    entryIdx = i+1;
+    result = (uint)(result-bytesUsed);
   }
   return result;
 }
 
 sqword StartSubAllocator(uint memsize_mb, int a2_order, int a3) {
-  int v4;
+  int maxOrderArg;
   size_t memsize_b;
-  v4 = a2_order;
+  maxOrderArg = a2_order;
   if( !memsize_mb ) return 0;
   if( memsize_mb>0xFFF ) return 0;
   if( a2_order<2 ) return 0;
@@ -3604,8 +3604,8 @@ sqword StartSubAllocator(uint memsize_mb, int a2_order, int a3) {
   InitsCount = 0;
   CutOff = a3;
   Interrupted = 0;
-  if( v4>12 )v4 = 16<<((v4+19)&31);
-  MaxOrder = v4;
+  if( maxOrderArg>12 )maxOrderArg = 16<<((maxOrderArg+19)&31);
+  MaxOrder = maxOrderArg;
   return 1;
 }
 
@@ -5037,8 +5037,8 @@ int RealEncode(FILE* a1, FILE* a2) {
 //--- #return
 //--- #include "stats.inc"
 
-sqword PPMIIEncode(FILE* File, FILE* a2, sqword (*a3)(FILE*, FILE*, sqword), int a4) {
-  int v8; sqword v10; int v11; int v12; sqword v14; int v15; int v16;
+sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sqword), int initMode) {
+  int statsResult;
 
   if( !SubAllocatorSize ) return 0;
 
@@ -5047,31 +5047,30 @@ sqword PPMIIEncode(FILE* File, FILE* a2, sqword (*a3)(FILE*, FILE*, sqword), int
     SymCount = 1;
   } else {
     rc.initEncoder();
-    StartModelRare(a4);
+    StartModelRare(initMode);
   }
 
   while( 1 ) {
-    RealEncode(File, a2);
+    RealEncode(File, outFile);
     if( SymCount ) break;
-    if( a3 ) v8 = a3(a2, File, 0); else v8 = -1;
-    SymCount = v8;
-    //memset( &blob1[0x140029540-0x1400227B0], 0, 0x400);
+    if( statsCB ) statsResult = statsCB(outFile, File, 0); else statsResult = -1;
+    SymCount = statsResult;
     memset( SymMask, 0, 0x400 );
     memset( SymLastCtx, 0, 0xC00 );
-    if( !v8 ) {
+    if( !statsResult ) {
       Interrupted = 1;
       return 0;
     }
   }
   rc.Flush(File);
 
-  if( a3 ) a3(a2, File, 1);
+  if( statsCB ) statsCB(outFile, File, 1);
 
   return 1;
 }
 
-sqword PPMIIDecode(FILE* a1, FILE* a2, sqword (*a3_printstats)(FILE*, FILE*, sqword), int a4) {
-  int v9; sqword v10; int cnt; int v12; int v13; int v14; int v15; int v16; int v17; int v18; int v19; int v20; int v21; int v22; int v23; int v24;
+sqword PPMIIDecode(FILE* inFile, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sqword), int initMode) {
+  int statsResult;
 
   if( !SubAllocatorSize ) return 0;
 
@@ -5079,40 +5078,29 @@ sqword PPMIIDecode(FILE* a1, FILE* a2, sqword (*a3_printstats)(FILE*, FILE*, sqw
     Interrupted = 0;
     SymCount = 1;
   } else {
-    rc.initDecoder(a2);
-    StartModelRare(a4);
+    rc.initDecoder(outFile);
+    StartModelRare(initMode);
   }
 
   while(1) {
-    RealDecode(a1, a2);
+    RealDecode(inFile, outFile);
 
     if( SymCount ) break;
 
-    if( a3_printstats ) v9 = a3_printstats(a1, a2, 0); else v9 = -1;
+    if( statsCB ) statsResult = statsCB(inFile, outFile, 0); else statsResult = -1;
 
-    SymCount = v9;
+    SymCount = statsResult;
 
-#if 0
-    v10 = 64;
-    do {
-      SEE1[v10] = 0;
-      SEE1_1[v10] = 0;
-      SEE1_2[v10] = 0;
-      SEE1_3[v10] = 0;
-      v10 -= 4;
-    } while( v10*16 );
-#endif
     memset(SymMask, 0, sizeof(SymMask) );
-
     memset(SymLastCtx, 0, 0xC00);
 
-    if( !v9 ) {
+    if( !statsResult ) {
       Interrupted = 1;
       return 0;
     }
   }
 
-  if( a3_printstats ) a3_printstats(a1, a2, 1);
+  if( statsCB ) statsCB(inFile, outFile, 1);
 
   return 1;
 }
