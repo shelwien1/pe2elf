@@ -3409,7 +3409,11 @@ struct Rangecoder {
     Code = b4 | (pack3 << 8);
   }
 
-  void EncodeShift(FILE *f) {
+  // Shared body of EncodeShift / Flush: either bump the FF-run counter if the
+  // top byte of Low is right on the carry boundary (0xFF000000..0xFFFFFFFF),
+  // or flush Cache + a carry byte + any deferred FFs to the stream and refresh
+  // Cache. Then shift Low up by 8 to consume that top byte.
+  void emitOneByte(FILE *f) {
     if ((Low ^ 0xFF000000LL) <= 0xFFFFFF) {
       ++ff_count;
     } else {
@@ -3424,6 +3428,10 @@ struct Rangecoder {
       Cache = (Low >> 24) & 0xFF;
     }
     Low = (uint)(Low << 8);
+  }
+
+  void EncodeShift(FILE *f) {
+    emitOneByte(f);
     Range <<= 8;
   }
 
@@ -3441,22 +3449,8 @@ struct Rangecoder {
   }
 
   void Flush(FILE *f) {
-    for (int i = 0; i < 5; ++i) {
-      if ((Low ^ 0xFF000000LL) <= 0xFFFFFF) {
-        ++ff_count;
-      } else {
-        putc(Cache + (int)(Low >> 32), f);
-        int carry = (int)(Low >> 32) + 255;
-        if (ff_count) {
-          do {
-            putc(carry, f);
-          } while (--ff_count);
-          Low = (uint)Low;
-        }
-        Cache = (Low >> 24) & 0xFF;
-      }
-      Low = (uint)(Low << 8);
-    }
+    for (int i = 0; i < 5; ++i)
+      emitOneByte(f);
   }
 };
 //--- #return
