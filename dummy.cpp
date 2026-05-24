@@ -3677,6 +3677,19 @@ inline PPM_CONTEXT* WalkEscapeChain_(PPM_CONTEXT* startCtx, PPM_CONTEXT* refCtx,
   return w;
 }
 
+// Sse1 stage shared between the binary-context branch (region B) and the
+// per-candidate loop (region F). Both call this with the same (slot, hits)
+// arguments and the same (sseCum, sseTot) globals as accumulators.
+// On exit, sseCum is unchanged; sseTot is unchanged; cumWeight is
+// (clamp + sseTot) and cumFreq is (clamp + sseCum).
+inline void Sse1Step_(int* slot, uint hits, int& cumWeight, int& cumFreq) {
+  int cumIn = sseCum;
+  int clamp = SseClampMean_(slot, hits, 1 - sseCum, 0x40000);
+  SseDeltaUpdate_(slot, cumIn, 0x40000, 4096, 2);
+  cumWeight = clamp + sseTot;
+  cumFreq   = clamp + cumIn;
+}
+
 // "Rewind" a predictor slot in the LABEL_128 escape path:
 //   freq0 (offset 4, word) -= delta
 //   sum   (offset 0, uint) += delta * mult
@@ -3697,7 +3710,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int entryNStates;
   int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
-  int sse1CumInB, sse1ClampB, cumWeightB, cumFreqB, escSymB;
+  int cumWeightB, cumFreqB, escSymB;
   int matchCumInA, sseMatchClampA, sseSum2A;
   int sse2CumInA, sse2ClampA, totFreqA;
   int cumFreq, sse3ClampA, oneStateFreqF;
@@ -4004,11 +4017,7 @@ LABEL_58:
                   + (mixFreqB < (uint)( 6*mixHitsB)));          // bits 16-17 hits/freq ratio band
     sse1SlotB = &Sse1[2*OrderCtxSeed];
     sse1Slot = sse1SlotB;
-    sse1CumInB = sseCum;
-    sse1ClampB = SseClampMean_(sse1SlotB, mixHitsB, 1-sseCum, 0x40000);
-    SseDeltaUpdate_(sse1SlotB, sse1CumInB, 0x40000, 4096, 2);
-    cumWeightB = sse1ClampB+sseTot;
-    cumFreqB = sse1ClampB+sse1CumInB;
+    Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
     mixShiftSelB = binMixCenter[3];
     escSymB = MixCtx3;                  // both arms below want this snapshot
     if( mixShiftSelB<=0x20 ) {
@@ -4453,11 +4462,8 @@ LABEL_59:
                       + (freq0F < (uint)( 6*hitsF)));   // hits/freq ratio band
         sse1SlotF = &Sse1[2*OrderCtxSeed];
         sse1Slot = sse1SlotF;
-        int sse1CumIn = sseCum;
-        int sse1Clamp = SseClampMean_(sse1SlotF, hitsF, 1-sseCum, 0x40000);
-        SseDeltaUpdate_(sse1SlotF, sse1CumIn, 0x40000, 4096, 2);
-        int mixCumWeightF = sse1Clamp+sseTot;
-        int mixCumFreqF   = sse1Clamp+sse1CumIn;
+        int mixCumWeightF, mixCumFreqF;
+        Sse1Step_(sse1SlotF, hitsF, mixCumWeightF, mixCumFreqF);
         uint centerWeightF = binMixCenter[3];
         if( centerWeightF<=8 ) {
           sseTot = mixCumWeightF;
