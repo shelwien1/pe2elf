@@ -2550,7 +2550,6 @@ qword MixUpdate(byte* ctxBytes) {
   // ---- symbol-derived state -----------------------------------------------
   uint   sym;              // FoundState->Symbol
   sqword matchHi;          // MatchCtxHi (high-byte context)
-  sqword matchHi2;         // duplicate of matchHi (kept as int)
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
   uint   sse0sym;          // SSE0[sym]   (0 or 0x80 sym-type bit)
   int    mixCtx2New;       // new MixCtx2
@@ -2789,7 +2788,6 @@ qword MixUpdate(byte* ctxBytes) {
     }
   }
   matchHi = (int)matchHi;
-  matchHi2 = matchHi;
   q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
   recentForHi = SseCtx0_1[(int)matchHi];
   if( sym==FoundSymbol&&MixScale<=256 ) {
@@ -2857,7 +2855,7 @@ qword MixUpdate(byte* ctxBytes) {
       if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
 
       // final independent hint from RecentPos chain
-      byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi2] & 0xFFFLL] + 2) & 0x1FFFF];
+      byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFFLL] + 2) & 0x1FFFF];
       SymLastCtx[256 * (sc == SymLastCtx[vh]) + vh] = sc;
     }
   } else {
