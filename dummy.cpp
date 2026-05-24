@@ -2991,10 +2991,10 @@ LABEL_94:
     .bit  <9> (recentSym & 0x80)
     .raw  ((uint)matchScore)
     .bit  <15>(OrderFall > 0);
-  minNStates = *ctxBytes;
+  minNStates = ((PPM_CONTEXT*)ctxBytes)->NStates;
   NMasked = minNStates;
   searchSym = *foundState;
-  minISuffix = *((uint*)ctxBytes+2);
+  minISuffix = ((PPM_CONTEXT*)ctxBytes)->iSuffix;
   // SseSeed bitfield:
   //   raw   : BinMapTable[mixCtx2New & 0xF]  (low-order bits feed the binary
   //           mix-cell address)
@@ -3047,7 +3047,7 @@ LABEL_94:
     }
     mixWeight = 2;
     if( minNStates )
-      mixFlag1 = (-45*minNStates+(uint)*((word*)ctxBytes+1))>>31;
+      mixFlag1 = (-45*minNStates + (uint)((PPM_CONTEXT*)ctxBytes)->SummFreq) >> 31;
     else
       mixFlag1 = orderBumpVariance==0;
     mixFlag2 = mixFlag1;
