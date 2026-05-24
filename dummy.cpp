@@ -2170,7 +2170,7 @@ sqword ReduceOrder() {
       } else {
         stateBW = (byte*)*chainPtrW++;
       }
-      succIdxW = *(uint*)(stateBW+2);
+      succIdxW = ((STATE*)stateBW)->iSuccessor;
       if( succIdxW )
         break;
       ((STATE*)stateBW)->iSuccessor = newByteIdx;
