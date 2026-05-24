@@ -216,7 +216,7 @@ int MixCtx2;
 int PrevSymbol;
 int OrderCtxSeed;
 int SseSeed;
-int d45;
+int EscIndexSeed;
 int d111;
 int NMasked;
 
@@ -271,7 +271,7 @@ sqword q24;
 sqword q25;
 sqword q9;
 sqword q33;
-sqword q14;
+sqword CtxChainEnd;
 
 int d83;
 int d84;
@@ -764,7 +764,7 @@ sqword InitTables() {
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
   sseTot=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
-  q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=q14=0;
+  q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
   d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
@@ -1993,7 +1993,7 @@ sqword CreateSuccessors(int a1, qword a2, sqword a3) {
     v5 += 8LL;
     if( !v7 )
       goto LABEL_15;
-    if( v5>=q14 )
+    if( v5>=CtxChainEnd )
       break;
     a3 = HeapNull+v7;
   }
@@ -2241,8 +2241,6 @@ at_return:
 //--- #include "subs_reduceorder.inc"
 
 STATE*& FoundState = (STATE*&)q9;
-sqword& CtxChainEnd = q14;
-int& EscIndexSeed = d45;
 
 sqword ReduceOrder() {
   sqword v0;
@@ -2401,7 +2399,7 @@ sqword ReduceOrder() {
   *(byte*)(v9+1) = 0;
   if( !v4 ) {
     v14 = MaxContext0;
-    v65 = q14;
+    v65 = CtxChainEnd;
     v66 = *v1;
     v112 = v5;
     v67 = MaxContext0;
@@ -2603,11 +2601,11 @@ LABEL_11:
   (void)(result+v10); // prefetch hint removed
   if( v0!=v14 ) {
     v119 = HiUnit;
-    v18 = d45+8;
+    v18 = EscIndexSeed+8;
     v120 = BList;
     v121 = v10+v15;
     v114 = v0;
-    if( d45+8>=14 )
+    if( EscIndexSeed+8>=14 )
       v18 = 14;
     if( v18<0 )
       v18 = 0;
@@ -3492,7 +3490,7 @@ LABEL_94:
       deepStatesIdx = *((uint*)walkCtx+1);
       deepFlags = walkCtx[1];
       if( !*(byte*)(heap+deepStatesIdx+6LL*(deepFlags&0xF)+1) ) {
-        q14 = (sqword)chain;
+        CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         deepStatesIdx = *((uint*)walkCtx+1);
         deepFlags = walkCtx[1];
@@ -3534,7 +3532,7 @@ LABEL_201:
 LABEL_165:
       trailStatesPtr = heap+trailStatesIdx;
       if( !*(byte*)(heap+trailStatesIdx+6LL*(trailFlags&0xF)+1) ) {
-        q14 = (sqword)chain;
+        CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         trailStatesIdx = *((uint*)walkCtx+1);
         trailFlags = walkCtx[1];
@@ -3552,10 +3550,10 @@ LABEL_165:
       --depthLeft;
       trailBound = ofall+1;
     }
-    q14 = (sqword)chain;
+    CtxChainEnd = (sqword)chain;
   } else {
     maxOrd = MaxOrder;
-    q14 = (sqword)&CtxChain_1;
+    CtxChainEnd = (sqword)&CtxChain_1;
   }
   if( ofall==maxOrd&&(result = HeapNull+*(uint*)(foundState+2), result>=UnitsStart) ) {
     RootContext = HeapNull+*(uint*)(foundState+2);
