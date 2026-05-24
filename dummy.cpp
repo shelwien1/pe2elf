@@ -4088,7 +4088,9 @@ LABEL_58:
       wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
       wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
-    sseCum = 60416LL*cumFreqB/cumWeightB;
+    // Reset (sseCum, sseTot) to the boosted (60416 / cumWeightB) probability
+    // pair and feed it into the SseMatch stage; same shape as region F.
+    sseCum = (int)(60416LL*cumFreqB/cumWeightB);
     sseTot = 60416;
     sseMatchDenDelta = sseCum;
     sseMatchNumDelta = 60416;
@@ -4100,18 +4102,8 @@ LABEL_58:
         .bit  <19>    (escSymB == FoundSymbol)
         .bit  <20>    (MixScale < (uint)mixScaleCntr))];
     sseMatchSlot = sseMatchSlotA;
-    // SSE-match stage: probe with sseCum first; if in-band, recompute with the
-    // boosted 60416/sumWeight scale (preserved verbatim from the original).
     matchCumInA = sseCum;
-    {
-      sqword probeMean = (sqword)sseCum * (sqword)*sseMatchSlotA / sseMatchSlotA[1];
-      sseMatchClampA = 1 - sseCum;
-      if (probeMean >= 1 - sseCum) {
-        sseMatchClampA = 0x40000;
-        if (probeMean < 0x40000)
-          sseMatchClampA = (int)(60416LL*cumFreqB/cumWeightB) * (sqword)*sseMatchSlotA / sseMatchSlotA[1];
-      }
-    }
+    sseMatchClampA = (int)SseClampMean_(sseMatchSlotA, sseCum, 1 - sseCum, 0x40000);
     SseDeltaUpdate_(sseMatchSlotA, matchCumInA, 0x80000, 0x2000, 1120);
     sseTot += sseMatchClampA;
     predSseTotDelta = sseTot;
