@@ -237,10 +237,10 @@ int sseTot;
 int sseCum;
 int orderBumpVariance;
 int predWeightSink;
-int d48;
-int d49;
-int d46;
-int d47;
+int predBaseDeltaA;
+int predBaseDeltaB;
+int binMixDeltaHi;
+int binMixDeltaLo;
 int d99;
 int d100;
 int d101;
@@ -279,12 +279,12 @@ int hintSymB29;
 int hintSymBiject;
 int hintSymMatch3;
 int hintSymQ26;
-int d52;
-int d50;
-int d54;
-int d53;
-int d56;
-int d55;
+int sse2DenDelta;
+int sse2NumDelta;
+int sseMatchDenDelta;
+int sseMatchNumDelta;
+int predSseTotDelta;
+int predWeightDelta;
 int MatchCtxHi;
 int recentSym;
 int d80;
@@ -763,9 +763,9 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=orderBumpVariance=predWeightSink=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
+  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
-  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=d52=d50=d54=d53=d56=d55=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
@@ -2957,12 +2957,12 @@ inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int ma
 
 qword MixUpdate(byte* a1) {
   // ---- mixing-predictor weight pointers (q17..q25 hold heap addresses) -----
-  uint* wQ17;     // single  += d46
-  uint* wQ18;     // single  += d49
-  uint* wQ19;     // pair    += d53 / -= d54
-  uint* wQ20;     // single  += d47
-  uint* wQ22;     // single  += d48
-  uint* wQ23;     // pair    += d50 / -= d52
+  uint* wQ17;     // single  += binMixDeltaHi
+  uint* wQ18;     // single  += predBaseDeltaB
+  uint* wQ19;     // pair    += sseMatchNumDelta / -= sseMatchDenDelta
+  uint* wQ20;     // single  += binMixDeltaLo
+  uint* wQ22;     // single  += predBaseDeltaA
+  uint* wQ23;     // pair    += sse2NumDelta / -= sse2DenDelta
   int*  wpQ24;    // pred-pair (overflow halving)
   int*  wpQ25;    // pred-pair (overflow halving)
   int   scale;    // sseCum (decay for the pred-pair updates)
@@ -3106,12 +3106,12 @@ qword MixUpdate(byte* a1) {
   sc           = SymCount - 1;
   SymCount     = sc;
   *(uint*)q21 += *(word*)(q21 + 6);
-  *wQ17       += d46;
-  *wQ20       += d47;
-  *wQ22       += d48;
-  *wQ18       += d49;
-  *wQ23       += d50;  wQ23[1] -= d52;
-  *wQ19       += d53;  wQ19[1] -= d54;
+  *wQ17       += binMixDeltaHi;
+  *wQ20       += binMixDeltaLo;
+  *wQ22       += predBaseDeltaA;
+  *wQ18       += predBaseDeltaB;
+  *wQ23       += sse2NumDelta;  wQ23[1] -= sse2DenDelta;
+  *wQ19       += sseMatchNumDelta;  wQ19[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
   symEpochS   = (short)SymEpoch;
@@ -3120,8 +3120,8 @@ qword MixUpdate(byte* a1) {
   sseSlot     = (char*)&Sse2State[sseRowOff + 133144];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
-  UpdateWeightPair_(wpQ24, d55 + d56, 2 * scale);
-  UpdateWeightPair_(wpQ25, d55,           scale);
+  UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * scale);
+  UpdateWeightPair_(wpQ25, predWeightDelta,           scale);
 
   foundState = (byte*)q9;
   SparseBitmapA[SparseIdxA] |= SparseBit;
@@ -4332,8 +4332,8 @@ LABEL_58:
     sseCum = mixHitsB;
     *((word*)mixSlotB+2) = mixFreqB + *((word*)mixSlotB+3);
     sseTot = mixFreqB;
-    d52 = mixHitsB;
-    d50 = mixFreqB;
+    sse2DenDelta = mixHitsB;
+    sse2NumDelta = mixFreqB;
     OrderCtxSeed = SseIdx{}
       .bit  <0>    (currentSymbol == hintSymB31)
       .bit  <1>    (currentSymbol == hintSymB29)
@@ -4382,8 +4382,8 @@ LABEL_58:
       sseTot = mixSseFreqB;
       *binSseSlotB = binSseVal-((binSseVal+2)>>3);
       mixShiftB = mixShiftSelB<0x220;
-      d48 = RescaleAccum2_((void*)q22, mixShiftB);
-      d49 = RescaleAccum2_((void*)q18, mixShiftB);
+      predBaseDeltaA = RescaleAccum2_((void*)q22, mixShiftB);
+      predBaseDeltaB = RescaleAccum2_((void*)q18, mixShiftB);
       // blend the two neighbour cells (binMixCenter ± 0x10000) into the
       // (cumFreqB, cumWeightB) accumulators.
       q20 = (sqword)(binMixCenter-0x10000);
@@ -4392,8 +4392,8 @@ LABEL_58:
       cumWeightB = ((uint)(binMixCenter[65538] + *(binMixCenter-65534))  >> (mixShiftB+1)) + mixSseFreqB;
       sseCum = cumFreqB;
       sseTot = cumWeightB;
-      d46 = RescaleAccum2_(binMixCenter+0x10000, mixShiftB);
-      d47 = RescaleAccum2_(binMixCenter-0x10000, mixShiftB);
+      binMixDeltaHi = RescaleAccum2_(binMixCenter+0x10000, mixShiftB);
+      binMixDeltaLo = RescaleAccum2_(binMixCenter-0x10000, mixShiftB);
       mixShiftC = (binMixCenter[3]<0x398u) + mixShiftB;
       d99  = RescaleAccum2_((void*)q32, mixShiftC);
       d100 = RescaleAccum2_((void*)q31, mixShiftC);
@@ -4404,8 +4404,8 @@ LABEL_58:
     }
     sseCum = 60416LL*cumFreqB/cumWeightB;
     sseTot = 60416;
-    d54 = sseCum;
-    d53 = 60416;
+    sseMatchDenDelta = sseCum;
+    sseMatchNumDelta = 60416;
     sseMatchSlotA = &SseMatch[(int)(SseIdx{}
         .bits <1, 8>  (escSymB)                          // bits 1-8: candidate sym
         .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
@@ -4428,7 +4428,7 @@ LABEL_58:
     }
     SseDeltaUpdate_(sseMatchSlotA, matchCumInA, 0x80000, 0x2000, 1120);
     sseTot += sseMatchClampA;
-    d56 = sseTot;
+    predSseTotDelta = sseTot;
     sseSum2A = sseMatchClampA+matchCumInA;
     sseCum = sseSum2A;
     sse2IdxA = SseIdx{}
@@ -4453,7 +4453,7 @@ LABEL_58:
     totFreqA = sse2ClampA+sseTot;
     sseTot += sse2ClampA;
     SseMixUpdate_(sse2SlotA, 2*sseSum2A, 1);
-    d55 = totFreqA;
+    predWeightDelta = totFreqA;
     {
       // Scope-locals so the goto-into-LABEL_59 path doesn't trip
       // "jump bypasses initialization".
@@ -4780,8 +4780,8 @@ LABEL_59:
         sseCum = hitsF;
         *((word*)binMixSlotF+2) = freq0F + *((word*)binMixSlotF+3);
         sseTot = freq0F;
-        d52 = hitsF;
-        d50 = freq0F;
+        sse2DenDelta = hitsF;
+        sse2NumDelta = freq0F;
         // OrderCtxSeed composite for the per-candidate Sse1 table lookup.
         OrderCtxSeed = SseIdx{}
           .bit  <0>    (candSymbol == hintSymB31)              // matches b31 hint
@@ -4847,23 +4847,23 @@ LABEL_59:
           sseTot = mixCumWeightF;
           {
             char predDoExpandF = (centerWeightF<0x30)+1;
-            d46 = RescaleAccum2_(binMixCenter + 0x8000, predDoExpandF);
-            d47 = RescaleAccum2_(binMixCenter - 0x8000, predDoExpandF);
+            binMixDeltaHi = RescaleAccum2_(binMixCenter + 0x8000, predDoExpandF);
+            binMixDeltaLo = RescaleAccum2_(binMixCenter - 0x8000, predDoExpandF);
           }
           uint predExpA = binMixCenter[3];
           if( predExpA>0x48 ) {
             q22 = (sqword)(binMixCenter+0x10000);
             q18 = (sqword)(binMixCenter-0x10000);
             char predExpShiftF = (predExpA<0x1E0)+(predExpA<0x3D0)+1;
-            d48 = RescaleAccum2_(binMixCenter + 0x10000, predExpShiftF);
-            d49 = RescaleAccum2_(binMixCenter - 0x10000, predExpShiftF);
+            predBaseDeltaA = RescaleAccum2_(binMixCenter + 0x10000, predExpShiftF);
+            predBaseDeltaB = RescaleAccum2_(binMixCenter - 0x10000, predExpShiftF);
           }
         }
         int sseMatchBoostedF = 60416LL*mixCumFreqF/mixCumWeightF;
         sseCum = sseMatchBoostedF;
         sseTot = 60416;
-        d54 = sseMatchBoostedF;
-        d53 = 60416;
+        sseMatchDenDelta = sseMatchBoostedF;
+        sseMatchNumDelta = 60416;
         sseMatchSlotF = &SseMatch[(int)(SseIdx{}
             .bits <1, 8>  (candSymbol)                       // bits 1-8: candidate sym
             .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
@@ -4878,7 +4878,7 @@ LABEL_59:
         sseTot += sseMatchClampF;
         int cumWeightF = sseMatchClampF+matchCumInF;
         sseCum = cumWeightF;
-        d56 = sseTot;
+        predSseTotDelta = sseTot;
         sqword sse2IdxF = SseIdx{}
           .bit  <0>    (candSymbol == hintSymM2)
           .bit  <1>    (candSymbol == hintSymMatch3)                          // overlaid with SSE0 byte below
@@ -4903,7 +4903,7 @@ LABEL_59:
         SseMixUpdate_(sse2SlotF, 2*cumWeightF, 1);
         int  sse2HistByteF = sse2Base[((word)candSymbol-(word)RSContext)&0x1FF];
         uint sse2Counter   = *(uint*)(sse2Base+512);
-        d55 = sse2CumTotF;
+        predWeightDelta = sse2CumTotF;
         sse3SlotF = &Sse3[2 * (int)(SseIdx{}
           .bit  <0>    (tagSymLastCtx2F)
           .bit  <1>    (candSymbol == (byte)SseState3[sseState3Hash])
