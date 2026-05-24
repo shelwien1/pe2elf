@@ -3054,7 +3054,11 @@ qword MixUpdate(byte* a1) {
   MatchPosTable[matchKey] = symEpoch-1;
   matchDelta = symEpoch-matchPrev;
   matchDeltaSaved = matchDelta;
-  matchScore = (((uint)(symEpoch-matchPrev)<0xE800)+(matchDelta<0xF0)+(matchDelta<7))<<13;
+  // 3-bit composite at bit 13: counts how many of these proximity tests pass.
+  matchScore = SseIdx{}
+    .bits<13, 2>(((uint)(symEpoch-matchPrev) < 0xE800)
+               + (matchDelta < 0xF0)
+               + (matchDelta < 7));
   if( (uint)(symEpoch-matchPrev)>=0x1000 ) {
     Order1Ctx = 0;
     predV38 = 0;
@@ -3316,14 +3320,36 @@ LABEL_94:
   ofall = OrderFall;
   CtxChain[0] = (sqword)foundState;
   orderShift15 = (OrderFall>0)<<15;
-  OrderCtxSeed = orderShift15+matchScore+4*(recentSym&0x80);
+  // OrderCtxSeed bitfield:
+  //   bit  9     : recentSym's bit-7 (sym was in the >= 0x80 char class)
+  //   bits 13-14 : matchScore (proximity-test count, already shifted)
+  //   bit  15    : OrderFall > 0
+  OrderCtxSeed = SseIdx{}
+    .bit  <9> (recentSym & 0x80)
+    .raw  ((uint)matchScore)
+    .bit  <15>(OrderFall > 0);
   minNStates = *a1;
   NMasked = minNStates;
   searchSym = *foundState;
   minISuffix = *((uint*)a1+2);
-  SseSeed = ((OrderFall>2)<<15)+orderShift15+*((uint*)BinMapTable+(mixCtx2New&0xF))+(mixCtxOld<<14);
+  // SseSeed bitfield:
+  //   raw   : BinMapTable[mixCtx2New & 0xF]  (low-order bits feed the binary
+  //           mix-cell address)
+  //   bit 14+: mixCtxOld at bit 14
+  //   bit 15 : OrderFall > 0  (orderShift15, already computed)
+  //   bit 15 : OrderFall > 2  (additional contribution; carries into bit 16)
+  SseSeed = SseIdx{}
+    .raw  (BinMapTable[mixCtx2New & 0xF])
+    .raw  ((uint)mixCtxOld << 14)
+    .bit  <15>(OrderFall > 0)
+    .bit  <15>(OrderFall > 2);
   chain = &CtxChain_1;
-  MixCtxExtra = (((OrderFall>32)+(OrderFall>8)+(OrderFall>4)+(OrderFall>3)+(OrderFall>2)+(OrderFall>1))<<12)+64;
+  // MixCtxExtra: constant bit 6, plus a 3-bit count of OrderFall thresholds
+  // at bits 12-14.
+  MixCtxExtra = SseIdx{}
+    .bit  <6> (true)
+    .bits <12, 3>((OrderFall>32) + (OrderFall>8) + (OrderFall>4)
+                + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
   if( minISuffix ) {
     heap = HeapNull;
     walkCtx = (byte*)(HeapNull+minISuffix);
