@@ -1,34 +1,41 @@
-# `RealProcess` refactoring goals
+# `dummy.cpp` refactoring goals
 
-`RealProcess<f_DEC>` (in `subs_process1.inc`) is the PE binary's templated
-encode/decode driver — a PPMd-style symbol predictor fused with an
-SSE/APM cascade and a logistic mixer, all driving a carry-handling range
-coder. It is the largest single function in the codebase.
+`dummy.cpp` is the PPMII codec lifted out of a PE binary by decompilation
+and folded into a single self-contained C++ source: heap suballocator,
+context-tree model, SSE/APM cascade, logistic mixer, range coder, CLI
+driver. `ppmd.cpp` in the same directory is Shkarin's readable reference
+implementation of the same algorithm; use it as the behaviour and naming
+oracle.
 
-`subs_process.inc` is the unmodified decompiled reference, kept only as
-the behaviour oracle. **All refactoring happens in `subs_process1.inc`.**
+`RealProcess<f_DEC>` is still the largest single function (~1000 lines,
+templated for encode/decode) and gets the bulk of the structural work,
+but the same decompiler-output problems appear throughout the file:
+`ReduceOrder`, the `Sse*` helpers, `PPMContextWalk`, `CreateSuccessors`,
+and `UpdateModel` all carry varying amounts of `v0`/`v1`/… locals,
+unstructured control flow, and references to the file-scope `d##`/`q##`
+globals. Treat the whole file as the refactoring target.
 
 ## The goal
 
-Make `RealProcess` **readable, idiomatic and structured** without
-changing the algorithm. The compressed output must remain bit-exact;
-round-trip on `book1` (via `make && sh t.sh`) must keep passing after
-every commit.
+Make `dummy.cpp` **readable, idiomatic and structured** without changing
+the algorithm. The compressed output must remain bit-exact; round-trip
+on `book1` (via `make && sh t.sh`) must keep passing after every commit.
 
 ## What's still wrong
 
-Even after several cleanup passes the function still reads like
-decompiler output in many places. The following concrete examples
-illustrate the categories of problem that remain.
+Even after several cleanup passes the file still reads like decompiler
+output in many places. The following concrete examples — drawn mostly
+from `RealProcess` because it's where the work is currently focused —
+illustrate the categories of problem that remain throughout `dummy.cpp`.
 
-### A. The function still depends on a sea of file-scope globals
+### A. The codec still depends on a sea of file-scope globals
 
 The decompiler treated register spills and intermediate scratch as
 file-scope globals. Many turned out to be **per-symbol scratch**, but
-they still live as globals shared with every other `subs_*.inc` file:
+they still live as anonymous numeric globals:
 
 ```cpp
-// from defs3g.h
+// near the top of dummy.cpp
 sqword q9, q12, q14, q17, q18, q19, q20, q21, q22, q23,
        q24, q25, q26, q29, q30, q31, q32, q33, q34, q35,
        q36, q37, q38, q39;     // 24 "register" slots
@@ -37,39 +44,47 @@ int d45, d46, d47, d48, /* ... */, d113;     // ~46 d-globals referenced by Real
 
 Inside `RealProcess`, the q-slots get assigned in pairs alongside the
 real algorithm state, and the only way to follow the data flow is to
-grep across files for who reads each q:
+grep for who reads each q:
 
 ```cpp
-// from subs_process1.inc, in the multi-state SSE-mix block
+// in the multi-state SSE-mix block
 bigSlotA = &d29[512*sseQTableIdxA + 16*(maskFlagEsc|maskFlagPrev) + 2*((byte)mixIdxA & 0xF3)];
 q29 = (sqword)bigSlotA;
 q33 = (sqword)(mixSlotA + 2048);
 q32 = (sqword)(mixSlotA - 2048);
 ```
 
-`q29`, `q32`, `q33` are file-scope only because some downstream
-`subs_*.inc` reads them. A reader can't tell which writes are
-"real outputs of this function" until they grep.
+A reader can't tell which writes are "real outputs of this function"
+versus dead spills until they grep every other function for matching
+reads.
 
-Goal: **classify each global** as either real persistent state (move
-into a `Predictor`-like struct in a follow-up pass) or per-iteration
-scratch (make local).
+Goal: **classify each global** as either real persistent state (give
+it a semantic name; eventually move into a `Predictor`-like struct in a
+follow-up pass) or per-iteration scratch (make local, or drop entirely
+once proven dead).
 
-**Interim technique** while the `Predictor` struct is out of scope:
-add a typed reference that aliases the global, so the in-function
-reads/writes get a meaningful name while the cross-file ABI is
-preserved exactly. Most aliases live as function-locals; the d-globals
-that are themselves `int&` into `d90[]` must be aliased at file scope
-because a function-local reference to a `d90[]` element perturbs `-Ofast`
-register-allocation enough to change the encoded stream (the same
-declaration with no in-function uses already reproduces the divergence).
+**Preferred technique now that the codebase is single-file:** rename the
+global *at its definition site* and update every reader in one commit.
+The cross-file ABI rationale that previously forced typed `int&` aliases
+is gone — `d51 → sseCum` can be a flat rename.
 
-Already in place inside `RealProcess`:
+A small carve-out remains: some d-globals are `int&` aliases into
+`d90[]` (e.g. `int& d108 = d90[108];` -style declarations are not
+present today, but the same codegen sensitivity exists for any
+reference into a large array). For those, leave the storage as an
+array element and rename only the reference identifier; turning a
+file-scope reference into a function-local one can perturb `-Ofast`
+register-allocation enough to change the encoded stream.
+
+Examples already done as in-function aliases (these can now be
+converted to direct renames of the underlying global, one at a time,
+each verified by `sh t.sh`):
+
 ```cpp
 int&   sseCum = d51;       // running cumulative freq in the SSE cascade
 int&   sseTot = d97;       // running total freq      in the SSE cascade
-int&   predRescaleDiv = d95;  // total weight, divided by NStates+1 in the rewind path
-int&   cumFreqAcc     = d96;  // running cum-freq accumulator (decremented per non-matched candidate)
+int&   predRescaleDiv = d95;  // total weight / (NStates+1) in the rewind path
+int&   cumFreqAcc     = d96;  // running cum-freq accumulator
 int*&  sse1Slot     = (int*&)q23;
 int*&  sseMatchSlot = (int*&)q19;
 int*&  sse2Slot     = (int*&)q24;
@@ -81,30 +96,33 @@ uint*& predWeightB  = (uint*&)q37;
 byte*& sse2Base     = (byte*&)q12;
 ```
 
-…at file scope next to `RealProcess`:
+Examples already at file scope (likewise candidates for direct rename):
+
 ```cpp
 int&   matchPosAge   = d108;  // epoch delta to most-recent matching position
 int&   matchEpoch2   = d107;  // second epoch delta in the per-candidate match block
 int&   matchHashSy   = d109;  // MatchPosHash byte snapshot
 int&   recentSym     = d64;   // just-encoded symbol byte
 int&   sseState3Hash = d63;   // 17-bit rolling sym-context hash, indexes SseState3
+sqword& CtxChainEnd  = q14;
+int&    EscIndexSeed = d45;
 ```
 
-…plus the pre-existing `STATE*& FoundState = (STATE*&)q9;` and
-`sqword& CtxChainEnd = q14;` from `subs_reduceorder1.inc`, now used
-verbatim by `RealProcess` too.
+…plus `STATE*& FoundState = (STATE*&)q9;` used both in `ReduceOrder`
+and inlined into `RealProcess`.
 
-Same memory, same layout, just self-documenting at the use sites. The
-remaining q/d globals are candidates for the same treatment as their
-semantics become clear.
+Same memory, same layout, just self-documenting. The remaining q/d
+globals are candidates for the same treatment as their semantics become
+clear — and most can now be renamed at the definition rather than via
+an alias layer.
 
 ### B. The locals are still numerous and section-suffixed
 
-The declaration block holds about 145 locals, organised by C type
-rather than by role:
+`RealProcess`'s declaration block holds about 145 locals organised by
+C type rather than by role:
 
 ```cpp
-// from subs_process1.inc, top of the function body
+// top of RealProcess
 int inputByte, epoch, nStates, remStates, walkSym, sortPriority;
 int nStatesCnt, nStatesP1Save, sxNStates, minSumFreqA, sxSumFreqA0, sumFreqM;
 int mixConstM, sumFreqWM, mixWeightM;
@@ -126,11 +144,17 @@ Two things wrong here:
    shares the same scope, you need section tags to disambiguate. With
    structured code, `sumFreq` in two functions is fine.
 
+`ReduceOrder` (line 2247) is the other end of the spectrum: ~70 locals
+named `v0, v1, v2, …, v68` straight from the decompiler. None of those
+names survive past a reading pass; they need to be classified and
+renamed the same way `StartModelRare` already has been (compare lines
+1679+ — that function reads cleanly).
+
 Goal: **let the goto-eliminated structure shrink the scopes**, then
 drop the suffix tags. Names like `mixWeightM`, `cumFreqMixA`,
 `sumFreqW0C` are tolerable in the current code but should be plain
 `mixWeight`, `cumFreq`, `sumFreqW` once they live in separate
-functions.
+functions. `v0…v68` are never tolerable.
 
 ### C. The labels make the textbook structure invisible
 
@@ -176,13 +200,14 @@ or a clearly-delimited block.** The labels can stay only where the
 underlying control flow really is irreducible; everywhere else, prefer
 a regular `if`/`else` and `while`.
 
-### D. The Sse cascade is written out twice
+### D. The Sse cascade is written out twice inside `RealProcess`
 
 The four-stage cascade `Sse1 → SseMatch → Sse2 → Sse3` runs in two
-places: once in the single-state binary branch (`B`-suffix locals,
-running once per symbol) and once in the LABEL_59 per-candidate loop
-(`F`-suffix locals, running once per candidate symbol during an
-escape). The body shape is identical aside from which locals it reads:
+places inside `RealProcess`: once in the single-state binary branch
+(`B`-suffix locals, running once per symbol) and once in the LABEL_59
+per-candidate loop (`F`-suffix locals, running once per candidate
+symbol during an escape). The body shape is identical aside from which
+locals it reads:
 
 ```cpp
 // LABEL_59 per-candidate, around line 993
@@ -249,6 +274,34 @@ via function-local references (Section A). That removes the
 naming-by-spill noise; the next step is to prove the *intra-cascade*
 publishes are dead and delete them.
 
+### F. The non-`RealProcess` functions need the same passes
+
+The same categories of problem appear outside `RealProcess`. Brief
+inventory (line numbers from current `dummy.cpp`):
+
+- **`ReduceOrder` (2247)** — ~600 lines, ~70 `v##` locals, multiple
+  unstructured loops. Highest yield for plain-rename work.
+- **`PPMContextWalk` (565)** — output parameters named `outV246` etc.;
+  body uses `v##` locals and writes via the q-globals. Carries explicit
+  `FIX BUG` annotations (see non-goals).
+- **`UpdateModel` (2100)** — feeds the per-symbol model update path
+  that `RealProcess` calls at LABEL_250; locals partly cleaned up,
+  control flow still goto-heavy.
+- **`CreateSuccessors` (1958)** — context-tree growth; helper-heavy
+  and named, but the locals are still `a1`/`a2`/`a3`-style.
+- **`AllocUnitsRare` (1278)** — heap suballocator, ~400 lines, mostly
+  `v##` locals.
+- **`SseScale1` (1115) / `SseScale2` (1209) / `BinEscFreq` (833) /
+  `RescaleCtx` (972)** — small enough to clean up in a single pass each.
+- **`Rangecoder` struct (3660)** — methods are already reasonably
+  named; check the carry-flush path for stray `v##` locals.
+
+Goal: walk the file once and apply the section-A/B techniques (rename
+globals at definition, rename `v##` locals by role, narrow scopes
+where structured) to each function. `RealProcess` and `ReduceOrder`
+are the two big ones; the rest are short enough to do as cleanup
+between `RealProcess` steps.
+
 ## Non-goals
 
 ### Eliminating the gotos completely
@@ -262,8 +315,8 @@ loop (the escape descent at `LABEL_128`, the per-state walk inside
 
 ### Fixing the annotated bugs in `PPMContextWalk`
 
-That file carries `FIX BUG` annotations for the escape-symbol writeback
-and the `d93` variance-tracker sync. The inline ancestor in
+`PPMContextWalk` carries `FIX BUG` annotations for the escape-symbol
+writeback and the `d93` variance-tracker sync. The inline ancestor in
 `RealProcess` may have the un-fixed form. **Preserve the original
 behaviour.** Any fix is a separate intentional change with its own
 before/after stream comparison.
@@ -278,8 +331,16 @@ work inline. Don't replace the inline body with a call to
 ### Wrapping all model state in a class
 
 A `Predictor`/`PPMCodec` struct holding `MaxContext`, `OrderFall`, the
-SSE tables etc. is the right end state but it touches every other
-`subs_*.inc` file. Out of scope for the `RealProcess`-only refactor.
+SSE tables etc. is the right end state but it touches every function in
+the file at once. Do the per-function rename/clean-up passes first;
+collect related globals into a struct only once their names and lifetimes
+are clear.
+
+### Reorganising into multiple files
+
+`dummy.cpp` is intentionally single-file. Don't split it back out into
+the `subs_*.inc` layout it came from — that structure was an artefact
+of decompilation, not a design.
 
 ## Critical preservation rules
 
@@ -312,25 +373,26 @@ SSE tables etc. is the right end state but it touches every other
 
 ## Files
 
-- `subs_process.inc` — unmodified decompiled reference. Do not edit;
-  it is the behaviour oracle.
-- `subs_process1.inc` — refactoring target. Included via the
-  `#if 1 / #else` switch in `dummy.cpp`.
-- `context.h` — `STATE`, `PPM_CONTEXT`, `MEM_BLK` layouts and their
-  helper methods.
+- `dummy.cpp` — refactoring target. Self-contained: heap suballocator,
+  context tree, SSE cascade, range coder, `RealProcess<f_DEC>`, CLI driver.
+- `ppmd.cpp` — Shkarin's reference PPMII implementation. Used as the
+  readability and naming oracle; do not edit.
 - `t.sh` — round-trip regression test. Encodes `book1`, decodes,
   compares md5s.
+- `book1`, `book1.ppm` — test inputs / expected outputs for `t.sh`.
+- `Makefile` — `make` builds `dummy` from `dummy.cpp` with
+  `clang++ -Ofast`.
 
 ---
 
 ## Appendix: the PPMII algorithm
 
 This appendix is reference material for someone reading or refactoring
-`RealProcess` who needs to recognise *what* the dense arithmetic is
+`dummy.cpp` who needs to recognise *what* the dense arithmetic is
 computing. It documents the model at the level of "data structures and
 algorithms", not at the level of every magic constant. Authoritative
 source: Shkarin's PPMII papers and the textbook implementation in
-`ppmd.cpp`; the PE variant in `subs_*.inc` adds the SSE cascade and the
+`ppmd.cpp`; the PE variant in `dummy.cpp` adds the SSE cascade and the
 sparse submodels described in the later sections.
 
 ### A.1 Data structures
@@ -492,6 +554,8 @@ do {                              // find next un-masked state
 In `RealProcess`, `epoch` is the renamed `SymCount`; `SymMask[X] =
 epoch` writes and `epoch == SymMask[X]` reads appear in both region A
 (the multi-state path's state scan) and region C (the masked recoding).
+`SymCount` is still the global name; renaming it at file scope to
+`symEpoch` is a candidate cleanup.
 
 ### A.4 Per-symbol reordering of the STATE[] array
 
@@ -664,7 +728,7 @@ cell, adaptive update.
 ### A.7 How a single symbol is processed
 
 For orientation, here's the per-symbol skeleton that `RealProcess`
-implements (with the PE-specific names from `subs_process1.inc`):
+implements (with the PE-specific names as they appear in `dummy.cpp`):
 
 ```
 1. MinContext = MaxContext                                # current highest-order context
@@ -687,11 +751,11 @@ implements (with the PE-specific names from `subs_process1.inc`):
 ```
 
 Steps 4, 8 and 11 all run the *same* SSE cascade (and that's why
-`subs_process1.inc` has the helpers `MaybeRescale1_` / `RescaleAccum2_` /
+`dummy.cpp` carries the helpers `MaybeRescale1_` / `RescaleAccum2_` /
 `SseClampMean_` / `SseDeltaUpdate_` etc. — they implement one stage of
 the cascade and get reused across regions). Steps 12-16 happen
 inside the `LABEL_250` tail (`commitSymbol()` in spirit) and in
-`MixUpdate` / `UpdateModel` / `CreateSuccessors`, which are the next
+`UpdateModel` / `CreateSuccessors` / `ReduceOrder`, which are the next
 refactoring targets after `RealProcess` itself.
 
 ### A.8 References
@@ -700,7 +764,8 @@ refactoring targets after `RealProcess` itself.
   PPMII series — the algorithmic basis.
 - `ppmd.cpp` in this tree — Shkarin's reference C++ implementation,
   used as the readability oracle.
-- `subs_reduceorder1.inc`, `subs_updatemodel1.inc`, `subs_rescalectx1.inc`,
-  `subs_mixupdate1.inc`, `subs_ssescale1a.inc`, `subs_ssescale2a.inc` —
-  the cleaned-up PE-binary helpers that `RealProcess` calls.
+- `dummy.cpp` — the PE-binary codec being refactored. Function map:
+  `InitTables`, `BinEscFreq`, `RescaleCtx`, `SseScale1`, `SseScale2`,
+  `AllocUnitsRare`, `StartModelRare`, `CreateSuccessors`, `UpdateModel`,
+  `ReduceOrder`, `PPMContextWalk`, `Rangecoder`, `RealProcess<f_DEC>`.
 
