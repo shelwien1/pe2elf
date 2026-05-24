@@ -357,6 +357,33 @@ struct MixModel {
   short freq1;
 };
 
+// Sum weights[bit] over each set bit of v. Used by the mix-model init
+// loops in StartModelRare: each context-index outerIdx is a bitset over a
+// small fixed alphabet (b17, b20 etc.), and bitSum is the weighted population
+// count of those bits.
+inline int PopCountWeighted_(uint v, const char* weights) {
+  int sum = 0;
+  for (int j = 0; v > 0; v >>= 1, ++j) {
+    sum += weights[j] * (int)(v & 1);
+  }
+  return sum;
+}
+
+// Initialize a MixModel cell with the constant (freq0=18432, freq1=5120) used
+// by both primary and secondary mix init loops, and encode `w` into weight.
+inline void InitMixCell_(MixModel& cell, int w) {
+  cell.freq0 = 18432;
+  cell.freq1 = 5120;
+  cell.weight = (w << 23) | (72 * w);
+}
+
+// Clamp a mix-init weight scalar to the PE-specific safe band [9, 241].
+inline int ClampMixWeight_(int w) {
+  if (w >= 241) return 241;
+  if (w <    9) return   9;
+  return w;
+}
+
 #pragma pack(1)
 struct SEE_CONTEXT {
   enum { MAX_SHIFT = 8 };
@@ -1663,26 +1690,10 @@ sqword StartModelRare(int mode) {
       // Calculate predictor distributions for primary mix model spaces
       MixModel* mix1 = (MixModel*)MixWeight1;
       for (int outerIdx = 0; outerIdx < 0x4000; ++outerIdx) {
-        int bitSum = 0;
-        if (outerIdx > 0) {
-          int trackingBits = outerIdx;
-          int tableIdx = 0;
-          while (trackingBits > 0) {
-            bitSum += b17[tableIdx++] * (trackingBits & 1);
-            trackingBits >>= 1;
-          }
-        }
-
+        int bitSum = PopCountWeighted_((uint)outerIdx, b17);
         for (int mixDimIdx = 0; mixDimIdx < 14; ++mixDimIdx) {
-          int scaleFactor = (byte)b18[mixDimIdx];
-          int weightScalar = bitSum + scaleFactor;
-          if (weightScalar >= 241) weightScalar = 241;
-          if (weightScalar < 9) weightScalar = 9;
-          
           int idx = (mixDimIdx + 1) * 0x4000 + outerIdx;
-          mix1[idx].freq0 = 18432;
-          mix1[idx].freq1 = 5120;
-          mix1[idx].weight = (weightScalar << 23) | (72 * weightScalar);
+          InitMixCell_(mix1[idx], ClampMixWeight_(bitSum + (byte)b18[mixDimIdx]));
         }
         MixBound1[4 * outerIdx] = 1024;
         MixFreq1_1[4 * outerIdx] = 1024;
@@ -1690,30 +1701,14 @@ sqword StartModelRare(int mode) {
 
       memset((int*)d27, 0, 0x20000);
       memset((int*)b19, 0, 0x20000);
-      
+
       // Calculate distributions for secondary mix model spaces
       MixModel* mix2 = (MixModel*)&d27;
       for (int outerIdx2 = 0; outerIdx2 < 0x2000; ++outerIdx2) {
-        int secondaryBitSum = 0;
-        if (outerIdx2 > 0) {
-          int secondaryTrackingBits = outerIdx2;
-          int secondaryTableIdx = 0;
-          while (secondaryTrackingBits > 0) {
-            secondaryBitSum += b20[secondaryTableIdx++] * (secondaryTrackingBits & 1);
-            secondaryTrackingBits >>= 1;
-          }
-        }
-
+        int bitSum = PopCountWeighted_((uint)outerIdx2, b20);
         for (int mixDim2Idx = 0; mixDim2Idx < 24; ++mixDim2Idx) {
-          int scaleOffset = (byte)b21[mixDim2Idx];
-          int weightValue = secondaryBitSum + scaleOffset;
-          if (weightValue >= 241) weightValue = 241;
-          if (weightValue < 9) weightValue = 9;
-          
           int idx = 0x4000 + mixDim2Idx * 0x2000 + outerIdx2;
-          mix2[idx].freq0 = 18432;
-          mix2[idx].freq1 = 5120;
-          mix2[idx].weight = (weightValue << 23) | (72 * weightValue);
+          InitMixCell_(mix2[idx], ClampMixWeight_(bitSum + (byte)b21[mixDim2Idx]));
         }
         MixBound4[4 * outerIdx2] = 1024;
         MixBound5[4 * outerIdx2] = 1024;
