@@ -2131,7 +2131,6 @@ sqword ReduceOrder() {
   byte* stateBW;
   uint curCtxSuffix;
   sqword bListSaved2;
-  uint suffixIdxL;
   sqword stateWalker;
   sqword stateIStates;
   sqword stateIStatesAddr;
@@ -2269,13 +2268,14 @@ LABEL_73:
     } else {
       bListSaved2 = BList;
     }
-    suffixIdxL = *(uint*)(rootCtxW+8);
-    if( suffixIdxL ) {
-      do {
-        rootCtxW = HeapNull+suffixIdxL;
-        suffixIdxL = *(uint*)(rootCtxW+8);
-      } while( suffixIdxL );
-      RootContext = rootCtxW;
+    // Walk the suffix chain down to the order-(-1) context (iSuffix == 0).
+    {
+      PPM_CONTEXT* ctx = (PPM_CONTEXT*)rootCtxW;
+      if (ctx->iSuffix) {
+        while (ctx->iSuffix) ctx = ctx->getSuffix();
+        rootCtxW = (sqword)ctx;
+        RootContext = rootCtxW;
+      }
     }
     result = UpdateModel((byte*)rootCtxW, 0);
     ++GlueCount;
