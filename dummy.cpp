@@ -2163,10 +2163,6 @@ sqword ReduceOrder() {
   sqword halfNStatesP1_b;
   sqword sizeClass4P;
   uint* newStatesPtr;
-  uint* newStatesTail;
-  sqword srcStatesAddr;
-  uint copyLoopI;
-  uint copyIdxJ;
   uint newStatesIdx;
   sqword newStatesIdx2;
   qword newStateEnd;
@@ -2197,7 +2193,6 @@ sqword ReduceOrder() {
   char sse0BitSaveCS;
   uint v13SaveCS;
   uint newByteIdxSaveCS;
-  byte* ctxBSaveAU;
   byte* ctxBSaveCS;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
@@ -2398,34 +2393,11 @@ LABEL_11:
             // recompute (matches the inlined pattern's restoration).
             sizeClassP = *(Units2Indx+halfNStatesP1+3);
             if( newStatesPtr ) {
-              newStatesTail = newStatesPtr;
-              srcStatesAddr = heapNull+stateIdxU;
-              if( (nStatesP1&2)!=0 ) {
-                *newStatesPtr = *statesPtr;
-                newStatesPtr[1] = statesPtr[1];
-                newStatesPtr[2] = statesPtr[2];
-                newStatesTail = newStatesPtr+3;
-                srcStatesAddr = heapNull+stateIdxU+12;
-              }
-              if( (halfNStatesP1&0xFFFFFFFE)!=0 ) {
-                ctxBSaveAU = ctxBW;
-                copyLoopI = 0;
-                copyIdxJ = 0;
-                do {
-                  newStatesTail[copyIdxJ] = *(uint*)(srcStatesAddr+copyIdxJ*4);
-                  ++copyLoopI;
-                  newStatesTail[copyIdxJ+1] = *(uint*)(srcStatesAddr+copyIdxJ*4+4);
-                  newStatesTail[copyIdxJ+2] = *(uint*)(srcStatesAddr+copyIdxJ*4+8);
-                  newStatesTail[copyIdxJ+3] = *(uint*)(srcStatesAddr+copyIdxJ*4+12);
-                  newStatesTail[copyIdxJ+4] = *(uint*)(srcStatesAddr+copyIdxJ*4+16);
-                  newStatesTail[copyIdxJ+5] = *(uint*)(srcStatesAddr+copyIdxJ*4+20);
-                  copyIdxJ += 6;
-                } while( copyLoopI<nStatesP1>>2 );
-                ctxBW = ctxBSaveAU;
-              }
-              // Free the old states block (still rooted at stateIdxU /
-              // statesPtr); FreeUnitsRare runs the same coalesce/chunk/split
-              // path as the inlined code did.
+              // Copy nStatesP1/2 units (each = 2 STATEs) from the old block to
+              // the new one, then free the old block. The unit count matches
+              // the size class returned by Indx2Units[sizeClassP] for the
+              // old allocation.
+              UnitsCpy_(newStatesPtr, (uint*)(heapNull+stateIdxU), nStatesP1 >> 1);
               FreeUnitsRare((sqword)statesPtr, (uint)Indx2Units[sizeClassP]);
             }
             statesPtr = newStatesPtr;
