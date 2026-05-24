@@ -1597,16 +1597,16 @@ sqword StartModelRare(int mode) {
     }
 
     // Establish structural properties for the Root Context block
-    byte* rootCtx = (byte*)allocatedContextAddr;
-    *(uint*)(rootCtx + 8) = 0; // Clear suffix references [cite: 90]
+    PPM_CONTEXT* rootCtxP = (PPM_CONTEXT*)allocatedContextAddr;
+    rootCtxP->iSuffix = 0;                  // root has no suffix
     RootContext = allocatedContextAddr;
-    rootCtx[1] = (byte)-57; // Flags [cite: 91]
+    rootCtxP->Flags = (byte)-57;
     MaxContext0 = allocatedContextAddr;
-    *(word*)(rootCtx + 2) = 256; // SummFreq base [cite: 91]
-    
+    rootCtxP->SummFreq = 256;
+
     sqword preferredIndex = (byte)b11;
     NMasked = 255;
-    rootCtx[0] = (byte)-1; // NStates initialized [cite: 92]
+    rootCtxP->NStates = (byte)-1;           // NStates = 255 (256 states)
     uint* targetQueue = &heapBlocks[3 * preferredIndex];
 
     sqword stateStorageAddr;
@@ -1630,7 +1630,7 @@ sqword StartModelRare(int mode) {
     }
 
     q9 = stateStorageAddr;
-    *(uint*)(rootCtx + 4) = stateStorageAddr - (uint)(uintptr_t)heapNullOffset; // Link states to context [cite: 99]
+    rootCtxP->iStates = (uint)(stateStorageAddr - (uint)(uintptr_t)heapNullOffset);
     MixCtx = 0;
     MixCtx2 = 0;
     MixCtx3 = 0;
@@ -1638,7 +1638,7 @@ sqword StartModelRare(int mode) {
     PrevSymbol = 0;
     
     // Initialize state fields across all 256 unique symbols
-    byte* statePtr = (byte*)heapBlocks + *(uint*)(rootCtx + 4) - 1;
+    byte* statePtr = (byte*)heapBlocks + rootCtxP->iStates - 1;
     for (int i = 0; i < 256; ++i) {
       statePtr[6 * i + 0] = i; // Symbol [cite: 102]
       statePtr[6 * i + 1] = 1; // Freq [cite: 103]
