@@ -220,7 +220,7 @@ int EscIndexSeed;
 int unusedD111;
 int NMasked;
 
-sqword q38;
+sqword predWeightSink2;
 int predDeltaNum;
 int predDeltaDen;
 int runLengthInit;
@@ -4739,8 +4739,8 @@ LABEL_59:
         int sparseHitsF =
               ((SparseBit & SparseBitmapA[((candSymbol+SparseHashA) >> 5) + 0x2000]) != 0)
           + 2*((SparseBit & SparseBitmapB[predShiftFlags + ((candSymbol+SparseHashB) >> 5)]) != 0);
-        predWeightB = (uint*)&q38;      // dummy sink: PredWeight stage not taken
-        predWeightA = (uint*)&q38;
+        predWeightB = (uint*)&predWeightSink2;      // dummy sink: PredWeight stage not taken
+        predWeightA = (uint*)&predWeightSink2;
           matchCtxHiSave = MatchCtxHi;
         int matchTblHitF = MatchPosTable[256*MatchCtxHi+candSymbol];
         if( (uint)(SymEpoch-matchTblHitF)>=0x20000 ) {
