@@ -1747,25 +1747,21 @@ sqword StartModelRare(int mode) {
         }
       }
 
+      // Initialize each SSE cell-array (Sse1, SseMatch, Sse2, Sse3) to its
+      // neutral starting prior: every 2-int cell becomes (num0, denInit).
+      auto initSseCells = [](int* cells, sqword nCells, int num0, int denInit) {
+        for (sqword i = 0; i < nCells; ++i) {
+          cells[2 * i]     = num0;
+          cells[2 * i + 1] = denInit;
+        }
+      };
       OrderCtxSeed = 0;
-      for (sqword i = 0; i < 196608; ++i) {
-        Sse1[2 * i] = 0x2000;
-        Sse1[2 * i + 1] = 24576;
-      }
-      for (sqword j = 0; j < 0x100000; ++j) {
-        SseMatch[2 * j] = 0;
-        SseMatch[2 * j + 1] = 0x40000;
-      }
+      initSseCells(Sse1,     196608,  0x2000, 24576);
+      initSseCells(SseMatch, 0x100000, 0,     0x40000);
       SseSeed = 0;
-      for (sqword k = 0; k < 98304; ++k) {
-        Sse2[2 * k] = 0;
-        Sse2[2 * k + 1] = 0x40000;
-      }
+      initSseCells(Sse2,     98304,   0,      0x40000);
       MixCtxExtra = 0;
-      for (sqword result_idx = 0; result_idx < 86016; ++result_idx) {
-        Sse3[2 * result_idx] = 0;
-        Sse3[2 * result_idx + 1] = 0x80000;
-      }
+      initSseCells(Sse3,     86016,   0,      0x80000);
       result = 86016;
     }
   } else { // Traversal fallback configuration for persistent run instances [cite: 147]
