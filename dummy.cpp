@@ -118,11 +118,11 @@ int SymLastCtx[1024];
 int* SymLastCtx2 = &SymLastCtx[256];
 int* MatchPosBySym = &SymLastCtx[512];
 char BijectMap[0x40000];
-int d82;
+int q26Anchor;
 char b25;
 sqword q26;
 int MixScale;
-int d72;
+int hintSymRecent;
 int FoundSymbol;
 int HashSeed2;
 int HashSeed1;
@@ -217,13 +217,13 @@ int PrevSymbol;
 int OrderCtxSeed;
 int SseSeed;
 int EscIndexSeed;
-int d111;
+int unusedD111;
 int NMasked;
 
 sqword q38;
-int d112;
-int d113;
-int d16;
+int predDeltaNum;
+int predDeltaDen;
+int runLengthInit;
 int OrderFall0;
 int SolidInterrupt = 0;
 byte freqmap[0x100];
@@ -235,8 +235,8 @@ int f_LOG = 0;
 
 int sseTot;
 int sseCum;
-int d93;
-int d110;
+int orderBumpVariance;
+int predWeightSink;
 int d48;
 int d49;
 int d46;
@@ -273,12 +273,12 @@ sqword q9;
 sqword q33;
 sqword CtxChainEnd;
 
-int d83;
-int d84;
-int d85;
-int d92;
-int d86;
-int d87;
+int hintSymB31;
+int hintSymM2;
+int hintSymB29;
+int hintSymBiject;
+int hintSymMatch3;
+int hintSymQ26;
 int d52;
 int d50;
 int d54;
@@ -685,7 +685,7 @@ TARGET_SCALE_FALLBACK:
   }
 
   // FIX BUG 2: Synchronize variance tracking value to the context mixing stage
-  d93 = path_threshold-initial_threshold;
+  orderBumpVariance = path_threshold-initial_threshold;
 
   // Set the low-level pointer output to the updated context summary tracking byte
   *outSummFreqPtr = (sqword)((byte*)&path_ctx->SummFreq);
@@ -763,9 +763,9 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
+  sseTot=sseCum=orderBumpVariance=predWeightSink=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
-  d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=d52=d50=d54=d53=d56=d55=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
@@ -1790,11 +1790,11 @@ sqword StartModelRare(int mode) {
     if (mode != 2 || RunLength == -100) {
       int runLengthVal;
       if (MaxOrder >= 11) {
-        d16 = -11;
+        runLengthInit = -11;
         runLengthVal = -11;
       } else {
         runLengthVal = -MaxOrder;
-        d16 = -MaxOrder;
+        runLengthInit = -MaxOrder;
       }
       RunLength = runLengthVal;
 
@@ -3151,10 +3151,10 @@ qword MixUpdate(byte* a1) {
   dt = symEpoch-recentEpoch;
   if( (uint)(symEpoch-recentEpoch)>=0x104 ) {
     d66 = 0;
-    d72 = -1;
+    hintSymRecent = -1;
   } else {
     hashByte = (byte)MatchPosHash[(recentEpoch+1)&0x1FFFF];
-    d72 = hashByte;
+    hintSymRecent = hashByte;
     if( dt>=50 )
       hashByte = 0;
     cnt = 192;
@@ -3228,15 +3228,15 @@ qword MixUpdate(byte* a1) {
       if( sym==(byte)sseSlot[-4*dt]||(rp2 = RecentPos[recentForHi&0xFFF], dt==recentForHi-rp2)&&dt==rp2-RecentPos[rp2&0xFFF]&&(uint)matchHi==(byte)sseSlot[-3*dt-1] ) {
         MixScale = dt;
         d80 = dt;
-        q26 = (sqword)&d82;
+        q26 = (sqword)&q26Anchor;
       }
     }
   }
-  d83 = -1;
-  d84 = -1;
-  d85 = -1;
-  d86 = -1;
-  d87 = -1;
+  hintSymB31 = -1;
+  hintSymM2 = -1;
+  hintSymB29 = -1;
+  hintSymMatch3 = -1;
+  hintSymQ26 = -1;
   HashSeed1 = -1;
   bdiff = (byte)(sym-matchHi);
   HashSeed2 = -1;
@@ -3260,7 +3260,7 @@ qword MixUpdate(byte* a1) {
     if( 4*MixScale-1>(uint)d80 ) {
       // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
       // window; 6,10 short window with compact second arm).
-      d86 = MatchPosHint_  (3, symEpoch, symEpochN, sc);
+      hintSymMatch3 = MatchPosHint_  (3, symEpoch, symEpochN, sc);
             MatchPosHint_  (4, symEpoch, symEpochN, sc);
             MatchPosHint_  (5, symEpoch, symEpochN, sc);
             MatchPosHint_  (8, symEpoch, symEpochN, sc);
@@ -3273,12 +3273,12 @@ qword MixUpdate(byte* a1) {
       byte sm7 = (byte)*(sseSlot-7), sm8 = (byte)*(sseSlot-8);
       HashArmUpdate_(SseState2, 256*sm1 + sm3, 256*sm2 + sm4, sym, sc);
       HashArmUpdate_(b28,       256*sm2 + sm6, 256*sm3 + sm7, sym, sc);
-      d85 = HashArmUpdate_(b29, 256*sm0 + sm7, 256*sm1 + sm8, sym, sc);
+      hintSymB29 = HashArmUpdate_(b29, 256*sm0 + sm7, 256*sm1 + sm8, sym, sc);
       HashArmUpdate_(b30,       256*sm1 + sm7, 256*sm2 + sm8, sym, sc);
 
       // b31 arm uses a different routing (no collision branch, SymLastCtx only)
       uint b31_ri = (uint)(Order1Ctx + (d66 << 8));
-      d83 = (byte)b31[b31_ri];
+      hintSymB31 = (byte)b31[b31_ri];
       SymLastCtx[(byte)b31[b31_ri]] = sc;
       if (sym != d65 && sym != d67) b31[d67 + (d65 << 8)] = sym;
 
@@ -3294,7 +3294,7 @@ LABEL_94:
   m2_prev1 = MatchPosPrev[(symEpoch-2)&0x1FFFF];
   if( (uint)(symEpochN-m2_prev1)<0x20000 ) {
     m2_h1 = (byte)MatchPosHash[(m2_prev1+3)&0x1FFFF];
-    d84 = m2_h1;
+    hintSymM2 = m2_h1;
     SymLastCtx2[m2_h1] = sc;
     m2_prev2 = MatchPosPrev[m2_prev1&0x1FFFF];
     if( (uint)(symEpochN-m2_prev2)<0x20000 ) {
@@ -3334,7 +3334,7 @@ LABEL_94:
   oldD90IdxA = (uint)d90[otherPar];
   v94_b33 = (byte)b33[newD90Idx];                                     // capture before helper write
   BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90IdxA, sym, sc);
-  d92 = v94_b33;
+  hintSymBiject = v94_b33;
 
   savedD91 = (uint)d91;
   newD91 = (word)(((sym>>4)&0xFFFE)+8*d91)&0xFFFE;
@@ -3365,11 +3365,11 @@ LABEL_94:
     SymLastCtx[(byte)BijectMap[4*bmComposite+2+4*b1]] = sc;
     SymLastCtx[*(byte*)(q26+1)] = sc;
     bmByte = *(byte*)q26;
-    d87 = *(byte*)q26;
+    hintSymQ26 = *(byte*)q26;
     SymLastCtx[bmByte] = sc;
     if( *(byte*)(q26+3) ) {
-      if( *(byte*)(q26+3)>1u||d72<=0 )
-        d72 = *(byte*)q26;
+      if( *(byte*)(q26+3)>1u||hintSymRecent<=0 )
+        hintSymRecent = *(byte*)q26;
       MatchPosBySym[*(byte*)q26] = sc;
     }
     if( b1==b2&&b2==b3 ) {
@@ -3480,7 +3480,7 @@ LABEL_94:
     if( minNStates )
       mixFlag1 = (-45*minNStates+(uint)*((word*)a1+1))>>31;
     else
-      mixFlag1 = d93==0;
+      mixFlag1 = orderBumpVariance==0;
     mixFlag2 = mixFlag1;
     ofallSaved = OrderFall;
     ofallP3 = OrderFall+3;
@@ -4335,9 +4335,9 @@ LABEL_58:
     d52 = mixHitsB;
     d50 = mixFreqB;
     OrderCtxSeed = SseIdx{}
-      .bit  <0>    (currentSymbol == d83)
-      .bit  <1>    (currentSymbol == d85)
-      .bit  <2>    (currentSymbol == d92)
+      .bit  <0>    (currentSymbol == hintSymB31)
+      .bit  <1>    (currentSymbol == hintSymB29)
+      .bit  <2>    (currentSymbol == hintSymBiject)
       .bit  <3>    (currentSymbol == d66)
       .bit  <4>    (currentSymbol == Order1Ctx)
       .field<5, 3> (currentSymbol)                              // bits 5-7 of the symbol
@@ -4362,7 +4362,7 @@ LABEL_58:
       sseTot = cumWeightB;
       sseCum = cumFreqB;
       q35 = q34 = q29 = q30 = q31 = q32 = q18 = q22 = q20 = q17 = (sqword)d27;
-      binSseCell = (uint*)&d110;        // dummy sink: deeper sub-stage not taken
+      binSseCell = (uint*)&predWeightSink;        // dummy sink: deeper sub-stage not taken
     } else {
       // Deeper sub-stage: take the BinSse path and run ~6 more SSE-mix
       // accumulators before joining the range coder dispatch below.
@@ -4432,9 +4432,9 @@ LABEL_58:
     sseSum2A = sseMatchClampA+matchCumInA;
     sseCum = sseSum2A;
     sse2IdxA = SseIdx{}
-      .bit  <0>    (escSymB == d84)
-      .bit  <1>    (escSymB == d86)                              // overlaid with SSE0 byte below
-      .bit  <2>    (escSymB == d87)
+      .bit  <0>    (escSymB == hintSymM2)
+      .bit  <1>    (escSymB == hintSymMatch3)                              // overlaid with SSE0 byte below
+      .bit  <2>    (escSymB == hintSymQ26)
       .bit  <3>    (escSymB == FoundSymbol)
       .bit  <4>    (escSymB == PrevSymbol)
       .bits <5, 2> (((uint)matchPosAge < 0xA800)
@@ -4685,7 +4685,7 @@ LABEL_335:
       d103 = d103Cache;
       sumFreqF = freqSumE+sumFreqDivC;
       cumFreqAcc = sumFreqF;
-      RunLength = d16;
+      RunLength = runLengthInit;
       predRescaleDiv = freqSumE+descendNStates+1;
       predBinFlags = 0;
       chainPtr = CtxChain;
@@ -4764,7 +4764,7 @@ LABEL_59:
           .bit  <4>    (candSymbol == FoundSymbol)        // candidate is the previous FoundSymbol
           .bits <0, 8> (SSE0[candSymbol])      // SSE0[sym] sym-type byte at bits 0-7 (may overlap above)
           .bit  <8>    (epoch == SymLastCtx[candSymbol])  // SymLastCtx hit on this candidate
-          .bit  <9>    (candSymbol == d72                                              // strong position-bias hint
+          .bit  <9>    (candSymbol == hintSymRecent                                              // strong position-bias hint
                        || *(uint*)(sse2Base+512) < (uint)(sse2Base[((word)candSymbol-(word)RSContext)&0x1FF]<<7))
           .bit  <10>   (candSymbol == escSymbol)          // candidate is the entry escape symbol
           .bit  <11>   (sumFreqF      < d103Cache)        // freq summary below threshold
@@ -4784,9 +4784,9 @@ LABEL_59:
         d50 = freq0F;
         // OrderCtxSeed composite for the per-candidate Sse1 table lookup.
         OrderCtxSeed = SseIdx{}
-          .bit  <0>    (candSymbol == d83)              // matches b31 hint
-          .bit  <1>    (candSymbol == d85)              // matches b29 hint
-          .bit  <2>    (candSymbol == d92)              // matches BijectMap hint
+          .bit  <0>    (candSymbol == hintSymB31)              // matches b31 hint
+          .bit  <1>    (candSymbol == hintSymB29)              // matches b29 hint
+          .bit  <2>    (candSymbol == hintSymBiject)              // matches BijectMap hint
           .bit  <3>    (candSymbol == d66)              // matches MatchPosHash hint
           .bit  <4>    (candSymbol == Order1Ctx)        // matches order-1 context
           .field<5, 3> (candSymbol)                     // high 3 bits of the candidate sym
@@ -4830,9 +4830,9 @@ LABEL_59:
           uint predWPostF = ((predConstAF*predTotEarlyF+predConstBF*(predWAOldA+*predWAF))>>(predBoostShiftF+7))+mixCumFreqF;
           char predShiftF = predBoostShiftF + (centerWeightF<0x48) + 3;
           uint predDenIncF = ((uint)(192*(predConstAF+predConstBF))>>predBoostShiftF)+mixCumWeightF;
-          d112 = 0x3000u>>predShiftF;
+          predDeltaNum = 0x3000u>>predShiftF;
           char predDenShiftF = predBoostShiftF+4;
-          d113 = 0x3000u>>predDenShiftF;
+          predDeltaDen = 0x3000u>>predDenShiftF;
           *predWAF = predWBOldA-(predWBOldA>>predShiftF);
           predWAF[1] -= (predScaledAF+7)>>predDenShiftF;
           *predWBF = predWAOldA-(predWAOldA>>predShiftF);
@@ -4880,9 +4880,9 @@ LABEL_59:
         sseCum = cumWeightF;
         d56 = sseTot;
         sqword sse2IdxF = SseIdx{}
-          .bit  <0>    (candSymbol == d84)
-          .bit  <1>    (candSymbol == d86)                          // overlaid with SSE0 byte below
-          .bit  <2>    (candSymbol == d87)
+          .bit  <0>    (candSymbol == hintSymM2)
+          .bit  <1>    (candSymbol == hintSymMatch3)                          // overlaid with SSE0 byte below
+          .bit  <2>    (candSymbol == hintSymQ26)
           .bit  <3>    (candSymbol == FoundSymbol)
           .bit  <4>    (candSymbol == PrevSymbol)
           .bits <5, 2> (((uint)matchPosAge < 0xA800)
@@ -4939,11 +4939,11 @@ LABEL_59:
           }
         } else {
           if( !f_DEC ) rc.encodeSymbol(subRangeC);
-          // commit two PredWeight pairs (d112, d113) at the A and B cells
-          predWeightA[0] += d112;
-          predWeightA[1] += d113;
-          predWeightB[0] += d112;
-          predWeightB[1] += d113;
+          // commit two PredWeight pairs (predDeltaNum, predDeltaDen) at the A and B cells
+          predWeightA[0] += predDeltaNum;
+          predWeightA[1] += predDeltaDen;
+          predWeightB[0] += predDeltaNum;
+          predWeightB[1] += predDeltaDen;
           flagsCtxFC = MinContext->Flags;
           freqBoostFC = (matchPosAge>0x4800) + (matchPosAge>0x380) + (matchPosAge>0x80)
                       + ((flagsCtxFC&0x40)==0 || matchPosAge>0xE00) + 4;
