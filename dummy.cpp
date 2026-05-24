@@ -1305,49 +1305,49 @@ sqword AllocUnitsRare(uint unitsIdx) {
   uint* finalFreelist;
   int finalFreelistNext;
   int blockIdxFinal;
-  sqword v30;
-  char* v31;
-  sqword v32;
-  int v33;
-  sqword v34;
-  uint v35;
-  int v36;
-  uint* v37;
-  int v38;
-  int v39;
-  sqword v40;
-  char* v41;
-  sqword v42;
-  uint v43;
-  sqword v44;
-  uint* v45;
-  int v46;
-  int v47;
-  byte* v48;
-  sqword v49;
-  sqword v50;
-  uint v51;
-  uint v52;
-  int v53;
-  sqword v54;
-  int v55;
-  uint v56;
-  sqword v57;
-  sqword v58;
-  int v59;
-  uint* v60;
-  byte* v61;
-  uint* v62;
-  int v63;
-  int v64;
-  int v65;
-  sqword v66;
-  uint* v67;
-  sqword v68;
-  bool v69;
-  int v70;
-  sqword v71;
-  sqword v72;
+  sqword textBufBytes;
+  char* sentinel;
+  sqword heapNullCopy;
+  int sentinelIdx;
+  sqword queueIdxOuter;
+  uint queueLoopCnt;
+  int bListCountIdx2;
+  uint* queueFreelist;
+  int queueNextIdx;
+  int queueHeadIdx;
+  sqword queueNextEntry;
+  char* blockWalker;
+  sqword sizeClassW;
+  uint unitsInRun;
+  sqword unitsInRunSaved;
+  uint* noSplitFreelist;
+  int noSplitNextIdx;
+  int noSplitBlockIdx;
+  byte* walkerIdxW;
+  sqword walkerByteOffW;
+  sqword coalesceFreelistOffW;
+  uint unitsInRunInit;
+  uint chunkLoopIW;
+  int chunkLoopJW;
+  sqword chunksOver128W;
+  int freelistHead1536W;
+  uint chunkLoopKW;
+  sqword biggerSizeClassW;
+  sqword biggerUnitsW;
+  int deltaUnitsW;
+  uint* biggerFreelistW;
+  byte* splitBlockW;
+  uint* finalFreelistW;
+  int finalFreelistNextW;
+  int splitBlockIdxW;
+  int reqUnitsByte;
+  sqword biggerSizeClass4;
+  uint* finalQueue;
+  sqword finalUnits;
+  bool isExact;
+  int sentinelField2;
+  sqword sentinelField1;
+  sqword reqSizeIdx2;
   bListSaved = BList;
   reqSizeIdx = unitsIdx;
   reqUnits = *((byte*)&Indx2Units+unitsIdx);
@@ -1434,147 +1434,147 @@ sqword AllocUnitsRare(uint unitsIdx) {
   if( CutOffCount ) {
     if( GlueCount )
       return 0;
-    v30 = 12*reqUnits;
-    if( UnitsStart-v30<=(qword)pText ) {
+    textBufBytes = 12*reqUnits;
+    if( UnitsStart-textBufBytes<=(qword)pText ) {
       return 0;
     } else {
-      result = UnitsStart-v30;
-      UnitsStart -= v30;
+      result = UnitsStart-textBufBytes;
+      UnitsStart -= textBufBytes;
     }
   } else {
-    v31 = (char*)HeapStart+SubAllocatorSize-12;
-    v32 = HeapNull;
-    v70 = *((uint*)v31+2);
-    v71 = *(qword*)v31;
-    v33 = (uint)(uintptr_t)HeapStart+SubAllocatorSize-12-HeapNull;
-    v72 = reqSizeIdx;
-    v34 = 0;
-    v35 = 0;
-    v36 = BList-HeapNull+444;
+    sentinel = (char*)HeapStart+SubAllocatorSize-12;
+    heapNullCopy = HeapNull;
+    sentinelField2 = *((uint*)sentinel+2);
+    sentinelField1 = *(qword*)sentinel;
+    sentinelIdx = (uint)(uintptr_t)HeapStart+SubAllocatorSize-12-HeapNull;
+    reqSizeIdx2 = reqSizeIdx;
+    queueIdxOuter = 0;
+    queueLoopCnt = 0;
+    bListCountIdx2 = BList-HeapNull+444;
     do {
-      v31[1] = -2;
-      v37 = (uint*)(bListSaved+12*v34);
-      v38 = v37[1];
-      *v31 = 1;
-      v39 = bListSaved+12*v34-v32;
-      *((uint*)v31+2) = v39;
-      *((uint*)v31+1) = v38;
-      *(uint*)((uint)v37[1]+v32+8) = v33;
-      v40 = (uint)v37[2];
-      ++*v37;
-      v37[1] = v33;
-      v41 = (char*)(v32+v40);
-      v37[2] = *((uint*)v41+2);
-      *(uint*)(*((uint*)v41+2)+v32+4) = v39;
-      --*v37;
-      for(; v41!=v31; --*v37 ) {
-        v42 = *(Units2Indx+(uint)(byte)*v41+3);
-        (void)(*(uint*)((uint)v37[2]+v32+8)+v32+4); // prefetch hint removed
-        v43 = *((byte*)&Indx2Units+v42);
-        v44 = *((byte*)&Indx2Units+v42);
-        if( (byte)v41[12*v44+1]==255 ) {
-          v48 = (byte*)&v41[-v32];
-          v49 = 12*v44;
+      sentinel[1] = -2;
+      queueFreelist = (uint*)(bListSaved+12*queueIdxOuter);
+      queueNextIdx = queueFreelist[1];
+      *sentinel = 1;
+      queueHeadIdx = bListSaved+12*queueIdxOuter-heapNullCopy;
+      *((uint*)sentinel+2) = queueHeadIdx;
+      *((uint*)sentinel+1) = queueNextIdx;
+      *(uint*)((uint)queueFreelist[1]+heapNullCopy+8) = sentinelIdx;
+      queueNextEntry = (uint)queueFreelist[2];
+      ++*queueFreelist;
+      queueFreelist[1] = sentinelIdx;
+      blockWalker = (char*)(heapNullCopy+queueNextEntry);
+      queueFreelist[2] = *((uint*)blockWalker+2);
+      *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
+      --*queueFreelist;
+      for(; blockWalker!=sentinel; --*queueFreelist ) {
+        sizeClassW = *(Units2Indx+(uint)(byte)*blockWalker+3);
+        (void)(*(uint*)((uint)queueFreelist[2]+heapNullCopy+8)+heapNullCopy+4); // prefetch hint removed
+        unitsInRun = *((byte*)&Indx2Units+sizeClassW);
+        unitsInRunSaved = *((byte*)&Indx2Units+sizeClassW);
+        if( (byte)blockWalker[12*unitsInRunSaved+1]==255 ) {
+          walkerIdxW = (byte*)&blockWalker[-heapNullCopy];
+          walkerByteOffW = 12*unitsInRunSaved;
           do {
-            *(uint*)(*(uint*)&v41[v49+4]+v32+8) = *(uint*)&v41[v49+8];
-            *(uint*)(*(uint*)&v41[v49+8]+v32+4) = *(uint*)&v41[v49+4];
-            v50 = 12LL**(Units2Indx+(byte)v41[v49]+3);
-            --*(uint*)(v50+bListSaved);
-            v43 += (byte)v41[v49];
-            v49 = 12LL*v43;
-          } while( (byte)v41[v49+1]==255 );
-          if( v43>0x80 ) {
-            v51 = v43;
-            v52 = 0;
-            v53 = 0;
-            v54 = -((sqword)(((qword)((1LL-v43)>>6)>>57)-v43+1)>>7);
+            *(uint*)(*(uint*)&blockWalker[walkerByteOffW+4]+heapNullCopy+8) = *(uint*)&blockWalker[walkerByteOffW+8];
+            *(uint*)(*(uint*)&blockWalker[walkerByteOffW+8]+heapNullCopy+4) = *(uint*)&blockWalker[walkerByteOffW+4];
+            coalesceFreelistOffW = 12LL**(Units2Indx+(byte)blockWalker[walkerByteOffW]+3);
+            --*(uint*)(coalesceFreelistOffW+bListSaved);
+            unitsInRun += (byte)blockWalker[walkerByteOffW];
+            walkerByteOffW = 12LL*unitsInRun;
+          } while( (byte)blockWalker[walkerByteOffW+1]==255 );
+          if( unitsInRun>0x80 ) {
+            unitsInRunInit = unitsInRun;
+            chunkLoopIW = 0;
+            chunkLoopJW = 0;
+            chunksOver128W = -((sqword)(((qword)((1LL-unitsInRun)>>6)>>57)-unitsInRun+1)>>7);
             do {
-              v43 = v53+v51-128;
-              v53 -= 128;
-              ++v52;
-            } while( v52<(uint)v54 );
-            v55 = *(uint*)(bListSaved+448);
-            v56 = 0;
+              unitsInRun = chunkLoopJW+unitsInRunInit-128;
+              chunkLoopJW -= 128;
+              ++chunkLoopIW;
+            } while( chunkLoopIW<(uint)chunksOver128W );
+            freelistHead1536W = *(uint*)(bListSaved+448);
+            chunkLoopKW = 0;
             do {
-              v41[1] = -1;
-              *((uint*)v41+2) = v36;
-              *((uint*)v41+1) = v55;
-              v55 = (int)(uintptr_t)v48;
-              *v41 = 0x80;
-              v48 += 1536;
-              v41 += 1536;
-              *(uint*)(v32+*(uint*)(bListSaved+448)+8) = v55;
+              blockWalker[1] = -1;
+              *((uint*)blockWalker+2) = bListCountIdx2;
+              *((uint*)blockWalker+1) = freelistHead1536W;
+              freelistHead1536W = (int)(uintptr_t)walkerIdxW;
+              *blockWalker = 0x80;
+              walkerIdxW += 1536;
+              blockWalker += 1536;
+              *(uint*)(heapNullCopy+*(uint*)(bListSaved+448)+8) = freelistHead1536W;
               ++*(uint*)(bListSaved+444);
-              *(uint*)(bListSaved+448) = v55;
-              ++v56;
-            } while( v56<(uint)v54 );
+              *(uint*)(bListSaved+448) = freelistHead1536W;
+              ++chunkLoopKW;
+            } while( chunkLoopKW<(uint)chunksOver128W );
           }
-          v57 = *(Units2Indx+v43+3);
-          LODWORD(v58) = *((byte*)&Indx2Units+v57);
-          if( v43!=(uint)v58 ) {
-            v57 = (uint)(v57-1);
-            v58 = *((byte*)&Indx2Units+v57);
-            v59 = v43-v58;
-            v60 = (uint*)(bListSaved+12LL*(uint)(v59-1));
-            v61 = (byte*)&v41[12*v58];
-            v61[1] = -1;
-            *v61 = v59;
-            *((uint*)v61+2) = bListSaved+12*(v59-1)-v32;
-            *((uint*)v61+1) = v60[1];
-            LODWORD(v61) = (uint)(uintptr_t)v61-v32;
-            *(uint*)((uint)v60[1]+v32+8) = (uint)(uintptr_t)v61;
-            v60[1] = (uint)(uintptr_t)v61;
-            ++*v60;
+          biggerSizeClassW = *(Units2Indx+unitsInRun+3);
+          LODWORD(biggerUnitsW) = *((byte*)&Indx2Units+biggerSizeClassW);
+          if( unitsInRun!=(uint)biggerUnitsW ) {
+            biggerSizeClassW = (uint)(biggerSizeClassW-1);
+            biggerUnitsW = *((byte*)&Indx2Units+biggerSizeClassW);
+            deltaUnitsW = unitsInRun-biggerUnitsW;
+            biggerFreelistW = (uint*)(bListSaved+12LL*(uint)(deltaUnitsW-1));
+            splitBlockW = (byte*)&blockWalker[12*biggerUnitsW];
+            splitBlockW[1] = -1;
+            *splitBlockW = deltaUnitsW;
+            *((uint*)splitBlockW+2) = bListSaved+12*(deltaUnitsW-1)-heapNullCopy;
+            *((uint*)splitBlockW+1) = biggerFreelistW[1];
+            LODWORD(splitBlockW) = (uint)(uintptr_t)splitBlockW-heapNullCopy;
+            *(uint*)((uint)biggerFreelistW[1]+heapNullCopy+8) = (uint)(uintptr_t)splitBlockW;
+            biggerFreelistW[1] = (uint)(uintptr_t)splitBlockW;
+            ++*biggerFreelistW;
           }
-          v41[1] = -1;
-          v62 = (uint*)(bListSaved+12*v57);
-          v63 = v62[1];
-          *v41 = v58;
-          *((uint*)v41+2) = (uint)(uintptr_t)v62-v32;
-          *((uint*)v41+1) = v63;
-          v64 = (uint)(uintptr_t)v41-v32;
-          *(uint*)((uint)v62[1]+v32+8) = v64;
-          v62[1] = v64;
-          ++*v62;
+          blockWalker[1] = -1;
+          finalFreelistW = (uint*)(bListSaved+12*biggerSizeClassW);
+          finalFreelistNextW = finalFreelistW[1];
+          *blockWalker = biggerUnitsW;
+          *((uint*)blockWalker+2) = (uint)(uintptr_t)finalFreelistW-heapNullCopy;
+          *((uint*)blockWalker+1) = finalFreelistNextW;
+          splitBlockIdxW = (uint)(uintptr_t)blockWalker-heapNullCopy;
+          *(uint*)((uint)finalFreelistW[1]+heapNullCopy+8) = splitBlockIdxW;
+          finalFreelistW[1] = splitBlockIdxW;
+          ++*finalFreelistW;
         } else {
-          v41[1] = -1;
-          v45 = (uint*)(bListSaved+12*v42);
-          v46 = v45[1];
-          *v41 = v43;
-          *((uint*)v41+2) = (uint)(uintptr_t)v45-v32;
-          *((uint*)v41+1) = v46;
-          v47 = (uint)(uintptr_t)v41-v32;
-          *(uint*)((uint)v45[1]+v32+8) = v47;
-          v45[1] = v47;
-          ++*v45;
+          blockWalker[1] = -1;
+          noSplitFreelist = (uint*)(bListSaved+12*sizeClassW);
+          noSplitNextIdx = noSplitFreelist[1];
+          *blockWalker = unitsInRun;
+          *((uint*)blockWalker+2) = (uint)(uintptr_t)noSplitFreelist-heapNullCopy;
+          *((uint*)blockWalker+1) = noSplitNextIdx;
+          noSplitBlockIdx = (uint)(uintptr_t)blockWalker-heapNullCopy;
+          *(uint*)((uint)noSplitFreelist[1]+heapNullCopy+8) = noSplitBlockIdx;
+          noSplitFreelist[1] = noSplitBlockIdx;
+          ++*noSplitFreelist;
         }
-        v41 = (char*)(v32+(uint)v37[2]);
-        v37[2] = *((uint*)v41+2);
-        *(uint*)(*((uint*)v41+2)+v32+4) = v39;
+        blockWalker = (char*)(heapNullCopy+(uint)queueFreelist[2]);
+        queueFreelist[2] = *((uint*)blockWalker+2);
+        *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
       }
-      v34 = ++v35;
-    } while( v35<0x26 );
-    *(qword*)v31 = v71;
-    *((uint*)v31+2) = v70;
-    v65 = *((byte*)&Indx2Units+v72);
+      queueIdxOuter = ++queueLoopCnt;
+    } while( queueLoopCnt<0x26 );
+    *(qword*)sentinel = sentinelField1;
+    *((uint*)sentinel+2) = sentinelField2;
+    reqUnitsByte = *((byte*)&Indx2Units+reqSizeIdx2);
     CutOffCount = 1;
-    v66 = *(Units2Indx4+(uint)(v65-1));
-    v67 = (uint*)(12*v66+bListSaved);
-    if( *v67 ) {
-      result = v32+(uint)v67[1];
-      v67[1] = *(uint*)(result+4);
-      *(uint*)(*(uint*)(result+4)+v32+8) = (uint)(uintptr_t)v67-v32;
-      --*v67;
+    biggerSizeClass4 = *(Units2Indx4+(uint)(reqUnitsByte-1));
+    finalQueue = (uint*)(12*biggerSizeClass4+bListSaved);
+    if( *finalQueue ) {
+      result = heapNullCopy+(uint)finalQueue[1];
+      finalQueue[1] = *(uint*)(result+4);
+      *(uint*)(*(uint*)(result+4)+heapNullCopy+8) = (uint)(uintptr_t)finalQueue-heapNullCopy;
+      --*finalQueue;
     } else {
       result = LoUnit;
-      v68 = 12*(uint)*((byte*)&Indx2Units+v66);
-      v69 = LoUnit+v68==HiUnit;
-      if( LoUnit+v68>(qword)HiUnit ) {
-        return AllocUnitsRare((uint)v66);
+      finalUnits = 12*(uint)*((byte*)&Indx2Units+biggerSizeClass4);
+      isExact = LoUnit+finalUnits==HiUnit;
+      if( LoUnit+finalUnits>(qword)HiUnit ) {
+        return AllocUnitsRare((uint)biggerSizeClass4);
       } else {
-        LoUnit += v68;
-        if( !v69 )
-          *(uint*)(v68+result) = 0;
+        LoUnit += finalUnits;
+        if( !isExact )
+          *(uint*)(finalUnits+result) = 0;
       }
     }
   }
