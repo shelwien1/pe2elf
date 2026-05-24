@@ -1496,7 +1496,7 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   // onto BList[37] (the dedicated 1536-byte-chunk queue). What remains is
   // (sizeClass - 128 * chunksOver128) units.
   if (sizeClass > 0x80) {
-    uint chunksOver128 = (uint)(((uint)sizeClass + 0x7Fu) >> 7) - 1;
+    uint chunksOver128 = (sizeClass - 1) >> 7;   // == ceil(sizeClass/128) - 1
     for (uint k = 0; k < chunksOver128; ++k) {
       bList[37].linkNext((MEM_BLK*)blockAddr, 0x80);
       blockAddr += 1536;
