@@ -13,11 +13,11 @@ end so they share file-scope statics rather than going through declarations.
 
 | File | Role | Approx. size |
 |---|---|---|
-| `shim.cpp` | Main TU. Constructor, fake TEB/PEB, handle table, path/encoding helpers, mmap tracker, signal handler, image-base discovery, PE TLS directory, and the bulk of `kernel32_*` / `advapi32_*` / `shell32_*` / `shlwapi_*` / `user32_*` / `winmm_*` exports. | 4 561 lines, 269 exports |
-| `shim_kernel32_sync.hpp` | `#include`d near the end of `shim.cpp`. Owns the generic sync handle allocator, `WaitForSingleObject` dispatcher, and the `CreateMutex` / `CreateEvent` / `CreateSemaphore` / `CreateThread` / `ExitThread` / `GetExitCodeThread` / `SignalObjectAndWait` family, plus `undo_wait_acquire` for `WaitForMultipleObjects` rollback. | 518 lines, 13 exports |
-| `shim_msvcrt.hpp` | `#include`d at the very bottom of `shim.cpp`. Owns the `msvcrt_*` surface: MS-ABI variadic formatter, `__getmainargs` / `__wgetmainargs`, fake `__iob_func`, `_initterm`, CRT locking, `_time64` family, `qsort`, `scanf`, `_beginthreadex`/`_endthreadex`, MS-ABI `_setjmp`/`longjmp`. | 600 lines, 65 exports |
+| `shim.cpp` | Main TU. Constructor, fake TEB/PEB, handle table, path/encoding helpers, mmap tracker, signal handler, image-base discovery, PE TLS directory, and the bulk of `kernel32_*` / `advapi32_*` / `shell32_*` / `shlwapi_*` / `user32_*` / `winmm_*` exports. | 4 561 lines, 269 `EXPORT` functions + `pthread_create` + `shim_register_tls` |
+| `shim_kernel32_sync.hpp` | `#include`d near the end of `shim.cpp`. Owns the generic sync handle allocator, `WaitForSingleObject` dispatcher, and the `CreateMutex` / `CreateEvent` / `CreateSemaphore` / `CreateThread` / `ExitThread` / `GetExitCodeThread` / `SignalObjectAndWait` family, plus `undo_wait_acquire` for `WaitForMultipleObjects` rollback. | 518 lines, 13 `EXPORT` functions |
+| `shim_msvcrt.hpp` | `#include`d at the very bottom of `shim.cpp`. Owns the `msvcrt_*` surface: MS-ABI variadic formatter, `__getmainargs` / `__wgetmainargs`, fake `__iob_func`, `_initterm`, CRT locking, `_time64` family, `qsort`, `scanf`, `_beginthreadex`/`_endthreadex`, MS-ABI `_setjmp`/`longjmp`. | 600 lines, 65 `EXPORT` + 2 naked `_setjmp`/`longjmp` + 4 data variables (`_commode`, `_fmode`, `__initenv`, `_acmdln`) |
 | `shim_types.h` | Windows-shaped primitive types, struct layouts (`FILETIME`, `SYSTEMTIME`, `LARGE_INTEGER`, `CRITICAL_SECTION`, `WIN32_FIND_DATA{A,W}`, `STARTUPINFO{A,W}`, `CPINFO`), error codes, file/heap/mem/page/exception flags, `LCMAP_*` / `NORM_*` / `CSTR_*` / `CT_CTYPE*` / `C1_*` constants, and inline `FILETIME` ↔ `uint64_t` helpers. | 236 lines |
-| `shim.map` | Linker version script. Lists every dynamic export by name; everything else is `local: *`. | 368 lines, ~350 symbols |
+| `shim.map` | Linker version script. Lists every dynamic export by name; everything else is `local: *`. | 368 lines, 355 symbols |
 
 Everything is built with `-fvisibility=hidden`; `EXPORT` re-promotes only the
 WinAPI surface, and the version script narrows it further. Two outputs are
@@ -41,7 +41,7 @@ Pre-export infrastructure (file-scope, hidden visibility):
 | Lines | Section |
 |---|---|
 | 41 – 88   | Visibility, logging (`WINAPI_SHIM_LOG=path|stderr`, `WINAPI_LOG_ENABLED` build flag) |
-| 90 – 154  | TLS last-error, per-thread `tls_slots` allocator with `pthread_key` destructor (N1 fix), `SET_LAST_ERROR` macro mirroring TEB+0x68 (B16/R29), `errno_to_win32`, compile-time size assertions (I7) |
+| 90 – 155  | TLS last-error, per-thread `tls_slots` allocator with `pthread_key` destructor (N1 fix), `SET_LAST_ERROR` macro mirroring TEB+0x68 (B16/R29), `errno_to_win32`, compile-time size assertions (I7) |
 | 157 – 232 | Fake PEB construction (`init_fake_peb`): PEB_LDR_DATA empty lists, RTL_USER_PROCESS_PARAMETERS with stdio handles, ProcessHeap stub |
 | 236 – 294 | `shim_init_teb` / `shim_thread_attach`: per-thread TEB, GS register on x86-64 / x18 on aarch64, real stack bounds via `pthread_getattr_np` |
 | 300 – 335 | `pthread_create` interceptor (I8): trampoline that calls `shim_thread_attach` before user fn |
@@ -88,7 +88,7 @@ Exported WinAPI surface (`ms_abi`, default visibility):
 | 3199 – 3222 | `FileTimeToSystemTime` |
 | 3224 – 3275 | `GetSystemInfo`, `GlobalMemoryStatus` (via `sysinfo()`), `RtlAddFunctionTable` stub |
 | 3277 – 3517 | Thread pseudo-handle, affinity, context, `GetProcessTimes`, handle info, `DuplicateHandle` (with pseudo-handle `-2` translation), `TryEnterCriticalSection`, `WaitForMultipleObjects` with rollback |
-| 3519 – 3556 | Console extras (title, screen buffer info, `OutputDebugString{A,W}`) |
+| 3519 – 3557 | Console extras (title, screen buffer info, `OutputDebugString{A,W}`) |
 | 3559 – 3641 | VEH stubs, temp path/file, `SetCurrentDirectoryW`, `FileTimeToLocalFileTime` |
 | 3642 – 3667 | `GlobalMemoryStatusEx` (echoes caller's `dwLength`) |
 | 3669 – 3745 | shell32 / shlwapi / winmm: `CommandLineToArgvW`, `PathMatchSpec{A,W}`, `timeGetTime` |
@@ -98,12 +98,12 @@ Exported WinAPI surface (`ms_abi`, default visibility):
 | 3857 – 3917 | `GetSystemTime`, `SystemTimeToFileTime`, tz-specific conversions, `LocalFileTimeToFileTime` |
 | 3919 – 3995 | `GetVersionExW` (reports Windows 7 SP1 x64), `GetSystemDirectory{A,W}`, `GetVolumeInformation{A,W}`, `GetDiskFreeSpaceEx{A,W}`, `GetDriveTypeW` |
 | 3997 – 4067 | `GetFullPathNameA`, `GetLongPathName{A,W}`/`GetShortPathName{A,W}` identity stubs, `ExpandEnvironmentStrings{A,W}` |
-| 4069 – 4112 | `FoldString{A,W}`, `CompareStringA` |
+| 4069 – 4113 | `FoldString{A,W}`, `CompareStringA` |
 | 4115 – 4129 | `CreateEventW`/`CreateSemaphoreW`/`WaitForSingleObjectEx`/`LoadLibraryW` wrappers |
 | 4131 – 4155 | `SetEnvironmentVariableA`, error-mode / priority / thread-execution / backup stubs, `DeviceIoControl` |
 | 4157 – 4209 | advapi32 — token, sid, security descriptor, registry stubs, `CryptGenRandom` via `/dev/urandom` |
 | 4211 – 4251 | shell32 stubs incl. `SHGetMalloc` returning a minimal IMalloc COM vtable |
-| 4253 – 4302 | user32 — `CharLower`/`CharUpper`, `CharToOem` / `OemToChar` (passthrough; UTF-8 round-trip), `ExitWindowsEx` |
+| 4253 – 4303 | user32 — `CharLower`/`CharUpper`, `CharToOem` / `OemToChar` (passthrough; UTF-8 round-trip), `ExitWindowsEx` |
 | 4304 – 4399 | Resource directory parsing (RT_STRING) for `LoadString{A,W}`, `MessageBeep` |
 | 4404 – 4408 | `user32_CharUpperA` |
 | 4410 – 4518 | kernel32 A-variant wrappers (`MoveFileA`, `RemoveDirectoryA`, `SetCurrentDirectoryA`, `ExpandEnvironmentStringsA`, `LoadLibraryExA`, drive/volume A variants, `GetVersion`, `GetVersionExA`, `ReadConsoleA`, `RtlFillMemory`, `RtlCompareMemory`) |
@@ -195,7 +195,7 @@ Deferred (kept inlined in `shim.cpp`):
 | R27 | B14 — typed `FAKE_WIN_MODULE` / `MAIN_IMAGE_MODULE` pseudo-handles | `shim.cpp:1816-1819` |
 | R28 | B15 — `SetStdHandle` calls `dup2(new_fd, idx)` | `shim.cpp:1381` |
 | R29 | B16 — last-error mirrored to TEB+0x68 via `SET_LAST_ERROR` | `shim.cpp:116-119` |
-| R30 | B17 — `_FILE_OFFSET_BITS=64` on; `lseek` / `off_t` everywhere | `Makefile:12`, `shim.cpp:1489, 1671, …` |
+| R30 | B17 — `_FILE_OFFSET_BITS=64` on; `lseek` / `off_t` everywhere | `Makefile:12`, `shim.cpp:1489, 2671, 2685, …` |
 | R31 | B18b — `GetModuleFileNameW`/`A` resolve loaded modules via `dlsym("_init")` + `dladdr` | `shim.cpp:1856-1871, 2638-2647` |
 | R32 | B19 — `LoadLibrary*` paths through `win_path_to_posix` | `shim.cpp:1886-1887` |
 | R33 | B20 — `FlsAlloc`/`FlsFree` allocate from shared TLS bitset; per-thread destructor armed via `pthread_key` | `shim.cpp:2768-2870` |
