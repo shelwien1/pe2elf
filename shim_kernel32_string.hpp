@@ -3,8 +3,13 @@
 //
 // References from shim.cpp: utf8_to_wchar, wchar_to_utf8.
 
+// `GetACP()` reports the ANSI code page.  The MSVC CRT explicitly rejects
+// UTF-7 (65000) and UTF-8 (65001) as "system" code pages in `setmbcp_nolock`
+// (the `SystemCP - 65000 > 1` guard), so even though the shim handles UTF-8
+// throughout, returning 65001 here crashes rar550a's startup multibyte
+// init.  Return 1252 (Windows-1252, the standard Windows-x86-64 default).
 extern "C" EXPORT DWORD kernel32_GetACP(void) {
-  return 65001;
+  return 1252;
 }
 
 extern "C" EXPORT DWORD kernel32_GetOEMCP(void) {

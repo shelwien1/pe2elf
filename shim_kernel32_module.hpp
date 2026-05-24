@@ -12,28 +12,90 @@
 // wchar_to_utf8, utf8_to_wchar, win_path_to_posix, posix_to_win_path,
 // set_errno_error, LOAD_LIBRARY_AS_DATAFILE.
 
-// Typed pseudo-handles (B14/R27): values outside the handle-table range.
-// FAKE_WIN_MODULE: any Windows DLL we can't load as a real .so.
-// MAIN_IMAGE_MODULE: legacy sentinel kept for backward compat; at runtime
-//   GetModuleHandleW(NULL) returns the real g_image_base so callers can
-//   inspect the PE header (CRT does "cmp WORD PTR [rax], 'MZ'").
-#define FAKE_WIN_MODULE  ((HANDLE)(intptr_t)(MAX_HANDLES+1))
-#define MAIN_IMAGE_MODULE ((HANDLE)(intptr_t)(MAX_HANDLES+2))
+// Typed pseudo-handles for Windows DLLs we can't load as .so files.  Each
+// known Windows DLL gets a unique sentinel above the real-handle range; the
+// sentinel encodes which shim-side prefix to use when GetProcAddress is
+// called against it (`kernel32_FlsAlloc`, `user32_MessageBoxW`, ...).
+// MAIN_IMAGE_MODULE follows the per-DLL sentinels; GetModuleHandleW(NULL)
+// returns the real g_image_base so callers inspecting the PE header (CRT
+// does "cmp WORD PTR [rax], 'MZ'") see actual MZ bytes.
+enum WinModuleId {
+  WM_KERNEL32 = 0,
+  WM_USER32,
+  WM_ADVAPI32,
+  WM_SHELL32,
+  WM_SHLWAPI,
+  WM_WINMM,
+  WM_MSVCRT,
+  WM_COUNT,
+};
+static const char* const g_win_module_prefix[WM_COUNT] = {
+  "kernel32_", "user32_", "advapi32_", "shell32_",
+  "shlwapi_",  "winmm_",  "msvcrt_",
+};
+#define WIN_MODULE_BASE  ((intptr_t)(MAX_HANDLES+1))
+#define WIN_MODULE_HANDLE(idx) ((HANDLE)(WIN_MODULE_BASE + (idx)))
+#define IS_WIN_MODULE(h) ((intptr_t)(h) >= WIN_MODULE_BASE \
+                       && (intptr_t)(h) < WIN_MODULE_BASE + WM_COUNT)
+#define WIN_MODULE_IDX(h) ((int)((intptr_t)(h) - WIN_MODULE_BASE))
+// Legacy alias: a generic "unknown Windows DLL" handle routes through the
+// kernel32 prefix.  Used for GetModuleHandleW lookups of names we don't
+// otherwise classify.
+#define FAKE_WIN_MODULE   WIN_MODULE_HANDLE(WM_KERNEL32)
+#define MAIN_IMAGE_MODULE ((HANDLE)(intptr_t)(MAX_HANDLES+1+WM_COUNT))
 // True when h refers to the main executable image
 #define IS_MAIN_IMAGE(h) ((h)==MAIN_IMAGE_MODULE || (h)==(HANDLE)g_image_base)
+
+// Classify a Windows DLL name (already converted to lowercase UTF-8, without
+// the optional ".dll" suffix) into one of the WM_* prefixes.  Returns -1
+// for api-ms-win-*/ext-ms-win-* virtual DLLs that don't exist on Linux —
+// LoadLibrary fails for these so the CRT's try_get_function fallthroughs
+// reach the real "kernel32"/"user32"/... entry and pick up our prefix.
+static int win_dll_classify(const char* lower) {
+  if( !strcmp(lower, "kernel32") ) return WM_KERNEL32;
+  if( !strcmp(lower, "user32"  ) ) return WM_USER32;
+  if( !strcmp(lower, "advapi32") ) return WM_ADVAPI32;
+  if( !strcmp(lower, "shell32" ) ) return WM_SHELL32;
+  if( !strcmp(lower, "shlwapi" ) ) return WM_SHLWAPI;
+  if( !strcmp(lower, "winmm"   ) ) return WM_WINMM;
+  if( !strcmp(lower, "msvcrt"  ) ) return WM_MSVCRT;
+  if( !strncmp(lower, "vcruntime", 9) ) return WM_MSVCRT;
+  if( !strcmp(lower, "ucrtbase") ) return WM_MSVCRT;
+  // api-ms-win-* / ext-ms-win-* are Windows API set forwarders.  They don't
+  // exist on Linux; let LoadLibrary fail so the CRT walks through them.
+  return -1;
+}
+
+// Build a lowercase, suffix-stripped basename ("kernel32.dll" → "kernel32").
+static void win_dll_basename(const char* path, char* out, size_t out_sz) {
+  const char* base = path;
+  for( const char* p = path; *p; ++p )
+    if( *p=='/' || *p=='\\' ) base = p+1;
+  size_t n = 0;
+  for( ; base[n] && n+1 < out_sz; ++n )
+    out[n] = (char)tolower((unsigned char)base[n]);
+  out[n] = 0;
+  if( n>4 && !strcmp(out+n-4, ".dll") )
+    out[n-4] = 0;
+}
 
 extern "C" EXPORT HANDLE kernel32_GetModuleHandleW(LPCWSTR name) {
   if( !name )
     return (HANDLE)g_image_base;
-  char narrow[PATH_MAX], posix[PATH_MAX];
+  char narrow[PATH_MAX], posix[PATH_MAX], base[64];
   wchar_to_utf8(name, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
   void* h = dlopen(posix, RTLD_NOLOAD|RTLD_LAZY);
   if( h )
     return h;
-  // Any Windows DLL name we don't have as a .so — fake it.
+  win_dll_basename(narrow, base, sizeof(base));
+  int wm = win_dll_classify(base);
+  if( wm < 0 ) {
+    SET_LAST_ERROR(ERROR_MOD_NOT_FOUND);
+    return NULL;
+  }
   SET_LAST_ERROR(ERROR_SUCCESS);
-  return FAKE_WIN_MODULE;
+  return WIN_MODULE_HANDLE(wm);
 }
 
 extern "C" EXPORT BOOL kernel32_GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phModule) {
@@ -86,7 +148,7 @@ extern "C" EXPORT DWORD kernel32_GetModuleFileNameW(HANDLE h, LPWSTR buf, DWORD 
 // the import graph.
 extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWORD flags) {
   (void)file;
-  char narrow[PATH_MAX], posix[PATH_MAX];
+  char narrow[PATH_MAX], posix[PATH_MAX], base[64];
   wchar_to_utf8(name, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
   int dlflags = RTLD_LAZY|RTLD_GLOBAL;
@@ -99,14 +161,24 @@ extern "C" EXPORT HANDLE kernel32_LoadLibraryExW(LPCWSTR name, HANDLE file, DWOR
       return hret;
     dlclose(h);
   }
-  // For any Windows DLL we can't resolve as a .so, return a sentinel so
-  // GetProcAddress can still find symbols exported from our shim.
+  // dlopen failed.  If the name is a known Windows DLL ("kernel32",
+  // "user32", ...), return a sentinel that records which prefix
+  // GetProcAddress should use to find the symbol in our shim.  api-ms-win-*
+  // and ext-ms-win-* API set forwarders don't exist on Linux: fail the
+  // load so the CRT's try_get_function falls through to the real DLL
+  // candidate.
+  win_dll_basename(narrow, base, sizeof(base));
+  int wm = win_dll_classify(base);
+  if( wm < 0 ) {
+    SET_LAST_ERROR(ERROR_MOD_NOT_FOUND);
+    return NULL;
+  }
   SET_LAST_ERROR(ERROR_SUCCESS);
-  return FAKE_WIN_MODULE;
+  return WIN_MODULE_HANDLE(wm);
 }
 
 extern "C" EXPORT BOOL kernel32_FreeLibrary(HANDLE h) {
-  if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h) )
+  if( IS_WIN_MODULE(h)||IS_MAIN_IMAGE(h) )
     return TRUE;
   int idx = handle_to_idx(h);
   pthread_mutex_lock(&g_handles_mu);
@@ -123,18 +195,35 @@ extern "C" EXPORT BOOL kernel32_FreeLibrary(HANDLE h) {
 }
 
 extern "C" EXPORT LPVOID kernel32_GetProcAddress(HANDLE h, LPCSTR name) {
-  void* dlh;
-  if( h==FAKE_WIN_MODULE||IS_MAIN_IMAGE(h)||h==NULL ) {
-    dlh = RTLD_DEFAULT;
+  void* sym = NULL;
+  if( IS_WIN_MODULE(h) ) {
+    // Stamp the DLL-specific prefix from LoadLibraryExW onto the name and
+    // dlsym against our shim's exports.  Each pseudo-handle carries its
+    // shim prefix, so `GetProcAddress(kernel32_handle, "FlsAlloc")` looks
+    // up "kernel32_FlsAlloc" without trying any other prefix.
+    const char* prefix = g_win_module_prefix[WIN_MODULE_IDX(h)];
+    char buf[256];
+    size_t plen = strlen(prefix);
+    size_t nlen = name ? strnlen(name, sizeof(buf)-plen-1) : 0;
+    if( name && plen + nlen + 1 <= sizeof(buf) ) {
+      memcpy(buf, prefix, plen);
+      memcpy(buf + plen, name, nlen + 1);
+      sym = dlsym(RTLD_DEFAULT, buf);
+    }
   } else {
-    int idx = handle_to_idx(h);
-    if( idx>=0&&g_handles[idx].kind==H_MODULE )
-      dlh = g_handles[idx].dlhandle;
-    else
+    void* dlh;
+    if( IS_MAIN_IMAGE(h)||h==NULL ) {
       dlh = RTLD_DEFAULT;
+    } else {
+      int idx = handle_to_idx(h);
+      if( idx>=0&&g_handles[idx].kind==H_MODULE )
+        dlh = g_handles[idx].dlhandle;
+      else
+        dlh = RTLD_DEFAULT;
+    }
+    sym = name ? dlsym(dlh, name) : NULL;
   }
-  void* sym = dlsym(dlh, name);
   if( !sym )
-    SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED);
+    SET_LAST_ERROR(ERROR_PROC_NOT_FOUND);
   return sym;
 }

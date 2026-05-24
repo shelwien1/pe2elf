@@ -304,12 +304,12 @@ extern "C" EXPORT int64_t msvcrt__time64(int64_t* t) {
 }
 extern "C" EXPORT struct tm* msvcrt__gmtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  static __thread struct tm buf;
+  static __thread struct tm buf __attribute__((tls_model("initial-exec")));
   return gmtime_r(&tt, &buf);
 }
 extern "C" EXPORT struct tm* msvcrt__localtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  static __thread struct tm buf;
+  static __thread struct tm buf __attribute__((tls_model("initial-exec")));
   return localtime_r(&tt, &buf);
 }
 extern "C" EXPORT int64_t msvcrt__mktime64(struct tm* tm_val) {

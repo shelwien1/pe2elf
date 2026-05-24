@@ -87,8 +87,14 @@ __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...
 // ---------------------------------------------------------------------------
 // Thread-local last error
 // ---------------------------------------------------------------------------
-static __thread uint32_t tls_last_error = 0;
-static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_teb()
+// initial-exec TLS model so GCC emits %fs:[off]-style accesses that don't go
+// through __tls_get_addr.  __tls_get_addr's caller sequence clobbers RDI; since
+// our exports are declared ms_abi (RDI is callee-saved), the clobber corrupts
+// the caller's RDI when GCC fails to spill it.  Initial-exec avoids the call
+// entirely, at the cost of requiring the .so to be loaded at program startup
+// (true for winapi_shim.so, which is DT_NEEDED of the converted ELF).
+static __thread uint32_t tls_last_error __attribute__((tls_model("initial-exec"))) = 0;
+static __thread uint8_t  fake_teb[0x2000] __attribute__((tls_model("initial-exec")));
 
 // pthread key whose destructor runs FLS callbacks and frees the per-thread
 // tls_slots block on thread exit.  Single destructor (rather than separate
