@@ -3055,22 +3055,24 @@ LABEL_94:
       depth5 -= 5;
       depth3 -= 3;
       --depthLeft;
-      if( foundFreq>130||deepFound[1]>=0xE4u ) {
+      if (foundFreq > 130 || deepFound[1] >= 0xE4u) {
         trailBound = ofallP1;
         ofall = ofallSaved;
         maxOrd = MaxOrder;
-        walkCtx = (byte*)(heap+*((uint*)walkCtx+2));
+        walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
         goto LABEL_201;
       }
-      deepSumFreq = *((word*)walkCtx+1);
-      mixBoostA = mixWeight+(depth5>ofallP3);
+      deepSumFreq = ((PPM_CONTEXT*)walkCtx)->SummFreq;
+      mixBoostA = mixWeight + (depth5 > ofallP3);
       mixWeight >>= 1;
-      mixBoostB = (7*deepSumFreq<4*deepFound[1]**walkCtx+4*(uint)deepFound[1])+(2*depthLeft>ofallP1)+mixBoostA;
-      *((word*)walkCtx+1) = mixBoostB+deepSumFreq;
-      newFoundFreq = mixBoostB+deepFound[1];
+      mixBoostB = (7*deepSumFreq < 4*deepFound[1] * ((PPM_CONTEXT*)walkCtx)->NStates
+                                 + 4*(uint)deepFound[1])
+                + (2*depthLeft > ofallP1) + mixBoostA;
+      ((PPM_CONTEXT*)walkCtx)->SummFreq = (word)(mixBoostB + deepSumFreq);
+      newFoundFreq = mixBoostB + deepFound[1];
       deepFound[1] = newFoundFreq;
-      walkCtx = (byte*)(heap+*((uint*)walkCtx+2));
-    } while( newFoundFreq<0x45u&&depth3>ofallP3&&mixFlag2 );
+      walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
+    } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag2);
     trailBound = ofallP1;
     ofall = ofallSaved;
     maxOrd = MaxOrder;
