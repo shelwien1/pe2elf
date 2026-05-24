@@ -1275,14 +1275,14 @@ sqword SseScale2(sqword a1) {
 }
 //--- #return
 //--- #include "subs_allocunitsrare.inc"
-sqword AllocUnitsRare(uint a1) {
-  sqword v1;
-  sqword v2;
-  uint v3;
-  uint* v4;
-  sqword v5;
+sqword AllocUnitsRare(uint unitsIdx) {
+  sqword bListSaved;
+  sqword reqSizeIdx;
+  uint reqUnits;
+  uint* freelistEntry;
+  sqword heapNull;
   sqword result;
-  int v7;
+  int biggerUnits;
   sqword v8;
   sqword v9;
   uint v10;
@@ -1348,28 +1348,28 @@ sqword AllocUnitsRare(uint a1) {
   int v70;
   sqword v71;
   sqword v72;
-  v1 = BList;
-  v2 = a1;
-  v3 = *((byte*)&Indx2Units+a1);
-  while( ++a1!=38 ) {
-    v4 = (uint*)(BList+12LL*a1);
-    if( *v4 ) {
-      v5 = HeapNull;
-      result = HeapNull+(uint)v4[1];
-      v4[1] = *(uint*)(result+4);
-      *(uint*)(v5+*(uint*)(result+4)+8) = (uint)(uintptr_t)v4-v5;
-      v7 = *((byte*)&Indx2Units+a1);
-      --*v4;
-      v8 = result+12LL*v3;
-      v9 = v8-v5;
-      v10 = v7-v3;
+  bListSaved = BList;
+  reqSizeIdx = unitsIdx;
+  reqUnits = *((byte*)&Indx2Units+unitsIdx);
+  while( ++unitsIdx!=38 ) {
+    freelistEntry = (uint*)(BList+12LL*unitsIdx);
+    if( *freelistEntry ) {
+      heapNull = HeapNull;
+      result = HeapNull+(uint)freelistEntry[1];
+      freelistEntry[1] = *(uint*)(result+4);
+      *(uint*)(heapNull+*(uint*)(result+4)+8) = (uint)(uintptr_t)freelistEntry-heapNull;
+      biggerUnits = *((byte*)&Indx2Units+unitsIdx);
+      --*freelistEntry;
+      v8 = result+12LL*reqUnits;
+      v9 = v8-heapNull;
+      v10 = biggerUnits-reqUnits;
       v11 = v10;
       v12 = 12LL*v10;
       for( i = (byte*)(v8+v12); *(byte*)(v8+v12+1)==255; i = (byte*)(v8+v12) ) {
-        *(uint*)(*((uint*)i+1)+v5+8) = *((uint*)i+2);
-        *(uint*)(*((uint*)i+2)+v5+4) = *((uint*)i+1);
+        *(uint*)(*((uint*)i+1)+heapNull+8) = *((uint*)i+2);
+        *(uint*)(*((uint*)i+2)+heapNull+4) = *((uint*)i+1);
         v14 = 12LL**(Units2Indx+*i+3);
-        --*(uint*)(v14+v1);
+        --*(uint*)(v14+bListSaved);
         v10 += *(byte*)(v8+v12);
         v11 = v10;
         v12 = 12LL*v10;
@@ -1384,19 +1384,19 @@ sqword AllocUnitsRare(uint a1) {
           v17 -= 128;
           ++v16;
         } while( v16<(uint)v18 );
-        v19 = *(uint*)(v1+448);
+        v19 = *(uint*)(bListSaved+448);
         v20 = 0;
         do {
           *(byte*)(v8+1) = -1;
-          *(uint*)(v8+8) = v1-v5+444;
+          *(uint*)(v8+8) = bListSaved-heapNull+444;
           *(uint*)(v8+4) = v19;
           v19 = v9;
           *(byte*)v8 = 0x80;
           v9 += 1536;
           v8 += 1536;
-          *(uint*)(v5+*(uint*)(v1+448)+8) = v19;
-          ++*(uint*)(v1+444);
-          *(uint*)(v1+448) = v19;
+          *(uint*)(heapNull+*(uint*)(bListSaved+448)+8) = v19;
+          ++*(uint*)(bListSaved+444);
+          *(uint*)(bListSaved+448) = v19;
           ++v20;
         } while( v20<(uint)v18 );
       }
@@ -1406,26 +1406,26 @@ sqword AllocUnitsRare(uint a1) {
         v21 = (uint)(v21-1);
         v22 = *((byte*)&Indx2Units+v21);
         v23 = v10-v22;
-        v24 = (uint*)(v1+12LL*(uint)(v23-1));
+        v24 = (uint*)(bListSaved+12LL*(uint)(v23-1));
         v25 = v24[1];
         v26 = v8+12*v22;
         *(byte*)v26 = v23;
         *(byte*)(v26+1) = -1;
-        *(uint*)(v26+8) = (uint)(uintptr_t)v24-v5;
+        *(uint*)(v26+8) = (uint)(uintptr_t)v24-heapNull;
         *(uint*)(v26+4) = v25;
-        LODWORD(v26) = v26-v5;
-        *(uint*)((uint)v24[1]+v5+8) = v26;
+        LODWORD(v26) = v26-heapNull;
+        *(uint*)((uint)v24[1]+heapNull+8) = v26;
         v24[1] = v26;
         ++*v24;
       }
       *(byte*)(v8+1) = -1;
-      v27 = (uint*)(12*v21+v1);
+      v27 = (uint*)(12*v21+bListSaved);
       v28 = v27[1];
       *(byte*)v8 = v22;
-      *(uint*)(v8+8) = (uint)(uintptr_t)v27-v5;
+      *(uint*)(v8+8) = (uint)(uintptr_t)v27-heapNull;
       *(uint*)(v8+4) = v28;
-      v29 = v8-v5;
-      *(uint*)((uint)v27[1]+v5+8) = v29;
+      v29 = v8-heapNull;
+      *(uint*)((uint)v27[1]+heapNull+8) = v29;
       v27[1] = v29;
       ++*v27;
       return result;
@@ -1434,7 +1434,7 @@ sqword AllocUnitsRare(uint a1) {
   if( CutOffCount ) {
     if( GlueCount )
       return 0;
-    v30 = 12*v3;
+    v30 = 12*reqUnits;
     if( UnitsStart-v30<=(qword)pText ) {
       return 0;
     } else {
@@ -1447,16 +1447,16 @@ sqword AllocUnitsRare(uint a1) {
     v70 = *((uint*)v31+2);
     v71 = *(qword*)v31;
     v33 = (uint)(uintptr_t)HeapStart+SubAllocatorSize-12-HeapNull;
-    v72 = v2;
+    v72 = reqSizeIdx;
     v34 = 0;
     v35 = 0;
     v36 = BList-HeapNull+444;
     do {
       v31[1] = -2;
-      v37 = (uint*)(v1+12*v34);
+      v37 = (uint*)(bListSaved+12*v34);
       v38 = v37[1];
       *v31 = 1;
-      v39 = v1+12*v34-v32;
+      v39 = bListSaved+12*v34-v32;
       *((uint*)v31+2) = v39;
       *((uint*)v31+1) = v38;
       *(uint*)((uint)v37[1]+v32+8) = v33;
@@ -1479,7 +1479,7 @@ sqword AllocUnitsRare(uint a1) {
             *(uint*)(*(uint*)&v41[v49+4]+v32+8) = *(uint*)&v41[v49+8];
             *(uint*)(*(uint*)&v41[v49+8]+v32+4) = *(uint*)&v41[v49+4];
             v50 = 12LL**(Units2Indx+(byte)v41[v49]+3);
-            --*(uint*)(v50+v1);
+            --*(uint*)(v50+bListSaved);
             v43 += (byte)v41[v49];
             v49 = 12LL*v43;
           } while( (byte)v41[v49+1]==255 );
@@ -1493,7 +1493,7 @@ sqword AllocUnitsRare(uint a1) {
               v53 -= 128;
               ++v52;
             } while( v52<(uint)v54 );
-            v55 = *(uint*)(v1+448);
+            v55 = *(uint*)(bListSaved+448);
             v56 = 0;
             do {
               v41[1] = -1;
@@ -1503,9 +1503,9 @@ sqword AllocUnitsRare(uint a1) {
               *v41 = 0x80;
               v48 += 1536;
               v41 += 1536;
-              *(uint*)(v32+*(uint*)(v1+448)+8) = v55;
-              ++*(uint*)(v1+444);
-              *(uint*)(v1+448) = v55;
+              *(uint*)(v32+*(uint*)(bListSaved+448)+8) = v55;
+              ++*(uint*)(bListSaved+444);
+              *(uint*)(bListSaved+448) = v55;
               ++v56;
             } while( v56<(uint)v54 );
           }
@@ -1515,11 +1515,11 @@ sqword AllocUnitsRare(uint a1) {
             v57 = (uint)(v57-1);
             v58 = *((byte*)&Indx2Units+v57);
             v59 = v43-v58;
-            v60 = (uint*)(v1+12LL*(uint)(v59-1));
+            v60 = (uint*)(bListSaved+12LL*(uint)(v59-1));
             v61 = (byte*)&v41[12*v58];
             v61[1] = -1;
             *v61 = v59;
-            *((uint*)v61+2) = v1+12*(v59-1)-v32;
+            *((uint*)v61+2) = bListSaved+12*(v59-1)-v32;
             *((uint*)v61+1) = v60[1];
             LODWORD(v61) = (uint)(uintptr_t)v61-v32;
             *(uint*)((uint)v60[1]+v32+8) = (uint)(uintptr_t)v61;
@@ -1527,7 +1527,7 @@ sqword AllocUnitsRare(uint a1) {
             ++*v60;
           }
           v41[1] = -1;
-          v62 = (uint*)(v1+12*v57);
+          v62 = (uint*)(bListSaved+12*v57);
           v63 = v62[1];
           *v41 = v58;
           *((uint*)v41+2) = (uint)(uintptr_t)v62-v32;
@@ -1538,7 +1538,7 @@ sqword AllocUnitsRare(uint a1) {
           ++*v62;
         } else {
           v41[1] = -1;
-          v45 = (uint*)(v1+12*v42);
+          v45 = (uint*)(bListSaved+12*v42);
           v46 = v45[1];
           *v41 = v43;
           *((uint*)v41+2) = (uint)(uintptr_t)v45-v32;
@@ -1559,7 +1559,7 @@ sqword AllocUnitsRare(uint a1) {
     v65 = *((byte*)&Indx2Units+v72);
     CutOffCount = 1;
     v66 = *(Units2Indx4+(uint)(v65-1));
-    v67 = (uint*)(12*v66+v1);
+    v67 = (uint*)(12*v66+bListSaved);
     if( *v67 ) {
       result = v32+(uint)v67[1];
       v67[1] = *(uint*)(result+4);
