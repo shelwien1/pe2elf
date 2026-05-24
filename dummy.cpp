@@ -3076,31 +3076,31 @@ LABEL_94:
     ofall = ofallSaved;
     maxOrd = MaxOrder;
 LABEL_201:
-    while( trailBound<4*depthLeft ) {
-      trailStatesIdx = *((uint*)walkCtx+1);
-      trailFlags = walkCtx[1];
-      if( *(byte*)(heap+trailStatesIdx+6LL*(trailFlags&0xF))==searchSym )
+    while (trailBound < 4*depthLeft) {
+      trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
+      trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+      if (*(byte*)(heap + trailStatesIdx + 6LL*(trailFlags & 0xF)) == searchSym)
         break;
 LABEL_165:
-      trailStatesPtr = heap+trailStatesIdx;
-      if( !*(byte*)(heap+trailStatesIdx+6LL*(trailFlags&0xF)+1) ) {
+      trailStatesPtr = heap + trailStatesIdx;
+      if (!*(byte*)(heap + trailStatesIdx + 6LL*(trailFlags & 0xF) + 1)) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
-        trailStatesIdx = *((uint*)walkCtx+1);
-        trailFlags = walkCtx[1];
-        trailStatesPtr = heap+trailStatesIdx;
+        trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
+        trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+        trailStatesPtr = heap + trailStatesIdx;
       }
-      walkCtx[1] = trailFlags&0xF0;
+      ((PPM_CONTEXT*)walkCtx)->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
       trailFound = FindAndBubble7_((byte*)trailStatesPtr, searchSym, &walkCtx[1], 1);
-      trailState0Freq = *(byte*)(trailStatesIdx+heap+1);
-      trailState1Freq = *(byte*)(trailStatesIdx+heap+7);
+      trailState0Freq = *(byte*)(trailStatesIdx + heap + 1);
+      trailState1Freq = *(byte*)(trailStatesIdx + heap + 7);
       *chain++ = (sqword)trailFound;
-      if( (uint)(trailState1Freq+trailState0Freq)>0x5F )
+      if ((uint)(trailState1Freq + trailState0Freq) > 0x5F)
         break;
-      walkCtx = (byte*)(heap+*((uint*)walkCtx+2));
+      walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
       --depthLeft;
-      trailBound = ofall+1;
+      trailBound = ofall + 1;
     }
     CtxChainEnd = (sqword)chain;
   } else {
