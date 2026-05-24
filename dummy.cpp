@@ -1770,13 +1770,15 @@ sqword StartModelRare(int mode) {
     }
   } else { // Traversal fallback configuration for persistent run instances [cite: 147]
     result = RootContext;
-    uint suffixIndex = *(uint*)(RootContext + 8);
-    if (suffixIndex) {
+    PPM_CONTEXT* rootP = (PPM_CONTEXT*)RootContext;
+    if (rootP->iSuffix) {
       result = HeapNull;
+      PPM_CONTEXT* w = rootP->getSuffix();
       do { // Loop to calculate suffix depth fallback heights [cite: 148]
         ++suffixCount;
-        suffixIndex = *(uint*)(suffixIndex + HeapNull + 8);
-      } while (suffixIndex);
+        if (!w->iSuffix) break;
+        w = w->getSuffix();
+      } while (true);
       OrderFall = suffixCount;
     }
     OrderFall0 = suffixCount;
