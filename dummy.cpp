@@ -2184,13 +2184,8 @@ sqword ReduceOrder() {
   sqword stateIStatesAddr;
   qword mismatchOff;
   int symPeek;
-  sqword pTextSaveCS;
   byte* chainStatePtr;
   sqword* chainPtrSave;
-  char sse0BitSaveAU;
-  char sse0BitSaveCS;
-  uint v13SaveCS;
-  uint newByteIdxSaveCS;
   byte* ctxBSaveCS;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
@@ -2275,13 +2270,11 @@ sqword ReduceOrder() {
     chainPtrSave = chainPtrW;
     rootCtxW = rootCtxSaveCS;
     if( succIdxW<=newByteIdx ) {
-      pTextSaveCS = pTextEntry;
-      newByteIdxSaveCS = pTextEntry+1-heapNull;
-      sse0BitSaveCS = sse0Bit;
+      // pTextEntry / sse0Bit are locals and survive the call as-is; the
+      // newByteIdx assignment refreshes its successor-index value from the
+      // local pTextEntry that was set at function entry.
+      newByteIdx = pTextEntry + 1 - heapNull;
       succIdxW = CreateSuccessors(0, (qword)(chainPtrSave-1), curCtx);
-      sse0Bit = sse0BitSaveCS;
-      newByteIdx = newByteIdxSaveCS;
-      pTextEntry = pTextSaveCS;
       *(uint*)(chainStatePtr+2) = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
@@ -2342,11 +2335,8 @@ LABEL_73:
   maxCtxStart = MaxContext0;
   succIdx = succIdxW;
   if( unitsStart>heapNull+(qword)succIdxW ) {
-    v13SaveCS = pTextEntry+1-heapNull;
-    sse0BitSaveAU = sse0Bit;
+    newByteIdx = pTextEntry + 1 - heapNull;
     succIdxW = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
-    sse0Bit = sse0BitSaveAU;
-    newByteIdx = v13SaveCS;
     goto LABEL_9;
   }
 LABEL_11:
