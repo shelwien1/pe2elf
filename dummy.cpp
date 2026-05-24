@@ -2595,7 +2595,7 @@ qword MixUpdate(byte* ctxBytes) {
   sqword oldD90IdxB;       // d90[!epochBit] (re-read)
   sqword savedD91;
   sqword newD91;
-  int    v94_b33;          // captured b33[newD90Idx] before BijectPairUpdate_
+  int    b33Saved;          // captured b33[newD90Idx] before BijectPairUpdate_
 
   // ---- MixScale BijectMap predictor ---------------------------------------
   char*  bmPtr;            // = sseSlot + 1
@@ -2896,9 +2896,9 @@ LABEL_94:
   d90[epochBit] = newD90Idx;
   otherPar = !epochBit;
   oldD90IdxA = (uint)d90[otherPar];
-  v94_b33 = (byte)b33[newD90Idx];                                     // capture before helper write
+  b33Saved = (byte)b33[newD90Idx];                                     // capture before helper write
   BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90IdxA, sym, sc);
-  hintSymBiject = v94_b33;
+  hintSymBiject = b33Saved;
 
   savedD91 = (uint)symHalfHistory;
   newD91 = (word)(((sym>>4)&0xFFFE)+8*symHalfHistory)&0xFFFE;
