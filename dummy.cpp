@@ -474,6 +474,32 @@ PPM_CONTEXT* GetSuffixPtr(uint iSuffix) {
 // ===========================================================================
 
 char* FreeUnitsRare(sqword a1, uint a2);   // defined in subs_freeunitsrare1.inc
+sqword AllocUnitsRare(uint unitsIdx);      // defined in subs_allocunitsrare.inc
+
+// Fast-path allocator counterpart of AllocUnitsRare: pop the head of the
+// size-class queue if non-empty; else bump LoUnit toward HiUnit; if that
+// would collide, fall back to AllocUnitsRare. Returns 0 on out-of-memory.
+inline sqword AllocUnits_(uint sizeClass) {
+  uint* queue = (uint*)(::BList + 12LL * (uint)sizeClass);
+  if (*queue) {
+    sqword result = ::HeapNull + (uint)queue[1];
+    queue[1] = *(uint*)(result + 4);
+    *(uint*)(*(uint*)(result + 4) + ::HeapNull + 8) = (uint)(uintptr_t)queue - ::HeapNull;
+    --*queue;
+    return result;
+  }
+  uint byteOff = 12u * (uint)Indx2Units[sizeClass];
+  if (::LoUnit + byteOff > (sqword)::HiUnit) {
+    return AllocUnitsRare(sizeClass);
+  }
+  sqword result = ::LoUnit;
+  bool isExact = (::LoUnit + byteOff == ::HiUnit);
+  ::LoUnit += byteOff;
+  if (!isExact) {
+    *(uint*)(byteOff + result) = 0;
+  }
+  return result;
+}
 
 inline void UnitsCpy_(void* Dest, const void* Src, uint NU) {
   uint* p1 = (uint*)Dest;
@@ -1357,10 +1383,6 @@ sqword AllocUnitsRare(uint unitsIdx) {
   char* blockWalker;
   uint unitsInRun;
   int reqUnitsByte;
-  sqword biggerSizeClass4;
-  uint* finalQueue;
-  sqword finalUnits;
-  bool isExact;
   int sentinelField2;
   sqword sentinelField1;
   sqword reqSizeIdx2;
@@ -1435,25 +1457,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
     *((uint*)sentinel+2) = sentinelField2;
     reqUnitsByte = *((byte*)&Indx2Units+reqSizeIdx2);
     CutOffCount = 1;
-    biggerSizeClass4 = *(Units2Indx4+(uint)(reqUnitsByte-1));
-    finalQueue = (uint*)(12*biggerSizeClass4+bListSaved);
-    if( *finalQueue ) {
-      result = heapNullCopy+(uint)finalQueue[1];
-      finalQueue[1] = *(uint*)(result+4);
-      *(uint*)(*(uint*)(result+4)+heapNullCopy+8) = (uint)(uintptr_t)finalQueue-heapNullCopy;
-      --*finalQueue;
-    } else {
-      result = LoUnit;
-      finalUnits = 12*(uint)*((byte*)&Indx2Units+biggerSizeClass4);
-      isExact = LoUnit+finalUnits==HiUnit;
-      if( LoUnit+finalUnits>(qword)HiUnit ) {
-        return AllocUnitsRare((uint)biggerSizeClass4);
-      } else {
-        LoUnit += finalUnits;
-        if( !isExact )
-          *(uint*)(finalUnits+result) = 0;
-      }
-    }
+    result = AllocUnits_(Units2Indx4[reqUnitsByte - 1]);
   }
   return result;
 }
