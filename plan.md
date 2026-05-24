@@ -270,14 +270,37 @@ flows through the helpers (a small `struct ProbEstimate { uint cum;
 uint tot; }` or two named locals), so the intra-cascade publishes can
 fall away — at minimum the ones that have no MixUpdate consumer.
 Done so far: the d51/d97 globals have been renamed to sseCum/sseTot
-via function-local references (Section A). That removes the
-naming-by-spill noise; the next step is to prove the *intra-cascade*
-publishes are dead and delete them.
+via function-local references (Section A). Sse1Step_/Sse2Step_/
+Sse3Step_/SseMatchStep_ helpers now collapse the four cascade stages
+into one body each, used by both region A (single-state binary) and
+region F (per-candidate). The remaining `predSseTotDelta = sseTot;`
+and similar intra-cascade publishes inside the helpers preserve the
+ABI to MixUpdate; the next step is to prove which are dead and delete
+them.
 
 ### F. The non-`RealProcess` functions
 
 Status: largely cleaned up. Every function outside `RealProcess` has
 had its `v##` locals renamed by role and its `a#` parameters renamed.
+
+Several inlined-function patterns have been factored out into shared
+helpers:
+- `FreeUnitsRare` body (coalesce + chunk + split + insert) used to be
+  inlined in 4 places (AllocUnitsRare leftover-split, AllocUnitsRare
+  GlueFreeBlocks inner loop, ReduceOrder binary-context restore,
+  ReduceOrder PrepareNextStep). All now call `FreeUnitsRare` directly.
+- `AllocUnits_` (try freelist queue, else bump LoUnit, else
+  AllocUnitsRare) factored out and used at 3 sites.
+- `UnitsCpy_` replaces the inline 6-uint-per-iter state-copy in
+  PrepareNextStep.
+- `emitOneByte` factored out as the shared body of Rangecoder's
+  EncodeShift and Flush.
+- `Sse1Step_`/`Sse2Step_`/`Sse3Step_`/`SseMatchStep_` collapse the
+  four-stage cascade between RealProcess regions A and F.
+- `SseIdx` was moved to file scope (was anonymous-namespace before
+  RealProcess only) and is now used by PPMContextWalk and MixUpdate
+  to build composite bitfield indices (mixCtxComposite, matchScore,
+  OrderCtxSeed, SseSeed, MixCtxExtra, bmComposite).
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
