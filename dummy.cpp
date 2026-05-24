@@ -119,7 +119,7 @@ int* SymLastCtx2 = &SymLastCtx[256];
 int* MatchPosBySym = &SymLastCtx[512];
 char BijectMap[0x40000];
 int q26Anchor;
-char b25;
+char foundSymHist;
 sqword q26;
 int MixScale;
 int hintSymRecent;
@@ -2673,7 +2673,7 @@ qword MixUpdate(byte* ctxBytes) {
   MatchCtxHi = sym;
   sseState3Hash = (sym+(sseState3Hash<<6))&0x1FFFF;
   if( FoundSymbol>=0&&FoundSymbol!=MixCtx3 )
-    b25 += b25+(sym==FoundSymbol);
+    foundSymHist += foundSymHist+(sym==FoundSymbol);
   b31KeyPrev = b31Key;
   order1CtxSaved = Order1Ctx;
   SparseHashA = ((matchHi&0xFFFFFFF8)<<10)+32*(sym&0xFFFFFFF8);
@@ -3719,7 +3719,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
           *chainEnd++ = (sqword)stateIter;
           if( walkSym==FoundSymbol ) {
             sortPriority = 22;
-            sortLimit = &CtxChain[(b25&7)==0];
+            sortLimit = &CtxChain[(foundSymHist&7)==0];
 LABEL_14:
             BubbleSortChain_(chainEnd, sortLimit, sortPriority);
             ++chainStart;
@@ -4121,7 +4121,7 @@ LABEL_296:
           }
         }
         sortPriorityC = 22;
-        sortLimitC = &CtxChain[(byte)descendFlags&((b25&7)==0)];
+        sortLimitC = &CtxChain[(byte)descendFlags&((foundSymHist&7)==0)];
 LABEL_292:
         BubbleSortChain_(chainEndE, sortLimitC, sortPriorityC);
         ++sortRangeE;
