@@ -216,14 +216,41 @@ extern "C" EXPORT int    msvcrt_atexit(void (*fn)(void))                  { retu
 extern "C" EXPORT void   msvcrt_exit(int code)                            { exit(code); }
 extern "C" EXPORT void*  msvcrt_localeconv(void)                          { return (void*)localeconv(); }
 
+// Windows CRT signal handlers are ms_abi (signal number in RCX); Linux
+// signal handlers are SysV (signal number in EDI).  Registering an
+// ms_abi handler directly with sigaction makes the kernel deliver the
+// signal number via the SysV register, so the handler reads garbage in
+// RCX.  Stash the ms_abi handler per signal and register a SysV
+// trampoline that bridges the ABI.
+typedef void (__attribute__((ms_abi)) *win_sighandler_t)(int);
+static win_sighandler_t g_msvcrt_sighandlers[64] = {};
+
+static void msvcrt_signal_trampoline(int sig) {
+  if( sig<0||sig>=64 ) return;
+  win_sighandler_t h = g_msvcrt_sighandlers[sig];
+  if( h ) h(sig);  // typed call: compiler emits SysV→ms_abi conversion
+}
+
 extern "C" EXPORT void* msvcrt_signal(int sig, void* handler) {
   // Map Windows SIGABRT (22) to Linux SIGABRT (6)
   int lsig = (sig == 22) ? SIGABRT : sig;
+  if( lsig<0||lsig>=64 ) return (void*)-1;  // SIG_ERR
   struct sigaction sa = {}, old = {};
-  if( handler == (void*)0 )      sa.sa_handler = SIG_DFL;
-  else if( handler == (void*)1 ) sa.sa_handler = SIG_IGN;
-  else                            sa.sa_handler = (void(*)(int))handler;
+  win_sighandler_t prev = g_msvcrt_sighandlers[lsig];
+  if( handler == (void*)0 ) {
+    sa.sa_handler = SIG_DFL;
+    g_msvcrt_sighandlers[lsig] = nullptr;
+  } else if( handler == (void*)1 ) {
+    sa.sa_handler = SIG_IGN;
+    g_msvcrt_sighandlers[lsig] = nullptr;
+  } else {
+    g_msvcrt_sighandlers[lsig] = (win_sighandler_t)handler;
+    sa.sa_handler = msvcrt_signal_trampoline;
+  }
   sigaction(lsig, &sa, &old);
+  // Hand back the previously-installed Windows handler if any; otherwise
+  // whatever was registered out-of-band (SIG_DFL/SIG_IGN/raw sigaction).
+  if( prev ) return (void*)prev;
   return (void*)old.sa_handler;
 }
 
