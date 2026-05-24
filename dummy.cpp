@@ -2123,7 +2123,7 @@ sqword ReduceOrder() {
   foundSymFreq = *(word*)q9;
   ctxBW = (byte*)RootContext;
   rootCtxSaved = RootContext;
-  sse0Bit = *((byte*)SSE0+(byte)*(word*)q9);
+  sse0Bit = ((byte*)SSE0)[((STATE*)q9)->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
     succCreatedTop = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
     ((STATE*)foundStateB)->iSuccessor = succCreatedTop;
