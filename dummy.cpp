@@ -3690,6 +3690,23 @@ inline void Sse1Step_(int* slot, uint hits, int& cumWeight, int& cumFreq) {
   cumFreq   = clamp + cumIn;
 }
 
+// SseMatch stage shared between region A and region F. Resets the running
+// (sseCum, sseTot) pair to the boosted (boost, 60416) probability, stashes
+// it into the sseMatch delta globals, clamps the cell into [1-boost,
+// 0x40000], Bayesian-updates the cell, and accumulates the clamp result
+// into sseTot. On exit: sseCum holds the post-stage cumFreq (clamp + boost).
+inline void SseMatchStep_(int* slot, int boost) {
+  sseCum = boost;
+  sseTot = 60416;
+  sseMatchDenDelta = boost;
+  sseMatchNumDelta = 60416;
+  int clamp = (int)SseClampMean_(slot, boost, 1 - boost, 0x40000);
+  SseDeltaUpdate_(slot, boost, 0x80000, 0x2000, 1120);
+  sseTot += clamp;
+  predSseTotDelta = sseTot;
+  sseCum = clamp + boost;
+}
+
 // Sse2 stage shared between regions A and F: clamp the cell against the
 // current (sseCum, sseTot) probability gap, accumulate, and commit a
 // MixUpdate. Returns the clamp value so callers can capture intermediates.
@@ -3735,7 +3752,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
   int cumWeightB, cumFreqB, escSymB;
-  int matchCumInA, sseMatchClampA, sseSum2A;
+  int sseSum2A;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqF;
   int sortPriorityC;
@@ -4088,12 +4105,6 @@ LABEL_58:
       wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
       wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
-    // Reset (sseCum, sseTot) to the boosted (60416 / cumWeightB) probability
-    // pair and feed it into the SseMatch stage; same shape as region F.
-    sseCum = (int)(60416LL*cumFreqB/cumWeightB);
-    sseTot = 60416;
-    sseMatchDenDelta = sseCum;
-    sseMatchNumDelta = 60416;
     sseMatchSlotA = &SseMatch[(int)(SseIdx{}
         .bits <1, 8>  (escSymB)                          // bits 1-8: candidate sym
         .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
@@ -4102,13 +4113,8 @@ LABEL_58:
         .bit  <19>    (escSymB == FoundSymbol)
         .bit  <20>    (MixScale < (uint)mixScaleCntr))];
     sseMatchSlot = sseMatchSlotA;
-    matchCumInA = sseCum;
-    sseMatchClampA = (int)SseClampMean_(sseMatchSlotA, sseCum, 1 - sseCum, 0x40000);
-    SseDeltaUpdate_(sseMatchSlotA, matchCumInA, 0x80000, 0x2000, 1120);
-    sseTot += sseMatchClampA;
-    predSseTotDelta = sseTot;
-    sseSum2A = sseMatchClampA+matchCumInA;
-    sseCum = sseSum2A;
+    SseMatchStep_(sseMatchSlotA, (int)(60416LL*cumFreqB/cumWeightB));
+    sseSum2A = sseCum;
     sse2IdxA = SseIdx{}
       .bit  <0>    (escSymB == hintSymM2)
       .bit  <1>    (escSymB == hintSymMatch3)                              // overlaid with SSE0 byte below
@@ -4530,11 +4536,6 @@ LABEL_59:
             predBaseDeltaB = RescaleAccum2_(binMixCenter - 0x10000, predExpShiftF);
           }
         }
-        int sseMatchBoostedF = 60416LL*mixCumFreqF/mixCumWeightF;
-        sseCum = sseMatchBoostedF;
-        sseTot = 60416;
-        sseMatchDenDelta = sseMatchBoostedF;
-        sseMatchNumDelta = 60416;
         sseMatchSlotF = &SseMatch[(int)(SseIdx{}
             .bits <1, 8>  (candSymbol)                       // bits 1-8: candidate sym
             .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
@@ -4543,13 +4544,8 @@ LABEL_59:
             .bit  <19>    (candSymbol == FoundSymbol)
             .bit  <20>    (MixScale < (uint)mixScaleCntr))];
         sseMatchSlot = sseMatchSlotF;
-        int matchCumInF = sseCum;
-        int sseMatchClampF = SseClampMean_(sseMatchSlotF, sseMatchBoostedF, 1-sseCum, 0x40000);
-        SseDeltaUpdate_(sseMatchSlotF, matchCumInF, 0x80000, 0x2000, 1120);
-        sseTot += sseMatchClampF;
-        int cumWeightF = sseMatchClampF+matchCumInF;
-        sseCum = cumWeightF;
-        predSseTotDelta = sseTot;
+        SseMatchStep_(sseMatchSlotF, (int)(60416LL*mixCumFreqF/mixCumWeightF));
+        int cumWeightF = sseCum;
         sqword sse2IdxF = SseIdx{}
           .bit  <0>    (candSymbol == hintSymM2)
           .bit  <1>    (candSymbol == hintSymMatch3)                          // overlaid with SSE0 byte below
