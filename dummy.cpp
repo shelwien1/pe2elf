@@ -794,7 +794,11 @@ TARGET_SCALE_FALLBACK:
   SparseBit = 1<<sym;
   SparseIdxA = (uint)(sym+SparseHashA)>>5;
   SparseIdxB = (uint)(sym+SparseHashB)>>5;
-  int sparseFlags = (((1<<sym)&SparseBitmapA[(uint)(sym+SparseHashA)>>5])!=0)+2*(((1<<sym)&SparseBitmapB[(uint)(sym+SparseHashB)>>5])!=0);
+  // 2-bit composite: bit 0 says "sym seen in SparseBitmapA bucket",
+  // bit 1 says "sym seen in SparseBitmapB bucket".
+  int sparseFlags = (int)SseIdx{}
+    .bit<0>((1<<sym) & SparseBitmapA[(uint)(sym + SparseHashA) >> 5])
+    .bit<1>((1<<sym) & SparseBitmapB[(uint)(sym + SparseHashB) >> 5]);
   int matchTableEntry = MatchPosTable[sym+(MatchCtxHi<<8)];
   if( (uint)(SymEpoch-matchTableEntry)>=0x20000 ) {
     matchEpoch2 = 0x20000;
