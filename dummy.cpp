@@ -2252,7 +2252,7 @@ sqword ReduceOrder() {
   char sse0Bit;
   uint succCreatedTop;
   sqword result;
-  sqword v9;
+  sqword pTextEntry;
   sqword heapNull;
   qword unitsStart;
   sqword v12;
@@ -2263,7 +2263,7 @@ sqword ReduceOrder() {
   sqword ctxSuffixIdx;
   int escIdx;
   char sse0BitSaved;
-  uint v20;
+  uint succIdxSaved;
   uint nStatesP1;
   sqword v22;
   uint* v23;
@@ -2387,16 +2387,16 @@ sqword ReduceOrder() {
     }
     goto LABEL_73;
   }
-  v9 = pText;
+  pTextEntry = pText;
   heapNull = HeapNull;
   *(byte*)pText = *(word*)q9;
   unitsStart = UnitsStart;
-  v12 = v9+1;
-  pText = v9+1;
-  v13 = v9+1-heapNull;
-  if( v9+1>=(qword)UnitsStart )
+  v12 = pTextEntry+1;
+  pText = pTextEntry+1;
+  v13 = pTextEntry+1-heapNull;
+  if( pTextEntry+1>=(qword)UnitsStart )
     goto LABEL_73;
-  *(byte*)(v9+1) = 0;
+  *(byte*)(pTextEntry+1) = 0;
   if( !v4 ) {
     maxCtxStart = MaxContext0;
     v65 = CtxChainEnd;
@@ -2441,20 +2441,20 @@ sqword ReduceOrder() {
     v104 = v68;
     v0 = v115;
     if( v4<=v13 ) {
-      v100 = v9;
-      v110 = v9+1-heapNull;
+      v100 = pTextEntry;
+      v110 = pTextEntry+1-heapNull;
       v106 = sse0Bit;
       v4 = CreateSuccessors(0, (qword)(v104-1), v67);
       sse0Bit = v106;
       v13 = v110;
-      v9 = v100;
+      pTextEntry = v100;
       *(uint*)(v102+2) = v4;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==v115 ) {
       *(uint*)(foundStateB+2) = v4;
       v4 = *(uint*)(v102+2);
-      v12 = v9;
-      pText = v9;
+      v12 = pTextEntry;
+      pText = pTextEntry;
     }
 LABEL_9:
     if( v4 ) {
@@ -2581,7 +2581,7 @@ LABEL_73:
   maxCtxStart = MaxContext0;
   succIdx = v4;
   if( unitsStart>heapNull+(qword)v4 ) {
-    v107 = v9+1-heapNull;
+    v107 = pTextEntry+1-heapNull;
     v105 = sse0Bit;
     v4 = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
     sse0Bit = v105;
@@ -2612,7 +2612,7 @@ LABEL_11:
     sse0BitSaved = sse0Bit;
     bListCountIdx = BList-heapNull+444;
     escIdxClipped = escIdx;
-    v20 = v13;
+    succIdxSaved = v13;
     while( 1 ) {
       nStatesP1 = *v5+1;
       if( *v5 ) {
@@ -2638,9 +2638,9 @@ LABEL_11:
               v31 = LoUnit+v30==hiUnitSaved;
               if( LoUnit+v30>hiUnitSaved ) {
                 v99 = *(Units2Indx+v24+3);
-                v108 = v20;
+                v108 = succIdxSaved;
                 v29 = (uint*)AllocUnitsRare(v27);
-                v20 = v108;
+                succIdxSaved = v108;
                 v25 = v99;
               } else {
                 LoUnit += v30;
@@ -2777,9 +2777,9 @@ LABEL_11:
           v58 = 12*(uint)*((byte*)&Indx2Units+Units2Indx4[0]);
           v59 = LoUnit+v58==hiUnitSaved;
           if( LoUnit+v58>hiUnitSaved ) {
-            v109 = v20;
+            v109 = succIdxSaved;
             v96 = AllocUnitsRare(Units2Indx4[0]);
-            v20 = v109;
+            succIdxSaved = v109;
             v57 = v96;
           } else {
             LoUnit += v58;
@@ -2806,7 +2806,7 @@ LABEL_99:
         *((word*)v5+1) = (byte)v61;
       }
       *(byte*)(v54+1) = 0;
-      *(uint*)(v54+2) = v20;
+      *(uint*)(v54+2) = succIdxSaved;
       *(byte*)v54 = foundSymFreq;
       v62 = v5[1]&0xF0;
       v63 = heapNull+*((uint*)v5+1);
