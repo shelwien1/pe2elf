@@ -153,18 +153,18 @@ short* MixFreq2 = &MixFreq2_1[1];
 
 
 int d90[4096];
-int& d79 = d90[2];
-int& d66 = d90[3];
+int& q12BaseSel = d90[2];
+int& b31Key = d90[3];
 int& Order1Ctx = d90[4];
-int& d65 = d90[5];
-int& d67 = d90[6];
-int& d76 = d90[7];
-int& d88 = d90[8];
-int& d89 = d90[9];
+int& b31KeyPrev = d90[5];
+int& order1CtxSaved = d90[6];
+int& matchHintByte = d90[7];
+int& bdiffSaved = d90[8];
+int& bdiffStickyCnt = d90[9];
 int& matchHashSy = d90[10];
 int& matchPosAge = d90[11];
 int& matchEpoch2 = d90[12];
-int& d75 = d90[13];
+int& matchDeltaSaved = d90[13];
 int& sseState3Hash = d90[14];
 int* RecentPos = &d90[15];
 
@@ -250,8 +250,8 @@ int wDelta35;
 int predRescaleDiv;
 int cumFreqAcc;
 int wDelta33;
-int d103;
-int d106;
+int cumFreqMixSave;
+int sseIdxStorage;
 
 sqword q32;
 sqword q31;
@@ -763,7 +763,7 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=d103=d106=0;
+  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
   hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
@@ -3003,7 +3003,7 @@ qword MixUpdate(byte* a1) {
 
   // ---- RSContext / Sse2State histogram rotation ---------------------------
   short  rsCtx;
-  char   newQ12Sel;        // 2*d79 or ++d79 (selects new q12 base)
+  char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new q12 base)
   sqword sse2Base;         // q12 (current Sse2State sub-block base)
   sqword sse2Saved;        // duplicate of sse2Base used in the halving loop
   sqword sseHistOff;
@@ -3136,8 +3136,8 @@ qword MixUpdate(byte* a1) {
   sseState3Hash = (sym+(sseState3Hash<<6))&0x1FFFF;
   if( FoundSymbol>=0&&FoundSymbol!=MixCtx3 )
     b25 += b25+(sym==FoundSymbol);
-  d65 = d66;
-  d67 = Order1Ctx;
+  b31KeyPrev = b31Key;
+  order1CtxSaved = Order1Ctx;
   SparseHashA = ((matchHi&0xFFFFFFF8)<<10)+32*(sym&0xFFFFFFF8);
   mixCtxOld = MixCtx;
   sse0sym = *((byte*)SSE0+sym);
@@ -3150,7 +3150,7 @@ qword MixUpdate(byte* a1) {
   SseCtx0_1[sym] = symEpoch;
   dt = symEpoch-recentEpoch;
   if( (uint)(symEpoch-recentEpoch)>=0x104 ) {
-    d66 = 0;
+    b31Key = 0;
     hintSymRecent = -1;
   } else {
     hashByte = (byte)MatchPosHash[(recentEpoch+1)&0x1FFFF];
@@ -3158,7 +3158,7 @@ qword MixUpdate(byte* a1) {
     if( dt>=50 )
       hashByte = 0;
     cnt = 192;
-    d66 = hashByte;
+    b31Key = hashByte;
     rp = RecentPos[recentEpoch&0xFFF];
     if( (uint)(symEpoch-rp)<0xC0 ) {
       do {
@@ -3173,17 +3173,17 @@ qword MixUpdate(byte* a1) {
   MatchPosPrev[(symEpoch-1)&0x1FFFF] = matchPrev;
   MatchPosTable[matchKey] = symEpoch-1;
   matchDelta = symEpoch-matchPrev;
-  d75 = matchDelta;
+  matchDeltaSaved = matchDelta;
   matchScore = (((uint)(symEpoch-matchPrev)<0xE800)+(matchDelta<0xF0)+(matchDelta<7))<<13;
   if( (uint)(symEpoch-matchPrev)>=0x1000 ) {
     Order1Ctx = 0;
     predV38 = 0;
-    d76 = -1;
+    matchHintByte = -1;
   } else {
     predV38 = (byte)MatchPosHash[(matchPrev+2)&0x1FFFF];
     Order1Ctx = predV38;
-    d76 = (byte)MatchPosHash[(MatchPosPrev[matchPrev&0x1FFFF]+2)&0x1FFFF];
-    if( predV38==d76 ) {
+    matchHintByte = (byte)MatchPosHash[(MatchPosPrev[matchPrev&0x1FFFF]+2)&0x1FFFF];
+    if( predV38==matchHintByte ) {
       MatchPosBySym[predV38] = sc;
       predV38 = Order1Ctx;
     }
@@ -3191,8 +3191,8 @@ qword MixUpdate(byte* a1) {
       predV38 = 0;
   }
   rsCtx = RSContext;
-  newQ12Sel = 2*d79;
-  d79 *= 2;
+  newQ12Sel = 2*q12BaseSel;
+  q12BaseSel *= 2;
   if( sym!=RSContext ) {
     sse2Base = q12;
     *(uint*)(q12+512) += 2;
@@ -3208,10 +3208,10 @@ qword MixUpdate(byte* a1) {
         *(uint*)(sse2Saved+512) += halved;
       }
     }
-    newQ12Sel = ++d79;
-    if( sym!=d67 ) {
-      b27[RSContext+(d67<<8)] = sym;
-      newQ12Sel = d79;
+    newQ12Sel = ++q12BaseSel;
+    if( sym!=order1CtxSaved ) {
+      b27[RSContext+(order1CtxSaved<<8)] = sym;
+      newQ12Sel = q12BaseSel;
     }
   }
   matchHi = (int)matchHi;
@@ -3242,8 +3242,8 @@ qword MixUpdate(byte* a1) {
   HashSeed2 = -1;
   symEpochN = symEpoch+1;
   SymEpoch = symEpoch+1;
-  if( bdiff==d88 ) {
-    if( (uint)++ d89>1 ) {
+  if( bdiff==bdiffSaved ) {
+    if( (uint)++ bdiffStickyCnt>1 ) {
       predV38 = (byte)(2*sym-matchHi);
       FoundSymbol = predV38;
       goto LABEL_94;
@@ -3251,8 +3251,8 @@ qword MixUpdate(byte* a1) {
     FoundSymbol = -1;
   } else {
     FoundSymbol = -1;
-    d89 = 0;
-    d88 = bdiff-(bdiff==0);
+    bdiffStickyCnt = 0;
+    bdiffSaved = bdiff-(bdiff==0);
   }
   ssem3 = (byte)*(sseSlot-3);
   ssem7 = (byte)*(sseSlot-7);
@@ -3277,10 +3277,10 @@ qword MixUpdate(byte* a1) {
       HashArmUpdate_(b30,       256*sm1 + sm7, 256*sm2 + sm8, sym, sc);
 
       // b31 arm uses a different routing (no collision branch, SymLastCtx only)
-      uint b31_ri = (uint)(Order1Ctx + (d66 << 8));
+      uint b31_ri = (uint)(Order1Ctx + (b31Key << 8));
       hintSymB31 = (byte)b31[b31_ri];
       SymLastCtx[(byte)b31[b31_ri]] = sc;
-      if (sym != d65 && sym != d67) b31[d67 + (d65 << 8)] = sym;
+      if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
 
       // final independent hint from RecentPos chain
       byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi2] & 0xFFFLL] + 2) & 0x1FFFF];
@@ -4266,7 +4266,7 @@ LABEL_18:
             cumFreqMixA = predRescaleDiv+((mixFreqA>>1)+nStatesPlus1*mixWeightA)/mixFreqA+2;
             cumFreqAcc = cumFreqMixA;
             if( nStatesPlus1<24 ) {
-              d103 = 0;
+              cumFreqMixSave = 0;
               cumFreqDivA = 0;
 LABEL_58:
               // SSE-mix preamble: zero out the per-step predictor accumulators
@@ -4276,11 +4276,11 @@ LABEL_58:
               predShiftFlags = 0;
               wDelta34 = 0;
               predBinFlags = 171;
-              d106 = SseIdx{}
+              sseIdxStorage = SseIdx{}
                 .bit  <1>    (OrderFall < 3)
                 .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
                 .bits <5, 2> (MixCtx2 & 3);
-              d106Cache = d106;
+              d106Cache = sseIdxStorage;
               remCandF = nStates+1;
               chainPtr = CtxChain;
               // MixCtxExtra accumulator update: a few bits at fixed positions
@@ -4300,7 +4300,7 @@ LABEL_58:
             }
           }
           cumFreqDivA = cumFreqMixA>>1;
-          d103 = cumFreqMixA>>1;
+          cumFreqMixSave = cumFreqMixA>>1;
           goto LABEL_58;
         }
       }
@@ -4338,10 +4338,10 @@ LABEL_58:
       .bit  <0>    (currentSymbol == hintSymB31)
       .bit  <1>    (currentSymbol == hintSymB29)
       .bit  <2>    (currentSymbol == hintSymBiject)
-      .bit  <3>    (currentSymbol == d66)
+      .bit  <3>    (currentSymbol == b31Key)
       .bit  <4>    (currentSymbol == Order1Ctx)
       .field<5, 3> (currentSymbol)                              // bits 5-7 of the symbol
-      .bit  <8>    (currentSymbol == d76)
+      .bit  <8>    (currentSymbol == matchHintByte)
       .field<9, 1> (OrderCtxSeed)                               // bit  9     carried
       .field<10,1> ((word)recentSym - (word)currentSymbol)            // bit 10    sign trick (subtraction underflow)
       .field<11,1> ((word)currentSymbol - (word)MatchCtxHi)     // bit 11    sign trick
@@ -4682,7 +4682,7 @@ LABEL_298:
 LABEL_335:
       // Per-state walk through CtxChain[] inside the escape:  each iteration
       // is the body of ppmd's "FoundState = MinContext->encode2(c)" search.
-      d103 = d103Cache;
+      cumFreqMixSave = d103Cache;
       sumFreqF = freqSumE+sumFreqDivC;
       cumFreqAcc = sumFreqF;
       RunLength = runLengthInit;
@@ -4702,7 +4702,7 @@ LABEL_335:
         .bit  <1>    (ofallSavedE < 3 || ofallSavedE+23 < OrderFall0)
         .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
         .bits <5, 2> (MixCtx2 & 3);
-      d106 = d106Cache;
+      sseIdxStorage = d106Cache;
       // MixCtxExtra: outer-loop accumulator seeding the SSE-mix tables for
       // the upcoming per-candidate iterations. Bits 12-16 form a 5-bit
       // weighted-predicate score (weights 1/1/2/7/7/1, max sum 19), packed
@@ -4787,10 +4787,10 @@ LABEL_59:
           .bit  <0>    (candSymbol == hintSymB31)              // matches b31 hint
           .bit  <1>    (candSymbol == hintSymB29)              // matches b29 hint
           .bit  <2>    (candSymbol == hintSymBiject)              // matches BijectMap hint
-          .bit  <3>    (candSymbol == d66)              // matches MatchPosHash hint
+          .bit  <3>    (candSymbol == b31Key)              // matches MatchPosHash hint
           .bit  <4>    (candSymbol == Order1Ctx)        // matches order-1 context
           .field<5, 3> (candSymbol)                     // high 3 bits of the candidate sym
-          .bit  <8>    (candSymbol == d76)              // matches sparse-submodel hint
+          .bit  <8>    (candSymbol == matchHintByte)              // matches sparse-submodel hint
           .field<9, 1> (orderCtxSeedSave)               // carried from outer
           .field<10,1> ((word)recentSym - (word)candSymbol)   // delta-from-recentSym sign trick
           .field<11,1> ((word)candSymbol - matchCtxHiSave) // delta-from-prev sign trick
@@ -4992,8 +4992,8 @@ LABEL_59:
         chainPtr = (sqword*)CtxChainEnd;
         orderCtxSeedSave = OrderCtxSeed;
         sumFreqF = cumFreqAcc;
-        d103Cache = d103;
-        d106Cache = d106;
+        d103Cache = cumFreqMixSave;
+        d106Cache = sseIdxStorage;
       }
     }
     if( !f_DEC ) rc.encodeSymbol(subRange);
