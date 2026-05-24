@@ -3865,46 +3865,9 @@ extern "C" EXPORT BOOL kernel32_DeviceIoControl(HANDLE /*h*/, DWORD /*code*/,
 #include "shim_advapi32.hpp"
 
 // ---------------------------------------------------------------------------
-// shell32 stubs
+// shell32
 // ---------------------------------------------------------------------------
-extern "C" EXPORT int shell32_SHFileOperationW(void* /*op*/) {
-  SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return 1;
-}
-extern "C" EXPORT BOOL shell32_SHGetPathFromIDListW(void* /*pidl*/, uint16_t* /*path*/) { return FALSE; }
-
-// Minimal IMalloc COM vtable so callers can safely call Free(ptr)
-static uint32_t __attribute__((ms_abi)) imalloc_AddRef(void*) { return 1; }
-static uint32_t __attribute__((ms_abi)) imalloc_Release(void*) { return 1; }
-static int32_t  __attribute__((ms_abi)) imalloc_QueryInterface(void*, const void*, void** pp) {
-  if(pp) *pp = nullptr; return (int32_t)0x80004002; // E_NOINTERFACE
-}
-static void* __attribute__((ms_abi)) imalloc_Alloc(void*, size_t cb) { return malloc(cb); }
-static void* __attribute__((ms_abi)) imalloc_Realloc(void*, void* p, size_t cb) { return realloc(p, cb); }
-static void  __attribute__((ms_abi)) imalloc_Free(void*, void* p) { free(p); }
-static size_t __attribute__((ms_abi)) imalloc_GetSize(void*, void* p) { return p ? malloc_usable_size(p) : (size_t)-1; }
-static int   __attribute__((ms_abi)) imalloc_DidAlloc(void*, void*) { return -1; }
-static void  __attribute__((ms_abi)) imalloc_HeapMinimize(void*) {}
-
-static void* g_imalloc_vtable[] = {
-  (void*)imalloc_QueryInterface,  // 0x00
-  (void*)imalloc_AddRef,          // 0x08
-  (void*)imalloc_Release,         // 0x10
-  (void*)imalloc_Alloc,           // 0x18
-  (void*)imalloc_Realloc,         // 0x20
-  (void*)imalloc_Free,            // 0x28
-  (void*)imalloc_GetSize,         // 0x30
-  (void*)imalloc_DidAlloc,        // 0x38
-  (void*)imalloc_HeapMinimize,    // 0x40
-};
-static void* g_imalloc_instance[] = { g_imalloc_vtable };
-
-extern "C" EXPORT LONG shell32_SHGetMalloc(void** pp) {
-  if(pp) *pp = g_imalloc_instance;
-  return 0; // S_OK
-}
-extern "C" EXPORT LONG shell32_SHGetSpecialFolderLocation(void* /*hwnd*/, int /*csidl*/, void** pp) {
-  if(pp) *pp = nullptr; return (LONG)0x80004005L; // E_FAIL
-}
+#include "shim_shell32.hpp"
 
 // ---------------------------------------------------------------------------
 // user32
@@ -4171,17 +4134,6 @@ extern "C" EXPORT size_t kernel32_RtlCompareMemory(const void* s1, const void* s
   size_t i = 0;
   for(; i < len && a[i] == b[i]; ++i) {}
   return i;
-}
-
-// ---------------------------------------------------------------------------
-// shell32 A-variant stubs
-// ---------------------------------------------------------------------------
-extern "C" EXPORT int shell32_SHFileOperationA(void* /*op*/) {
-  SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED);
-  return 1;
-}
-extern "C" EXPORT BOOL shell32_SHGetPathFromIDListA(void* /*pidl*/, LPSTR /*path*/) {
-  return FALSE;
 }
 
 #include "shim_msvcrt.hpp"
