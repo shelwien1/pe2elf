@@ -10,8 +10,11 @@ winapi_shim.so
 *.pmx
 *.ppm
 winapi_shim_dbg.so
+dummy
 dummy.so
 backup
+1
+2
 1.exe
 2.exe
 archive
