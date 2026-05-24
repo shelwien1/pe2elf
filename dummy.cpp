@@ -2245,23 +2245,23 @@ STATE*& FoundState = (STATE*&)q9;
 sqword ReduceOrder() {
   sqword v0;
   byte* foundStateB;
-  int v2;
+  int orderFall;
   int maxOrder;
   uint v4;
   byte* v5;
-  char v6;
-  uint v7;
+  char sse0Bit;
+  uint succCreatedTop;
   sqword result;
   sqword v9;
   sqword heapNull;
   qword unitsStart;
   sqword v12;
   uint v13;
-  sqword v14;
+  sqword maxCtxStart;
   sqword succIdx;
   sqword succAddr;
   sqword ctxSuffixIdx;
-  int v18;
+  int escIdx;
   char sse0BitSaved;
   uint v20;
   uint nStatesP1;
@@ -2369,18 +2369,18 @@ sqword ReduceOrder() {
   short foundSymFreq;
   v0 = RootContext;
   foundStateB = (byte*)q9;
-  v2 = OrderFall;
+  orderFall = OrderFall;
   maxOrder = MaxOrder;
   v4 = *(uint*)(q9+2);
   foundSymFreq = *(word*)q9;
   v5 = (byte*)RootContext;
   rootCtxSaved = RootContext;
-  v6 = *((byte*)SSE0+(byte)*(word*)q9);
+  sse0Bit = *((byte*)SSE0+(byte)*(word*)q9);
   if( OrderFall==MaxOrder&&v4 ) {
-    v7 = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
-    *(uint*)(foundStateB+2) = v7;
-    if( v7 ) {
-      result = HeapNull+v7;
+    succCreatedTop = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
+    *(uint*)(foundStateB+2) = succCreatedTop;
+    if( succCreatedTop ) {
+      result = HeapNull+succCreatedTop;
       RootContext = result;
       MaxContext0 = result;
       return result;
@@ -2398,7 +2398,7 @@ sqword ReduceOrder() {
     goto LABEL_73;
   *(byte*)(v9+1) = 0;
   if( !v4 ) {
-    v14 = MaxContext0;
+    maxCtxStart = MaxContext0;
     v65 = CtxChainEnd;
     sym = *foundStateB;
     v112 = v5;
@@ -2427,7 +2427,7 @@ sqword ReduceOrder() {
         break;
       *(uint*)(v69+2) = v13;
       v70 = *(uint*)(v67+8);
-      OrderFall = --v2;
+      OrderFall = --orderFall;
       if( !v70 ) {
         v5 = v112;
         v0 = v115;
@@ -2443,14 +2443,14 @@ sqword ReduceOrder() {
     if( v4<=v13 ) {
       v100 = v9;
       v110 = v9+1-heapNull;
-      v106 = v6;
+      v106 = sse0Bit;
       v4 = CreateSuccessors(0, (qword)(v104-1), v67);
-      v6 = v106;
+      sse0Bit = v106;
       v13 = v110;
       v9 = v100;
       *(uint*)(v102+2) = v4;
     }
-    if( v2==maxOrder-1&&v14==v115 ) {
+    if( orderFall==maxOrder-1&&maxCtxStart==v115 ) {
       *(uint*)(foundStateB+2) = v4;
       v4 = *(uint*)(v102+2);
       v12 = v9;
@@ -2578,40 +2578,40 @@ LABEL_73:
     OrderFall = 0;
     return result;
   }
-  v14 = MaxContext0;
+  maxCtxStart = MaxContext0;
   succIdx = v4;
   if( unitsStart>heapNull+(qword)v4 ) {
     v107 = v9+1-heapNull;
-    v105 = v6;
+    v105 = sse0Bit;
     v4 = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
-    v6 = v105;
+    sse0Bit = v105;
     v13 = v107;
     goto LABEL_9;
   }
 LABEL_11:
   succAddr = heapNull+succIdx;
   ctxSuffixIdx = *(uint*)(heapNull+succIdx+8);
-  OrderFall = v2+1;
+  OrderFall = orderFall+1;
   (void)(ctxSuffixIdx+heapNull); // prefetch hint removed
   if( OrderFall==maxOrder ) {
     v13 = v4;
-    pText = v12-(v0!=v14);
+    pText = v12-(v0!=maxCtxStart);
   }
   result = *(uint*)(succIdx+heapNull+4);
   (void)(result+heapNull); // prefetch hint removed
-  if( v0!=v14 ) {
+  if( v0!=maxCtxStart ) {
     hiUnitSaved = HiUnit;
-    v18 = EscIndexSeed+8;
+    escIdx = EscIndexSeed+8;
     bListSaved = BList;
     succAddrSaved = heapNull+succIdx;
     v114 = v0;
     if( EscIndexSeed+8>=14 )
-      v18 = 14;
-    if( v18<0 )
-      v18 = 0;
-    sse0BitSaved = v6;
+      escIdx = 14;
+    if( escIdx<0 )
+      escIdx = 0;
+    sse0BitSaved = sse0Bit;
     bListCountIdx = BList-heapNull+444;
-    escIdxClipped = v18;
+    escIdxClipped = escIdx;
     v20 = v13;
     while( 1 ) {
       nStatesP1 = *v5+1;
@@ -2815,7 +2815,7 @@ LABEL_99:
       result = 0x2AAAAAAAAAAAAAABLL*v64;
       v5[1] = sse0BitSaved|(v64/6)|v62;
       v5 = (byte*)(heapNull+*((uint*)v5+2));
-      if( v5==(byte*)v14 ) {
+      if( v5==(byte*)maxCtxStart ) {
         succAddr = succAddrSaved;
         break;
       }
