@@ -1355,29 +1355,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
   int queueHeadIdx;
   sqword queueNextEntry;
   char* blockWalker;
-  sqword sizeClassW;
   uint unitsInRun;
-  sqword unitsInRunSaved;
-  uint* noSplitFreelist;
-  int noSplitNextIdx;
-  int noSplitBlockIdx;
-  byte* walkerIdxW;
-  sqword walkerByteOffW;
-  sqword coalesceFreelistOffW;
-  uint unitsInRunInit;
-  uint chunkLoopIW;
-  int chunkLoopJW;
-  sqword chunksOver128W;
-  int freelistHead1536W;
-  uint chunkLoopKW;
-  sqword biggerSizeClassW;
-  sqword biggerUnitsW;
-  int deltaUnitsW;
-  uint* biggerFreelistW;
-  byte* splitBlockW;
-  uint* finalFreelistW;
-  int finalFreelistNextW;
-  int splitBlockIdxW;
   int reqUnitsByte;
   sqword biggerSizeClass4;
   uint* finalQueue;
@@ -1442,86 +1420,11 @@ sqword AllocUnitsRare(uint unitsIdx) {
       *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
       --*queueFreelist;
       for(; blockWalker!=sentinel; --*queueFreelist ) {
-        sizeClassW = *(Units2Indx+(uint)(byte)*blockWalker+3);
-        (void)(*(uint*)((uint)queueFreelist[2]+heapNullCopy+8)+heapNullCopy+4); // prefetch hint removed
-        unitsInRun = *((byte*)&Indx2Units+sizeClassW);
-        unitsInRunSaved = *((byte*)&Indx2Units+sizeClassW);
-        if( (byte)blockWalker[12*unitsInRunSaved+1]==255 ) {
-          walkerIdxW = (byte*)&blockWalker[-heapNullCopy];
-          walkerByteOffW = 12*unitsInRunSaved;
-          do {
-            *(uint*)(*(uint*)&blockWalker[walkerByteOffW+4]+heapNullCopy+8) = *(uint*)&blockWalker[walkerByteOffW+8];
-            *(uint*)(*(uint*)&blockWalker[walkerByteOffW+8]+heapNullCopy+4) = *(uint*)&blockWalker[walkerByteOffW+4];
-            coalesceFreelistOffW = 12LL**(Units2Indx+(byte)blockWalker[walkerByteOffW]+3);
-            --*(uint*)(coalesceFreelistOffW+bListSaved);
-            unitsInRun += (byte)blockWalker[walkerByteOffW];
-            walkerByteOffW = 12LL*unitsInRun;
-          } while( (byte)blockWalker[walkerByteOffW+1]==255 );
-          if( unitsInRun>0x80 ) {
-            unitsInRunInit = unitsInRun;
-            chunkLoopIW = 0;
-            chunkLoopJW = 0;
-            chunksOver128W = -((sqword)(((qword)((1LL-unitsInRun)>>6)>>57)-unitsInRun+1)>>7);
-            do {
-              unitsInRun = chunkLoopJW+unitsInRunInit-128;
-              chunkLoopJW -= 128;
-              ++chunkLoopIW;
-            } while( chunkLoopIW<(uint)chunksOver128W );
-            freelistHead1536W = *(uint*)(bListSaved+448);
-            chunkLoopKW = 0;
-            do {
-              blockWalker[1] = -1;
-              *((uint*)blockWalker+2) = bListCountIdx2;
-              *((uint*)blockWalker+1) = freelistHead1536W;
-              freelistHead1536W = (int)(uintptr_t)walkerIdxW;
-              *blockWalker = 0x80;
-              walkerIdxW += 1536;
-              blockWalker += 1536;
-              *(uint*)(heapNullCopy+*(uint*)(bListSaved+448)+8) = freelistHead1536W;
-              ++*(uint*)(bListSaved+444);
-              *(uint*)(bListSaved+448) = freelistHead1536W;
-              ++chunkLoopKW;
-            } while( chunkLoopKW<(uint)chunksOver128W );
-          }
-          biggerSizeClassW = *(Units2Indx+unitsInRun+3);
-          LODWORD(biggerUnitsW) = *((byte*)&Indx2Units+biggerSizeClassW);
-          if( unitsInRun!=(uint)biggerUnitsW ) {
-            biggerSizeClassW = (uint)(biggerSizeClassW-1);
-            biggerUnitsW = *((byte*)&Indx2Units+biggerSizeClassW);
-            deltaUnitsW = unitsInRun-biggerUnitsW;
-            biggerFreelistW = (uint*)(bListSaved+12LL*(uint)(deltaUnitsW-1));
-            splitBlockW = (byte*)&blockWalker[12*biggerUnitsW];
-            splitBlockW[1] = -1;
-            *splitBlockW = deltaUnitsW;
-            *((uint*)splitBlockW+2) = bListSaved+12*(deltaUnitsW-1)-heapNullCopy;
-            *((uint*)splitBlockW+1) = biggerFreelistW[1];
-            LODWORD(splitBlockW) = (uint)(uintptr_t)splitBlockW-heapNullCopy;
-            *(uint*)((uint)biggerFreelistW[1]+heapNullCopy+8) = (uint)(uintptr_t)splitBlockW;
-            biggerFreelistW[1] = (uint)(uintptr_t)splitBlockW;
-            ++*biggerFreelistW;
-          }
-          blockWalker[1] = -1;
-          finalFreelistW = (uint*)(bListSaved+12*biggerSizeClassW);
-          finalFreelistNextW = finalFreelistW[1];
-          *blockWalker = biggerUnitsW;
-          *((uint*)blockWalker+2) = (uint)(uintptr_t)finalFreelistW-heapNullCopy;
-          *((uint*)blockWalker+1) = finalFreelistNextW;
-          splitBlockIdxW = (uint)(uintptr_t)blockWalker-heapNullCopy;
-          *(uint*)((uint)finalFreelistW[1]+heapNullCopy+8) = splitBlockIdxW;
-          finalFreelistW[1] = splitBlockIdxW;
-          ++*finalFreelistW;
-        } else {
-          blockWalker[1] = -1;
-          noSplitFreelist = (uint*)(bListSaved+12*sizeClassW);
-          noSplitNextIdx = noSplitFreelist[1];
-          *blockWalker = unitsInRun;
-          *((uint*)blockWalker+2) = (uint)(uintptr_t)noSplitFreelist-heapNullCopy;
-          *((uint*)blockWalker+1) = noSplitNextIdx;
-          noSplitBlockIdx = (uint)(uintptr_t)blockWalker-heapNullCopy;
-          *(uint*)((uint)noSplitFreelist[1]+heapNullCopy+8) = noSplitBlockIdx;
-          noSplitFreelist[1] = noSplitBlockIdx;
-          ++*noSplitFreelist;
-        }
+        // Re-classify this block: free it via the shared coalesce/chunk/split
+        // path. FreeUnitsRare will reinsert into whatever queue ends up right
+        // (possibly different from the current sizeClassW after coalescing).
+        unitsInRun = *((byte*)&Indx2Units + *(Units2Indx + (uint)(byte)*blockWalker + 3));
+        FreeUnitsRare((sqword)blockWalker, unitsInRun);
         blockWalker = (char*)(heapNullCopy+(uint)queueFreelist[2]);
         queueFreelist[2] = *((uint*)blockWalker+2);
         *(uint*)(*((uint*)blockWalker+2)+heapNullCopy+4) = queueHeadIdx;
