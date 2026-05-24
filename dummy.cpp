@@ -2131,10 +2131,6 @@ sqword ReduceOrder() {
   byte* stateBW;
   uint curCtxSuffix;
   sqword bListSaved2;
-  sqword stateWalker;
-  sqword stateIStates;
-  sqword stateIStatesAddr;
-  qword mismatchOff;
   int symPeek;
   byte* chainStatePtr;
   sqword* chainPtrSave;
@@ -2246,23 +2242,25 @@ LABEL_73:
     if( *(byte*)rootCtxW==1 ) {
       bListSaved2 = BList;
       if( !*ctxBW&&(byte*)rootCtxW!=ctxBW ) {
+        // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
+        // each one's 2-STATE[] block down to a single oneState. The kept state
+        // is the one whose Symbol matches ctxBW[2] (the parent ctx's Flags
+        // byte's secondary symbol byte) — if states[0] mismatches, take
+        // states[1] instead.
         ctxSaved = rootCtxW;
-        stateWalker = rootCtxSaved;
+        PPM_CONTEXT* walker = (PPM_CONTEXT*)rootCtxSaved;
         do {
-          stateIStates = *(uint*)(stateWalker+4);
-          stateIStatesAddr = HeapNull+stateIStates;
-          mismatchOff = *(byte*)(HeapNull+stateIStates)!=ctxBW[2];
-          *(byte*)(stateWalker+1) = *((byte*)SSE0+*(byte*)(HeapNull+stateIStates+6*mismatchOff));
-          *(byte*)(HeapNull+stateIStates+6*mismatchOff+1) = ((uint)*(byte*)(HeapNull+stateIStates+6*mismatchOff+1)+3)>>2;
-          *(word*)(stateWalker+2) = *(word*)(HeapNull+stateIStates+6*mismatchOff);
-          *(uint*)(stateWalker+4) = *(uint*)(HeapNull+stateIStates+6*mismatchOff+2);
-          *(byte*)stateWalker = 0;
-          // Free the now-collapsed STATE[]-array allocation (1 unit) via the
-          // shared coalesce/chunk/split path; equivalent to the long inline
-          // sequence in AllocUnitsRare's leftover-split branch.
-          FreeUnitsRare(stateIStatesAddr, (uint)Indx2Units[Units2Indx4[0]]);
-          stateWalker = HeapNull+*(uint*)(stateWalker+8);
-        } while( (byte*)stateWalker!=ctxBW );
+          STATE* states = walker->getStates();
+          STATE* kept   = &states[states[0].Symbol != ctxBW[2]];
+          walker->Flags = SSE0[kept->Symbol];
+          kept->Freq = (byte)(((uint)kept->Freq + 3) >> 2);
+          walker->oneState().Symbol      = kept->Symbol;
+          walker->oneState().Freq        = kept->Freq;
+          walker->oneState().iSuccessor  = kept->iSuccessor;
+          walker->NStates                = 0;
+          FreeUnitsRare((sqword)states, 1);
+          walker = (PPM_CONTEXT*)(HeapNull + walker->iSuffix);
+        } while ((byte*)walker != ctxBW);
         rootCtxW = ctxSaved;
       }
     } else {
