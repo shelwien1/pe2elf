@@ -562,14 +562,14 @@ sqword BinEscFreq(byte* a1);
 
 // Walks the context suffix chain to update local frequency statistics, perform inertia
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
-static void PPMContextWalk(int v2, int sym, uint* outV246, uint* outV250, int* outV257, sqword* outV547, int* outV549) {
+static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffixNStates, int* outMixCtx, sqword* outSummFreqPtr, int* outSparseFlags) {
   // Collect path context history down from the current maximum context
   PPM_CONTEXT* path[MAX_O];
   int path_depth = 0;
 
   PPM_CONTEXT* curr = MaxContext;
   RSContext = sym;
-  SymLastCtx[(byte)b27[sym+(Order1Ctx<<8)]] = v2;
+  SymLastCtx[(byte)b27[sym+(Order1Ctx<<8)]] = epoch;
 
   // Step 1: Climb suffixes until a context with non-zero states is encountered
   do {
@@ -638,13 +638,13 @@ static void PPMContextWalk(int v2, int sym, uint* outV246, uint* outV250, int* o
           ;
         int suffix_found_freq = suffix_state->Freq;
         int base_weight = 5*verification_nstates+5;
-        uint v240 = summ_freq+2*base_weight;
-        int v241 = (2*(2*base_weight<summ_freq)+5)*(suffix_nstates+1)+suffix_summ_freq;
-        if( v241*found_state->Freq<(int)(v240*suffix_found_freq) ) {
+        uint tunedSumm = summ_freq+2*base_weight;
+        int tunedSuffix = (2*(2*base_weight<summ_freq)+5)*(suffix_nstates+1)+suffix_summ_freq;
+        if( tunedSuffix*found_state->Freq<(int)(tunedSumm*suffix_found_freq) ) {
           if( found_state->Freq>228 )
             goto TARGET_SCALE_FALLBACK;
           word delta_freq = summ_freq-found_state->Freq;
-          uint adjusted_freq = ((v240-found_state->Freq)*(suffix_found_freq+3*found_state->Freq)+3*(v240-found_state->Freq)+v241-suffix_found_freq-4)/(3*(v240-found_state->Freq)+v241-suffix_found_freq);
+          uint adjusted_freq = ((tunedSumm-found_state->Freq)*(suffix_found_freq+3*found_state->Freq)+3*(tunedSumm-found_state->Freq)+tunedSuffix-suffix_found_freq-4)/(3*(tunedSumm-found_state->Freq)+tunedSuffix-suffix_found_freq);
           if( adjusted_freq>found_state->Freq+11 ) {
             adjusted_freq = found_state->Freq+11;
           }
@@ -688,70 +688,70 @@ TARGET_SCALE_FALLBACK:
   d93 = path_threshold-initial_threshold;
 
   // Set the low-level pointer output to the updated context summary tracking byte
-  *outV547 = (sqword)((byte*)&path_ctx->SummFreq);
+  *outSummFreqPtr = (sqword)((byte*)&path_ctx->SummFreq);
 
   // Step 8: Calculate context metrics and model hash indicators for the Mixer/LSTM stage
   SparseBit = 1<<sym;
   SparseIdxA = (uint)(sym+SparseHashA)>>5;
   SparseIdxB = (uint)(sym+SparseHashB)>>5;
-  int v549_val = (((1<<sym)&SparseBitmapA[(uint)(sym+SparseHashA)>>5])!=0)+2*(((1<<sym)&SparseBitmapB[(uint)(sym+SparseHashB)>>5])!=0);
-  int v248 = MatchPosTable[sym+(MatchCtxHi<<8)];
-  if( (uint)(SymEpoch-v248)>=0x20000 ) {
+  int sparseFlags = (((1<<sym)&SparseBitmapA[(uint)(sym+SparseHashA)>>5])!=0)+2*(((1<<sym)&SparseBitmapB[(uint)(sym+SparseHashB)>>5])!=0);
+  int matchTableEntry = MatchPosTable[sym+(MatchCtxHi<<8)];
+  if( (uint)(SymEpoch-matchTableEntry)>=0x20000 ) {
     matchEpoch2 = 0x20000;
     matchPosAge = 0x20000;
     matchHashSy = 0x20000;
   } else {
     matchPosAge = MatchPosTable[sym+(MatchCtxHi<<8)];
-    matchHashSy = (byte)MatchPosHash[(v248+2)&0x1FFFF];
-    matchPosAge = SymEpoch-v248;
+    matchHashSy = (byte)MatchPosHash[(matchTableEntry+2)&0x1FFFF];
+    matchPosAge = SymEpoch-matchTableEntry;
     matchEpoch2 = SymEpoch-MatchPosTable[matchHashSy+(sym<<8)];
   }
 
   PPM_CONTEXT* max_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(MaxContext->iSuffix);
-  uint v250_val = max_suffix_ctx->NStates;
-  int v251 = 32*(RunLength>0)+(MaxContext->Flags&0x80);
-  MixCtxExtra += (v250_val==0)<<7;
+  uint suffixNStates = max_suffix_ctx->NStates;
+  int mixCtxBoost = 32*(RunLength>0)+(MaxContext->Flags&0x80);
+  MixCtxExtra += (suffixNStates==0)<<7;
 
   uint v548_val = OrderFall-total_depth;
-  int v252 = MixCtx+((4*(OrderFall-total_depth>3)+8*(sym==ctx->getStates()[ctx->Flags&0x0F].Symbol)+(sym==FoundSymbol)+2*(v2==SymLastCtx[sym]))<<9)+v251+((v549_val==3||v2==MatchPosBySym[sym])<<13);
-  int v253 = (((MixCtx2&6)==6)<<8)+((MixCtx2&1)<<6);
-  int v254 = v252+v253;
+  int mixCtxBase = MixCtx+((4*(OrderFall-total_depth>3)+8*(sym==ctx->getStates()[ctx->Flags&0x0F].Symbol)+(sym==FoundSymbol)+2*(epoch==SymLastCtx[sym]))<<9)+mixCtxBoost+((sparseFlags==3||epoch==MatchPosBySym[sym])<<13);
+  int mixCtx2Bits = (((MixCtx2&6)==6)<<8)+((MixCtx2&1)<<6);
+  int mixCtxComposite = mixCtxBase+mixCtx2Bits;
 
-  int v257_val;
-  if( v250_val ) {
-    uint v255 = v254&0xFFFFFFDE;
-    uint v256 = (path_threshold!=initial_threshold)||(scale_diff<=10*freq_bound);
+  int mixCtx;
+  if( suffixNStates ) {
+    uint mixCtxMasked = mixCtxComposite&0xFFFFFFDE;
+    uint boostBit = (path_threshold!=initial_threshold)||(scale_diff<=10*freq_bound);
 
-    v257_val = 32*v256+v255+(sym==PrevSymbol);
+    mixCtx = 32*boostBit+mixCtxMasked+(sym==PrevSymbol);
   } else {
     PPM_CONTEXT* deep_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(max_suffix_ctx->iSuffix);
-    v250_val = deep_suffix_ctx->NStates;
+    suffixNStates = deep_suffix_ctx->NStates;
     if( deep_suffix_ctx->NStates||v548_val<4||(v548_val<5&&(verification_nstates+1)<4&&ctx->SummFreq-found_state->Freq<36) ) {
 
       uint suffix_chain_idx = deep_suffix_ctx->iSuffix;
-      uint v260_val = 0;
+      uint deeperBit = 0;
       if( suffix_chain_idx ) {
         PPM_CONTEXT* deeper_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(suffix_chain_idx);
-        v260_val = (2*v250_val<deeper_suffix_ctx->NStates);
+        deeperBit = (2*suffixNStates<deeper_suffix_ctx->NStates);
       }
-      v257_val = v254+8*v260_val+16;
+      mixCtx = mixCtxComposite+8*deeperBit+16;
     } else if( path_depth>=6 ) {
       if( path_depth>=14 ) {
-        v257_val = v252+v253+14;
+        mixCtx = mixCtxBase+mixCtx2Bits+14;
         if( path_depth<32 )
-          v257_val = v252+v253+12;
+          mixCtx = mixCtxBase+mixCtx2Bits+12;
       } else {
-        v257_val = v252+v253+10;
+        mixCtx = mixCtxBase+mixCtx2Bits+10;
       }
     } else {
-      v257_val = v252+v253+8;
+      mixCtx = mixCtxBase+mixCtx2Bits+8;
     }
   }
 
-  *outV246 = path_threshold;
-  *outV250 = v250_val;
-  *outV257 = v257_val;
-  *outV549 = v549_val;
+  *outSeeIndex = path_threshold;
+  *outSuffixNStates = suffixNStates;
+  *outMixCtx = mixCtx;
+  *outSparseFlags = sparseFlags;
 }
 //--- #return
 //--- #include "subs_inittables.inc"
