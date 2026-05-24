@@ -3001,14 +3001,14 @@ LABEL_94:
     depth5 = 5*OrderFall;
     if( !*walkCtx ) {
       do {
-        if( chain>&CtxChain_2[1] )
-          *(byte*)(*(chain-2)+1) += *(byte*)(*(chain-2)+1)-2<0;
-        onestatePtr = walkCtx+2;
-        fastSuffix = *((uint*)walkCtx+2);
+        if (chain > &CtxChain_2[1])
+          *(byte*)(*(chain-2) + 1) += *(byte*)(*(chain-2) + 1) - 2 < 0;
+        onestatePtr = walkCtx + 2;
+        fastSuffix = ((PPM_CONTEXT*)walkCtx)->iSuffix;
         *chain++ = (sqword)onestatePtr;
         --depthLeft;
-        walkCtx = (byte*)(heap+fastSuffix);
-      } while( !*walkCtx );
+        walkCtx = (byte*)(heap + fastSuffix);
+      } while (((PPM_CONTEXT*)walkCtx)->NStates == 0);
       maxOrd = MaxOrder;
       if( ofall<MaxOrder ) {
         chain0 = CtxChain[0];
