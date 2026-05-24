@@ -2241,15 +2241,18 @@ LABEL_73:
     goto LABEL_9;
   }
 LABEL_11:
-  succAddr = heapNull+succIdx;
-  ctxSuffixIdx = ((PPM_CONTEXT*)(heapNull + succIdx))->iSuffix;
-  OrderFall = orderFall+1;
-  (void)(ctxSuffixIdx+heapNull); // prefetch hint removed
-  if( OrderFall==maxOrder ) {
-    newByteIdx = succIdxW;
-    pText = pTextNewSlot-(rootCtxW!=maxCtxStart);
+  succAddr = heapNull + succIdx;
+  {
+    PPM_CONTEXT* succCtx = (PPM_CONTEXT*)succAddr;
+    ctxSuffixIdx = succCtx->iSuffix;
+    OrderFall = orderFall + 1;
+    (void)(ctxSuffixIdx + heapNull); // prefetch hint removed
+    if (OrderFall == maxOrder) {
+      newByteIdx = succIdxW;
+      pText = pTextNewSlot - (rootCtxW != maxCtxStart);
+    }
+    result = succCtx->iStates;
   }
-  result = ((PPM_CONTEXT*)(heapNull + succIdx))->iStates;
   (void)(result + heapNull); // prefetch hint removed
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
