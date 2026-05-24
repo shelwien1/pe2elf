@@ -597,7 +597,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
     total_depth = temp_depth;
   }
 
-  // Capture pre-rescale NStates tracking metric (v226)
+  // Capture pre-rescale NStates tracking metric
   uint verification_nstates = ctx->NStates;
 
   // Step 3: Check escape condition and handle low-frequency model rescaling
@@ -625,7 +625,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
       word suffix_summ_freq = suffix_ctx->SummFreq;
       byte suffix_nstates = suffix_ctx->NStates;
 
-      // Uses pre-rescale context state metrics (v544 -> verification_nstates + 1)
+      // Uses pre-rescale context state metrics (verification_nstates + 1)
       if( summ_freq+summ_freq*suffix_nstates<(verification_nstates+1)*(suffix_summ_freq+15) ) {
         if( suffix_ctx->getStates()[suffix_ctx->Flags&0x0F].Freq==0 ) {
           BinEscFreq((byte*)suffix_ctx);
