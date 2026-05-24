@@ -1246,3 +1246,8 @@ __attribute__((constructor)) static void shim_init(void) {
 #include "shim_kernel32_a.hpp"
 
 #include "shim_msvcrt.hpp"
+
+// ---------------------------------------------------------------------------
+// ole32 / oleaut32 / powrprof
+// ---------------------------------------------------------------------------
+#include "shim_misc_dlls.hpp"

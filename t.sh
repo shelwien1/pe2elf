@@ -94,7 +94,7 @@ for f in pe2elf winapi_shim.so; do
 done
 
 # 3. Each target: convert + run + verify.
-EXE_TARGETS=(rar390 rar550a)
+EXE_TARGETS=(rar390 rar550a rar701a)
 for t in "${EXE_TARGETS[@]}"; do
   run_target "$t"
 done

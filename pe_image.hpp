@@ -1,8 +1,10 @@
 #pragma once
 #include "util.hpp"
 #include "pe_types.hpp"
+#include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -59,6 +61,121 @@ struct ImportEntry {
   uint32_t iat_rva;   // RVA of the IAT slot (8 bytes)
   uint32_t sym_index; // index into .dynsym (assigned later)
 };
+
+// ---------------------------------------------------------------------------
+// Ordinal-import resolver: parses a DLL's export table to map an ordinal
+// to the function name that DLL would have advertised for that slot.  PE
+// files can import either by name or by ordinal; the shim only exposes
+// named entries, so every ordinal import has to be translated.  We don't
+// ship the real Windows DLLs — the caller drops the relevant ones under
+// dll/<lowercase-name>.dll in the repo and we parse just their exports.
+// ---------------------------------------------------------------------------
+struct OrdinalResolver {
+  Buffer buf;
+  PESectionMap secmap;
+  uint32_t ordinal_base = 0;
+  // function-index → name; absent entries are ordinal-only exports.
+  std::unordered_map<uint32_t, std::string> ord_to_name;
+  bool loaded = false;
+
+  bool load(const std::string& dll_name) {
+    std::string base;
+    for( char c : dll_name )
+      base.push_back((char)tolower((unsigned char)c));
+    std::string path = "dll/" + base;
+    if( !buf.load(path.c_str()) ) {
+      if( base.size()<4 || base.substr(base.size()-4)!=".dll" ) {
+        path = "dll/" + base + ".dll";
+        if( !buf.load(path.c_str()) )
+          return false;
+      } else {
+        return false;
+      }
+    }
+
+    auto* dos = buf.at<pe_dos_header>(0);
+    if( !dos || dos->Magic!=0x5A4D ) return false;
+    size_t pe_off = dos->AddressOfNewExeHeader;
+    auto* peh = buf.at<pe_header>(pe_off);
+    if( !peh || memcmp(peh->signature, "PE\0\0", 4)!=0 ) return false;
+    size_t opt_off = pe_off+sizeof(pe_header);
+    auto* magic_p = buf.at<uint16_t>(opt_off);
+    if( !magic_p ) return false;
+    // PE32 and PE32+ differ in optional-header layout but both put the
+    // data directory and section table at peh->SizeOfOptionalHeader.
+    size_t dd_off;
+    uint32_t num_dd;
+    if( *magic_p==0x20B ) {
+      auto* oh = buf.at<pe64_optional_header>(opt_off);
+      if( !oh ) return false;
+      num_dd = oh->NumberOfRvaAndSize;
+      dd_off = opt_off+sizeof(pe64_optional_header);
+    } else if( *magic_p==0x10B ) {
+      auto* p = buf.at<uint32_t>(opt_off+92);
+      if( !p ) return false;
+      num_dd = *p;
+      dd_off = opt_off+96;
+    } else {
+      return false;
+    }
+    if( num_dd<=PE_DD_EXPORT ) return false;
+
+    size_t sec_off = pe_off+sizeof(pe_header)+peh->SizeOfOptionalHeader;
+    for( uint32_t i = 0; i<peh->NumberOfSections; ++i ) {
+      auto* s = buf.at<pe_section>(sec_off+i*sizeof(pe_section));
+      if( !s ) break;
+      PESectionMap::Entry e{};
+      e.va = s->VirtualAddress;
+      e.raw = s->PointerToRawData;
+      e.rawsz = s->SizeOfRawData;
+      e.virtsz = s->VirtualSize;
+      e.characteristics = s->Characteristics;
+      memcpy(e.name, s->Name, 8);
+      e.name[8] = 0;
+      secmap.secs.push_back(e);
+    }
+
+    auto* exp_dd = buf.at<pe_data_directory>(dd_off+PE_DD_EXPORT*sizeof(pe_data_directory));
+    if( !exp_dd || !exp_dd->RelativeVirtualAddress ) return false;
+    auto exp_off = secmap.rva_to_offset(exp_dd->RelativeVirtualAddress);
+    if( !exp_off ) return false;
+    auto* exp = buf.at<pe_export>(*exp_off);
+    if( !exp ) return false;
+    ordinal_base = exp->OrdinalBase;
+
+    auto names_off = secmap.rva_to_offset(exp->NamesRVA);
+    auto ords_off  = secmap.rva_to_offset(exp->NameOrdinalsRVA);
+    if( !names_off || !ords_off ) return false;
+    for( uint32_t j = 0; j<exp->NumberOfNames; ++j ) {
+      auto* name_rva = buf.at<uint32_t>(*names_off + j*4);
+      auto* fn_idx   = buf.at<uint16_t>(*ords_off  + j*2);
+      if( !name_rva || !fn_idx ) continue;
+      auto name_str_off = secmap.rva_to_offset(*name_rva);
+      if( !name_str_off ) continue;
+      ord_to_name[*fn_idx] = buf.str(*name_str_off);
+    }
+    loaded = true;
+    return true;
+  }
+
+  std::string resolve(uint16_t ordinal) const {
+    if( !loaded || ordinal<ordinal_base ) return "";
+    auto it = ord_to_name.find(ordinal-ordinal_base);
+    return it==ord_to_name.end() ? std::string{} : it->second;
+  }
+};
+
+inline std::string resolve_ordinal_import(const std::string& dll_name, uint16_t ordinal) {
+  // Process-wide cache so we parse each dll/<x> at most once.
+  static std::map<std::string, OrdinalResolver> cache;
+  auto it = cache.find(dll_name);
+  if( it==cache.end() ) {
+    OrdinalResolver r;
+    r.load(dll_name);  // ignore failure; resolve() returns "" then
+    it = cache.emplace(dll_name, std::move(r)).first;
+  }
+  return it->second.resolve(ordinal);
+}
 
 // ---------------------------------------------------------------------------
 // Parsed PE image (input data + section map + imports)
@@ -227,9 +344,24 @@ struct PeImage {
           continue;
         }
         if( v&0x8000000000000000ULL ) {
-          fprintf(stderr, "Error: ordinal imports are not supported (DLL '%s' ordinal %llu)\n",
-                  dll_name.c_str(), (unsigned long long)(v&0xFFFF));
-          return false;
+          // Import by ordinal — translate to the function name that the
+          // exporting DLL would have advertised for that slot, so we can
+          // route it to our shim like any named import.  The matching DLL
+          // file has to be present under dll/.
+          uint16_t ordinal = (uint16_t)(v&0xFFFF);
+          std::string fname = resolve_ordinal_import(dll_name, ordinal);
+          if( fname.empty() ) {
+            fprintf(stderr, "Error: cannot resolve ordinal import (DLL '%s' ordinal %u)"
+                            " — put a matching dll/%s file alongside the binary\n",
+                    dll_name.c_str(), ordinal, dll_name.c_str());
+            return false;
+          }
+          ImportEntry ie;
+          ie.dll_name = dll_name;
+          ie.func_name = fname;
+          ie.iat_rva = slot_rva;
+          ie.sym_index = 0;
+          imports.push_back(ie);
         } else {
           auto hint_off_opt = secmap.rva_to_offset((uint32_t)(v&0x7FFFFFFF));
           if( hint_off_opt && *hint_off_opt+2<buf.size() ) {
