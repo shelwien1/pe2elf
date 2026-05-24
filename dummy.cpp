@@ -2158,9 +2158,7 @@ sqword ReduceOrder() {
   uint nStatesP1;
   sqword stateIdxU;
   uint* statesPtr;
-  uint halfNStatesP1;
   uint sizeClassP;
-  sqword halfNStatesP1_b;
   sqword sizeClass4P;
   uint* newStatesPtr;
   uint newStatesIdx;
@@ -2383,11 +2381,10 @@ LABEL_11:
         } else {
           stateIdxU = *((uint*)ctxBW+1);
           statesPtr = (uint*)(heapNull+stateIdxU);
-          halfNStatesP1 = nStatesP1>>1;
-          sizeClassP = *(Units2Indx+(nStatesP1>>1)+3);
-          halfNStatesP1_b = nStatesP1>>1;
-          if( sizeClassP!=*(Units2Indx4+halfNStatesP1_b) ) {
-            sizeClass4P = *(Units2Indx4+halfNStatesP1_b);
+          uint halfNStatesP1 = nStatesP1>>1;
+          sizeClassP = *(Units2Indx+halfNStatesP1+3);
+          if( sizeClassP!=*(Units2Indx4+halfNStatesP1) ) {
+            sizeClass4P = *(Units2Indx4+halfNStatesP1);
             newStatesPtr = (uint*)AllocUnits_((uint)sizeClass4P);
             // AllocUnits_ may have called AllocUnitsRare which clobbers sizeClassP;
             // recompute (matches the inlined pattern's restoration).
