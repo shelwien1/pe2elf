@@ -1800,7 +1800,6 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   int newCtxAddr;
   byte* baseCtxAddr;
   qword chainPtrEnd;
-  uint* newCtxPtr;
   sqword result;
   int newCtxPacked;
   int newCtxBytePos;
@@ -1860,21 +1859,20 @@ LABEL_15:
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
   BYTE1(newCtxPacked) = ((byte*)SSE0)[*baseCtxAddr];
-  while( 1 ) {
-    newCtxPtr = (uint*)AllocContext_();
-    if( !newCtxPtr )
-      break;
-    *newCtxPtr = newCtxPacked;
-    newCtxPtr[1] = newCtxBytePos;
-    newCtxPtr[2] = newCtxAddr - heapNull;
-    newCtxAddr = (int)(uintptr_t)newCtxPtr;
-    result = (uint)((uint)(uintptr_t)newCtxPtr - heapNull);
+  while (true) {
+    PPM_CONTEXT* newCtx = (PPM_CONTEXT*)AllocContext_();
+    if (!newCtx) break;
+    // Write the packed NStates+Flags+SummFreq dword, then iStates and iSuffix.
+    *(uint*)newCtx = newCtxPacked;
+    newCtx->iStates = newCtxBytePos;
+    newCtx->iSuffix = newCtxAddr - heapNull;
+    newCtxAddr = (int)(uintptr_t)newCtx;
+    result = (uint)((uint)(uintptr_t)newCtx - heapNull);
     chainPtrEnd -= 8LL;
     // Hook the new context into the chain entry above us: that entry's
-    // STATE.iSuccessor now points at newCtxPtr.
+    // STATE.iSuccessor now points at the freshly allocated context.
     ((STATE*)*(sqword*)chainPtrEnd)->iSuccessor = result;
-    if( chainPtrEnd==chainEndSaved )
-      return result;
+    if (chainPtrEnd == chainEndSaved) return result;
   }
   return 0;
 }
