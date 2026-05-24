@@ -1874,11 +1874,13 @@ LABEL_15:
       break;
     *newCtxPtr = newCtxPacked;
     newCtxPtr[1] = newCtxBytePos;
-    newCtxPtr[2] = newCtxAddr-heapNull;
+    newCtxPtr[2] = newCtxAddr - heapNull;
     newCtxAddr = (int)(uintptr_t)newCtxPtr;
-    result = (uint)((uint)(uintptr_t)newCtxPtr-heapNull);
+    result = (uint)((uint)(uintptr_t)newCtxPtr - heapNull);
     chainPtrEnd -= 8LL;
-    *(uint*)(*(qword*)chainPtrEnd+2LL) = result;
+    // Hook the new context into the chain entry above us: that entry's
+    // STATE.iSuccessor now points at newCtxPtr.
+    ((STATE*)*(sqword*)chainPtrEnd)->iSuccessor = result;
     if( chainPtrEnd==chainEndSaved )
       return result;
   }
