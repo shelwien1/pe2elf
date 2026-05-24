@@ -2354,7 +2354,7 @@ LABEL_99:
       stateByteOff = newStateEnd-statesBaseAddr;
       result = 0x2AAAAAAAAAAAAAABLL*stateByteOff;
       ctxBW[1] = sse0BitSaved|(stateByteOff/6)|upperFlagBits;
-      ctxBW = (byte*)(heapNull+*((uint*)ctxBW+2));
+      ctxBW = (byte*)((PPM_CONTEXT*)ctxBW)->getSuffix();
       if( ctxBW==(byte*)maxCtxStart ) {
         succAddr = succAddrSaved;
         break;
