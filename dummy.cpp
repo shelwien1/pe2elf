@@ -1859,7 +1859,7 @@ LABEL_15:
   HIWORD(newCtxPacked) = *baseCtxAddr;
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
-  BYTE1(newCtxPacked) = *((byte*)SSE0+*baseCtxAddr);
+  BYTE1(newCtxPacked) = ((byte*)SSE0)[*baseCtxAddr];
   while( 1 ) {
     newCtxPtr = (uint*)AllocContext_();
     if( !newCtxPtr )
@@ -2676,7 +2676,7 @@ qword MixUpdate(byte* ctxBytes) {
   order1CtxSaved = Order1Ctx;
   SparseHashA = ((matchHi&0xFFFFFFF8)<<10)+32*(sym&0xFFFFFFF8);
   mixCtxOld = MixCtx;
-  sse0sym = *((byte*)SSE0+sym);
+  sse0sym = ((byte*)SSE0)[sym];
   RunLength += MixCtx;
   SparseHashB = (8*(sym+SparseHashB))&0xFFF00;
   recentEpoch = SseCtx0_1[sym];
