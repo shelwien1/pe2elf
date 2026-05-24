@@ -2244,27 +2244,27 @@ STATE*& FoundState = (STATE*&)q9;
 
 sqword ReduceOrder() {
   sqword v0;
-  byte* v1;
+  byte* foundStateB;
   int v2;
-  int v3;
+  int maxOrder;
   uint v4;
   byte* v5;
   char v6;
   uint v7;
   sqword result;
   sqword v9;
-  sqword v10;
-  qword v11;
+  sqword heapNull;
+  qword unitsStart;
   sqword v12;
   uint v13;
   sqword v14;
-  sqword v15;
-  sqword v16;
-  sqword v17;
+  sqword succIdx;
+  sqword succAddr;
+  sqword ctxSuffixIdx;
   int v18;
-  char v19;
+  char sse0BitSaved;
   uint v20;
-  uint v21;
+  uint nStatesP1;
   sqword v22;
   uint* v23;
   uint v24;
@@ -2309,7 +2309,7 @@ sqword ReduceOrder() {
   sqword v63;
   sqword v64;
   qword v65;
-  int v66;
+  int sym;
   sqword v67;
   sqword* v68;
   byte* v69;
@@ -2340,7 +2340,7 @@ sqword ReduceOrder() {
   uint* v94;
   int v95;
   sqword v96;
-  int v97;
+  int symPeek;
   int v98;
   uint v99;
   sqword v100;
@@ -2364,13 +2364,13 @@ sqword ReduceOrder() {
   sqword escIdxClipped;
   qword hiUnitSaved;
   sqword bListSaved;
-  sqword v121;
+  sqword succAddrSaved;
   sqword rootCtxSaved;
   short foundSymFreq;
   v0 = RootContext;
-  v1 = (byte*)q9;
+  foundStateB = (byte*)q9;
   v2 = OrderFall;
-  v3 = MaxOrder;
+  maxOrder = MaxOrder;
   v4 = *(uint*)(q9+2);
   foundSymFreq = *(word*)q9;
   v5 = (byte*)RootContext;
@@ -2378,7 +2378,7 @@ sqword ReduceOrder() {
   v6 = *((byte*)SSE0+(byte)*(word*)q9);
   if( OrderFall==MaxOrder&&v4 ) {
     v7 = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
-    *(uint*)(v1+2) = v7;
+    *(uint*)(foundStateB+2) = v7;
     if( v7 ) {
       result = HeapNull+v7;
       RootContext = result;
@@ -2388,19 +2388,19 @@ sqword ReduceOrder() {
     goto LABEL_73;
   }
   v9 = pText;
-  v10 = HeapNull;
+  heapNull = HeapNull;
   *(byte*)pText = *(word*)q9;
-  v11 = UnitsStart;
+  unitsStart = UnitsStart;
   v12 = v9+1;
   pText = v9+1;
-  v13 = v9+1-v10;
+  v13 = v9+1-heapNull;
   if( v9+1>=(qword)UnitsStart )
     goto LABEL_73;
   *(byte*)(v9+1) = 0;
   if( !v4 ) {
     v14 = MaxContext0;
     v65 = CtxChainEnd;
-    v66 = *v1;
+    sym = *foundStateB;
     v112 = v5;
     v67 = MaxContext0;
     v115 = v0;
@@ -2408,12 +2408,12 @@ sqword ReduceOrder() {
     while( 1 ) {
       if( (qword)v68>=v65 ) {
         if( *(byte*)v67 ) {
-          v69 = (byte*)(v10+*(uint*)(v67+4));
-          if( *v69!=v66 ) {
+          v69 = (byte*)(heapNull+*(uint*)(v67+4));
+          if( *v69!=sym ) {
             do {
-              v97 = v69[6];
+              symPeek = v69[6];
               v69 += 6;
-            } while( v66!=v97 );
+            } while( sym!=symPeek );
           }
         } else {
           v69 = (byte*)(v67+2);
@@ -2431,10 +2431,10 @@ sqword ReduceOrder() {
       if( !v70 ) {
         v5 = v112;
         v0 = v115;
-        v4 = v67-v10;
+        v4 = v67-heapNull;
         goto LABEL_9;
       }
-      v67 = v10+v70;
+      v67 = heapNull+v70;
     }
     v102 = v69;
     v5 = v112;
@@ -2442,7 +2442,7 @@ sqword ReduceOrder() {
     v0 = v115;
     if( v4<=v13 ) {
       v100 = v9;
-      v110 = v9+1-v10;
+      v110 = v9+1-heapNull;
       v106 = v6;
       v4 = CreateSuccessors(0, (qword)(v104-1), v67);
       v6 = v106;
@@ -2450,15 +2450,15 @@ sqword ReduceOrder() {
       v9 = v100;
       *(uint*)(v102+2) = v4;
     }
-    if( v2==v3-1&&v14==v115 ) {
-      *(uint*)(v1+2) = v4;
+    if( v2==maxOrder-1&&v14==v115 ) {
+      *(uint*)(foundStateB+2) = v4;
       v4 = *(uint*)(v102+2);
       v12 = v9;
       pText = v9;
     }
 LABEL_9:
     if( v4 ) {
-      v15 = v4;
+      succIdx = v4;
       goto LABEL_11;
     }
 LABEL_73:
@@ -2579,9 +2579,9 @@ LABEL_73:
     return result;
   }
   v14 = MaxContext0;
-  v15 = v4;
-  if( v11>v10+(qword)v4 ) {
-    v107 = v9+1-v10;
+  succIdx = v4;
+  if( unitsStart>heapNull+(qword)v4 ) {
+    v107 = v9+1-heapNull;
     v105 = v6;
     v4 = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
     v6 = v105;
@@ -2589,48 +2589,48 @@ LABEL_73:
     goto LABEL_9;
   }
 LABEL_11:
-  v16 = v10+v15;
-  v17 = *(uint*)(v10+v15+8);
+  succAddr = heapNull+succIdx;
+  ctxSuffixIdx = *(uint*)(heapNull+succIdx+8);
   OrderFall = v2+1;
-  (void)(v17+v10); // prefetch hint removed
-  if( OrderFall==v3 ) {
+  (void)(ctxSuffixIdx+heapNull); // prefetch hint removed
+  if( OrderFall==maxOrder ) {
     v13 = v4;
     pText = v12-(v0!=v14);
   }
-  result = *(uint*)(v15+v10+4);
-  (void)(result+v10); // prefetch hint removed
+  result = *(uint*)(succIdx+heapNull+4);
+  (void)(result+heapNull); // prefetch hint removed
   if( v0!=v14 ) {
     hiUnitSaved = HiUnit;
     v18 = EscIndexSeed+8;
     bListSaved = BList;
-    v121 = v10+v15;
+    succAddrSaved = heapNull+succIdx;
     v114 = v0;
     if( EscIndexSeed+8>=14 )
       v18 = 14;
     if( v18<0 )
       v18 = 0;
-    v19 = v6;
-    bListCountIdx = BList-v10+444;
+    sse0BitSaved = v6;
+    bListCountIdx = BList-heapNull+444;
     escIdxClipped = v18;
     v20 = v13;
     while( 1 ) {
-      v21 = *v5+1;
+      nStatesP1 = *v5+1;
       if( *v5 ) {
-        if( (v21&1)!=0 ) {
+        if( (nStatesP1&1)!=0 ) {
           v53 = *((uint*)v5+1);
         } else {
           v22 = *((uint*)v5+1);
-          v23 = (uint*)(v10+v22);
-          v24 = v21>>1;
-          v25 = *(Units2Indx+(v21>>1)+3);
-          v26 = v21>>1;
+          v23 = (uint*)(heapNull+v22);
+          v24 = nStatesP1>>1;
+          v25 = *(Units2Indx+(nStatesP1>>1)+3);
+          v26 = nStatesP1>>1;
           if( v25!=*(Units2Indx4+v26) ) {
             v27 = *(Units2Indx4+v26);
             v28 = (uint*)(bListSaved+12*v27);
             if( *v28 ) {
-              v29 = (uint*)(v10+(uint)v28[1]);
+              v29 = (uint*)(heapNull+(uint)v28[1]);
               v28[1] = v29[1];
-              *(uint*)((uint)v29[1]+v10+8) = (uint)(uintptr_t)v28-v10;
+              *(uint*)((uint)v29[1]+heapNull+8) = (uint)(uintptr_t)v28-heapNull;
               --*v28;
             } else {
               v29 = (uint*)LoUnit;
@@ -2650,13 +2650,13 @@ LABEL_11:
             }
             if( v29 ) {
               v32 = v29;
-              v33 = v10+v22;
-              if( (v21&2)!=0 ) {
+              v33 = heapNull+v22;
+              if( (nStatesP1&2)!=0 ) {
                 *v29 = *v23;
                 v29[1] = v23[1];
                 v29[2] = v23[2];
                 v32 = v29+3;
-                v33 = v10+v22+12;
+                v33 = heapNull+v22+12;
               }
               if( (v24&0xFFFFFFFE)!=0 ) {
                 v111 = v5;
@@ -2671,7 +2671,7 @@ LABEL_11:
                   v32[v35+4] = *(uint*)(v33+v35*4+16);
                   v32[v35+5] = *(uint*)(v33+v35*4+20);
                   v35 += 6;
-                } while( v34<v21>>2 );
+                } while( v34<nStatesP1>>2 );
                 v5 = v111;
               }
               v36 = *((byte*)&Indx2Units+v25);
@@ -2679,8 +2679,8 @@ LABEL_11:
               if( BYTE1(v23[3*v37])==255 ) {
                 v39 = 3*v37;
                 do {
-                  *(uint*)((uint)v23[v39+1]+v10+8) = v23[v39+2];
-                  *(uint*)((uint)v23[v39+2]+v10+4) = v23[v39+1];
+                  *(uint*)((uint)v23[v39+1]+heapNull+8) = v23[v39+2];
+                  *(uint*)((uint)v23[v39+2]+heapNull+4) = v23[v39+1];
                   v40 = 12LL**(Units2Indx+LOBYTE(v23[v39])+3);
                   --*(uint*)(v40+bListSaved);
                   v36 += LOBYTE(v23[v39]);
@@ -2703,7 +2703,7 @@ LABEL_11:
                     ++v44;
                     *(byte*)v23 = 0x80;
                     v23[1] = *(uint*)(bListSaved+448);
-                    *(uint*)(*(uint*)(bListSaved+448)+v10+8) = v22;
+                    *(uint*)(*(uint*)(bListSaved+448)+heapNull+8) = v22;
                     ++*(uint*)(bListSaved+444);
                     *(uint*)(bListSaved+448) = v22;
                     v22 += 1536;
@@ -2721,29 +2721,29 @@ LABEL_11:
                   v49 = &v23[3*v46];
                   *((byte*)v49+1) = -1;
                   *(byte*)v49 = v47;
-                  v49[2] = (uint)(uintptr_t)v48-v10;
+                  v49[2] = (uint)(uintptr_t)v48-heapNull;
                   v49[1] = v48[1];
-                  LODWORD(v49) = (uint)(uintptr_t)v49-v10;
-                  *(uint*)((uint)v48[1]+v10+8) = (uint)(uintptr_t)v49;
+                  LODWORD(v49) = (uint)(uintptr_t)v49-heapNull;
+                  *(uint*)((uint)v48[1]+heapNull+8) = (uint)(uintptr_t)v49;
                   ++*v48;
                   v48[1] = (uint)(uintptr_t)v49;
                 }
                 *((byte*)v23+1) = -1;
                 v50 = (uint*)(bListSaved+12*v45);
                 *(byte*)v23 = v103;
-                v23[2] = (uint)(uintptr_t)v50-v10;
+                v23[2] = (uint)(uintptr_t)v50-heapNull;
                 v23[1] = v50[1];
-                v51 = (uint)(uintptr_t)v23-v10;
-                *(uint*)((uint)v50[1]+v10+8) = v51;
+                v51 = (uint)(uintptr_t)v23-heapNull;
+                *(uint*)((uint)v50[1]+heapNull+8) = v51;
                 ++*v50;
                 v50[1] = v51;
               } else {
                 *((byte*)v23+1) = -1;
                 v38 = (uint*)(bListSaved+12LL*v25);
                 *(byte*)v23 = v36;
-                v23[2] = (uint)(uintptr_t)v38-v10;
+                v23[2] = (uint)(uintptr_t)v38-heapNull;
                 v23[1] = v38[1];
-                *(uint*)((uint)v38[1]+v10+8) = v22;
+                *(uint*)((uint)v38[1]+heapNull+8) = v22;
                 ++*v38;
                 v38[1] = v22;
               }
@@ -2752,25 +2752,25 @@ LABEL_11:
           }
           if( !v23 )
             goto LABEL_99;
-          v52 = (uint)(uintptr_t)v23-v10;
+          v52 = (uint)(uintptr_t)v23-heapNull;
           v53 = v52;
           *((uint*)v5+1) = v52;
         }
-        v54 = v53+v10+6LL*v21;
-        if( v54>v10+v53+42 ) {
+        v54 = v53+heapNull+6LL*nStatesP1;
+        if( v54>heapNull+v53+42 ) {
           do {
             v55 = *(uint*)(v54-4);
             *(word*)v54 = *(word*)(v54-6);
             *(uint*)(v54+2) = v55;
             v54 -= 6LL;
-          } while( v54>v10+(qword)*((uint*)v5+1)+42 );
+          } while( v54>heapNull+(qword)*((uint*)v5+1)+42 );
         }
       } else {
         v56 = (uint*)(bListSaved+12LL*Units2Indx4[0]);
         if( *v56 ) {
-          v57 = v10+(uint)v56[1];
+          v57 = heapNull+(uint)v56[1];
           v56[1] = *(uint*)(v57+4);
-          *(uint*)(*(uint*)(v57+4)+v10+8) = (uint)(uintptr_t)v56-v10;
+          *(uint*)(*(uint*)(v57+4)+heapNull+8) = (uint)(uintptr_t)v56-heapNull;
           --*v56;
         } else {
           v57 = LoUnit;
@@ -2795,7 +2795,7 @@ LABEL_99:
         *(word*)v57 = *((word*)v5+1);
         v60 = b24[escIdxClipped];
         *(uint*)(v57+2) = *((uint*)v5+1);
-        *((uint*)v5+1) = v57-v10;
+        *((uint*)v5+1) = v57-heapNull;
         v61 = 4**(byte*)(v57+1)+v60;
         if( v61>=238 )
           v61 = 238;
@@ -2809,20 +2809,20 @@ LABEL_99:
       *(uint*)(v54+2) = v20;
       *(byte*)v54 = foundSymFreq;
       v62 = v5[1]&0xF0;
-      v63 = v10+*((uint*)v5+1);
+      v63 = heapNull+*((uint*)v5+1);
       ++*v5;
       v64 = v54-v63;
       result = 0x2AAAAAAAAAAAAAABLL*v64;
-      v5[1] = v19|(v64/6)|v62;
-      v5 = (byte*)(v10+*((uint*)v5+2));
+      v5[1] = sse0BitSaved|(v64/6)|v62;
+      v5 = (byte*)(heapNull+*((uint*)v5+2));
       if( v5==(byte*)v14 ) {
-        v16 = v121;
+        succAddr = succAddrSaved;
         break;
       }
     }
   }
-  MaxContext0 = v16;
-  RootContext = v16;
+  MaxContext0 = succAddr;
+  RootContext = succAddr;
   return result;
 }
 //--- #return
