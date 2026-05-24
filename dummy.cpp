@@ -247,8 +247,8 @@ int d101;
 int d102;
 int d105;
 int d104;
-int d95;
-int d96;
+int predRescaleDiv;
+int cumFreqAcc;
 int d98;
 int d103;
 int d106;
@@ -763,7 +763,7 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=d95=d96=d98=d103=d106=0;
+  sseTot=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=q14=0;
   d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=d64=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
@@ -4114,8 +4114,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   // q12 holds the base of the current Sse2State sub-block (a 516-byte chunk;
   // the histogram occupies bytes 0..511, the running counter sits at +512).
   byte*& sse2Base = (byte*&)q12;
-  int& predRescaleDiv = d95;    // total weight that gets divided by (NStates+1) in the rewind path
-  int& cumFreqAcc     = d96;    // running cum-freq accumulator (decremented per non-matched candidate)
   epoch = SymCount;
   do {
     // -----------------------------------------------------------------------
