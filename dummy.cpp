@@ -234,7 +234,7 @@ int f_ENC = 0;
 int f_LOG = 0;
 
 int d97;
-int d51;
+int sseCum;
 int d93;
 int d110;
 int d48;
@@ -763,7 +763,7 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  d97=d51=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=d95=d96=d98=d103=d106=0;
+  d97=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=d95=d96=d98=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=q14=0;
   d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=d64=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
@@ -2967,7 +2967,7 @@ qword MixUpdate(byte* a1) {
   uint* wQ23;     // pair    += d50 / -= d52
   int*  wpQ24;    // pred-pair (overflow halving)
   int*  wpQ25;    // pred-pair (overflow halving)
-  int   scale;    // d51 (decay for the pred-pair updates)
+  int   scale;    // sseCum (decay for the pred-pair updates)
 
   // ---- per-step state ------------------------------------------------------
   byte*  foundState;       // == FoundState (alias of q9)
@@ -3118,7 +3118,7 @@ qword MixUpdate(byte* a1) {
   symEpoch    = SymEpoch;
   symEpochS   = (short)SymEpoch;
   sseRowOff   = SymEpoch & 0x1FFFF;
-  scale       = d51;
+  scale       = sseCum;
   sseSlot     = (char*)&Sse2State[sseRowOff + 133144];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
@@ -4093,11 +4093,9 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   bool predLoBeyondC, mixShiftLowA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC, *mixStrideC;
-  // Local references rename the per-cascade-stage accumulator pair held in the
-  // d51/d97 file-scope globals. They alias the globals exactly (so the
-  // cross-file ABI to MixUpdate is preserved), only the names change.
-  int& sseCum = d51;     // running cumulative freq through the SSE cascade
-  int& sseTot = d97;     // running total freq      through the SSE cascade
+  // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
+  // because MixUpdate also reads sseCum on its way out.
+  int& sseTot = d97;     // running total freq through the SSE cascade
   // Each SSE cascade stage publishes its slot pointer through one q-global so
   // MixUpdate can update that same cell on the way back out.
   int*& sse1Slot     = (int*&)q23;
