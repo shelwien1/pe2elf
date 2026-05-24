@@ -691,8 +691,8 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
   // Step 1: Climb suffixes until a context with non-zero states is encountered
   do {
     path[path_depth++] = curr;
-    curr = (PPM_CONTEXT*)Indx2Ptr(curr->iSuffix);
-  } while( !curr->NStates );
+    curr = curr->getSuffix();
+  } while (!curr->NStates);
 
   PPM_CONTEXT* ctx = curr;
   uint last_nstates = ctx->NStates;
@@ -705,7 +705,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
     do {
       if( last_state->Symbol!=sym )
         break;
-      ctx = (PPM_CONTEXT*)Indx2Ptr(ctx->iSuffix);
+      ctx = ctx->getSuffix();
       last_nstates = ctx->NStates;
       ++temp_depth;
       last_state = ctx->getStates()+last_nstates;
@@ -738,7 +738,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
   word summ_freq = ctx->SummFreq;
   if( 2*found_state->Freq+23>states[0].Freq+states[1].Freq ) {
     if( ctx->iSuffix ) {
-      PPM_CONTEXT* suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(ctx->iSuffix);
+      PPM_CONTEXT* suffix_ctx = ctx->getSuffix();
       word suffix_summ_freq = suffix_ctx->SummFreq;
       byte suffix_nstates = suffix_ctx->NStates;
 
@@ -838,7 +838,7 @@ TARGET_SCALE_FALLBACK:
     matchEpoch2 = SymEpoch-MatchPosTable[matchHashSy+(sym<<8)];
   }
 
-  PPM_CONTEXT* max_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(MaxContext->iSuffix);
+  PPM_CONTEXT* max_suffix_ctx = MaxContext->getSuffix();
   uint suffixNStates = max_suffix_ctx->NStates;
   MixCtxExtra += (suffixNStates==0)<<7;
 
@@ -875,7 +875,7 @@ TARGET_SCALE_FALLBACK:
 
     mixCtx = 32*boostBit+mixCtxMasked+(sym==PrevSymbol);
   } else {
-    PPM_CONTEXT* deep_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(max_suffix_ctx->iSuffix);
+    PPM_CONTEXT* deep_suffix_ctx = max_suffix_ctx->getSuffix();
     suffixNStates = deep_suffix_ctx->NStates;
     if( deep_suffix_ctx->NStates||orderShortfall<4||(orderShortfall<5&&(verification_nstates+1)<4&&ctx->SummFreq-found_state->Freq<36) ) {
 
@@ -3543,7 +3543,7 @@ inline PPM_CONTEXT* WalkEscapeChain_(PPM_CONTEXT* startCtx, PPM_CONTEXT* refCtx,
   PPM_CONTEXT* w = startCtx;
   byte sym = w->getStates()[w->Flags & 0xF].Symbol;
   while (sym == (byte)escSym && w->NStates == refCtx->NStates) {
-    w = (PPM_CONTEXT*)Indx2Ptr(w->iSuffix);
+    w = w->getSuffix();
     sym = w->getStates()[w->Flags & 0xF].Symbol;
   }
   outFinalSym  = sym;
@@ -3758,7 +3758,7 @@ LABEL_18:
             cumFreqMixA = predRescaleDiv+1;
             cumFreqAcc = cumFreqMixA;
         } else {
-            sx_p = (PPM_CONTEXT*)Indx2Ptr(MinContext->iSuffix);
+            sx_p = MinContext->getSuffix();
             sxNStates = sx_p->NStates;
             minSumFreqA = MinContext->SummFreq;
             sxSumFreqA0 = sx_p->SummFreq;
@@ -3786,7 +3786,7 @@ LABEL_18:
             {
               // maskFlagEsc captures the suffix context's rank-0 symbol;
               // WalkEscapeChain_ then rewrites it (via outFinalSym/EscapeSymbol).
-              PPM_CONTEXT* escWalkCtx = (PPM_CONTEXT*)Indx2Ptr(MinContext->iSuffix);
+              PPM_CONTEXT* escWalkCtx = MinContext->getSuffix();
               maskFlagEsc = epoch != SymMask[escWalkCtx->getStates()[escWalkCtx->Flags&0xF].Symbol];
               WalkEscapeChain_(escWalkCtx, MinContext, escSymbol, escCandidate);
             }
@@ -4144,7 +4144,7 @@ LABEL_298:
         q34 = (sqword)d27;
         sumFreqDivC = 1;
       } else {
-        suffixCtxC = (PPM_CONTEXT*)Indx2Ptr(MinContext->iSuffix);
+        suffixCtxC = MinContext->getSuffix();
         suffixCtxC = WalkEscapeChain_(suffixCtxC, MinContext, escSymbol, escCandidate);
         minCtxFlagsC = MinContext->Flags;
         if( 16*freqDeltaE<=freqSumE||(MinContext->Flags&0x40)!=0 ) {
@@ -4168,7 +4168,7 @@ LABEL_298:
           sumFreqCacheC = sumFreqW0C;
           CtxChainEnd = (sqword)chainEndE;
         }
-        sx_p = (PPM_CONTEXT*)Indx2Ptr(MinContext->iSuffix);
+        sx_p = MinContext->getSuffix();
         sxNStatesC = sx_p->NStates;
         descendNStatesP1C = sxNStatesC+1;
         maskFlagPrevC = epoch!=SymMask[PrevSymbol];
