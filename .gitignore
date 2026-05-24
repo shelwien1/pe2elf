@@ -22,3 +22,4 @@ archive.nz
 archive.rar
 archive[0-9]*
 *.rar
+repl_id.py

@@ -161,11 +161,11 @@ int& d67 = d90[6];
 int& d76 = d90[7];
 int& d88 = d90[8];
 int& d89 = d90[9];
-int& d109 = d90[10];
-int& d108 = d90[11];
-int& d107 = d90[12];
+int& matchHashSy = d90[10];
+int& matchPosAge = d90[11];
+int& matchEpoch2 = d90[12];
 int& d75 = d90[13];
-int& d63 = d90[14];
+int& sseState3Hash = d90[14];
 int* RecentPos = &d90[15];
 
 shword SEE2_5[70];
@@ -286,7 +286,7 @@ int d53;
 int d56;
 int d55;
 int MatchCtxHi;
-int d64;
+int recentSym;
 int d80;
 int d91;
 int SparseHashA;
@@ -697,14 +697,14 @@ TARGET_SCALE_FALLBACK:
   int v549_val = (((1<<sym)&SparseBitmapA[(uint)(sym+SparseHashA)>>5])!=0)+2*(((1<<sym)&SparseBitmapB[(uint)(sym+SparseHashB)>>5])!=0);
   int v248 = MatchPosTable[sym+(MatchCtxHi<<8)];
   if( (uint)(SymEpoch-v248)>=0x20000 ) {
-    d107 = 0x20000;
-    d108 = 0x20000;
-    d109 = 0x20000;
+    matchEpoch2 = 0x20000;
+    matchPosAge = 0x20000;
+    matchHashSy = 0x20000;
   } else {
-    d108 = MatchPosTable[sym+(MatchCtxHi<<8)];
-    d109 = (byte)MatchPosHash[(v248+2)&0x1FFFF];
-    d108 = SymEpoch-v248;
-    d107 = SymEpoch-MatchPosTable[d109+(sym<<8)];
+    matchPosAge = MatchPosTable[sym+(MatchCtxHi<<8)];
+    matchHashSy = (byte)MatchPosHash[(v248+2)&0x1FFFF];
+    matchPosAge = SymEpoch-v248;
+    matchEpoch2 = SymEpoch-MatchPosTable[matchHashSy+(sym<<8)];
   }
 
   PPM_CONTEXT* max_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(MaxContext->iSuffix);
@@ -765,7 +765,7 @@ sqword InitTables() {
   //memset(ddd,0,4*31);
   sseTot=sseCum=d93=d110=d48=d49=d46=d47=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=q14=0;
-  d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=d64=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  d83=d84=d85=d92=d86=d87=d52=d50=d54=d53=d56=d55=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
@@ -3130,12 +3130,12 @@ qword MixUpdate(byte* a1) {
   SparseBitmapB[SparseIdxB] |= SparseBit;
   sym = *foundState;
   LODWORD(matchHi) = MatchCtxHi;
-  SseState3[d63] = sym;
+  SseState3[sseState3Hash] = sym;
   *(sseSlot-0x20000) = sym;
   *sseSlot = sym;
-  d64 = sym;
+  recentSym = sym;
   MatchCtxHi = sym;
-  d63 = (sym+(d63<<6))&0x1FFFF;
+  sseState3Hash = (sym+(sseState3Hash<<6))&0x1FFFF;
   if( FoundSymbol>=0&&FoundSymbol!=MixCtx3 )
     b25 += b25+(sym==FoundSymbol);
   d65 = d66;
@@ -3359,7 +3359,7 @@ LABEL_94:
     b2 = (byte)bmPtr[-2*MixScale];
     b3 = (byte)bmPtr[-3*MixScale];
     if( --d80>(uint)MixScale )
-      d64 = b1;
+      recentSym = b1;
     b1Ptr = &bmPtr[-MixScale];
     bm1 = (byte)*(b1Ptr-1);
     bmComposite = ((b1Ptr[2]==bmPtr[-2*MixScale+2])<<12)+(((b2&0x2E)+((byte)bmPtr[-2*MixScale+1]<(uint)(byte)b1Ptr[1]))<<8)+((((bm1+32-sym)>>31)+((bm1-sym)>>31)+((int)sym>=bm1))<<14);
@@ -3438,7 +3438,7 @@ LABEL_94:
   ofall = OrderFall;
   CtxChain[0] = (sqword)foundState;
   orderShift15 = (OrderFall>0)<<15;
-  OrderCtxSeed = orderShift15+matchScore+4*(d64&0x80);
+  OrderCtxSeed = orderShift15+matchScore+4*(recentSym&0x80);
   minNStates = *a1;
   NMasked = minNStates;
   searchSym = *foundState;
@@ -4035,16 +4035,6 @@ struct SseIdx {
 };
 
 } // namespace
-
-// File-scope aliases for d-globals used by RealProcess. Bound in the
-// anonymous namespace (same as d63/d108 themselves in defs3g.h); a
-// function-local int& binding to a d90[] array element reliably perturbs
-// codegen at -Ofast and changes the encoder output, so we bind at file scope.
-int& matchPosAge   = d108;  // epoch delta to most-recent matching position (small = recent)
-int& matchEpoch2   = d107;  // second epoch delta in the per-candidate match block
-int& matchHashSy   = d109;  // MatchPosHash byte snapshot
-int& recentSym     = d64;   // just-encoded symbol byte
-int& sseState3Hash = d63;   // 17-bit rolling sym-context hash, indexes SseState3
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int inputByte, epoch;
