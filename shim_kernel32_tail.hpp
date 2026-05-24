@@ -52,15 +52,20 @@ extern "C" EXPORT UINT kernel32_GetTempFileNameW(const uint16_t* path, const uin
   } else {
     snprintf(result, sizeof(result), "%s/%sXXXXXX.tmp", dir, pfx);
     int fd = mkstemps(result, 4);
-    if( fd >= 0 ) close(fd);
-    // Recover the unique id from the hex digits mkstemps filled in.  A
-    // previous version returned the lower 32 bits of `strrchr(...)` as
-    // pseudo-unique, but heap/mmap addresses are 0x7f… so the low 32 bits
-    // collide between calls.
+    if( fd < 0 ) { set_errno_error(); return 0; }
+    close(fd);
+    // Fold the six random chars mkstemps generated into a non-zero UINT.
+    // mkstemps uses [a-zA-Z0-9], so an earlier strtoul(..., 16) attempt
+    // returned 0 ~65% of the time (first char not a hex digit), and 0 is
+    // Windows's failure sentinel for this function.  FNV-1a over the six
+    // chars gives a stable, well-spread id; OR-with-1 keeps it non-zero.
     const char* slash = strrchr(result, '/');
     const char* stem  = slash ? slash+1 : result;
-    const char* digits = stem + strlen(pfx);  // skip the 3-byte prefix
-    unique = (UINT)strtoul(digits, nullptr, 16);
+    const char* random = stem + strlen(pfx);
+    uint32_t h = 0x811c9dc5u;
+    for( int i = 0; i < 6 && random[i] && random[i] != '.'; ++i )
+      h = (h ^ (uint8_t)random[i]) * 0x01000193u;
+    unique = (UINT)(h | 1u);
   }
   if( out ) utf8_to_wchar(result, out, 260);
   return unique;
