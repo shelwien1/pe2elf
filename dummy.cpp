@@ -2284,14 +2284,15 @@ LABEL_11:
     escIdxClipped = escIdx;
     succIdxSaved = newByteIdx;
     while( 1 ) {
-      nStatesP1 = *ctxBW+1;
-      if( *ctxBW ) {
-        if( (nStatesP1&1)!=0 ) {
-          newStatesIdx2 = *((uint*)ctxBW+1);
+      PPM_CONTEXT* curCtxP = (PPM_CONTEXT*)ctxBW;
+      nStatesP1 = curCtxP->NStates + 1;
+      if (curCtxP->NStates) {
+        if ((nStatesP1 & 1) != 0) {
+          newStatesIdx2 = curCtxP->iStates;
         } else {
-          stateIdxU = *((uint*)ctxBW+1);
-          statesPtr = (uint*)(heapNull+stateIdxU);
-          uint halfNStatesP1 = nStatesP1>>1;
+          stateIdxU = curCtxP->iStates;
+          statesPtr = (uint*)(heapNull + stateIdxU);
+          uint halfNStatesP1 = nStatesP1 >> 1;
           sizeClassP = Units2Indx[halfNStatesP1 + 3];
           if (sizeClassP != Units2Indx4[halfNStatesP1]) {
             sizeClass4P = Units2Indx4[halfNStatesP1];
@@ -2299,30 +2300,27 @@ LABEL_11:
             // AllocUnits_ may have called AllocUnitsRare which clobbers sizeClassP;
             // recompute (matches the inlined pattern's restoration).
             sizeClassP = Units2Indx[halfNStatesP1 + 3];
-            if( newStatesPtr ) {
+            if (newStatesPtr) {
               // Copy nStatesP1/2 units (each = 2 STATEs) from the old block to
-              // the new one, then free the old block. The unit count matches
-              // the size class returned by Indx2Units[sizeClassP] for the
-              // old allocation.
-              UnitsCpy_(newStatesPtr, (uint*)(heapNull+stateIdxU), nStatesP1 >> 1);
+              // the new one, then free the old block.
+              UnitsCpy_(newStatesPtr, (uint*)(heapNull + stateIdxU), nStatesP1 >> 1);
               FreeUnitsRare((sqword)statesPtr, (uint)Indx2Units[sizeClassP]);
             }
             statesPtr = newStatesPtr;
           }
-          if( !statesPtr )
-            goto LABEL_99;
-          newStatesIdx = (uint)(uintptr_t)statesPtr-heapNull;
+          if (!statesPtr) goto LABEL_99;
+          newStatesIdx = (uint)(uintptr_t)statesPtr - heapNull;
           newStatesIdx2 = newStatesIdx;
-          *((uint*)ctxBW+1) = newStatesIdx;
+          curCtxP->iStates = newStatesIdx;
         }
-        newStateEnd = newStatesIdx2+heapNull+6LL*nStatesP1;
-        if( newStateEnd>heapNull+newStatesIdx2+42 ) {
+        newStateEnd = newStatesIdx2 + heapNull + 6LL*nStatesP1;
+        if (newStateEnd > heapNull + newStatesIdx2 + 42) {
           do {
-            prevStateSucc = *(uint*)(newStateEnd-4);
-            *(word*)newStateEnd = *(word*)(newStateEnd-6);
-            *(uint*)(newStateEnd+2) = prevStateSucc;
+            prevStateSucc = *(uint*)(newStateEnd - 4);
+            *(word*)newStateEnd = *(word*)(newStateEnd - 6);
+            *(uint*)(newStateEnd + 2) = prevStateSucc;
             newStateEnd -= 6LL;
-          } while( newStateEnd>heapNull+(qword)*((uint*)ctxBW+1)+42 );
+          } while (newStateEnd > heapNull + (qword)curCtxP->iStates + 42);
         }
       } else {
         allocedUnit = AllocUnits_(Units2Indx4[0]);
