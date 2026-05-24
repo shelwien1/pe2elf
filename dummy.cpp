@@ -2097,9 +2097,9 @@ LABEL_15:
 // =============================================================================
 //  UpdateModel == PPM_CONTEXT::cutOff(Order)  +  AuxCutOff inlined
 // =============================================================================
-sqword UpdateModel(byte* a1, uint a2) {
-  PPM_CONTEXT* ctx   = (PPM_CONTEXT*)a1;
-  uint         Order = a2;
+sqword UpdateModel(byte* ctxBytes, uint order) {
+  PPM_CONTEXT* ctx   = (PPM_CONTEXT*)ctxBytes;
+  uint         Order = order;
 
   // ---------------------------------------------------------------------------
   //  Single-state (NStates == 0) path
