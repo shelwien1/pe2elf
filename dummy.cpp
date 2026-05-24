@@ -1618,7 +1618,7 @@ sqword StartModelRare(int mode) {
       --*targetQueue;
     } else {
       stateStorageAddr = LoUnit;
-      sqword sizeInBytes = 12 * (uint)*((byte*)&Indx2Units + preferredIndex);
+      sqword sizeInBytes = 12 * (uint)Indx2Units[preferredIndex];
       bool isAtBoundary = LoUnit + sizeInBytes == (qword)heapEnd;
       if (LoUnit + sizeInBytes > (qword)heapEnd) {
         stateStorageAddr = AllocUnitsRare(preferredIndex);
@@ -3147,7 +3147,7 @@ sqword PPMIIGetCurrentModelSize() {
   entryIdx = 0;
   LODWORD(result) = pText-UnitsStart+LoUnit+SubAllocatorSize-HiUnit;
   for( i = 0; i<0x26; ++i ) {
-    bytesUsed = *(uint*)(BList+12*entryIdx)*12**((byte*)&Indx2Units+entryIdx);
+    bytesUsed = *(uint*)(BList + 12*entryIdx) * 12 * Indx2Units[entryIdx];
     entryIdx = i+1;
     result = (uint)(result-bytesUsed);
   }
