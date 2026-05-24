@@ -484,6 +484,21 @@ PPM_CONTEXT* GetSuffixPtr(uint iSuffix) {
 char* FreeUnitsRare(sqword blockAddr, uint sizeClass);   // defined in subs_freeunitsrare1.inc
 sqword AllocUnitsRare(uint unitsIdx);      // defined in subs_allocunitsrare.inc
 
+// Fast-path allocator for 1-context (12-byte) blocks. Mirrors textbook
+// ppmd.cpp PPM_CONTEXT::AllocContext: prefer the HiUnit downward bump, else
+// pop from the size-class-0 freelist, else fall back to AllocUnitsRare(0).
+inline sqword AllocContext_() {
+  if (::HiUnit != ::LoUnit) {
+    ::HiUnit -= 12;
+    return (sqword)::HiUnit;
+  }
+  MEM_BLK* queue = (MEM_BLK*)::BList;
+  if (queue->avail()) {
+    return (sqword)queue->unlinkPrev();
+  }
+  return AllocUnitsRare(0);
+}
+
 // Fast-path allocator counterpart of AllocUnitsRare: pop the head of the
 // size-class queue if non-empty; else bump LoUnit toward HiUnit; if that
 // would collide, fall back to AllocUnitsRare. Returns 0 on out-of-memory.
@@ -1816,10 +1831,6 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   int newCtxAddr;
   byte* baseCtxAddr;
   qword chainPtrEnd;
-  int bListIdx;
-  uint* freelistHead;
-  sqword hiUnit;
-  sqword heapNullDup;
   uint* newCtxPtr;
   sqword result;
   int newCtxPacked;
@@ -1876,32 +1887,15 @@ LABEL_15:
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
   BYTE1(newCtxPacked) = *((byte*)SSE0+*baseCtxAddr);
-  bListIdx = BList-heapNull;
-  freelistHead = (uint*)BList;
-  hiUnit = HiUnit;
-  heapNullDup = heapNull;
   while( 1 ) {
-    if( hiUnit==LoUnit ) {
-      if( *freelistHead ) {
-        newCtxPtr = (uint*)(heapNullDup+(uint)freelistHead[2]);
-        freelistHead[2] = newCtxPtr[2];
-        *(uint*)((uint)newCtxPtr[2]+heapNullDup+4) = bListIdx;
-        --*freelistHead;
-      } else {
-        newCtxPtr = (uint*)AllocUnitsRare(0);
-      }
-    } else {
-      hiUnit -= 12;
-      HiUnit = hiUnit;
-      newCtxPtr = (uint*)hiUnit;
-    }
+    newCtxPtr = (uint*)AllocContext_();
     if( !newCtxPtr )
       break;
     *newCtxPtr = newCtxPacked;
     newCtxPtr[1] = newCtxBytePos;
-    newCtxPtr[2] = newCtxAddr-heapNullDup;
+    newCtxPtr[2] = newCtxAddr-heapNull;
     newCtxAddr = (int)(uintptr_t)newCtxPtr;
-    result = (uint)((uint)(uintptr_t)newCtxPtr-heapNullDup);
+    result = (uint)((uint)(uintptr_t)newCtxPtr-heapNull);
     chainPtrEnd -= 8LL;
     *(uint*)(*(qword*)chainPtrEnd+2LL) = result;
     if( chainPtrEnd==chainEndSaved )
