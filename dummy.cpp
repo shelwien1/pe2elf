@@ -473,7 +473,7 @@ PPM_CONTEXT* GetSuffixPtr(uint iSuffix) {
 //  it is forward-declared here so the inline bodies can call it.
 // ===========================================================================
 
-char* FreeUnitsRare(sqword a1, uint a2);   // defined in subs_freeunitsrare1.inc
+char* FreeUnitsRare(sqword blockAddr, uint sizeClass);   // defined in subs_freeunitsrare1.inc
 sqword AllocUnitsRare(uint unitsIdx);      // defined in subs_allocunitsrare.inc
 
 // Fast-path allocator counterpart of AllocUnitsRare: pop the head of the
@@ -2615,7 +2615,7 @@ inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int ma
   }
 }
 
-qword MixUpdate(byte* a1) {
+qword MixUpdate(byte* ctxBytes) {
   // ---- mixing-predictor weight pointers (q17..q25 hold heap addresses) -----
   uint* wQ17;     // single  += binMixDeltaHi
   uint* wQ18;     // single  += predBaseDeltaB
@@ -3115,10 +3115,10 @@ LABEL_94:
     .bit  <9> (recentSym & 0x80)
     .raw  ((uint)matchScore)
     .bit  <15>(OrderFall > 0);
-  minNStates = *a1;
+  minNStates = *ctxBytes;
   NMasked = minNStates;
   searchSym = *foundState;
-  minISuffix = *((uint*)a1+2);
+  minISuffix = *((uint*)ctxBytes+2);
   // SseSeed bitfield:
   //   raw   : BinMapTable[mixCtx2New & 0xF]  (low-order bits feed the binary
   //           mix-cell address)
@@ -3171,7 +3171,7 @@ LABEL_94:
     }
     mixWeight = 2;
     if( minNStates )
-      mixFlag1 = (-45*minNStates+(uint)*((word*)a1+1))>>31;
+      mixFlag1 = (-45*minNStates+(uint)*((word*)ctxBytes+1))>>31;
     else
       mixFlag1 = orderBumpVariance==0;
     mixFlag2 = mixFlag1;
@@ -4691,11 +4691,11 @@ LABEL_250:
   return result;
 }
 
-int RealDecode(FILE* a1, FILE* a2) { return RealProcess<1>(a1,a2); }
+int RealDecode(FILE* outFile, FILE* inFile) { return RealProcess<1>(outFile, inFile); }
 
-int RealEncode(FILE* a1, FILE* a2) { 
+int RealEncode(FILE* outFile, FILE* inFile) {
   //printf( "!q32=%I64X!\n", q32);
-  return RealProcess<0>(a1,a2); 
+  return RealProcess<0>(outFile, inFile);
 }
 //--- #return
 //--- #include "stats.inc"
