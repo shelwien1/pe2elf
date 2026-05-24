@@ -2290,32 +2290,12 @@ sqword ReduceOrder() {
   uint curCtxSuffix;
   sqword bListSaved2;
   uint suffixIdxL;
-  sqword heapNullCopy2;
-  sqword unitsBClass;
-  uint* freelistB0;
-  int freelistB0Idx;
   sqword stateWalker;
   sqword stateIStates;
   sqword stateIStatesAddr;
   qword mismatchOff;
-  uint unitsInRun2;
-  sqword unitsByteOff;
-  sqword coalesceOff;
-  uint unitsTotalSaved2;
-  uint chunkLoopI2;
-  int chunkLoopJ2;
-  sqword chunksOver128B;
-  uint chunkLoopK2;
-  sqword biggerSizeClass2;
-  sqword biggerUnits3;
-  int deltaUnits2;
-  uint* biggerFreelist2;
-  sqword splitBlockAddr2;
-  uint* finalFreelist2;
-  int blockIdxFinal2;
   sqword allocResult;
   int symPeek;
-  int bListCountIdx3;
   uint sizeClassPSaved;
   sqword pTextSaveCS;
   uint chunksOver128P;
@@ -2330,7 +2310,6 @@ sqword ReduceOrder() {
   uint newByteIdxSaveCS;
   byte* ctxBSaveAU;
   byte* ctxBSaveCS;
-  byte* ctxBSaveAU2;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
   sqword ctxSaved;
@@ -2441,95 +2420,22 @@ LABEL_73:
     if( *(byte*)rootCtxW==1 ) {
       bListSaved2 = BList;
       if( !*ctxBW&&(byte*)rootCtxW!=ctxBW ) {
-        heapNullCopy2 = HeapNull;
-        unitsBClass = Units2Indx4[0];
         ctxSaved = rootCtxW;
-        freelistB0 = (uint*)(BList+12LL*Units2Indx4[0]);
-        freelistB0Idx = BList+12*Units2Indx4[0]-HeapNull;
-        bListCountIdx3 = BList-HeapNull+444;
         stateWalker = rootCtxSaved;
         do {
           stateIStates = *(uint*)(stateWalker+4);
-          stateIStatesAddr = heapNullCopy2+stateIStates;
-          mismatchOff = *(byte*)(heapNullCopy2+stateIStates)!=ctxBW[2];
-          *(byte*)(stateWalker+1) = *((byte*)SSE0+*(byte*)(heapNullCopy2+stateIStates+6*mismatchOff));
-          *(byte*)(heapNullCopy2+stateIStates+6*mismatchOff+1) = ((uint)*(byte*)(heapNullCopy2+stateIStates+6*mismatchOff+1)+3)>>2;
-          *(word*)(stateWalker+2) = *(word*)(heapNullCopy2+stateIStates+6*mismatchOff);
-          *(uint*)(stateWalker+4) = *(uint*)(heapNullCopy2+stateIStates+6*mismatchOff+2);
-          unitsInRun2 = *((byte*)&Indx2Units+unitsBClass);
+          stateIStatesAddr = HeapNull+stateIStates;
+          mismatchOff = *(byte*)(HeapNull+stateIStates)!=ctxBW[2];
+          *(byte*)(stateWalker+1) = *((byte*)SSE0+*(byte*)(HeapNull+stateIStates+6*mismatchOff));
+          *(byte*)(HeapNull+stateIStates+6*mismatchOff+1) = ((uint)*(byte*)(HeapNull+stateIStates+6*mismatchOff+1)+3)>>2;
+          *(word*)(stateWalker+2) = *(word*)(HeapNull+stateIStates+6*mismatchOff);
+          *(uint*)(stateWalker+4) = *(uint*)(HeapNull+stateIStates+6*mismatchOff+2);
           *(byte*)stateWalker = 0;
-          if( *(byte*)(12LL*unitsInRun2+heapNullCopy2+stateIStates+1)==255 ) {
-            unitsByteOff = 12LL*unitsInRun2;
-            do {
-              *(uint*)(*(uint*)(unitsByteOff+stateIStatesAddr+4)+heapNullCopy2+8) = *(uint*)(unitsByteOff+stateIStatesAddr+8);
-              *(uint*)(*(uint*)(unitsByteOff+stateIStatesAddr+8)+heapNullCopy2+4) = *(uint*)(unitsByteOff+stateIStatesAddr+4);
-              coalesceOff = 12LL**(Units2Indx+*(byte*)(unitsByteOff+stateIStatesAddr)+3);
-              --*(uint*)(coalesceOff+bListSaved2);
-              unitsInRun2 += *(byte*)(stateIStatesAddr+unitsByteOff);
-              unitsByteOff = 12LL*unitsInRun2;
-            } while( *(byte*)(unitsByteOff+stateIStatesAddr+1)==255 );
-            if( unitsInRun2>0x80 ) {
-              ctxBSaveAU2 = ctxBW;
-              unitsTotalSaved2 = unitsInRun2;
-              chunkLoopI2 = 0;
-              chunkLoopJ2 = 0;
-              chunksOver128B = -((sqword)(((qword)((1LL-unitsInRun2)>>6)>>57)-unitsInRun2+1)>>7);
-              do {
-                unitsInRun2 = chunkLoopJ2+unitsTotalSaved2-128;
-                chunkLoopJ2 -= 128;
-                ++chunkLoopI2;
-              } while( chunkLoopI2<(uint)chunksOver128B );
-              chunkLoopK2 = 0;
-              do {
-                *(byte*)(stateIStatesAddr+1) = -1;
-                *(uint*)(stateIStatesAddr+8) = bListCountIdx3;
-                ++chunkLoopK2;
-                *(byte*)stateIStatesAddr = 0x80;
-                *(uint*)(stateIStatesAddr+4) = *(uint*)(bListSaved2+448);
-                *(uint*)(heapNullCopy2+*(uint*)(bListSaved2+448)+8) = stateIStates;
-                ++*(uint*)(bListSaved2+444);
-                *(uint*)(bListSaved2+448) = stateIStates;
-                stateIStates += 1536;
-                stateIStatesAddr += 1536;
-              } while( chunkLoopK2<(uint)chunksOver128B );
-              ctxBW = ctxBSaveAU2;
-            }
-            biggerSizeClass2 = *(Units2Indx+unitsInRun2+3);
-            LODWORD(biggerUnits3) = *((byte*)&Indx2Units+biggerSizeClass2);
-            if( unitsInRun2!=(uint)biggerUnits3 ) {
-              biggerSizeClass2 = (uint)(biggerSizeClass2-1);
-              biggerUnits3 = *((byte*)&Indx2Units+biggerSizeClass2);
-              deltaUnits2 = unitsInRun2-biggerUnits3;
-              biggerFreelist2 = (uint*)(bListSaved2+12LL*(uint)(deltaUnits2-1));
-              splitBlockAddr2 = stateIStatesAddr+12*biggerUnits3;
-              *(byte*)(splitBlockAddr2+1) = -1;
-              *(byte*)splitBlockAddr2 = deltaUnits2;
-              *(uint*)(splitBlockAddr2+8) = bListSaved2+12*(deltaUnits2-1)-heapNullCopy2;
-              *(uint*)(splitBlockAddr2+4) = biggerFreelist2[1];
-              LODWORD(splitBlockAddr2) = splitBlockAddr2-heapNullCopy2;
-              *(uint*)((uint)biggerFreelist2[1]+heapNullCopy2+8) = splitBlockAddr2;
-              biggerFreelist2[1] = splitBlockAddr2;
-              ++*biggerFreelist2;
-            }
-            *(byte*)(stateIStatesAddr+1) = -1;
-            finalFreelist2 = (uint*)(bListSaved2+12*biggerSizeClass2);
-            *(byte*)stateIStatesAddr = biggerUnits3;
-            *(uint*)(stateIStatesAddr+8) = (uint)(uintptr_t)finalFreelist2-heapNullCopy2;
-            *(uint*)(stateIStatesAddr+4) = finalFreelist2[1];
-            blockIdxFinal2 = stateIStatesAddr-heapNullCopy2;
-            *(uint*)((uint)finalFreelist2[1]+heapNullCopy2+8) = blockIdxFinal2;
-            finalFreelist2[1] = blockIdxFinal2;
-            ++*finalFreelist2;
-          } else {
-            *(byte*)(stateIStatesAddr+1) = -1;
-            *(byte*)stateIStatesAddr = unitsInRun2;
-            *(uint*)(stateIStatesAddr+8) = freelistB0Idx;
-            *(uint*)(stateIStatesAddr+4) = freelistB0[1];
-            *(uint*)((uint)freelistB0[1]+heapNullCopy2+8) = stateIStates;
-            freelistB0[1] = stateIStates;
-            ++*freelistB0;
-          }
-          stateWalker = heapNullCopy2+*(uint*)(stateWalker+8);
+          // Free the now-collapsed STATE[]-array allocation (1 unit) via the
+          // shared coalesce/chunk/split path; equivalent to the long inline
+          // sequence in AllocUnitsRare's leftover-split branch.
+          FreeUnitsRare(stateIStatesAddr, (uint)Indx2Units[Units2Indx4[0]]);
+          stateWalker = HeapNull+*(uint*)(stateWalker+8);
         } while( (byte*)stateWalker!=ctxBW );
         rootCtxW = ctxSaved;
       }
