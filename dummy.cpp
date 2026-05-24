@@ -1856,13 +1856,17 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   suffixIdx0 = *(uint*)(seedCtx+8);
   while( 1 ) {
     ctxAddr = heapNull+suffixIdx0;
-    if( *(byte*)ctxAddr ) {
+    // Find the STATE for sym=FoundState->Symbol in this suffix context.
+    PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
+    STATE* state;
+    if (pc->NStates) {
       sym = *foundStateB;
-      for( i = (byte*)(heapNull+*(uint*)(ctxAddr+4)); *i!=sym; i += 6 )
-        ;
+      state = pc->getStates();
+      while (state->Symbol != sym) state++;
     } else {
-      i = (byte*)(heapNull+suffixIdx0+2);
+      state = &pc->oneState();
     }
+    i = (byte*)state;
     stateSuccIdx = *(uint*)(i+2);
     if( stateSuccIdx!=seedSuccIdx )
       break;
