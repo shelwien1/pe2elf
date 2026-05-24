@@ -2229,7 +2229,7 @@ LABEL_73:
           walker->oneState().iSuccessor  = kept->iSuccessor;
           walker->NStates                = 0;
           FreeUnitsRare((sqword)states, 1);
-          walker = (PPM_CONTEXT*)(HeapNull + walker->iSuffix);
+          walker = walker->getSuffix();
         } while ((byte*)walker != ctxBW);
         rootCtxW = ctxSaved;
       }
