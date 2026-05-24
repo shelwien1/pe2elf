@@ -1478,69 +1478,34 @@ sqword AllocUnitsRare(uint unitsIdx) {
 //--- #return
 //--- #include "subs_freeunitsrare.inc"
 char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
-  sqword bListSaved;
-  sqword heapNull;
-  sqword blockIdx;
-  sqword sizeClassSaved;
-  sqword byteOff12;
-  uint sizeClassEntry;
-  uint chunkLoopI;
-  int chunkLoopJ;
-  sqword chunksOver128;
-  int freelistHead1536;
-  uint chunkLoopK;
   sqword biggerSizeClass;
   sqword biggerUnits;
   int deltaUnits;
-  bListSaved = BList;
-  heapNull = HeapNull;
-  blockIdx = blockAddr-HeapNull;
-  sizeClassSaved = sizeClass;
-  byteOff12 = 12LL*sizeClass;
+  MEM_BLK* bList = (MEM_BLK*)BList;
   // Coalesce: walk trailing blocks whose Stamp is 0xFF, unlinking each from
   // its size-class queue and absorbing its units into our running size.
-  {
-    MEM_BLK* bList = (MEM_BLK*)bListSaved;
-    while (true) {
-      MEM_BLK* probe = (MEM_BLK*)(blockAddr + 12LL*sizeClass);
-      if (probe->Stamp != (byte)-1) break;
-      probe->unlink();
-      --bList[Units2Indx[probe->NU + 3]].QueueSize;
-      sizeClass += probe->NU;
-    }
-    sizeClassSaved = sizeClass;
-    byteOff12 = 12LL*sizeClass;
+  while (true) {
+    MEM_BLK* probe = (MEM_BLK*)(blockAddr + 12LL*sizeClass);
+    if (probe->Stamp != (byte)-1) break;
+    probe->unlink();
+    --bList[Units2Indx[probe->NU + 3]].QueueSize;
+    sizeClass += probe->NU;
   }
-  sizeClassEntry = sizeClass;
-  if( sizeClass>0x80 ) {
-    chunkLoopI = 0;
-    chunkLoopJ = 0;
-    chunksOver128 = -((sqword)(((qword)((1-sizeClassSaved)>>6)>>57)-sizeClassSaved+1)>>7);
-    do {
-      sizeClass = chunkLoopJ+sizeClassEntry-128;
-      chunkLoopJ -= 128;
-      ++chunkLoopI;
-    } while( chunkLoopI<(uint)chunksOver128 );
-    freelistHead1536 = *(uint*)(bListSaved+448);
-    chunkLoopK = 0;
-    do {
-      *(byte*)(blockAddr+1) = -1;
-      *(uint*)(blockAddr+8) = bListSaved-heapNull+444;
-      *(uint*)(blockAddr+4) = freelistHead1536;
-      freelistHead1536 = blockIdx;
-      *(byte*)blockAddr = 0x80;
-      blockIdx += 1536;
+  // Chunks-over-128: when sizeClass exceeds 128 units (one 1536-byte block),
+  // split the head off into chunks of exactly 128 units each and link them
+  // onto BList[37] (the dedicated 1536-byte-chunk queue). What remains is
+  // (sizeClass - 128 * chunksOver128) units.
+  if (sizeClass > 0x80) {
+    uint chunksOver128 = (uint)(((uint)sizeClass + 0x7Fu) >> 7) - 1;
+    for (uint k = 0; k < chunksOver128; ++k) {
+      bList[37].linkNext((MEM_BLK*)blockAddr, 0x80);
       blockAddr += 1536;
-      *(uint*)(heapNull+*(uint*)(bListSaved+448)+8) = freelistHead1536;
-      ++*(uint*)(bListSaved+444);
-      *(uint*)(bListSaved+448) = freelistHead1536;
-      ++chunkLoopK;
-    } while( chunkLoopK<(uint)chunksOver128 );
+    }
+    sizeClass -= 128 * chunksOver128;
   }
   // Tail-split + insert: figure out the right size-class queue for the
   // remaining block, optionally split off any leftover into a separate
   // freelist entry, then push the block onto its queue.
-  MEM_BLK* bList = (MEM_BLK*)bListSaved;
   biggerSizeClass = Units2Indx[sizeClass+3];
   biggerUnits = Indx2Units[biggerSizeClass];
   if (sizeClass != (uint)biggerUnits) {
@@ -1550,7 +1515,7 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
     bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + 12*biggerUnits), deltaUnits);
   }
   bList[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
-  return (char*)&bList[biggerSizeClass] - heapNull;
+  return (char*)&bList[biggerSizeClass] - HeapNull;
 }
 //--- #return
 //--- #include "subs_startmodel1.inc"
