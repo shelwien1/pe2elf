@@ -750,13 +750,33 @@ TARGET_SCALE_FALLBACK:
 
   PPM_CONTEXT* max_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(MaxContext->iSuffix);
   uint suffixNStates = max_suffix_ctx->NStates;
-  int mixCtxBoost = 32*(RunLength>0)+(MaxContext->Flags&0x80);
   MixCtxExtra += (suffixNStates==0)<<7;
 
-  uint v548_val = OrderFall-total_depth;
-  int mixCtxBase = MixCtx+((4*(OrderFall-total_depth>3)+8*(sym==ctx->getStates()[ctx->Flags&0x0F].Symbol)+(sym==FoundSymbol)+2*(epoch==SymLastCtx[sym]))<<9)+mixCtxBoost+((sparseFlags==3||epoch==MatchPosBySym[sym])<<13);
-  int mixCtx2Bits = (((MixCtx2&6)==6)<<8)+((MixCtx2&1)<<6);
-  int mixCtxComposite = mixCtxBase+mixCtx2Bits;
+  uint orderShortfall = OrderFall-total_depth;
+  byte ctxFoundSym    = ctx->getStates()[ctx->Flags&0x0F].Symbol;
+
+  // mixCtxComposite packs ~10 features into a bitfield over MixCtx:
+  //   .raw MixCtx       : the running mix-ctx state
+  //   bit  5            : RunLength > 0
+  //   .raw Flags & 0x80 : Flags high bit (bit 7)
+  //   bit  6            : MixCtx2 & 1
+  //   bit  8            : (MixCtx2 & 6) == 6
+  //   bit  9            : sym matches the rank-0 FoundSymbol
+  //   bit 10            : epoch matches the SymLastCtx slot
+  //   bit 11            : OrderFall - total_depth > 3
+  //   bit 12            : sym matches the rank-(Flags&0xF) symbol
+  //   bit 13            : sparseFlags==3 || epoch matches MatchPosBySym
+  uint mixCtxComposite = SseIdx{}
+    .raw  (MixCtx)
+    .bit  <5> (RunLength > 0)
+    .raw  (MaxContext->Flags & 0x80)
+    .bit  <6> (MixCtx2 & 1)
+    .bit  <8> ((MixCtx2 & 6) == 6)
+    .bit  <9> (sym == FoundSymbol)
+    .bit  <10>(epoch == SymLastCtx[sym])
+    .bit  <11>(orderShortfall > 3)
+    .bit  <12>(sym == ctxFoundSym)
+    .bit  <13>(sparseFlags == 3 || epoch == MatchPosBySym[sym]);
 
   int mixCtx;
   if( suffixNStates ) {
@@ -767,7 +787,7 @@ TARGET_SCALE_FALLBACK:
   } else {
     PPM_CONTEXT* deep_suffix_ctx = (PPM_CONTEXT*)Indx2Ptr(max_suffix_ctx->iSuffix);
     suffixNStates = deep_suffix_ctx->NStates;
-    if( deep_suffix_ctx->NStates||v548_val<4||(v548_val<5&&(verification_nstates+1)<4&&ctx->SummFreq-found_state->Freq<36) ) {
+    if( deep_suffix_ctx->NStates||orderShortfall<4||(orderShortfall<5&&(verification_nstates+1)<4&&ctx->SummFreq-found_state->Freq<36) ) {
 
       uint suffix_chain_idx = deep_suffix_ctx->iSuffix;
       uint deeperBit = 0;
@@ -778,14 +798,14 @@ TARGET_SCALE_FALLBACK:
       mixCtx = mixCtxComposite+8*deeperBit+16;
     } else if( path_depth>=6 ) {
       if( path_depth>=14 ) {
-        mixCtx = mixCtxBase+mixCtx2Bits+14;
+        mixCtx = mixCtxComposite+14;
         if( path_depth<32 )
-          mixCtx = mixCtxBase+mixCtx2Bits+12;
+          mixCtx = mixCtxComposite+12;
       } else {
-        mixCtx = mixCtxBase+mixCtx2Bits+10;
+        mixCtx = mixCtxComposite+10;
       }
     } else {
-      mixCtx = mixCtxBase+mixCtx2Bits+8;
+      mixCtx = mixCtxComposite+8;
     }
   }
 
