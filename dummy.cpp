@@ -1341,31 +1341,8 @@ sqword AllocUnitsRare(uint unitsIdx) {
   sqword reqSizeIdx;
   uint reqUnits;
   uint* freelistEntry;
-  sqword heapNull;
   sqword result;
   int biggerUnits;
-  sqword blockAddr;
-  sqword blockIdx;
-  uint remUnits;
-  sqword remUnitsSaved;
-  sqword remByteOff;
-  byte* i;
-  sqword coalesceFreelistOff;
-  uint unitsTotalSaved;
-  uint chunkLoopI;
-  int chunkLoopJ;
-  sqword chunksOver128;
-  int freelistHead1536;
-  uint chunkLoopK;
-  sqword biggerSizeClass;
-  sqword biggerUnits2;
-  int deltaUnits;
-  uint* biggerFreelist;
-  int biggerFreelistNext;
-  sqword splitBlockAddr;
-  uint* finalFreelist;
-  int finalFreelistNext;
-  int blockIdxFinal;
   sqword textBufBytes;
   char* sentinel;
   sqword heapNullCopy;
@@ -1415,80 +1392,16 @@ sqword AllocUnitsRare(uint unitsIdx) {
   while( ++unitsIdx!=38 ) {
     freelistEntry = (uint*)(BList+12LL*unitsIdx);
     if( *freelistEntry ) {
-      heapNull = HeapNull;
+      // Take the head block off this larger size-class queue.
       result = HeapNull+(uint)freelistEntry[1];
       freelistEntry[1] = *(uint*)(result+4);
-      *(uint*)(heapNull+*(uint*)(result+4)+8) = (uint)(uintptr_t)freelistEntry-heapNull;
+      *(uint*)(HeapNull+*(uint*)(result+4)+8) = (uint)(uintptr_t)freelistEntry-HeapNull;
       biggerUnits = *((byte*)&Indx2Units+unitsIdx);
       --*freelistEntry;
-      blockAddr = result+12LL*reqUnits;
-      blockIdx = blockAddr-heapNull;
-      remUnits = biggerUnits-reqUnits;
-      remUnitsSaved = remUnits;
-      remByteOff = 12LL*remUnits;
-      for( i = (byte*)(blockAddr+remByteOff); *(byte*)(blockAddr+remByteOff+1)==255; i = (byte*)(blockAddr+remByteOff) ) {
-        *(uint*)(*((uint*)i+1)+heapNull+8) = *((uint*)i+2);
-        *(uint*)(*((uint*)i+2)+heapNull+4) = *((uint*)i+1);
-        coalesceFreelistOff = 12LL**(Units2Indx+*i+3);
-        --*(uint*)(coalesceFreelistOff+bListSaved);
-        remUnits += *(byte*)(blockAddr+remByteOff);
-        remUnitsSaved = remUnits;
-        remByteOff = 12LL*remUnits;
-      }
-      unitsTotalSaved = remUnits;
-      if( remUnits>0x80 ) {
-        chunkLoopI = 0;
-        chunkLoopJ = 0;
-        chunksOver128 = -((sqword)(((qword)((1-remUnitsSaved)>>6)>>57)-remUnitsSaved+1)>>7);
-        do {
-          remUnits = chunkLoopJ+unitsTotalSaved-128;
-          chunkLoopJ -= 128;
-          ++chunkLoopI;
-        } while( chunkLoopI<(uint)chunksOver128 );
-        freelistHead1536 = *(uint*)(bListSaved+448);
-        chunkLoopK = 0;
-        do {
-          *(byte*)(blockAddr+1) = -1;
-          *(uint*)(blockAddr+8) = bListSaved-heapNull+444;
-          *(uint*)(blockAddr+4) = freelistHead1536;
-          freelistHead1536 = blockIdx;
-          *(byte*)blockAddr = 0x80;
-          blockIdx += 1536;
-          blockAddr += 1536;
-          *(uint*)(heapNull+*(uint*)(bListSaved+448)+8) = freelistHead1536;
-          ++*(uint*)(bListSaved+444);
-          *(uint*)(bListSaved+448) = freelistHead1536;
-          ++chunkLoopK;
-        } while( chunkLoopK<(uint)chunksOver128 );
-      }
-      biggerSizeClass = *(Units2Indx+remUnits+3);
-      LODWORD(biggerUnits2) = *((byte*)&Indx2Units+biggerSizeClass);
-      if( remUnits!=(uint)biggerUnits2 ) {
-        biggerSizeClass = (uint)(biggerSizeClass-1);
-        biggerUnits2 = *((byte*)&Indx2Units+biggerSizeClass);
-        deltaUnits = remUnits-biggerUnits2;
-        biggerFreelist = (uint*)(bListSaved+12LL*(uint)(deltaUnits-1));
-        biggerFreelistNext = biggerFreelist[1];
-        splitBlockAddr = blockAddr+12*biggerUnits2;
-        *(byte*)splitBlockAddr = deltaUnits;
-        *(byte*)(splitBlockAddr+1) = -1;
-        *(uint*)(splitBlockAddr+8) = (uint)(uintptr_t)biggerFreelist-heapNull;
-        *(uint*)(splitBlockAddr+4) = biggerFreelistNext;
-        LODWORD(splitBlockAddr) = splitBlockAddr-heapNull;
-        *(uint*)((uint)biggerFreelist[1]+heapNull+8) = splitBlockAddr;
-        biggerFreelist[1] = splitBlockAddr;
-        ++*biggerFreelist;
-      }
-      *(byte*)(blockAddr+1) = -1;
-      finalFreelist = (uint*)(12*biggerSizeClass+bListSaved);
-      finalFreelistNext = finalFreelist[1];
-      *(byte*)blockAddr = biggerUnits2;
-      *(uint*)(blockAddr+8) = (uint)(uintptr_t)finalFreelist-heapNull;
-      *(uint*)(blockAddr+4) = finalFreelistNext;
-      blockIdxFinal = blockAddr-heapNull;
-      *(uint*)((uint)finalFreelist[1]+heapNull+8) = blockIdxFinal;
-      finalFreelist[1] = blockIdxFinal;
-      ++*finalFreelist;
+      // Return the leftover (biggerUnits - reqUnits, at result+12*reqUnits)
+      // back to the freelist via the same coalesce/chunk/split path that
+      // FreeUnitsRare runs.
+      FreeUnitsRare(result + 12LL*reqUnits, biggerUnits - reqUnits);
       return result;
     }
   }
