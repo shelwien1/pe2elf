@@ -1955,112 +1955,112 @@ sqword StartModelRare(int mode) {
 }
 //--- #return
 //--- #include "subs_createsuccessors.inc"
-sqword CreateSuccessors(int a1, qword a2, sqword a3) {
-  sqword v3;
-  uint v4;
-  qword v5;
-  int v6;
-  uint v7;
-  byte* v8;
-  uint v9;
-  sqword v10;
-  int v11;
+sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
+  sqword heapNull;
+  uint seedSuccIdx;
+  qword chainPtr;
+  int curSuccIdx;
+  uint ctxSuffixIdx;
+  byte* foundStateB;
+  uint suffixIdx0;
+  sqword ctxAddr;
+  int sym;
   byte* i;
-  int v13;
-  qword v14;
-  qword v15;
-  int v16;
-  byte* v17;
-  qword v18;
-  int v19;
-  uint* v20;
-  sqword v21;
-  sqword v22;
-  uint* v23;
+  int stateSuccIdx;
+  qword chainEnd;
+  qword chainEndSaved;
+  int newCtxAddr;
+  byte* baseCtxAddr;
+  qword chainPtrEnd;
+  int bListIdx;
+  uint* freelistHead;
+  sqword hiUnit;
+  sqword heapNullDup;
+  uint* newCtxPtr;
   sqword result;
-  int v25;
-  int v26;
-  v3 = HeapNull;
-  v4 = *(uint*)(*(qword*)a2+2LL);
-  v5 = a2;
+  int newCtxPacked;
+  int newCtxBytePos;
+  heapNull = HeapNull;
+  seedSuccIdx = *(uint*)(*(qword*)chainStart+2LL);
+  chainPtr = chainStart;
   while( 1 ) {
-    v6 = *(uint*)(*(qword*)v5+2LL);
-    if( v6!=v4 ) {
-      LODWORD(a3) = HeapNull+v6;
+    curSuccIdx = *(uint*)(*(qword*)chainPtr+2LL);
+    if( curSuccIdx!=seedSuccIdx ) {
+      LODWORD(seedCtx) = HeapNull+curSuccIdx;
       goto LABEL_15;
     }
-    v7 = *(uint*)(a3+8);
-    v5 += 8LL;
-    if( !v7 )
+    ctxSuffixIdx = *(uint*)(seedCtx+8);
+    chainPtr += 8LL;
+    if( !ctxSuffixIdx )
       goto LABEL_15;
-    if( v5>=CtxChainEnd )
+    if( chainPtr>=CtxChainEnd )
       break;
-    a3 = HeapNull+v7;
+    seedCtx = HeapNull+ctxSuffixIdx;
   }
-  v8 = (byte*)q9;
-  v9 = *(uint*)(a3+8);
+  foundStateB = (byte*)q9;
+  suffixIdx0 = *(uint*)(seedCtx+8);
   while( 1 ) {
-    v10 = v3+v9;
-    if( *(byte*)v10 ) {
-      v11 = *v8;
-      for( i = (byte*)(v3+*(uint*)(v10+4)); *i!=v11; i += 6 )
+    ctxAddr = heapNull+suffixIdx0;
+    if( *(byte*)ctxAddr ) {
+      sym = *foundStateB;
+      for( i = (byte*)(heapNull+*(uint*)(ctxAddr+4)); *i!=sym; i += 6 )
         ;
     } else {
-      i = (byte*)(v3+v9+2);
+      i = (byte*)(heapNull+suffixIdx0+2);
     }
-    v13 = *(uint*)(i+2);
-    if( v13!=v4 )
+    stateSuccIdx = *(uint*)(i+2);
+    if( stateSuccIdx!=seedSuccIdx )
       break;
-    v9 = *(uint*)(v10+8);
-    *(qword*)v5 = (qword)(uintptr_t)i;
-    v5 += 8LL;
-    if( !v9 ) {
-      LODWORD(a3) = v10;
+    suffixIdx0 = *(uint*)(ctxAddr+8);
+    *(qword*)chainPtr = (qword)(uintptr_t)i;
+    chainPtr += 8LL;
+    if( !suffixIdx0 ) {
+      LODWORD(seedCtx) = ctxAddr;
       goto LABEL_15;
     }
   }
-  LODWORD(a3) = v3+v13;
+  LODWORD(seedCtx) = heapNull+stateSuccIdx;
 LABEL_15:
-  v14 = a2+8LL*a1;
-  if( v5==v14 )
-    return (uint)(a3-v3);
-  v15 = v14;
-  v16 = a3;
-  LOBYTE(v25) = 0;
-  v17 = (byte*)(v3+v4);
-  HIWORD(v25) = *v17;
-  v26 = (uint)(uintptr_t)v17-v3+1;
-  v18 = v5;
-  BYTE1(v25) = *((byte*)SSE0+*v17);
-  v19 = BList-v3;
-  v20 = (uint*)BList;
-  v21 = HiUnit;
-  v22 = v3;
+  chainEnd = chainStart+8LL*depth;
+  if( chainPtr==chainEnd )
+    return (uint)(seedCtx-heapNull);
+  chainEndSaved = chainEnd;
+  newCtxAddr = seedCtx;
+  LOBYTE(newCtxPacked) = 0;
+  baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
+  HIWORD(newCtxPacked) = *baseCtxAddr;
+  newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
+  chainPtrEnd = chainPtr;
+  BYTE1(newCtxPacked) = *((byte*)SSE0+*baseCtxAddr);
+  bListIdx = BList-heapNull;
+  freelistHead = (uint*)BList;
+  hiUnit = HiUnit;
+  heapNullDup = heapNull;
   while( 1 ) {
-    if( v21==LoUnit ) {
-      if( *v20 ) {
-        v23 = (uint*)(v22+(uint)v20[2]);
-        v20[2] = v23[2];
-        *(uint*)((uint)v23[2]+v22+4) = v19;
-        --*v20;
+    if( hiUnit==LoUnit ) {
+      if( *freelistHead ) {
+        newCtxPtr = (uint*)(heapNullDup+(uint)freelistHead[2]);
+        freelistHead[2] = newCtxPtr[2];
+        *(uint*)((uint)newCtxPtr[2]+heapNullDup+4) = bListIdx;
+        --*freelistHead;
       } else {
-        v23 = (uint*)AllocUnitsRare(0);
+        newCtxPtr = (uint*)AllocUnitsRare(0);
       }
     } else {
-      v21 -= 12;
-      HiUnit = v21;
-      v23 = (uint*)v21;
+      hiUnit -= 12;
+      HiUnit = hiUnit;
+      newCtxPtr = (uint*)hiUnit;
     }
-    if( !v23 )
+    if( !newCtxPtr )
       break;
-    *v23 = v25;
-    v23[1] = v26;
-    v23[2] = v16-v22;
-    v16 = (int)(uintptr_t)v23;
-    result = (uint)((uint)(uintptr_t)v23-v22);
-    v18 -= 8LL;
-    *(uint*)(*(qword*)v18+2LL) = result;
-    if( v18==v15 )
+    *newCtxPtr = newCtxPacked;
+    newCtxPtr[1] = newCtxBytePos;
+    newCtxPtr[2] = newCtxAddr-heapNullDup;
+    newCtxAddr = (int)(uintptr_t)newCtxPtr;
+    result = (uint)((uint)(uintptr_t)newCtxPtr-heapNullDup);
+    chainPtrEnd -= 8LL;
+    *(uint*)(*(qword*)chainPtrEnd+2LL) = result;
+    if( chainPtrEnd==chainEndSaved )
       return result;
   }
   return 0;
