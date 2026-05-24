@@ -1376,7 +1376,6 @@ sqword AllocUnitsRare(uint unitsIdx) {
   sqword bListSaved;
   sqword reqSizeIdx;
   uint reqUnits;
-  uint* freelistEntry;
   sqword result;
   int biggerUnits;
   sqword textBufBytes;
@@ -1400,14 +1399,11 @@ sqword AllocUnitsRare(uint unitsIdx) {
   reqSizeIdx = unitsIdx;
   reqUnits = *((byte*)&Indx2Units+unitsIdx);
   while( ++unitsIdx!=38 ) {
-    freelistEntry = (uint*)(BList+12LL*unitsIdx);
-    if( *freelistEntry ) {
-      // Take the head block off this larger size-class queue.
-      result = HeapNull+(uint)freelistEntry[1];
-      freelistEntry[1] = *(uint*)(result+4);
-      *(uint*)(HeapNull+*(uint*)(result+4)+8) = (uint)(uintptr_t)freelistEntry-HeapNull;
-      biggerUnits = *((byte*)&Indx2Units+unitsIdx);
-      --*freelistEntry;
+    MEM_BLK* freeQueue = (MEM_BLK*)(BList + 12LL*unitsIdx);
+    if (freeQueue->avail()) {
+      // Pop the queue's head block (== freeQueue->unlinkNext()).
+      sqword result = (sqword)freeQueue->unlinkNext();
+      biggerUnits = Indx2Units[unitsIdx];
       // Return the leftover (biggerUnits - reqUnits, at result+12*reqUnits)
       // back to the freelist via the same coalesce/chunk/split path that
       // FreeUnitsRare runs.
