@@ -2360,21 +2360,21 @@ sqword ReduceOrder() {
   sqword v114;
   sqword v115;
   sqword v116;
-  int v117;
-  sqword v118;
-  qword v119;
-  sqword v120;
+  int bListCountIdx;
+  sqword escIdxClipped;
+  qword hiUnitSaved;
+  sqword bListSaved;
   sqword v121;
-  sqword v122;
-  short v123;
+  sqword rootCtxSaved;
+  short foundSymFreq;
   v0 = RootContext;
   v1 = (byte*)q9;
   v2 = OrderFall;
   v3 = MaxOrder;
   v4 = *(uint*)(q9+2);
-  v123 = *(word*)q9;
+  foundSymFreq = *(word*)q9;
   v5 = (byte*)RootContext;
-  v122 = RootContext;
+  rootCtxSaved = RootContext;
   v6 = *((byte*)SSE0+(byte)*(word*)q9);
   if( OrderFall==MaxOrder&&v4 ) {
     v7 = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
@@ -2473,7 +2473,7 @@ LABEL_73:
         v75 = (uint*)(BList+12LL*Units2Indx4[0]);
         v76 = BList+12*Units2Indx4[0]-HeapNull;
         v98 = BList-HeapNull+444;
-        v77 = v122;
+        v77 = rootCtxSaved;
         do {
           v78 = *(uint*)(v77+4);
           v79 = v73+v78;
@@ -2600,9 +2600,9 @@ LABEL_11:
   result = *(uint*)(v15+v10+4);
   (void)(result+v10); // prefetch hint removed
   if( v0!=v14 ) {
-    v119 = HiUnit;
+    hiUnitSaved = HiUnit;
     v18 = EscIndexSeed+8;
-    v120 = BList;
+    bListSaved = BList;
     v121 = v10+v15;
     v114 = v0;
     if( EscIndexSeed+8>=14 )
@@ -2610,8 +2610,8 @@ LABEL_11:
     if( v18<0 )
       v18 = 0;
     v19 = v6;
-    v117 = BList-v10+444;
-    v118 = v18;
+    bListCountIdx = BList-v10+444;
+    escIdxClipped = v18;
     v20 = v13;
     while( 1 ) {
       v21 = *v5+1;
@@ -2626,7 +2626,7 @@ LABEL_11:
           v26 = v21>>1;
           if( v25!=*(Units2Indx4+v26) ) {
             v27 = *(Units2Indx4+v26);
-            v28 = (uint*)(v120+12*v27);
+            v28 = (uint*)(bListSaved+12*v27);
             if( *v28 ) {
               v29 = (uint*)(v10+(uint)v28[1]);
               v28[1] = v29[1];
@@ -2635,8 +2635,8 @@ LABEL_11:
             } else {
               v29 = (uint*)LoUnit;
               v30 = 12*(uint)*((byte*)&Indx2Units+v27);
-              v31 = LoUnit+v30==v119;
-              if( LoUnit+v30>v119 ) {
+              v31 = LoUnit+v30==hiUnitSaved;
+              if( LoUnit+v30>hiUnitSaved ) {
                 v99 = *(Units2Indx+v24+3);
                 v108 = v20;
                 v29 = (uint*)AllocUnitsRare(v27);
@@ -2682,7 +2682,7 @@ LABEL_11:
                   *(uint*)((uint)v23[v39+1]+v10+8) = v23[v39+2];
                   *(uint*)((uint)v23[v39+2]+v10+4) = v23[v39+1];
                   v40 = 12LL**(Units2Indx+LOBYTE(v23[v39])+3);
-                  --*(uint*)(v40+v120);
+                  --*(uint*)(v40+bListSaved);
                   v36 += LOBYTE(v23[v39]);
                   v39 = 3LL*v36;
                 } while( BYTE1(v23[v39])==255 );
@@ -2699,13 +2699,13 @@ LABEL_11:
                   v44 = 0;
                   do {
                     *((byte*)v23+1) = -1;
-                    v23[2] = v117;
+                    v23[2] = bListCountIdx;
                     ++v44;
                     *(byte*)v23 = 0x80;
-                    v23[1] = *(uint*)(v120+448);
-                    *(uint*)(*(uint*)(v120+448)+v10+8) = v22;
-                    ++*(uint*)(v120+444);
-                    *(uint*)(v120+448) = v22;
+                    v23[1] = *(uint*)(bListSaved+448);
+                    *(uint*)(*(uint*)(bListSaved+448)+v10+8) = v22;
+                    ++*(uint*)(bListSaved+444);
+                    *(uint*)(bListSaved+448) = v22;
                     v22 += 1536;
                     v23 += 384;
                   } while( v44<v101 );
@@ -2717,7 +2717,7 @@ LABEL_11:
                   v46 = *((byte*)&Indx2Units+v45);
                   v103 = *((byte*)&Indx2Units+v45);
                   v47 = v36-v46;
-                  v48 = (uint*)(v120+12LL*(uint)(v47-1));
+                  v48 = (uint*)(bListSaved+12LL*(uint)(v47-1));
                   v49 = &v23[3*v46];
                   *((byte*)v49+1) = -1;
                   *(byte*)v49 = v47;
@@ -2729,7 +2729,7 @@ LABEL_11:
                   v48[1] = (uint)(uintptr_t)v49;
                 }
                 *((byte*)v23+1) = -1;
-                v50 = (uint*)(v120+12*v45);
+                v50 = (uint*)(bListSaved+12*v45);
                 *(byte*)v23 = v103;
                 v23[2] = (uint)(uintptr_t)v50-v10;
                 v23[1] = v50[1];
@@ -2739,7 +2739,7 @@ LABEL_11:
                 v50[1] = v51;
               } else {
                 *((byte*)v23+1) = -1;
-                v38 = (uint*)(v120+12LL*v25);
+                v38 = (uint*)(bListSaved+12LL*v25);
                 *(byte*)v23 = v36;
                 v23[2] = (uint)(uintptr_t)v38-v10;
                 v23[1] = v38[1];
@@ -2766,7 +2766,7 @@ LABEL_11:
           } while( v54>v10+(qword)*((uint*)v5+1)+42 );
         }
       } else {
-        v56 = (uint*)(v120+12LL*Units2Indx4[0]);
+        v56 = (uint*)(bListSaved+12LL*Units2Indx4[0]);
         if( *v56 ) {
           v57 = v10+(uint)v56[1];
           v56[1] = *(uint*)(v57+4);
@@ -2775,8 +2775,8 @@ LABEL_11:
         } else {
           v57 = LoUnit;
           v58 = 12*(uint)*((byte*)&Indx2Units+Units2Indx4[0]);
-          v59 = LoUnit+v58==v119;
-          if( LoUnit+v58>v119 ) {
+          v59 = LoUnit+v58==hiUnitSaved;
+          if( LoUnit+v58>hiUnitSaved ) {
             v109 = v20;
             v96 = AllocUnitsRare(Units2Indx4[0]);
             v20 = v109;
@@ -2793,7 +2793,7 @@ LABEL_99:
           goto LABEL_73;
         }
         *(word*)v57 = *((word*)v5+1);
-        v60 = b24[v118];
+        v60 = b24[escIdxClipped];
         *(uint*)(v57+2) = *((uint*)v5+1);
         *((uint*)v5+1) = v57-v10;
         v61 = 4**(byte*)(v57+1)+v60;
@@ -2807,7 +2807,7 @@ LABEL_99:
       }
       *(byte*)(v54+1) = 0;
       *(uint*)(v54+2) = v20;
-      *(byte*)v54 = v123;
+      *(byte*)v54 = foundSymFreq;
       v62 = v5[1]&0xF0;
       v63 = v10+*((uint*)v5+1);
       ++*v5;
