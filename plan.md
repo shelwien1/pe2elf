@@ -274,33 +274,25 @@ via function-local references (Section A). That removes the
 naming-by-spill noise; the next step is to prove the *intra-cascade*
 publishes are dead and delete them.
 
-### F. The non-`RealProcess` functions need the same passes
+### F. The non-`RealProcess` functions
 
-The same categories of problem appear outside `RealProcess`. Brief
-inventory (line numbers from current `dummy.cpp`):
+Status: largely cleaned up. Every function outside `RealProcess` has
+had its `v##` locals renamed by role and its `a#` parameters renamed.
 
-- **`ReduceOrder` (2247)** — ~600 lines, ~70 `v##` locals, multiple
-  unstructured loops. Highest yield for plain-rename work.
-- **`PPMContextWalk` (565)** — output parameters named `outV246` etc.;
-  body uses `v##` locals and writes via the q-globals. Carries explicit
-  `FIX BUG` annotations (see non-goals).
-- **`UpdateModel` (2100)** — feeds the per-symbol model update path
-  that `RealProcess` calls at LABEL_250; locals partly cleaned up,
-  control flow still goto-heavy.
-- **`CreateSuccessors` (1958)** — context-tree growth; helper-heavy
-  and named, but the locals are still `a1`/`a2`/`a3`-style.
-- **`AllocUnitsRare` (1278)** — heap suballocator, ~400 lines, mostly
-  `v##` locals.
-- **`SseScale1` (1115) / `SseScale2` (1209) / `BinEscFreq` (833) /
-  `RescaleCtx` (972)** — small enough to clean up in a single pass each.
-- **`Rangecoder` struct (3660)** — methods are already reasonably
-  named; check the carry-flush path for stray `v##` locals.
-
-Goal: walk the file once and apply the section-A/B techniques (rename
-globals at definition, rename `v##` locals by role, narrow scopes
-where structured) to each function. `RealProcess` and `ReduceOrder`
-are the two big ones; the rest are short enough to do as cleanup
-between `RealProcess` steps.
+Remaining work in this category:
+- **`RealProcess` itself** — the only function still carrying the
+  decompiler-output shape (sections B, C, D, E below). Locals are
+  semantically named but section-suffixed (`_A`/`_B`/`_C`/`_E`/`_F`/`_M`);
+  control flow is still goto-driven.
+- **d27 / d29 arrays** — large mix-model heaps. Renaming the array
+  identifier is mechanical but each has 4-7 sibling `auto&` byte-offset
+  aliases (MixBound2..6, b19, w11, w12) that would need to update in
+  lockstep. Defer until a clear naming scheme emerges.
+- **b##-named hash tables** (b25, b27, b29, b31, b32..b37) — these are
+  hash-table views overlaid on `Sse2State` at specific byte offsets,
+  with semantic roles (SymLastCtx routing, byte-hash arm predictors,
+  paired byte-hash predictors). The bN names are short enough that
+  renaming is low value until their roles are fully understood.
 
 ## Non-goals
 
