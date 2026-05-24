@@ -1582,96 +1582,96 @@ sqword AllocUnitsRare(uint unitsIdx) {
 }
 //--- #return
 //--- #include "subs_freeunitsrare.inc"
-char* FreeUnitsRare(sqword a1, uint a2) {
-  sqword v2;
-  sqword v3;
-  sqword v4;
-  sqword v5;
-  sqword v6;
+char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
+  sqword bListSaved;
+  sqword heapNull;
+  sqword blockIdx;
+  sqword sizeClassSaved;
+  sqword byteOff12;
   byte* i;
-  sqword v8;
-  uint v9;
-  uint v10;
-  int v11;
-  sqword v12;
-  int v13;
-  uint v14;
-  sqword v15;
-  sqword v16;
-  int v17;
-  uint* v18;
-  sqword v19;
-  uint* v20;
-  int v21;
-  int v23;
-  v2 = BList;
-  v3 = HeapNull;
-  v4 = a1-HeapNull;
-  v5 = a2;
-  v6 = 12LL*a2;
-  for( i = (byte*)(a1+v6); *(byte*)(a1+v6+1)==255; i = (byte*)(a1+v6) ) {
-    *(uint*)(*((uint*)i+1)+v3+8) = *((uint*)i+2);
-    *(uint*)(*((uint*)i+2)+v3+4) = *((uint*)i+1);
-    v8 = 12LL**(Units2Indx+*i+3);
-    --*(uint*)(v8+v2);
-    a2 += *(byte*)(a1+v6);
-    v5 = a2;
-    v6 = 12LL*a2;
+  sqword freelistByteOff;
+  uint sizeClassEntry;
+  uint chunkLoopI;
+  int chunkLoopJ;
+  sqword chunksOver128;
+  int freelistHead1536;
+  uint chunkLoopK;
+  sqword biggerSizeClass;
+  sqword biggerUnits;
+  int deltaUnits;
+  uint* biggerFreelist;
+  sqword splitBlockAddr;
+  uint* finalFreelist;
+  int nextFreeIdx;
+  int blockIdxFinal;
+  bListSaved = BList;
+  heapNull = HeapNull;
+  blockIdx = blockAddr-HeapNull;
+  sizeClassSaved = sizeClass;
+  byteOff12 = 12LL*sizeClass;
+  for( i = (byte*)(blockAddr+byteOff12); *(byte*)(blockAddr+byteOff12+1)==255; i = (byte*)(blockAddr+byteOff12) ) {
+    *(uint*)(*((uint*)i+1)+heapNull+8) = *((uint*)i+2);
+    *(uint*)(*((uint*)i+2)+heapNull+4) = *((uint*)i+1);
+    freelistByteOff = 12LL**(Units2Indx+*i+3);
+    --*(uint*)(freelistByteOff+bListSaved);
+    sizeClass += *(byte*)(blockAddr+byteOff12);
+    sizeClassSaved = sizeClass;
+    byteOff12 = 12LL*sizeClass;
   }
-  v9 = a2;
-  if( a2>0x80 ) {
-    v10 = 0;
-    v11 = 0;
-    v12 = -((sqword)(((qword)((1-v5)>>6)>>57)-v5+1)>>7);
+  sizeClassEntry = sizeClass;
+  if( sizeClass>0x80 ) {
+    chunkLoopI = 0;
+    chunkLoopJ = 0;
+    chunksOver128 = -((sqword)(((qword)((1-sizeClassSaved)>>6)>>57)-sizeClassSaved+1)>>7);
     do {
-      a2 = v11+v9-128;
-      v11 -= 128;
-      ++v10;
-    } while( v10<(uint)v12 );
-    v13 = *(uint*)(v2+448);
-    v14 = 0;
+      sizeClass = chunkLoopJ+sizeClassEntry-128;
+      chunkLoopJ -= 128;
+      ++chunkLoopI;
+    } while( chunkLoopI<(uint)chunksOver128 );
+    freelistHead1536 = *(uint*)(bListSaved+448);
+    chunkLoopK = 0;
     do {
-      *(byte*)(a1+1) = -1;
-      *(uint*)(a1+8) = v2-v3+444;
-      *(uint*)(a1+4) = v13;
-      v13 = v4;
-      *(byte*)a1 = 0x80;
-      v4 += 1536;
-      a1 += 1536;
-      *(uint*)(v3+*(uint*)(v2+448)+8) = v13;
-      ++*(uint*)(v2+444);
-      *(uint*)(v2+448) = v13;
-      ++v14;
-    } while( v14<(uint)v12 );
+      *(byte*)(blockAddr+1) = -1;
+      *(uint*)(blockAddr+8) = bListSaved-heapNull+444;
+      *(uint*)(blockAddr+4) = freelistHead1536;
+      freelistHead1536 = blockIdx;
+      *(byte*)blockAddr = 0x80;
+      blockIdx += 1536;
+      blockAddr += 1536;
+      *(uint*)(heapNull+*(uint*)(bListSaved+448)+8) = freelistHead1536;
+      ++*(uint*)(bListSaved+444);
+      *(uint*)(bListSaved+448) = freelistHead1536;
+      ++chunkLoopK;
+    } while( chunkLoopK<(uint)chunksOver128 );
   }
-  v15 = *(Units2Indx+a2+3);
-  LODWORD(v16) = *((byte*)&Indx2Units+v15);
-  if( a2!=(uint)v16 ) {
-    v15 = (uint)(v15-1);
-    v16 = *((byte*)&Indx2Units+v15);
-    v17 = a2-v16;
-    v18 = (uint*)(v2+12LL*(uint)(v17-1));
-    v19 = a1+12*v16;
-    *(byte*)(v19+1) = -1;
-    *(byte*)v19 = v17;
-    *(uint*)(v19+8) = v2+12*(v17-1)-v3;
-    *(uint*)(v19+4) = v18[1];
-    LODWORD(v19) = v19-v3;
-    *(uint*)((uint)v18[1]+v3+8) = v19;
-    v18[1] = v19;
-    ++*v18;
+  biggerSizeClass = *(Units2Indx+sizeClass+3);
+  LODWORD(biggerUnits) = *((byte*)&Indx2Units+biggerSizeClass);
+  if( sizeClass!=(uint)biggerUnits ) {
+    biggerSizeClass = (uint)(biggerSizeClass-1);
+    biggerUnits = *((byte*)&Indx2Units+biggerSizeClass);
+    deltaUnits = sizeClass-biggerUnits;
+    biggerFreelist = (uint*)(bListSaved+12LL*(uint)(deltaUnits-1));
+    splitBlockAddr = blockAddr+12*biggerUnits;
+    *(byte*)(splitBlockAddr+1) = -1;
+    *(byte*)splitBlockAddr = deltaUnits;
+    *(uint*)(splitBlockAddr+8) = bListSaved+12*(deltaUnits-1)-heapNull;
+    *(uint*)(splitBlockAddr+4) = biggerFreelist[1];
+    LODWORD(splitBlockAddr) = splitBlockAddr-heapNull;
+    *(uint*)((uint)biggerFreelist[1]+heapNull+8) = splitBlockAddr;
+    biggerFreelist[1] = splitBlockAddr;
+    ++*biggerFreelist;
   }
-  *(byte*)(a1+1) = -1;
-  v20 = (uint*)(12*v15+v2);
-  v21 = v20[1];
-  *(byte*)a1 = v16;
-  *(uint*)(a1+8) = (uint)(uintptr_t)v20-v3;
-  *(uint*)(a1+4) = v21;
-  v23 = a1-v3;
-  *(uint*)((uint)v20[1]+v3+8) = v23;
-  v20[1] = v23;
-  ++*v20;
-  return (char*)v20-v3;
+  *(byte*)(blockAddr+1) = -1;
+  finalFreelist = (uint*)(12*biggerSizeClass+bListSaved);
+  nextFreeIdx = finalFreelist[1];
+  *(byte*)blockAddr = biggerUnits;
+  *(uint*)(blockAddr+8) = (uint)(uintptr_t)finalFreelist-heapNull;
+  *(uint*)(blockAddr+4) = nextFreeIdx;
+  blockIdxFinal = blockAddr-heapNull;
+  *(uint*)((uint)finalFreelist[1]+heapNull+8) = blockIdxFinal;
+  finalFreelist[1] = blockIdxFinal;
+  ++*finalFreelist;
+  return (char*)finalFreelist-heapNull;
 }
 //--- #return
 //--- #include "subs_startmodel1.inc"
