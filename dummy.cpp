@@ -2125,7 +2125,6 @@ sqword ReduceOrder() {
   byte* stateBW;
   uint curCtxSuffix;
   sqword bListSaved2;
-  int symPeek;
   byte* chainStatePtr;
   sqword* chainPtrSave;
   byte* ctxBSaveCS;
@@ -2178,17 +2177,16 @@ sqword ReduceOrder() {
     chainPtrW = CtxChain;
     while( 1 ) {
       if( (qword)chainPtrW>=ctxChainEndS ) {
-        if( *(byte*)curCtx ) {
-          stateBW = (byte*)(heapNull+*(uint*)(curCtx+4));
-          if( *stateBW!=sym ) {
-            do {
-              symPeek = stateBW[6];
-              stateBW += 6;
-            } while( sym!=symPeek );
-          }
+        // Find the STATE for sym in curCtx (or take its oneState if NStates==0).
+        PPM_CONTEXT* pc = (PPM_CONTEXT*)curCtx;
+        STATE* state;
+        if (pc->NStates) {
+          state = pc->getStates();
+          while (state->Symbol != sym) state++;
         } else {
-          stateBW = (byte*)(curCtx+2);
+          state = &pc->oneState();
         }
+        stateBW = (byte*)state;
         *chainPtrW++ = (sqword)stateBW;
       } else {
         stateBW = (byte*)*chainPtrW++;
