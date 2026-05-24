@@ -3124,8 +3124,10 @@ LABEL_165:
     maxOrd = MaxOrder;
     CtxChainEnd = (sqword)&CtxChain_1;
   }
-  if( ofall==maxOrd&&(result = HeapNull+*(uint*)(foundState+2), result>=UnitsStart) ) {
-    RootContext = HeapNull+*(uint*)(foundState+2);
+  if (ofall == maxOrd
+      && (result = HeapNull + ((STATE*)foundState)->iSuccessor,
+          result >= UnitsStart)) {
+    RootContext = result;
     MaxContext0 = result;
   } else {
     result = ReduceOrder();
