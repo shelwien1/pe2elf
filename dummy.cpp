@@ -3244,7 +3244,14 @@ LABEL_94:
       recentSym = b1;
     b1Ptr = &bmPtr[-MixScale];
     bm1 = (byte)*(b1Ptr-1);
-    bmComposite = ((b1Ptr[2]==bmPtr[-2*MixScale+2])<<12)+(((b2&0x2E)+((byte)bmPtr[-2*MixScale+1]<(uint)(byte)b1Ptr[1]))<<8)+((((bm1+32-sym)>>31)+((bm1-sym)>>31)+((int)sym>=bm1))<<14);
+    // bmComposite indexes the 4-uint BijectMap row; the bitfield mixes:
+    //   bits  8-13 : raw   (b2 & 0x2E) plus a same-direction prediction bit
+    //   bit  12    : history-match flag (same 3rd byte at the two offsets)
+    //   bits 14-16 : 3-bit count of "sym near bm1" comparisons
+    bmComposite = SseIdx{}
+      .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
+      .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
+      .bits <14, 3>(((bm1 + 32 - sym) >> 31) + ((bm1 - sym) >> 31) + ((int)sym >= bm1));
     q26 = (sqword)&BijectMap[4*bmComposite+4*b1];
     SymLastCtx[(byte)BijectMap[4*bmComposite+2+4*b1]] = sc;
     SymLastCtx[*(byte*)(q26+1)] = sc;
