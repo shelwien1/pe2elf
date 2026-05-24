@@ -2265,101 +2265,101 @@ sqword ReduceOrder() {
   char sse0BitSaved;
   uint succIdxSaved;
   uint nStatesP1;
-  sqword v22;
-  uint* v23;
-  uint v24;
-  uint v25;
-  sqword v26;
-  sqword v27;
-  uint* v28;
-  uint* v29;
-  qword v30;
-  bool v31;
-  uint* v32;
-  sqword v33;
-  uint v34;
-  uint v35;
-  uint v36;
-  sqword v37;
-  uint* v38;
-  sqword v39;
-  sqword v40;
-  uint v41;
-  uint v42;
-  int v43;
-  uint v44;
-  sqword v45;
-  sqword v46;
-  int v47;
-  uint* v48;
-  uint* v49;
-  uint* v50;
-  int v51;
-  uint v52;
-  sqword v53;
-  qword v54;
-  int v55;
-  uint* v56;
-  sqword v57;
-  sqword v58;
-  bool v59;
-  int v60;
-  int v61;
-  char v62;
-  sqword v63;
-  sqword v64;
+  sqword stateIdxU;
+  uint* statesPtr;
+  uint halfNStatesP1;
+  uint sizeClassP;
+  sqword halfNStatesP1_b;
+  sqword sizeClass4P;
+  uint* queueEntryP;
+  uint* newStatesPtr;
+  qword byteOff12P;
+  bool isExactBoundary;
+  uint* newStatesTail;
+  sqword srcStatesAddr;
+  uint copyLoopI;
+  uint copyIdxJ;
+  uint runUnits;
+  sqword runUnitsDup;
+  uint* finalFreelistP;
+  sqword statesPos;
+  sqword freelistOffP;
+  uint unitsInRunP;
+  uint chunkLoopIP;
+  int chunkLoopJP;
+  uint chunkLoopKP;
+  sqword biggerSizeClassP;
+  sqword biggerUnitsP;
+  int deltaUnitsP;
+  uint* biggerFreelistP;
+  uint* splitBlockAddrP;
+  uint* finalFreelistP2;
+  int blockIdxFinalP;
+  uint newStatesIdx;
+  sqword newStatesIdx2;
+  qword newStateEnd;
+  int prevStateSucc;
+  uint* freelistEntryS;
+  sqword allocedUnit;
+  sqword byteOffS;
+  bool isBoundary;
+  int freqBoost;
+  int newStateFreq;
+  char upperFlagBits;
+  sqword statesBaseAddr;
+  sqword stateByteOff;
   qword v65;
   int sym;
   sqword v67;
   sqword* v68;
   byte* v69;
   uint v70;
-  sqword v71;
-  uint v72;
-  sqword v73;
-  sqword v74;
-  uint* v75;
-  int v76;
-  sqword v77;
-  sqword v78;
-  sqword v79;
-  qword v80;
-  uint v81;
-  sqword v82;
-  sqword v83;
-  uint v84;
-  uint v85;
-  int v86;
-  sqword v87;
-  uint v88;
-  sqword v89;
-  sqword v90;
-  int v91;
-  uint* v92;
-  sqword v93;
-  uint* v94;
-  int v95;
+  sqword bListSaved2;
+  uint suffixIdxL;
+  sqword heapNullCopy2;
+  sqword unitsBClass;
+  uint* freelistB0;
+  int freelistB0Idx;
+  sqword stateWalker;
+  sqword stateIStates;
+  sqword stateIStatesAddr;
+  qword mismatchOff;
+  uint unitsInRun2;
+  sqword unitsByteOff;
+  sqword coalesceOff;
+  uint unitsTotalSaved2;
+  uint chunkLoopI2;
+  int chunkLoopJ2;
+  sqword chunksOver128B;
+  uint chunkLoopK2;
+  sqword biggerSizeClass2;
+  sqword biggerUnits3;
+  int deltaUnits2;
+  uint* biggerFreelist2;
+  sqword splitBlockAddr2;
+  uint* finalFreelist2;
+  int blockIdxFinal2;
   sqword v96;
   int symPeek;
-  int v98;
-  uint v99;
+  int bListCountIdx3;
+  uint sizeClassPSaved;
   sqword v100;
-  uint v101;
+  uint chunksOver128P;
   byte* v102;
-  byte v103;
+  byte biggerUnitsByte;
   sqword* v104;
   char v105;
   char v106;
-  uint v107;
-  uint v108;
-  uint v109;
+  uint v13SaveCS;
+  uint v20SaveAU;
+  uint v20SaveAU2;
   uint v110;
   byte* v111;
   byte* v112;
   byte* v113;
   sqword v114;
   sqword v115;
-  sqword v116;
+  sqword ctxSaved;
   int bListCountIdx;
   sqword escIdxClipped;
   qword hiUnitSaved;
@@ -2465,115 +2465,115 @@ LABEL_73:
     if( !CutOff )
       return StartModelRare(2);
     if( *(byte*)v0==1 ) {
-      v71 = BList;
+      bListSaved2 = BList;
       if( !*v5&&(byte*)v0!=v5 ) {
-        v73 = HeapNull;
-        v74 = Units2Indx4[0];
-        v116 = v0;
-        v75 = (uint*)(BList+12LL*Units2Indx4[0]);
-        v76 = BList+12*Units2Indx4[0]-HeapNull;
-        v98 = BList-HeapNull+444;
-        v77 = rootCtxSaved;
+        heapNullCopy2 = HeapNull;
+        unitsBClass = Units2Indx4[0];
+        ctxSaved = v0;
+        freelistB0 = (uint*)(BList+12LL*Units2Indx4[0]);
+        freelistB0Idx = BList+12*Units2Indx4[0]-HeapNull;
+        bListCountIdx3 = BList-HeapNull+444;
+        stateWalker = rootCtxSaved;
         do {
-          v78 = *(uint*)(v77+4);
-          v79 = v73+v78;
-          v80 = *(byte*)(v73+v78)!=v5[2];
-          *(byte*)(v77+1) = *((byte*)SSE0+*(byte*)(v73+v78+6*v80));
-          *(byte*)(v73+v78+6*v80+1) = ((uint)*(byte*)(v73+v78+6*v80+1)+3)>>2;
-          *(word*)(v77+2) = *(word*)(v73+v78+6*v80);
-          *(uint*)(v77+4) = *(uint*)(v73+v78+6*v80+2);
-          v81 = *((byte*)&Indx2Units+v74);
-          *(byte*)v77 = 0;
-          if( *(byte*)(12LL*v81+v73+v78+1)==255 ) {
-            v82 = 12LL*v81;
+          stateIStates = *(uint*)(stateWalker+4);
+          stateIStatesAddr = heapNullCopy2+stateIStates;
+          mismatchOff = *(byte*)(heapNullCopy2+stateIStates)!=v5[2];
+          *(byte*)(stateWalker+1) = *((byte*)SSE0+*(byte*)(heapNullCopy2+stateIStates+6*mismatchOff));
+          *(byte*)(heapNullCopy2+stateIStates+6*mismatchOff+1) = ((uint)*(byte*)(heapNullCopy2+stateIStates+6*mismatchOff+1)+3)>>2;
+          *(word*)(stateWalker+2) = *(word*)(heapNullCopy2+stateIStates+6*mismatchOff);
+          *(uint*)(stateWalker+4) = *(uint*)(heapNullCopy2+stateIStates+6*mismatchOff+2);
+          unitsInRun2 = *((byte*)&Indx2Units+unitsBClass);
+          *(byte*)stateWalker = 0;
+          if( *(byte*)(12LL*unitsInRun2+heapNullCopy2+stateIStates+1)==255 ) {
+            unitsByteOff = 12LL*unitsInRun2;
             do {
-              *(uint*)(*(uint*)(v82+v79+4)+v73+8) = *(uint*)(v82+v79+8);
-              *(uint*)(*(uint*)(v82+v79+8)+v73+4) = *(uint*)(v82+v79+4);
-              v83 = 12LL**(Units2Indx+*(byte*)(v82+v79)+3);
-              --*(uint*)(v83+v71);
-              v81 += *(byte*)(v79+v82);
-              v82 = 12LL*v81;
-            } while( *(byte*)(v82+v79+1)==255 );
-            if( v81>0x80 ) {
+              *(uint*)(*(uint*)(unitsByteOff+stateIStatesAddr+4)+heapNullCopy2+8) = *(uint*)(unitsByteOff+stateIStatesAddr+8);
+              *(uint*)(*(uint*)(unitsByteOff+stateIStatesAddr+8)+heapNullCopy2+4) = *(uint*)(unitsByteOff+stateIStatesAddr+4);
+              coalesceOff = 12LL**(Units2Indx+*(byte*)(unitsByteOff+stateIStatesAddr)+3);
+              --*(uint*)(coalesceOff+bListSaved2);
+              unitsInRun2 += *(byte*)(stateIStatesAddr+unitsByteOff);
+              unitsByteOff = 12LL*unitsInRun2;
+            } while( *(byte*)(unitsByteOff+stateIStatesAddr+1)==255 );
+            if( unitsInRun2>0x80 ) {
               v113 = v5;
-              v84 = v81;
-              v85 = 0;
-              v86 = 0;
-              v87 = -((sqword)(((qword)((1LL-v81)>>6)>>57)-v81+1)>>7);
+              unitsTotalSaved2 = unitsInRun2;
+              chunkLoopI2 = 0;
+              chunkLoopJ2 = 0;
+              chunksOver128B = -((sqword)(((qword)((1LL-unitsInRun2)>>6)>>57)-unitsInRun2+1)>>7);
               do {
-                v81 = v86+v84-128;
-                v86 -= 128;
-                ++v85;
-              } while( v85<(uint)v87 );
-              v88 = 0;
+                unitsInRun2 = chunkLoopJ2+unitsTotalSaved2-128;
+                chunkLoopJ2 -= 128;
+                ++chunkLoopI2;
+              } while( chunkLoopI2<(uint)chunksOver128B );
+              chunkLoopK2 = 0;
               do {
-                *(byte*)(v79+1) = -1;
-                *(uint*)(v79+8) = v98;
-                ++v88;
-                *(byte*)v79 = 0x80;
-                *(uint*)(v79+4) = *(uint*)(v71+448);
-                *(uint*)(v73+*(uint*)(v71+448)+8) = v78;
-                ++*(uint*)(v71+444);
-                *(uint*)(v71+448) = v78;
-                v78 += 1536;
-                v79 += 1536;
-              } while( v88<(uint)v87 );
+                *(byte*)(stateIStatesAddr+1) = -1;
+                *(uint*)(stateIStatesAddr+8) = bListCountIdx3;
+                ++chunkLoopK2;
+                *(byte*)stateIStatesAddr = 0x80;
+                *(uint*)(stateIStatesAddr+4) = *(uint*)(bListSaved2+448);
+                *(uint*)(heapNullCopy2+*(uint*)(bListSaved2+448)+8) = stateIStates;
+                ++*(uint*)(bListSaved2+444);
+                *(uint*)(bListSaved2+448) = stateIStates;
+                stateIStates += 1536;
+                stateIStatesAddr += 1536;
+              } while( chunkLoopK2<(uint)chunksOver128B );
               v5 = v113;
             }
-            v89 = *(Units2Indx+v81+3);
-            LODWORD(v90) = *((byte*)&Indx2Units+v89);
-            if( v81!=(uint)v90 ) {
-              v89 = (uint)(v89-1);
-              v90 = *((byte*)&Indx2Units+v89);
-              v91 = v81-v90;
-              v92 = (uint*)(v71+12LL*(uint)(v91-1));
-              v93 = v79+12*v90;
-              *(byte*)(v93+1) = -1;
-              *(byte*)v93 = v91;
-              *(uint*)(v93+8) = v71+12*(v91-1)-v73;
-              *(uint*)(v93+4) = v92[1];
-              LODWORD(v93) = v93-v73;
-              *(uint*)((uint)v92[1]+v73+8) = v93;
-              v92[1] = v93;
-              ++*v92;
+            biggerSizeClass2 = *(Units2Indx+unitsInRun2+3);
+            LODWORD(biggerUnits3) = *((byte*)&Indx2Units+biggerSizeClass2);
+            if( unitsInRun2!=(uint)biggerUnits3 ) {
+              biggerSizeClass2 = (uint)(biggerSizeClass2-1);
+              biggerUnits3 = *((byte*)&Indx2Units+biggerSizeClass2);
+              deltaUnits2 = unitsInRun2-biggerUnits3;
+              biggerFreelist2 = (uint*)(bListSaved2+12LL*(uint)(deltaUnits2-1));
+              splitBlockAddr2 = stateIStatesAddr+12*biggerUnits3;
+              *(byte*)(splitBlockAddr2+1) = -1;
+              *(byte*)splitBlockAddr2 = deltaUnits2;
+              *(uint*)(splitBlockAddr2+8) = bListSaved2+12*(deltaUnits2-1)-heapNullCopy2;
+              *(uint*)(splitBlockAddr2+4) = biggerFreelist2[1];
+              LODWORD(splitBlockAddr2) = splitBlockAddr2-heapNullCopy2;
+              *(uint*)((uint)biggerFreelist2[1]+heapNullCopy2+8) = splitBlockAddr2;
+              biggerFreelist2[1] = splitBlockAddr2;
+              ++*biggerFreelist2;
             }
-            *(byte*)(v79+1) = -1;
-            v94 = (uint*)(v71+12*v89);
-            *(byte*)v79 = v90;
-            *(uint*)(v79+8) = (uint)(uintptr_t)v94-v73;
-            *(uint*)(v79+4) = v94[1];
-            v95 = v79-v73;
-            *(uint*)((uint)v94[1]+v73+8) = v95;
-            v94[1] = v95;
-            ++*v94;
+            *(byte*)(stateIStatesAddr+1) = -1;
+            finalFreelist2 = (uint*)(bListSaved2+12*biggerSizeClass2);
+            *(byte*)stateIStatesAddr = biggerUnits3;
+            *(uint*)(stateIStatesAddr+8) = (uint)(uintptr_t)finalFreelist2-heapNullCopy2;
+            *(uint*)(stateIStatesAddr+4) = finalFreelist2[1];
+            blockIdxFinal2 = stateIStatesAddr-heapNullCopy2;
+            *(uint*)((uint)finalFreelist2[1]+heapNullCopy2+8) = blockIdxFinal2;
+            finalFreelist2[1] = blockIdxFinal2;
+            ++*finalFreelist2;
           } else {
-            *(byte*)(v79+1) = -1;
-            *(byte*)v79 = v81;
-            *(uint*)(v79+8) = v76;
-            *(uint*)(v79+4) = v75[1];
-            *(uint*)((uint)v75[1]+v73+8) = v78;
-            v75[1] = v78;
-            ++*v75;
+            *(byte*)(stateIStatesAddr+1) = -1;
+            *(byte*)stateIStatesAddr = unitsInRun2;
+            *(uint*)(stateIStatesAddr+8) = freelistB0Idx;
+            *(uint*)(stateIStatesAddr+4) = freelistB0[1];
+            *(uint*)((uint)freelistB0[1]+heapNullCopy2+8) = stateIStates;
+            freelistB0[1] = stateIStates;
+            ++*freelistB0;
           }
-          v77 = v73+*(uint*)(v77+8);
-        } while( (byte*)v77!=v5 );
-        v0 = v116;
+          stateWalker = heapNullCopy2+*(uint*)(stateWalker+8);
+        } while( (byte*)stateWalker!=v5 );
+        v0 = ctxSaved;
       }
     } else {
-      v71 = BList;
+      bListSaved2 = BList;
     }
-    v72 = *(uint*)(v0+8);
-    if( v72 ) {
+    suffixIdxL = *(uint*)(v0+8);
+    if( suffixIdxL ) {
       do {
-        v0 = HeapNull+v72;
-        v72 = *(uint*)(v0+8);
-      } while( v72 );
+        v0 = HeapNull+suffixIdxL;
+        suffixIdxL = *(uint*)(v0+8);
+      } while( suffixIdxL );
       RootContext = v0;
     }
     result = UpdateModel((byte*)v0, 0);
     ++GlueCount;
     CutOffCount = 0;
-    pText = v71+456;
+    pText = bListSaved2+456;
     MaxContext0 = v0;
     OrderFall = 0;
     return result;
@@ -2581,11 +2581,11 @@ LABEL_73:
   maxCtxStart = MaxContext0;
   succIdx = v4;
   if( unitsStart>heapNull+(qword)v4 ) {
-    v107 = pTextEntry+1-heapNull;
+    v13SaveCS = pTextEntry+1-heapNull;
     v105 = sse0Bit;
     v4 = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
     sse0Bit = v105;
-    v13 = v107;
+    v13 = v13SaveCS;
     goto LABEL_9;
   }
 LABEL_11:
@@ -2617,203 +2617,203 @@ LABEL_11:
       nStatesP1 = *v5+1;
       if( *v5 ) {
         if( (nStatesP1&1)!=0 ) {
-          v53 = *((uint*)v5+1);
+          newStatesIdx2 = *((uint*)v5+1);
         } else {
-          v22 = *((uint*)v5+1);
-          v23 = (uint*)(heapNull+v22);
-          v24 = nStatesP1>>1;
-          v25 = *(Units2Indx+(nStatesP1>>1)+3);
-          v26 = nStatesP1>>1;
-          if( v25!=*(Units2Indx4+v26) ) {
-            v27 = *(Units2Indx4+v26);
-            v28 = (uint*)(bListSaved+12*v27);
-            if( *v28 ) {
-              v29 = (uint*)(heapNull+(uint)v28[1]);
-              v28[1] = v29[1];
-              *(uint*)((uint)v29[1]+heapNull+8) = (uint)(uintptr_t)v28-heapNull;
-              --*v28;
+          stateIdxU = *((uint*)v5+1);
+          statesPtr = (uint*)(heapNull+stateIdxU);
+          halfNStatesP1 = nStatesP1>>1;
+          sizeClassP = *(Units2Indx+(nStatesP1>>1)+3);
+          halfNStatesP1_b = nStatesP1>>1;
+          if( sizeClassP!=*(Units2Indx4+halfNStatesP1_b) ) {
+            sizeClass4P = *(Units2Indx4+halfNStatesP1_b);
+            queueEntryP = (uint*)(bListSaved+12*sizeClass4P);
+            if( *queueEntryP ) {
+              newStatesPtr = (uint*)(heapNull+(uint)queueEntryP[1]);
+              queueEntryP[1] = newStatesPtr[1];
+              *(uint*)((uint)newStatesPtr[1]+heapNull+8) = (uint)(uintptr_t)queueEntryP-heapNull;
+              --*queueEntryP;
             } else {
-              v29 = (uint*)LoUnit;
-              v30 = 12*(uint)*((byte*)&Indx2Units+v27);
-              v31 = LoUnit+v30==hiUnitSaved;
-              if( LoUnit+v30>hiUnitSaved ) {
-                v99 = *(Units2Indx+v24+3);
-                v108 = succIdxSaved;
-                v29 = (uint*)AllocUnitsRare(v27);
-                succIdxSaved = v108;
-                v25 = v99;
+              newStatesPtr = (uint*)LoUnit;
+              byteOff12P = 12*(uint)*((byte*)&Indx2Units+sizeClass4P);
+              isExactBoundary = LoUnit+byteOff12P==hiUnitSaved;
+              if( LoUnit+byteOff12P>hiUnitSaved ) {
+                sizeClassPSaved = *(Units2Indx+halfNStatesP1+3);
+                v20SaveAU = succIdxSaved;
+                newStatesPtr = (uint*)AllocUnitsRare(sizeClass4P);
+                succIdxSaved = v20SaveAU;
+                sizeClassP = sizeClassPSaved;
               } else {
-                LoUnit += v30;
-                if( !v31 )
-                  v29[v30/4] = 0;
+                LoUnit += byteOff12P;
+                if( !isExactBoundary )
+                  newStatesPtr[byteOff12P/4] = 0;
               }
             }
-            if( v29 ) {
-              v32 = v29;
-              v33 = heapNull+v22;
+            if( newStatesPtr ) {
+              newStatesTail = newStatesPtr;
+              srcStatesAddr = heapNull+stateIdxU;
               if( (nStatesP1&2)!=0 ) {
-                *v29 = *v23;
-                v29[1] = v23[1];
-                v29[2] = v23[2];
-                v32 = v29+3;
-                v33 = heapNull+v22+12;
+                *newStatesPtr = *statesPtr;
+                newStatesPtr[1] = statesPtr[1];
+                newStatesPtr[2] = statesPtr[2];
+                newStatesTail = newStatesPtr+3;
+                srcStatesAddr = heapNull+stateIdxU+12;
               }
-              if( (v24&0xFFFFFFFE)!=0 ) {
+              if( (halfNStatesP1&0xFFFFFFFE)!=0 ) {
                 v111 = v5;
-                v34 = 0;
-                v35 = 0;
+                copyLoopI = 0;
+                copyIdxJ = 0;
                 do {
-                  v32[v35] = *(uint*)(v33+v35*4);
-                  ++v34;
-                  v32[v35+1] = *(uint*)(v33+v35*4+4);
-                  v32[v35+2] = *(uint*)(v33+v35*4+8);
-                  v32[v35+3] = *(uint*)(v33+v35*4+12);
-                  v32[v35+4] = *(uint*)(v33+v35*4+16);
-                  v32[v35+5] = *(uint*)(v33+v35*4+20);
-                  v35 += 6;
-                } while( v34<nStatesP1>>2 );
+                  newStatesTail[copyIdxJ] = *(uint*)(srcStatesAddr+copyIdxJ*4);
+                  ++copyLoopI;
+                  newStatesTail[copyIdxJ+1] = *(uint*)(srcStatesAddr+copyIdxJ*4+4);
+                  newStatesTail[copyIdxJ+2] = *(uint*)(srcStatesAddr+copyIdxJ*4+8);
+                  newStatesTail[copyIdxJ+3] = *(uint*)(srcStatesAddr+copyIdxJ*4+12);
+                  newStatesTail[copyIdxJ+4] = *(uint*)(srcStatesAddr+copyIdxJ*4+16);
+                  newStatesTail[copyIdxJ+5] = *(uint*)(srcStatesAddr+copyIdxJ*4+20);
+                  copyIdxJ += 6;
+                } while( copyLoopI<nStatesP1>>2 );
                 v5 = v111;
               }
-              v36 = *((byte*)&Indx2Units+v25);
-              v37 = *((byte*)&Indx2Units+v25);
-              if( BYTE1(v23[3*v37])==255 ) {
-                v39 = 3*v37;
+              runUnits = *((byte*)&Indx2Units+sizeClassP);
+              runUnitsDup = *((byte*)&Indx2Units+sizeClassP);
+              if( BYTE1(statesPtr[3*runUnitsDup])==255 ) {
+                statesPos = 3*runUnitsDup;
                 do {
-                  *(uint*)((uint)v23[v39+1]+heapNull+8) = v23[v39+2];
-                  *(uint*)((uint)v23[v39+2]+heapNull+4) = v23[v39+1];
-                  v40 = 12LL**(Units2Indx+LOBYTE(v23[v39])+3);
-                  --*(uint*)(v40+bListSaved);
-                  v36 += LOBYTE(v23[v39]);
-                  v39 = 3LL*v36;
-                } while( BYTE1(v23[v39])==255 );
-                v41 = v36;
-                if( v36>0x80 ) {
-                  v42 = 0;
-                  v101 = -(int)((sqword)(((qword)((1LL-v36)>>6)>>57)-v36+1)>>7);
-                  v43 = 0;
+                  *(uint*)((uint)statesPtr[statesPos+1]+heapNull+8) = statesPtr[statesPos+2];
+                  *(uint*)((uint)statesPtr[statesPos+2]+heapNull+4) = statesPtr[statesPos+1];
+                  freelistOffP = 12LL**(Units2Indx+LOBYTE(statesPtr[statesPos])+3);
+                  --*(uint*)(freelistOffP+bListSaved);
+                  runUnits += LOBYTE(statesPtr[statesPos]);
+                  statesPos = 3LL*runUnits;
+                } while( BYTE1(statesPtr[statesPos])==255 );
+                unitsInRunP = runUnits;
+                if( runUnits>0x80 ) {
+                  chunkLoopIP = 0;
+                  chunksOver128P = -(int)((sqword)(((qword)((1LL-runUnits)>>6)>>57)-runUnits+1)>>7);
+                  chunkLoopJP = 0;
                   do {
-                    v36 = v43+v41-128;
-                    v43 -= 128;
-                    ++v42;
-                  } while( v42<v101 );
-                  v44 = 0;
+                    runUnits = chunkLoopJP+unitsInRunP-128;
+                    chunkLoopJP -= 128;
+                    ++chunkLoopIP;
+                  } while( chunkLoopIP<chunksOver128P );
+                  chunkLoopKP = 0;
                   do {
-                    *((byte*)v23+1) = -1;
-                    v23[2] = bListCountIdx;
-                    ++v44;
-                    *(byte*)v23 = 0x80;
-                    v23[1] = *(uint*)(bListSaved+448);
-                    *(uint*)(*(uint*)(bListSaved+448)+heapNull+8) = v22;
+                    *((byte*)statesPtr+1) = -1;
+                    statesPtr[2] = bListCountIdx;
+                    ++chunkLoopKP;
+                    *(byte*)statesPtr = 0x80;
+                    statesPtr[1] = *(uint*)(bListSaved+448);
+                    *(uint*)(*(uint*)(bListSaved+448)+heapNull+8) = stateIdxU;
                     ++*(uint*)(bListSaved+444);
-                    *(uint*)(bListSaved+448) = v22;
-                    v22 += 1536;
-                    v23 += 384;
-                  } while( v44<v101 );
+                    *(uint*)(bListSaved+448) = stateIdxU;
+                    stateIdxU += 1536;
+                    statesPtr += 384;
+                  } while( chunkLoopKP<chunksOver128P );
                 }
-                v45 = *(Units2Indx+v36+3);
-                v103 = *((byte*)&Indx2Units+v45);
-                if( v36!=v103 ) {
-                  v45 = (uint)(v45-1);
-                  v46 = *((byte*)&Indx2Units+v45);
-                  v103 = *((byte*)&Indx2Units+v45);
-                  v47 = v36-v46;
-                  v48 = (uint*)(bListSaved+12LL*(uint)(v47-1));
-                  v49 = &v23[3*v46];
-                  *((byte*)v49+1) = -1;
-                  *(byte*)v49 = v47;
-                  v49[2] = (uint)(uintptr_t)v48-heapNull;
-                  v49[1] = v48[1];
-                  LODWORD(v49) = (uint)(uintptr_t)v49-heapNull;
-                  *(uint*)((uint)v48[1]+heapNull+8) = (uint)(uintptr_t)v49;
-                  ++*v48;
-                  v48[1] = (uint)(uintptr_t)v49;
+                biggerSizeClassP = *(Units2Indx+runUnits+3);
+                biggerUnitsByte = *((byte*)&Indx2Units+biggerSizeClassP);
+                if( runUnits!=biggerUnitsByte ) {
+                  biggerSizeClassP = (uint)(biggerSizeClassP-1);
+                  biggerUnitsP = *((byte*)&Indx2Units+biggerSizeClassP);
+                  biggerUnitsByte = *((byte*)&Indx2Units+biggerSizeClassP);
+                  deltaUnitsP = runUnits-biggerUnitsP;
+                  biggerFreelistP = (uint*)(bListSaved+12LL*(uint)(deltaUnitsP-1));
+                  splitBlockAddrP = &statesPtr[3*biggerUnitsP];
+                  *((byte*)splitBlockAddrP+1) = -1;
+                  *(byte*)splitBlockAddrP = deltaUnitsP;
+                  splitBlockAddrP[2] = (uint)(uintptr_t)biggerFreelistP-heapNull;
+                  splitBlockAddrP[1] = biggerFreelistP[1];
+                  LODWORD(splitBlockAddrP) = (uint)(uintptr_t)splitBlockAddrP-heapNull;
+                  *(uint*)((uint)biggerFreelistP[1]+heapNull+8) = (uint)(uintptr_t)splitBlockAddrP;
+                  ++*biggerFreelistP;
+                  biggerFreelistP[1] = (uint)(uintptr_t)splitBlockAddrP;
                 }
-                *((byte*)v23+1) = -1;
-                v50 = (uint*)(bListSaved+12*v45);
-                *(byte*)v23 = v103;
-                v23[2] = (uint)(uintptr_t)v50-heapNull;
-                v23[1] = v50[1];
-                v51 = (uint)(uintptr_t)v23-heapNull;
-                *(uint*)((uint)v50[1]+heapNull+8) = v51;
-                ++*v50;
-                v50[1] = v51;
+                *((byte*)statesPtr+1) = -1;
+                finalFreelistP2 = (uint*)(bListSaved+12*biggerSizeClassP);
+                *(byte*)statesPtr = biggerUnitsByte;
+                statesPtr[2] = (uint)(uintptr_t)finalFreelistP2-heapNull;
+                statesPtr[1] = finalFreelistP2[1];
+                blockIdxFinalP = (uint)(uintptr_t)statesPtr-heapNull;
+                *(uint*)((uint)finalFreelistP2[1]+heapNull+8) = blockIdxFinalP;
+                ++*finalFreelistP2;
+                finalFreelistP2[1] = blockIdxFinalP;
               } else {
-                *((byte*)v23+1) = -1;
-                v38 = (uint*)(bListSaved+12LL*v25);
-                *(byte*)v23 = v36;
-                v23[2] = (uint)(uintptr_t)v38-heapNull;
-                v23[1] = v38[1];
-                *(uint*)((uint)v38[1]+heapNull+8) = v22;
-                ++*v38;
-                v38[1] = v22;
+                *((byte*)statesPtr+1) = -1;
+                finalFreelistP = (uint*)(bListSaved+12LL*sizeClassP);
+                *(byte*)statesPtr = runUnits;
+                statesPtr[2] = (uint)(uintptr_t)finalFreelistP-heapNull;
+                statesPtr[1] = finalFreelistP[1];
+                *(uint*)((uint)finalFreelistP[1]+heapNull+8) = stateIdxU;
+                ++*finalFreelistP;
+                finalFreelistP[1] = stateIdxU;
               }
             }
-            v23 = v29;
+            statesPtr = newStatesPtr;
           }
-          if( !v23 )
+          if( !statesPtr )
             goto LABEL_99;
-          v52 = (uint)(uintptr_t)v23-heapNull;
-          v53 = v52;
-          *((uint*)v5+1) = v52;
+          newStatesIdx = (uint)(uintptr_t)statesPtr-heapNull;
+          newStatesIdx2 = newStatesIdx;
+          *((uint*)v5+1) = newStatesIdx;
         }
-        v54 = v53+heapNull+6LL*nStatesP1;
-        if( v54>heapNull+v53+42 ) {
+        newStateEnd = newStatesIdx2+heapNull+6LL*nStatesP1;
+        if( newStateEnd>heapNull+newStatesIdx2+42 ) {
           do {
-            v55 = *(uint*)(v54-4);
-            *(word*)v54 = *(word*)(v54-6);
-            *(uint*)(v54+2) = v55;
-            v54 -= 6LL;
-          } while( v54>heapNull+(qword)*((uint*)v5+1)+42 );
+            prevStateSucc = *(uint*)(newStateEnd-4);
+            *(word*)newStateEnd = *(word*)(newStateEnd-6);
+            *(uint*)(newStateEnd+2) = prevStateSucc;
+            newStateEnd -= 6LL;
+          } while( newStateEnd>heapNull+(qword)*((uint*)v5+1)+42 );
         }
       } else {
-        v56 = (uint*)(bListSaved+12LL*Units2Indx4[0]);
-        if( *v56 ) {
-          v57 = heapNull+(uint)v56[1];
-          v56[1] = *(uint*)(v57+4);
-          *(uint*)(*(uint*)(v57+4)+heapNull+8) = (uint)(uintptr_t)v56-heapNull;
-          --*v56;
+        freelistEntryS = (uint*)(bListSaved+12LL*Units2Indx4[0]);
+        if( *freelistEntryS ) {
+          allocedUnit = heapNull+(uint)freelistEntryS[1];
+          freelistEntryS[1] = *(uint*)(allocedUnit+4);
+          *(uint*)(*(uint*)(allocedUnit+4)+heapNull+8) = (uint)(uintptr_t)freelistEntryS-heapNull;
+          --*freelistEntryS;
         } else {
-          v57 = LoUnit;
-          v58 = 12*(uint)*((byte*)&Indx2Units+Units2Indx4[0]);
-          v59 = LoUnit+v58==hiUnitSaved;
-          if( LoUnit+v58>hiUnitSaved ) {
-            v109 = succIdxSaved;
+          allocedUnit = LoUnit;
+          byteOffS = 12*(uint)*((byte*)&Indx2Units+Units2Indx4[0]);
+          isBoundary = LoUnit+byteOffS==hiUnitSaved;
+          if( LoUnit+byteOffS>hiUnitSaved ) {
+            v20SaveAU2 = succIdxSaved;
             v96 = AllocUnitsRare(Units2Indx4[0]);
-            succIdxSaved = v109;
-            v57 = v96;
+            succIdxSaved = v20SaveAU2;
+            allocedUnit = v96;
           } else {
-            LoUnit += v58;
-            if( !v59 )
-              *(uint*)(v58+v57) = 0;
+            LoUnit += byteOffS;
+            if( !isBoundary )
+              *(uint*)(byteOffS+allocedUnit) = 0;
           }
         }
-        if( !v57 ) {
+        if( !allocedUnit ) {
 LABEL_99:
           v0 = v114;
           goto LABEL_73;
         }
-        *(word*)v57 = *((word*)v5+1);
-        v60 = b24[escIdxClipped];
-        *(uint*)(v57+2) = *((uint*)v5+1);
-        *((uint*)v5+1) = v57-heapNull;
-        v61 = 4**(byte*)(v57+1)+v60;
-        if( v61>=238 )
-          v61 = 238;
-        if( v61<2 )
-          LOBYTE(v61) = 2;
-        *(byte*)(v57+1) = v61;
-        v54 = v57+6;
-        *((word*)v5+1) = (byte)v61;
+        *(word*)allocedUnit = *((word*)v5+1);
+        freqBoost = b24[escIdxClipped];
+        *(uint*)(allocedUnit+2) = *((uint*)v5+1);
+        *((uint*)v5+1) = allocedUnit-heapNull;
+        newStateFreq = 4**(byte*)(allocedUnit+1)+freqBoost;
+        if( newStateFreq>=238 )
+          newStateFreq = 238;
+        if( newStateFreq<2 )
+          LOBYTE(newStateFreq) = 2;
+        *(byte*)(allocedUnit+1) = newStateFreq;
+        newStateEnd = allocedUnit+6;
+        *((word*)v5+1) = (byte)newStateFreq;
       }
-      *(byte*)(v54+1) = 0;
-      *(uint*)(v54+2) = succIdxSaved;
-      *(byte*)v54 = foundSymFreq;
-      v62 = v5[1]&0xF0;
-      v63 = heapNull+*((uint*)v5+1);
+      *(byte*)(newStateEnd+1) = 0;
+      *(uint*)(newStateEnd+2) = succIdxSaved;
+      *(byte*)newStateEnd = foundSymFreq;
+      upperFlagBits = v5[1]&0xF0;
+      statesBaseAddr = heapNull+*((uint*)v5+1);
       ++*v5;
-      v64 = v54-v63;
-      result = 0x2AAAAAAAAAAAAAABLL*v64;
-      v5[1] = sse0BitSaved|(v64/6)|v62;
+      stateByteOff = newStateEnd-statesBaseAddr;
+      result = 0x2AAAAAAAAAAAAAABLL*stateByteOff;
+      v5[1] = sse0BitSaved|(stateByteOff/6)|upperFlagBits;
       v5 = (byte*)(heapNull+*((uint*)v5+2));
       if( v5==(byte*)maxCtxStart ) {
         succAddr = succAddrSaved;
