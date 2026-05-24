@@ -1400,29 +1400,20 @@ sqword SseScale2(sqword slotAddr) {
 //--- #return
 //--- #include "subs_allocunitsrare.inc"
 sqword AllocUnitsRare(uint unitsIdx) {
-  sqword bListSaved;
-  sqword reqSizeIdx;
-  uint reqUnits;
   sqword result;
-  int biggerUnits;
   sqword textBufBytes;
   uint unitsInRun;
-  int reqUnitsByte;
   int sentinelField2;
   sqword sentinelField1;
-  sqword reqSizeIdx2;
-  bListSaved = BList;
-  reqSizeIdx = unitsIdx;
-  reqUnits = *((byte*)&Indx2Units+unitsIdx);
-  while( ++unitsIdx!=38 ) {
-    MEM_BLK* freeQueue = (MEM_BLK*)(BList + 12LL*unitsIdx);
+  uint reqSizeIdx = unitsIdx;
+  uint reqUnits = Indx2Units[unitsIdx];
+  MEM_BLK* bList = (MEM_BLK*)BList;
+  while (++unitsIdx != 38) {
+    MEM_BLK* freeQueue = &bList[unitsIdx];
     if (freeQueue->avail()) {
-      // Pop the queue's head block (== freeQueue->unlinkNext()).
+      // Pop the queue's head block and return the leftover via FreeUnitsRare.
       sqword result = (sqword)freeQueue->unlinkNext();
-      biggerUnits = Indx2Units[unitsIdx];
-      // Return the leftover (biggerUnits - reqUnits, at result+12*reqUnits)
-      // back to the freelist via the same coalesce/chunk/split path that
-      // FreeUnitsRare runs.
+      uint biggerUnits = Indx2Units[unitsIdx];
       FreeUnitsRare(result + 12LL*reqUnits, biggerUnits - reqUnits);
       return result;
     }
@@ -1446,8 +1437,6 @@ sqword AllocUnitsRare(uint unitsIdx) {
     MEM_BLK* sentinel = (MEM_BLK*)((char*)HeapStart + SubAllocatorSize - 12);
     sentinelField2 = sentinel->Prev;
     sentinelField1 = *(qword*)sentinel;
-    reqSizeIdx2 = reqSizeIdx;
-    MEM_BLK* bList = (MEM_BLK*)bListSaved;
     for (uint queueIdxOuter = 0; queueIdxOuter < 0x26; ++queueIdxOuter) {
       MEM_BLK* queue = &bList[queueIdxOuter];
       // Push sentinel at the head; pop the (original) tail as our starting
@@ -1473,9 +1462,8 @@ sqword AllocUnitsRare(uint unitsIdx) {
     }
     *(qword*)sentinel = sentinelField1;
     sentinel->Prev = sentinelField2;
-    reqUnitsByte = *((byte*)&Indx2Units+reqSizeIdx2);
     CutOffCount = 1;
-    result = AllocUnits_(Units2Indx4[reqUnitsByte - 1]);
+    result = AllocUnits_(Units2Indx4[Indx2Units[reqSizeIdx] - 1]);
   }
   return result;
 }
