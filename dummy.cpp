@@ -2156,22 +2156,6 @@ sqword ReduceOrder() {
   sqword srcStatesAddr;
   uint copyLoopI;
   uint copyIdxJ;
-  uint runUnits;
-  sqword runUnitsDup;
-  uint* finalFreelistP;
-  sqword statesPos;
-  sqword freelistOffP;
-  uint unitsInRunP;
-  uint chunkLoopIP;
-  int chunkLoopJP;
-  uint chunkLoopKP;
-  sqword biggerSizeClassP;
-  sqword biggerUnitsP;
-  int deltaUnitsP;
-  uint* biggerFreelistP;
-  uint* splitBlockAddrP;
-  uint* finalFreelistP2;
-  int blockIdxFinalP;
   uint newStatesIdx;
   sqword newStatesIdx2;
   qword newStateEnd;
@@ -2201,9 +2185,7 @@ sqword ReduceOrder() {
   int symPeek;
   uint sizeClassPSaved;
   sqword pTextSaveCS;
-  uint chunksOver128P;
   byte* chainStatePtr;
-  byte biggerUnitsByte;
   sqword* chainPtrSave;
   char sse0BitSaveAU;
   char sse0BitSaveCS;
@@ -2457,79 +2439,10 @@ LABEL_11:
                 } while( copyLoopI<nStatesP1>>2 );
                 ctxBW = ctxBSaveAU;
               }
-              runUnits = *((byte*)&Indx2Units+sizeClassP);
-              runUnitsDup = *((byte*)&Indx2Units+sizeClassP);
-              if( BYTE1(statesPtr[3*runUnitsDup])==255 ) {
-                statesPos = 3*runUnitsDup;
-                do {
-                  *(uint*)((uint)statesPtr[statesPos+1]+heapNull+8) = statesPtr[statesPos+2];
-                  *(uint*)((uint)statesPtr[statesPos+2]+heapNull+4) = statesPtr[statesPos+1];
-                  freelistOffP = 12LL**(Units2Indx+LOBYTE(statesPtr[statesPos])+3);
-                  --*(uint*)(freelistOffP+bListSaved);
-                  runUnits += LOBYTE(statesPtr[statesPos]);
-                  statesPos = 3LL*runUnits;
-                } while( BYTE1(statesPtr[statesPos])==255 );
-                unitsInRunP = runUnits;
-                if( runUnits>0x80 ) {
-                  chunkLoopIP = 0;
-                  chunksOver128P = -(int)((sqword)(((qword)((1LL-runUnits)>>6)>>57)-runUnits+1)>>7);
-                  chunkLoopJP = 0;
-                  do {
-                    runUnits = chunkLoopJP+unitsInRunP-128;
-                    chunkLoopJP -= 128;
-                    ++chunkLoopIP;
-                  } while( chunkLoopIP<chunksOver128P );
-                  chunkLoopKP = 0;
-                  do {
-                    *((byte*)statesPtr+1) = -1;
-                    statesPtr[2] = bListCountIdx;
-                    ++chunkLoopKP;
-                    *(byte*)statesPtr = 0x80;
-                    statesPtr[1] = *(uint*)(bListSaved+448);
-                    *(uint*)(*(uint*)(bListSaved+448)+heapNull+8) = stateIdxU;
-                    ++*(uint*)(bListSaved+444);
-                    *(uint*)(bListSaved+448) = stateIdxU;
-                    stateIdxU += 1536;
-                    statesPtr += 384;
-                  } while( chunkLoopKP<chunksOver128P );
-                }
-                biggerSizeClassP = *(Units2Indx+runUnits+3);
-                biggerUnitsByte = *((byte*)&Indx2Units+biggerSizeClassP);
-                if( runUnits!=biggerUnitsByte ) {
-                  biggerSizeClassP = (uint)(biggerSizeClassP-1);
-                  biggerUnitsP = *((byte*)&Indx2Units+biggerSizeClassP);
-                  biggerUnitsByte = *((byte*)&Indx2Units+biggerSizeClassP);
-                  deltaUnitsP = runUnits-biggerUnitsP;
-                  biggerFreelistP = (uint*)(bListSaved+12LL*(uint)(deltaUnitsP-1));
-                  splitBlockAddrP = &statesPtr[3*biggerUnitsP];
-                  *((byte*)splitBlockAddrP+1) = -1;
-                  *(byte*)splitBlockAddrP = deltaUnitsP;
-                  splitBlockAddrP[2] = (uint)(uintptr_t)biggerFreelistP-heapNull;
-                  splitBlockAddrP[1] = biggerFreelistP[1];
-                  LODWORD(splitBlockAddrP) = (uint)(uintptr_t)splitBlockAddrP-heapNull;
-                  *(uint*)((uint)biggerFreelistP[1]+heapNull+8) = (uint)(uintptr_t)splitBlockAddrP;
-                  ++*biggerFreelistP;
-                  biggerFreelistP[1] = (uint)(uintptr_t)splitBlockAddrP;
-                }
-                *((byte*)statesPtr+1) = -1;
-                finalFreelistP2 = (uint*)(bListSaved+12*biggerSizeClassP);
-                *(byte*)statesPtr = biggerUnitsByte;
-                statesPtr[2] = (uint)(uintptr_t)finalFreelistP2-heapNull;
-                statesPtr[1] = finalFreelistP2[1];
-                blockIdxFinalP = (uint)(uintptr_t)statesPtr-heapNull;
-                *(uint*)((uint)finalFreelistP2[1]+heapNull+8) = blockIdxFinalP;
-                ++*finalFreelistP2;
-                finalFreelistP2[1] = blockIdxFinalP;
-              } else {
-                *((byte*)statesPtr+1) = -1;
-                finalFreelistP = (uint*)(bListSaved+12LL*sizeClassP);
-                *(byte*)statesPtr = runUnits;
-                statesPtr[2] = (uint)(uintptr_t)finalFreelistP-heapNull;
-                statesPtr[1] = finalFreelistP[1];
-                *(uint*)((uint)finalFreelistP[1]+heapNull+8) = stateIdxU;
-                ++*finalFreelistP;
-                finalFreelistP[1] = stateIdxU;
-              }
+              // Free the old states block (still rooted at stateIdxU /
+              // statesPtr); FreeUnitsRare runs the same coalesce/chunk/split
+              // path as the inlined code did.
+              FreeUnitsRare((sqword)statesPtr, (uint)Indx2Units[sizeClassP]);
             }
             statesPtr = newStatesPtr;
           }
