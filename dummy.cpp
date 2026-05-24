@@ -2126,7 +2126,7 @@ sqword ReduceOrder() {
   sse0Bit = *((byte*)SSE0+(byte)*(word*)q9);
   if( OrderFall==MaxOrder&&succIdxW ) {
     succCreatedTop = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
-    *(uint*)(foundStateB+2) = succCreatedTop;
+    ((STATE*)foundStateB)->iSuccessor = succCreatedTop;
     if( succCreatedTop ) {
       result = HeapNull+succCreatedTop;
       RootContext = result;
@@ -2172,8 +2172,8 @@ sqword ReduceOrder() {
       succIdxW = *(uint*)(stateBW+2);
       if( succIdxW )
         break;
-      *(uint*)(stateBW+2) = newByteIdx;
-      curCtxSuffix = *(uint*)(curCtx+8);
+      ((STATE*)stateBW)->iSuccessor = newByteIdx;
+      curCtxSuffix = ((PPM_CONTEXT*)curCtx)->iSuffix;
       OrderFall = --orderFall;
       if( !curCtxSuffix ) {
         ctxBW = ctxBSaveCS;
@@ -2193,11 +2193,11 @@ sqword ReduceOrder() {
       // local pTextEntry that was set at function entry.
       newByteIdx = pTextEntry + 1 - heapNull;
       succIdxW = CreateSuccessors(0, (qword)(chainPtrSave-1), curCtx);
-      *(uint*)(chainStatePtr+2) = succIdxW;
+      ((STATE*)chainStatePtr)->iSuccessor = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
-      *(uint*)(foundStateB+2) = succIdxW;
-      succIdxW = *(uint*)(chainStatePtr+2);
+      ((STATE*)foundStateB)->iSuccessor = succIdxW;
+      succIdxW = ((STATE*)chainStatePtr)->iSuccessor;
       pTextNewSlot = pTextEntry;
       pText = pTextEntry;
     }
