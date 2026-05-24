@@ -832,10 +832,9 @@ TARGET_SCALE_FALLBACK:
     matchPosAge = 0x20000;
     matchHashSy = 0x20000;
   } else {
-    matchPosAge = MatchPosTable[sym+(MatchCtxHi<<8)];
-    matchHashSy = (byte)MatchPosHash[(matchTableEntry+2)&0x1FFFF];
-    matchPosAge = SymEpoch-matchTableEntry;
-    matchEpoch2 = SymEpoch-MatchPosTable[matchHashSy+(sym<<8)];
+    matchHashSy = (byte)MatchPosHash[(matchTableEntry + 2) & 0x1FFFF];
+    matchPosAge = SymEpoch - matchTableEntry;
+    matchEpoch2 = SymEpoch - MatchPosTable[matchHashSy + (sym << 8)];
   }
 
   PPM_CONTEXT* max_suffix_ctx = MaxContext->getSuffix();
