@@ -549,6 +549,47 @@ inline void* MoveContext_(void* OldPtr) {
 
 //--- #include "subs_contextwalk.inc"
 
+// =============================================================================
+//  Constexpr builder for SSE / mix context composite indices.
+// -----------------------------------------------------------------------------
+//  Many places in the codec build "bitfield" indices (mixIdxA, mixIdxC,
+//  seeIdxF, OrderCtxSeed, sse2IdxA/F, matchScore, mixCtx, etc.) as sums of
+//  small per-feature terms each contributing at a fixed bit position.
+//  Written verbatim as
+//      idx = 8*(cond1) + (val2 & 3) + 16*(cond3) + ...;
+//  the bit positions are invisible. This builder makes them explicit:
+//
+//      .bit<P>(b)        adds (b ? 1 : 0) << P
+//      .bits<P, W>(v)    adds (v & ((1<<W)-1)) << P
+//      .field<P, W>(v)   adds v & (((1<<W)-1) << P)    (v already pre-positioned)
+//      .raw(v)           adds v unmasked                (escape hatch for
+//                                                       non-contiguous masks)
+//
+//  All methods are constexpr; the template parameters are compile-time
+//  constants, so -O2 folds the chain into the same imm-shift / imm-or
+//  sequence as the hand-written sum.
+// =============================================================================
+struct SseIdx {
+  uint val = 0;
+
+  template <int Pos>
+  constexpr SseIdx& bit(bool b)        { val += (uint)b << Pos;             return *this; }
+
+  template <int Pos, int W>
+  constexpr SseIdx& bits(uint v)       { val += (v & ((1u<<W)-1)) << Pos;   return *this; }
+
+  template <int Pos, int W>
+  constexpr SseIdx& field(uint v) {
+    constexpr uint M = ((1u<<W) - 1) << Pos;
+    val += v & M;
+    return *this;
+  }
+
+  constexpr SseIdx& raw(uint v)        { val += v;                          return *this; }
+
+  constexpr operator uint() const      { return val; }
+};
+
 // 1. Maximum Order boundary definition
 // Deduced from the maximum path depth condition check: `if (path_depth < 32)`
 constexpr int MAX_O = 128;
@@ -3993,46 +4034,6 @@ inline void RewindPredictor_(sqword slotAddr, int delta, int mult) {
   *(word*)(slotAddr + 4) -= (word)delta;
   *(uint*)slotAddr       += (uint)(delta * mult);
 }
-
-// =============================================================================
-//  Constexpr builder for SSE / mix context composite indices.
-// -----------------------------------------------------------------------------
-//  The PE binary builds several "bitfield" indices (mixIdxA, mixIdxC, seeIdxF,
-//  OrderCtxSeed, sse2IdxA/F, etc.) as sums of small per-feature terms each
-//  contributing at a fixed bit position. Written verbatim as
-//      idx = 8*(cond1) + (val2 & 3) + 16*(cond3) + ...;
-//  the bit positions are invisible. This builder makes them explicit:
-//
-//      .bit<P>(b)        adds (b ? 1 : 0) << P
-//      .bits<P, W>(v)    adds (v & ((1<<W)-1)) << P
-//      .field<P, W>(v)   adds v & (((1<<W)-1) << P)    (v already pre-positioned)
-//      .raw(v)           adds v unmasked                (escape hatch for
-//                                                       non-contiguous masks)
-//
-//  All methods are constexpr; the template parameters are compile-time
-//  constants, so -O2 folds the chain into the same imm-shift / imm-or
-//  sequence as the hand-written sum.
-// =============================================================================
-struct SseIdx {
-  uint val = 0;
-
-  template <int Pos>
-  constexpr SseIdx& bit(bool b)        { val += (uint)b << Pos;             return *this; }
-
-  template <int Pos, int W>
-  constexpr SseIdx& bits(uint v)       { val += (v & ((1u<<W)-1)) << Pos;   return *this; }
-
-  template <int Pos, int W>
-  constexpr SseIdx& field(uint v) {
-    constexpr uint M = ((1u<<W) - 1) << Pos;
-    val += v & M;
-    return *this;
-  }
-
-  constexpr SseIdx& raw(uint v)        { val += v;                          return *this; }
-
-  constexpr operator uint() const      { return val; }
-};
 
 } // namespace
 
