@@ -1813,26 +1813,27 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   int newCtxPacked;
   int newCtxBytePos;
   heapNull = HeapNull;
-  seedSuccIdx = *(uint*)(*(qword*)chainStart+2LL);
+  // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
+  // first entry whose state->iSuccessor differs from the head's, or the end of
+  // the chain (suffix == 0).
+  seedSuccIdx = ((STATE*)*(sqword*)chainStart)->iSuccessor;
   chainPtr = chainStart;
-  while( 1 ) {
-    curSuccIdx = *(uint*)(*(qword*)chainPtr+2LL);
-    if( curSuccIdx!=seedSuccIdx ) {
-      LODWORD(seedCtx) = HeapNull+curSuccIdx;
+  while (1) {
+    curSuccIdx = ((STATE*)*(sqword*)chainPtr)->iSuccessor;
+    if (curSuccIdx != seedSuccIdx) {
+      LODWORD(seedCtx) = HeapNull + curSuccIdx;
       goto LABEL_15;
     }
-    ctxSuffixIdx = *(uint*)(seedCtx+8);
+    ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
     chainPtr += 8LL;
-    if( !ctxSuffixIdx )
-      goto LABEL_15;
-    if( chainPtr>=CtxChainEnd )
-      break;
-    seedCtx = HeapNull+ctxSuffixIdx;
+    if (!ctxSuffixIdx) goto LABEL_15;
+    if (chainPtr >= CtxChainEnd) break;
+    seedCtx = HeapNull + ctxSuffixIdx;
   }
   foundStateB = (byte*)q9;
-  suffixIdx0 = *(uint*)(seedCtx+8);
-  while( 1 ) {
-    ctxAddr = heapNull+suffixIdx0;
+  suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
+  while (1) {
+    ctxAddr = heapNull + suffixIdx0;
     // Find the STATE for sym=FoundState->Symbol in this suffix context.
     PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
     STATE* state;
@@ -1844,13 +1845,12 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
       state = &pc->oneState();
     }
     i = (byte*)state;
-    stateSuccIdx = *(uint*)(i+2);
-    if( stateSuccIdx!=seedSuccIdx )
-      break;
-    suffixIdx0 = *(uint*)(ctxAddr+8);
+    stateSuccIdx = ((STATE*)i)->iSuccessor;
+    if (stateSuccIdx != seedSuccIdx) break;
+    suffixIdx0 = ((PPM_CONTEXT*)ctxAddr)->iSuffix;
     *(qword*)chainPtr = (qword)(uintptr_t)i;
     chainPtr += 8LL;
-    if( !suffixIdx0 ) {
+    if (!suffixIdx0) {
       LODWORD(seedCtx) = ctxAddr;
       goto LABEL_15;
     }
