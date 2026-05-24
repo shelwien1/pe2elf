@@ -2262,15 +2262,15 @@ LABEL_73:
   }
 LABEL_11:
   succAddr = heapNull+succIdx;
-  ctxSuffixIdx = *(uint*)(heapNull+succIdx+8);
+  ctxSuffixIdx = ((PPM_CONTEXT*)(heapNull + succIdx))->iSuffix;
   OrderFall = orderFall+1;
   (void)(ctxSuffixIdx+heapNull); // prefetch hint removed
   if( OrderFall==maxOrder ) {
     newByteIdx = succIdxW;
     pText = pTextNewSlot-(rootCtxW!=maxCtxStart);
   }
-  result = *(uint*)(succIdx+heapNull+4);
-  (void)(result+heapNull); // prefetch hint removed
+  result = ((PPM_CONTEXT*)(heapNull + succIdx))->iStates;
+  (void)(result + heapNull); // prefetch hint removed
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
     bListSaved = BList;
