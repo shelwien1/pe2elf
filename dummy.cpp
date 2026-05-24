@@ -2329,30 +2329,31 @@ LABEL_99:
           rootCtxW = rootCtxSaveLab99;
           goto LABEL_73;
         }
-        *(word*)allocedUnit = *((word*)ctxBW+1);
+        // Promote NStates==0 binary context to NStates==1: copy the existing
+        // oneState into allocedUnit (becomes STATE[0]), then bump its Freq.
+        STATE* newStates = (STATE*)allocedUnit;
+        *(word*)newStates = (word)curCtxP->SummFreq;            // = oneState.Symbol+Freq
         freqBoost = b24[escIdxClipped];
-        *(uint*)(allocedUnit+2) = *((uint*)ctxBW+1);
-        *((uint*)ctxBW+1) = allocedUnit-heapNull;
-        newStateFreq = 4**(byte*)(allocedUnit+1)+freqBoost;
-        if( newStateFreq>=238 )
-          newStateFreq = 238;
-        if( newStateFreq<2 )
-          LOBYTE(newStateFreq) = 2;
-        *(byte*)(allocedUnit+1) = newStateFreq;
-        newStateEnd = allocedUnit+6;
-        *((word*)ctxBW+1) = (byte)newStateFreq;
+        newStates->iSuccessor = curCtxP->iStates;               // = oneState.iSuccessor
+        curCtxP->iStates = (uint)((sqword)allocedUnit - heapNull);
+        newStateFreq = 4 * (int)newStates->Freq + freqBoost;
+        if (newStateFreq >= 238) newStateFreq = 238;
+        if (newStateFreq <   2)  LOBYTE(newStateFreq) = 2;
+        newStates->Freq = (byte)newStateFreq;
+        newStateEnd = allocedUnit + 6;
+        curCtxP->SummFreq = (byte)newStateFreq;
       }
-      *(byte*)(newStateEnd+1) = 0;
-      *(uint*)(newStateEnd+2) = succIdxSaved;
+      *(byte*)(newStateEnd + 1) = 0;
+      *(uint*)(newStateEnd + 2) = succIdxSaved;
       *(byte*)newStateEnd = foundSymFreq;
-      upperFlagBits = ctxBW[1]&0xF0;
-      statesBaseAddr = heapNull+*((uint*)ctxBW+1);
-      ++*ctxBW;
-      stateByteOff = newStateEnd-statesBaseAddr;
-      result = 0x2AAAAAAAAAAAAAABLL*stateByteOff;
-      ctxBW[1] = sse0BitSaved|(stateByteOff/6)|upperFlagBits;
-      ctxBW = (byte*)((PPM_CONTEXT*)ctxBW)->getSuffix();
-      if( ctxBW==(byte*)maxCtxStart ) {
+      upperFlagBits = curCtxP->Flags & 0xF0;
+      statesBaseAddr = heapNull + curCtxP->iStates;
+      ++curCtxP->NStates;
+      stateByteOff = newStateEnd - statesBaseAddr;
+      result = 0x2AAAAAAAAAAAAAABLL * stateByteOff;
+      curCtxP->Flags = sse0BitSaved | (stateByteOff / 6) | upperFlagBits;
+      ctxBW = (byte*)curCtxP->getSuffix();
+      if (ctxBW == (byte*)maxCtxStart) {
         succAddr = succAddrSaved;
         break;
       }
