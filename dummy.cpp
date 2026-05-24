@@ -1716,21 +1716,20 @@ sqword StartModelRare(int mode) {
         MixBound3[4 * outerIdx2] = 1024;
       }
 
+      // Initialize the (mix3, mix4) wide-context mix tables with neutral
+      // 50/50 prior (freq0 = freq1 = 2048, weight = 20480 = 5*4096).
+      auto initFlatMixCell = [](MixModel& c) {
+        c.weight = 20480;
+        c.freq0  = 2048;
+        c.freq1  = 2048;
+      };
       MixModel* mix3 = (MixModel*)&MixWeight2;
       MixModel* mix4 = (MixModel*)&d29;
       for (int ctxBucket = 0; ctxBucket < 16; ++ctxBucket) {
-        for (int mixCellIdx = 0; mixCellIdx < 1024; ++mixCellIdx) {
-          int idx = ctxBucket * 0x400 + mixCellIdx;
-          mix3[idx].weight = 20480;
-          mix3[idx].freq0 = 2048;
-          mix3[idx].freq1 = 2048;
-        }
-        for (int mixCellIdx2 = 0; mixCellIdx2 < 256; ++mixCellIdx2) {
-          int idx = ctxBucket * 256 + mixCellIdx2;
-          mix4[idx].weight = 20480;
-          mix4[idx].freq0 = 2048;
-          mix4[idx].freq1 = 2048;
-        }
+        for (int mixCellIdx = 0; mixCellIdx < 1024; ++mixCellIdx)
+          initFlatMixCell(mix3[ctxBucket * 0x400 + mixCellIdx]);
+        for (int mixCellIdx2 = 0; mixCellIdx2 < 256; ++mixCellIdx2)
+          initFlatMixCell(mix4[ctxBucket * 256 + mixCellIdx2]);
       }
 
       for (int contextSize = 0; contextSize < 5; ++contextSize) {
