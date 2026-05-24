@@ -93,24 +93,20 @@ __attribute__((format(printf, 1, 2))) static void log_write(const char* fmt, ...
 static __thread uint32_t tls_last_error = 0;
 static __thread uint8_t fake_teb[0x2000];  // forward; full init in shim_init_teb()
 
-// pthread key whose destructor frees the per-thread tls_slots block on exit
+// pthread key whose destructor runs FLS callbacks and frees the per-thread
+// tls_slots block on thread exit.  Single destructor (rather than separate
+// keys for FLS callbacks and slot free) so the order is well-defined —
+// POSIX leaves ordering between pthread_key_create destructors unspecified,
+// and freeing the slots before running the callbacks turned the callback
+// pass into a use-after-free.
 static pthread_key_t  g_tls_slots_key;
 static pthread_once_t g_tls_slots_key_once = PTHREAD_ONCE_INIT;
 
 static DWORD g_tls_static_idx = 0xFFFFFFFFu; // pre-allocated static TLS slot; defined below
 
-static void tls_slots_dtor(void* p) {
-  void** slots = (void**)p;
-  if( !slots ) return;
-  // Free the static-TLS block that tls_static_init_thread() allocated for
-  // this thread; without this it leaks at every thread exit.
-  if( g_tls_static_idx != 0xFFFFFFFFu )
-    free(slots[g_tls_static_idx]);
-  free(slots);
-}
+static void shim_thread_exit(void*);  // defined alongside the FLS section below
 
-
-static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, tls_slots_dtor); }
+static void tls_slots_key_init(void) { pthread_key_create(&g_tls_slots_key, shim_thread_exit); }
 
 // Mirror last error to TEB+0x68 as inlined MSVC code reads gs:[0x68] (B16/R29)
 #define SET_LAST_ERROR(e) do { \
@@ -231,8 +227,6 @@ static void init_fake_peb(void) {
   fake_peb[2] = 0;
 }
 
-static void fls_register_thread(void);  // defined with the FLS section below
-
 void shim_init_teb(void) {
   // Idempotent: self-pointer at +0x30 is set on first call; skip on re-entry.
   if( *(void**)(fake_teb+0x30) == (void*)fake_teb ) return;
@@ -282,9 +276,9 @@ void shim_init_teb(void) {
   // for now, stash the pointer in x18 so future __asm__ helpers can load it.
   __asm__ volatile ("mov x18, %0" :: "r"(fake_teb) : "x18");
 #endif
-
-  // Arm the FLS per-thread destructor so callbacks fire at thread exit.
-  fls_register_thread();
+  // FLS / TLS cleanup is armed via g_tls_slots_key above (pthread_setspecific
+  // of tls_slots) — the key's destructor (shim_thread_exit) runs FLS
+  // callbacks then frees the slots block on thread exit.
 }
 
 // Called at the start of every new thread (including the main thread via
@@ -2772,9 +2766,14 @@ static void* g_fls_callbacks[FLS_MAX_SLOTS] = {};
 
 typedef void (__attribute__((ms_abi)) *fls_callback_t)(void*);
 
-// pthread-key destructor: run FLS callbacks for non-NULL tls_slots on thread exit.
-static void fls_thread_exit(void* /*unused*/) {
-  void** slots = tls_get_slots();
+// Single pthread_key_create destructor for the per-thread slots array
+// (registered as g_tls_slots_key's destructor up at the top of the file).
+// Runs FLS callbacks while the slots block is still valid, then frees the
+// static-TLS block and the slots array itself.  Uses the explicit slots
+// pointer passed in by pthread rather than re-reading GS:[0x58], so it
+// works even when the thread's TLS is being torn down.
+static void shim_thread_exit(void* p) {
+  void** slots = (void**)p;
   if( !slots ) return;
   for( DWORD i = 0; i < FLS_MAX_SLOTS; ++i ) {
     void* val = slots[i];
@@ -2787,18 +2786,9 @@ static void fls_thread_exit(void* /*unused*/) {
       ((fls_callback_t)cb)(val);
     }
   }
-}
-
-static pthread_key_t  g_fls_exit_key;
-static pthread_once_t g_fls_exit_once = PTHREAD_ONCE_INIT;
-static void fls_exit_key_init(void) { pthread_key_create(&g_fls_exit_key, fls_thread_exit); }
-
-// Call once per thread to arm the FLS exit destructor.
-static void fls_register_thread(void) {
-  pthread_once(&g_fls_exit_once, fls_exit_key_init);
-  // Any non-NULL sentinel arms the destructor; the value itself is ignored.
-  if( !pthread_getspecific(g_fls_exit_key) )
-    pthread_setspecific(g_fls_exit_key, (void*)(uintptr_t)1);
+  if( g_tls_static_idx != 0xFFFFFFFFu )
+    free(slots[g_tls_static_idx]);
+  free(slots);
 }
 
 extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
@@ -2817,7 +2807,6 @@ extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
     pthread_mutex_lock(&g_fls_mu);
     g_fls_callbacks[idx] = callback;
     pthread_mutex_unlock(&g_fls_mu);
-    fls_register_thread();
   }
   log_always("[SHIM] FlsAlloc() -> idx=%u\n", idx);
   return idx;
@@ -2864,7 +2853,6 @@ extern "C" EXPORT BOOL kernel32_FlsSetValue(DWORD idx, LPVOID val) {
   }
   void** slots = tls_get_slots();
   if( slots ) slots[idx] = val;
-  fls_register_thread();
   log_always("[SHIM] FlsSetValue(idx=%u, val=%p)\n", idx, val);
   return TRUE;
 }
