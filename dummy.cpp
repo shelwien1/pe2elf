@@ -3703,15 +3703,17 @@ struct Rangecoder {
 
   void initDecoder(FILE *f) {
     Range = -1;
-    int v13 = getc(f);
-    int v15 = getc(f);
-    int v18 = getc(f);
-    int v21 = getc(f);
-    int v24 = getc(f);
-    int v16 = v15 | (v13 << 8);
-    int v19 = v18 | (v16 << 8);
-    int v22 = v21 | (v19 << 8);
-    Code = v24 | (v22 << 8);
+    // Read 5 bytes; b0 is consumed but shifted out of the 32-bit Code result
+    // (PPMII's leading marker byte).
+    int b0 = getc(f);
+    int b1 = getc(f);
+    int b2 = getc(f);
+    int b3 = getc(f);
+    int b4 = getc(f);
+    int pack1 = b1 | (b0    << 8);
+    int pack2 = b2 | (pack1 << 8);
+    int pack3 = b3 | (pack2 << 8);
+    Code = b4 | (pack3 << 8);
   }
 
   void EncodeShift(FILE *f) {
