@@ -241,15 +241,15 @@ int predBaseDeltaA;
 int predBaseDeltaB;
 int binMixDeltaHi;
 int binMixDeltaLo;
-int d99;
-int d100;
-int d101;
-int d102;
-int d105;
-int d104;
+int wDelta32;
+int wDelta31;
+int wDelta30;
+int wDelta29;
+int wDelta34;
+int wDelta35;
 int predRescaleDiv;
 int cumFreqAcc;
-int d98;
+int wDelta33;
 int d103;
 int d106;
 
@@ -287,8 +287,8 @@ int predSseTotDelta;
 int predWeightDelta;
 int MatchCtxHi;
 int recentSym;
-int d80;
-int d91;
+int mixScaleCntr;
+int symHalfHistory;
 int SparseHashA;
 int SparseIdxA;
 int SparseHashB;
@@ -763,9 +763,9 @@ sqword InitTables() {
   memset(b39,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=d99=d100=d101=d102=d105=d104=predRescaleDiv=cumFreqAcc=d98=d103=d106=0;
+  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=d103=d106=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
-  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=d80=d91=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
@@ -3219,15 +3219,15 @@ qword MixUpdate(byte* a1) {
   q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
   recentForHi = SseCtx0_1[(int)matchHi];
   if( sym==FoundSymbol&&MixScale<=256 ) {
-    d80 = 4*MixScale;
-  } else if( d80>(uint)(3*MixScale)&&(prevSymCount==SymLastCtx[sym]||prevSymCount==SymLastCtx2[sym]||4*MixScale-9<(uint)d80) ) {
-    d80 -= MixScale>13;
+    mixScaleCntr = 4*MixScale;
+  } else if( mixScaleCntr>(uint)(3*MixScale)&&(prevSymCount==SymLastCtx[sym]||prevSymCount==SymLastCtx2[sym]||4*MixScale-9<(uint)mixScaleCntr) ) {
+    mixScaleCntr -= MixScale>13;
   } else if( dt>1 ) {
     rp1 = RecentPos[recentEpoch&0xFFF];
     if( dt==recentEpoch-rp1&&dt==rp1-RecentPos[rp1&0xFFF]&&dt<=256 ) {
       if( sym==(byte)sseSlot[-4*dt]||(rp2 = RecentPos[recentForHi&0xFFF], dt==recentForHi-rp2)&&dt==rp2-RecentPos[rp2&0xFFF]&&(uint)matchHi==(byte)sseSlot[-3*dt-1] ) {
         MixScale = dt;
-        d80 = dt;
+        mixScaleCntr = dt;
         q26 = (sqword)&q26Anchor;
       }
     }
@@ -3257,7 +3257,7 @@ qword MixUpdate(byte* a1) {
   ssem3 = (byte)*(sseSlot-3);
   ssem7 = (byte)*(sseSlot-7);
   if( ssem3==ssem7||(ssem11 = *(sseSlot-11), (byte)(ssem11+(byte)ssem3-2*(byte)ssem7))||(byte)(*(sseSlot-15)+(byte)ssem7-2*ssem11) ) {
-    if( 4*MixScale-1>(uint)d80 ) {
+    if( 4*MixScale-1>(uint)mixScaleCntr ) {
       // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
       // window; 6,10 short window with compact second arm).
       hintSymMatch3 = MatchPosHint_  (3, symEpoch, symEpochN, sc);
@@ -3336,14 +3336,14 @@ LABEL_94:
   BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90IdxA, sym, sc);
   hintSymBiject = v94_b33;
 
-  savedD91 = (uint)d91;
-  newD91 = (word)(((sym>>4)&0xFFFE)+8*d91)&0xFFFE;
+  savedD91 = (uint)symHalfHistory;
+  newD91 = (word)(((sym>>4)&0xFFFE)+8*symHalfHistory)&0xFFFE;
   BijectPairUpdate_(b35, b34, /*read*/newD91, /*write*/savedD91, sym, sc);
-  d91 = newD91;
+  symHalfHistory = newD91;
 
   oldD90IdxB = (uint)d90[otherPar];
   BijectPairUpdate_(b36, b37, /*read*/oldD90IdxB, /*write*/savedD90Idx, sym, sc);
-  if( d80 ) {
+  if( mixScaleCntr ) {
     if( sym==*(byte*)q26 ) {
       *(byte*)(q26+3) += *(byte*)(q26+3)-255<0;
     } else {
@@ -3356,7 +3356,7 @@ LABEL_94:
     b1 = (byte)bmPtr[-MixScale];
     b2 = (byte)bmPtr[-2*MixScale];
     b3 = (byte)bmPtr[-3*MixScale];
-    if( --d80>(uint)MixScale )
+    if( --mixScaleCntr>(uint)MixScale )
       recentSym = b1;
     b1Ptr = &bmPtr[-MixScale];
     bm1 = (byte)*(b1Ptr-1);
@@ -4249,18 +4249,18 @@ LABEL_18:
                                  + *((word*)mixSlotA-4094))                 >> (mixShiftA+1)) + mixFreqA;
               sseCum = mixWeightA;
               sseTot = mixFreqA;
-              d98 = RescaleAccum1_(mixSlotA + 2048, mixWeightSavedA, mixShiftA);
-              d99 = RescaleAccum1_(mixSlotA - 2048, (uint)*(mixSlotA-2048), mixShiftA);
+              wDelta33 = RescaleAccum1_(mixSlotA + 2048, mixWeightSavedA, mixShiftA);
+              wDelta32 = RescaleAccum1_(mixSlotA - 2048, (uint)*(mixSlotA-2048), mixShiftA);
               mixShiftLowA = *((word*)mixSlotA+3)<0x400u;
               mixShiftBSel = mixShiftA+mixShiftLowA;
               mixBaseAStride = &mixSlotA[-2*mixIdxA];
               sseSlot3A = (sqword)&mixBaseAStride[2*(int)(mixIdxA^0x100)];
               q31 = sseSlot3A;
-              d100 = RescaleAccum1_((void*)sseSlot3A, *(uint*)sseSlot3A, mixShiftBSel);
+              wDelta31 = RescaleAccum1_((void*)sseSlot3A, *(uint*)sseSlot3A, mixShiftBSel);
               sseSlot4A = (sqword)&mixBaseAStride[2*(int)(mixIdxA^0x200)];
               q30 = sseSlot4A;
-              d101 = RescaleAccum1_((void*)sseSlot4A, *(uint*)sseSlot4A, mixShiftBSel);
-              d102 = RescaleAccum1_(bigSlotA, (uint)*bigSlotA, mixShiftA+mixShiftLowA+1);
+              wDelta30 = RescaleAccum1_((void*)sseSlot4A, *(uint*)sseSlot4A, mixShiftBSel);
+              wDelta29 = RescaleAccum1_(bigSlotA, (uint)*bigSlotA, mixShiftA+mixShiftLowA+1);
             }
             predRescaleDiv = MinContext->SummFreq;
             cumFreqMixA = predRescaleDiv+((mixFreqA>>1)+nStatesPlus1*mixWeightA)/mixFreqA+2;
@@ -4271,10 +4271,10 @@ LABEL_18:
 LABEL_58:
               // SSE-mix preamble: zero out the per-step predictor accumulators
               // and seed the LABEL_59 escape walk.
-              d104 = 171;
+              wDelta35 = 171;
               d103Cache = cumFreqDivA;
               predShiftFlags = 0;
-              d105 = 0;
+              wDelta34 = 0;
               predBinFlags = 171;
               d106 = SseIdx{}
                 .bit  <1>    (OrderFall < 3)
@@ -4395,12 +4395,12 @@ LABEL_58:
       binMixDeltaHi = RescaleAccum2_(binMixCenter+0x10000, mixShiftB);
       binMixDeltaLo = RescaleAccum2_(binMixCenter-0x10000, mixShiftB);
       mixShiftC = (binMixCenter[3]<0x398u) + mixShiftB;
-      d99  = RescaleAccum2_((void*)q32, mixShiftC);
-      d100 = RescaleAccum2_((void*)q31, mixShiftC);
-      d101 = RescaleAccum2_((void*)q30, mixShiftC);
-      d102 = RescaleAccum2_((void*)q29, mixShiftC);
-      d105 = RescaleAccum2_((void*)q34, mixShiftC);
-      d104 = RescaleAccum2_((void*)q35, mixShiftC);
+      wDelta32  = RescaleAccum2_((void*)q32, mixShiftC);
+      wDelta31 = RescaleAccum2_((void*)q31, mixShiftC);
+      wDelta30 = RescaleAccum2_((void*)q30, mixShiftC);
+      wDelta29 = RescaleAccum2_((void*)q29, mixShiftC);
+      wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
+      wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
     sseCum = 60416LL*cumFreqB/cumWeightB;
     sseTot = 60416;
@@ -4412,7 +4412,7 @@ LABEL_58:
         .bit  <17>    (MixCtx)                           // MixCtx is 0/1
         .bit  <18>    ((uint)matchPosAge < 0x78)
         .bit  <19>    (escSymB == FoundSymbol)
-        .bit  <20>    (MixScale < (uint)d80))];
+        .bit  <20>    (MixScale < (uint)mixScaleCntr))];
     sseMatchSlot = sseMatchSlotA;
     // SSE-match stage: probe with sseCum first; if in-band, recompute with the
     // boosted 60416/sumWeight scale (preserved verbatim from the original).
@@ -4532,7 +4532,7 @@ LABEL_128:
       escSymbol = firstStateE->Symbol;
       MixCtx3 = escSymbol;
       if( SymCount==SymMask[escSymbol] ) {
-        d105 = 0x8000;
+        wDelta34 = 0x8000;
       } else {
         descendFlags = 1;
         chainEndE = &CtxChain_1;
@@ -4542,7 +4542,7 @@ LABEL_128:
         freqSumE = firstStateE->Freq;
         predShiftFlags = 0;
         remStatesE = freqDeltaE-1;
-        d105 = 0;
+        wDelta34 = 0;
       }
       walkStateIterE = MinContext->getStates() - 1;
       if( remStatesE ) {
@@ -4660,17 +4660,17 @@ LABEL_298:
                                 + *((word*)mixSlotC-1022))                    >> shiftSelC;
           sseCum = mixWeightC;
           sseTot = mixFreqCacheC;
-          d98 = RescaleAccum1_((void*)(mixSlotC+2048), *((uint*)mixSlotC+512), shiftSelC);
-          d99 = RescaleAccum1_((void*)(mixSlotC-2048), *((uint*)mixSlotC-512), shiftSelC);
-          d102 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, *((word*)mixSlotC+3)<0x200u);
+          wDelta33 = RescaleAccum1_((void*)(mixSlotC+2048), *((uint*)mixSlotC+512), shiftSelC);
+          wDelta32 = RescaleAccum1_((void*)(mixSlotC-2048), *((uint*)mixSlotC-512), shiftSelC);
+          wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, *((word*)mixSlotC+3)<0x200u);
           predShiftIncC = (*((word*)mixSlotC+3)<0x400u)+predLoBeyondC+1;
           mixStrideC = &mixSlotC[-8*mixIdxC];
           sse3SlotC = (sqword)&mixStrideC[8*(int)(mixIdxC^2)];
           q31 = sse3SlotC;
-          d100 = RescaleAccum1_((void*)sse3SlotC, *(uint*)sse3SlotC, predShiftIncC);
+          wDelta31 = RescaleAccum1_((void*)sse3SlotC, *(uint*)sse3SlotC, predShiftIncC);
           sse4SlotC = (sqword)&mixStrideC[8*(int)(mixIdxC^8)];
           q30 = sse4SlotC;
-          d101 = RescaleAccum1_((void*)sse4SlotC, *(uint*)sse4SlotC, predShiftIncC);
+          wDelta30 = RescaleAccum1_((void*)sse4SlotC, *(uint*)sse4SlotC, predShiftIncC);
         }
         sumFreqDivC = ((mixFreqCacheC>>1)+descendNStatesP1E*mixWeightC)/mixFreqCacheC+2;
         if( descendNStatesP1E<24 ) {
@@ -4689,7 +4689,7 @@ LABEL_335:
       predRescaleDiv = freqSumE+descendNStates+1;
       predBinFlags = 0;
       chainPtr = CtxChain;
-      d104 = 0;
+      wDelta35 = 0;
       CtxChainEnd = (sqword)CtxChain;
       {
         uint orderShift15C = (ofallSavedE>1)<<15;
@@ -4870,7 +4870,7 @@ LABEL_59:
             .bit  <17>    (MixCtx)                           // MixCtx is 0/1
             .bit  <18>    ((uint)matchPosAge < 0x78)
             .bit  <19>    (candSymbol == FoundSymbol)
-            .bit  <20>    (MixScale < (uint)d80))];
+            .bit  <20>    (MixScale < (uint)mixScaleCntr))];
         sseMatchSlot = sseMatchSlotF;
         int matchCumInF = sseCum;
         int sseMatchClampF = SseClampMean_(sseMatchSlotF, sseMatchBoostedF, 1-sseCum, 0x40000);
@@ -4935,7 +4935,7 @@ LABEL_59:
             MinContext = MaxContext;
         } else {
             MinContext = MaxContext;
-            d105 = 0x8000;
+            wDelta34 = 0x8000;
           }
         } else {
           if( !f_DEC ) rc.encodeSymbol(subRangeC);
@@ -4976,16 +4976,16 @@ LABEL_59:
         if( !--remCandF ) {
           uint rewindMult = predRescaleDiv / (MinContext->NStates + 1);
           RewindPredictor_(q34, *(word*)(q34+6), rewindMult);
-          RewindPredictor_(q33, d98,             rewindMult);
-          RewindPredictor_(q32, d99,             rewindMult);
-          RewindPredictor_(q31, d100,            rewindMult);
-          RewindPredictor_(q30, d101,            rewindMult);
-          RewindPredictor_(q29, d102,            rewindMult);
+          RewindPredictor_(q33, wDelta33,             rewindMult);
+          RewindPredictor_(q32, wDelta32,             rewindMult);
+          RewindPredictor_(q31, wDelta31,            rewindMult);
+          RewindPredictor_(q30, wDelta30,            rewindMult);
+          RewindPredictor_(q29, wDelta29,            rewindMult);
           entryNStates = MinContext->NStates;
           goto LABEL_128;
         }
-        predShiftFlags = d105;
-        predBinFlags = d104;
+        predShiftFlags = wDelta34;
+        predBinFlags = wDelta35;
         escSymbol = MixCtx3;
         epoch = SymCount;
         escCandidate = EscapeSymbol;
@@ -5006,12 +5006,12 @@ LABEL_59:
                                 + (oneStateFreqF==1 && totFreq < 4*cumFreq);
     // commit the per-step predictor deltas (no freq0 rewind in this path)
     binSseCell[0] += 1568;
-    *(uint*)q32 += d99;
-    *(uint*)q31 += d100;
-    *(uint*)q30 += d101;
-    *(uint*)q29 += d102;
-    *(uint*)q34 += d105;
-    *(uint*)q35 += d104;
+    *(uint*)q32 += wDelta32;
+    *(uint*)q31 += wDelta31;
+    *(uint*)q30 += wDelta30;
+    *(uint*)q29 += wDelta29;
+    *(uint*)q34 += wDelta34;
+    *(uint*)q35 += wDelta35;
     MinContext = MaxContext;
 LABEL_250:
     // -----------------------------------------------------------------------
