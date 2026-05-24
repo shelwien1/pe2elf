@@ -1739,11 +1739,14 @@ sqword StartModelRare(int mode) {
         }
       }
 
+      // PredWeight init: 5 context-size buckets, 256 (num=baseWeight, den=15104)
+      // pred-weight cells each.
       for (int contextSize2 = 0; contextSize2 < 5; ++contextSize2) {
         int baseWeight = 48 * (byte)b23[contextSize2];
         for (int predIdx = 0; predIdx < 256; ++predIdx) {
-          PredWeight[contextSize2 * 512 + predIdx * 2] = baseWeight;
-          PredWeight[contextSize2 * 512 + predIdx * 2 + 1] = 15104;
+          int* cell = &PredWeight[contextSize2 * 512 + predIdx * 2];
+          cell[0] = baseWeight;
+          cell[1] = 15104;
         }
       }
 
