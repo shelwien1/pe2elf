@@ -558,7 +558,7 @@ constexpr int MAX_O = 128;
 // Alternatively, using a explicit C++ reference variable:
 PPM_CONTEXT*&MaxContext = *(PPM_CONTEXT**)&MaxContext0;
 
-sqword BinEscFreq(byte* a1);
+sqword BinEscFreq(byte* ctxBytes);
 
 // Walks the context suffix chain to update local frequency statistics, perform inertia
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
@@ -830,8 +830,8 @@ sqword InitTables() {
 //--- #return
 //--- #include "subs_binescfreq2.inc"
 
-sqword BinEscFreq(byte* a1) {
-  PPM_CONTEXT* pc = (PPM_CONTEXT*)a1;
+sqword BinEscFreq(byte* ctxBytes) {
+  PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxBytes;
   int nStates = pc->NStates;
   int numStates = nStates + 1;
   
@@ -969,8 +969,8 @@ sqword BinEscFreq(byte* a1) {
 //     * SSE0[] replaces SymType[] (0 / 0x80 vs textbook 0 / 4).
 // =============================================================================
 
-sqword RescaleCtx(byte* a1) {
-  PPM_CONTEXT* ctx        = (PPM_CONTEXT*)a1;
+sqword RescaleCtx(byte* ctxBytes) {
+  PPM_CONTEXT* ctx        = (PPM_CONTEXT*)ctxBytes;
   int          NStates0   = ctx->NStates;             // original NStates (= last index)
   int          totalCount = NStates0 + 1;             // # states to iterate (incl. found)
   uint         oldIStates = ctx->iStates;
@@ -1063,7 +1063,7 @@ sqword RescaleCtx(byte* a1) {
 
   FreeUnits_(states, (uint)((NStates0 + 2) >> 1));
 
-  q9                          = (sqword)(a1 + 2);     // FoundState = &oneState
+  q9                          = (sqword)(ctxBytes + 2);     // FoundState = &oneState
   ctx->oneState().Symbol      = (byte)firstSF;
   ctx->oneState().Freq        = (byte)(firstSF >> 8);
   ctx->oneState().iSuccessor  = firstSucc;
@@ -1112,8 +1112,8 @@ struct SseCounter {     // matches the 8-byte (sum, freq0, freq1) layout
 
 } // namespace
 
-sqword SseScale1(sqword a1) {
-  SseCounter*  cnt    = (SseCounter*)a1;
+sqword SseScale1(sqword slotAddr) {
+  SseCounter*  cnt    = (SseCounter*)slotAddr;
   PPM_CONTEXT* topCtx = (PPM_CONTEXT*)MaxContext0;
 
   // ---- step 1: compose the weight (and clamp the low 16 bits to 2048) -----
@@ -1206,8 +1206,8 @@ struct SseSlot {       // 8-byte (hits, predHi, scale, weight) counter
 
 } // namespace
 
-sqword SseScale2(sqword a1) {
-  SseSlot* s = (SseSlot*)a1;
+sqword SseScale2(sqword slotAddr) {
+  SseSlot* s = (SseSlot*)slotAddr;
 
   // ---- step 1: observed Q15 probability, clamped to [1, 0x7FFF] -----------
   uint scale = s->scale;
@@ -1270,7 +1270,7 @@ sqword SseScale2(sqword a1) {
     int  bumpUp   =  16 * (4 * hits < scale);            // +16 if hits < scale/4
     newPredHi = (uint)((int)hits + bumpDown + bumpUp) >> 1;
   }
-  *(uint*)a1 = (q << 16) | (newPredHi & 0xFFFF);
+  *(uint*)slotAddr = (q << 16) | (newPredHi & 0xFFFF);
   return gain;
 }
 //--- #return
