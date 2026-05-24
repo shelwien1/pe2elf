@@ -2345,9 +2345,11 @@ LABEL_99:
         newStateEnd = allocedUnit + 6;
         curCtxP->SummFreq = (byte)newStateFreq;
       }
-      *(byte*)(newStateEnd + 1) = 0;
-      *(uint*)(newStateEnd + 2) = succIdxSaved;
-      *(byte*)newStateEnd = foundSymFreq;
+      // Initialize the new tail STATE: Symbol=foundSymFreq (low byte), Freq=0,
+      // iSuccessor=succIdxSaved.
+      ((STATE*)newStateEnd)->Symbol     = (byte)foundSymFreq;
+      ((STATE*)newStateEnd)->Freq       = 0;
+      ((STATE*)newStateEnd)->iSuccessor = succIdxSaved;
       upperFlagBits = curCtxP->Flags & 0xF0;
       statesBaseAddr = heapNull + curCtxP->iStates;
       ++curCtxP->NStates;
