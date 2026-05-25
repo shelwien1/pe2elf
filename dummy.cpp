@@ -1997,35 +1997,16 @@ at_return:
 //--- #include "subs_reduceorder.inc"
 
 sqword ReduceOrder() {
-  sqword rootCtxW;
-  STATE* foundStateB;
-  int orderFall;
-  int maxOrder;
-  uint succIdxW;
+  sqword rootCtxW, result, pTextEntry, heapNull, pTextNewSlot, maxCtxStart;
+  sqword succIdx, succAddr, newStatesIdx2, allocedUnit, curCtx;
+  sqword rootCtxSaveLab99, rootCtxSaveCS, rootCtxSaved;
+  uint succIdxW, newByteIdx, curCtxSuffix;
+  int orderFall, maxOrder, sym;
+  STATE *foundStateB, *stateBW, *chainStatePtr;
+  STATE **chainPtrW, **chainPtrSave;
+  qword newStateEnd, ctxChainEndS;
   PPM_CONTEXT* ctxBW;
   char sse0Bit;
-  sqword result;
-  sqword pTextEntry;
-  sqword heapNull;
-  sqword pTextNewSlot;
-  uint newByteIdx;
-  sqword maxCtxStart;
-  sqword succIdx;
-  sqword succAddr;
-  sqword newStatesIdx2;
-  qword newStateEnd;
-  sqword allocedUnit;
-  qword ctxChainEndS;
-  int sym;
-  sqword curCtx;
-  STATE** chainPtrW;
-  STATE* stateBW;
-  uint curCtxSuffix;
-  STATE* chainStatePtr;
-  STATE** chainPtrSave;
-  sqword rootCtxSaveLab99;
-  sqword rootCtxSaveCS;
-  sqword rootCtxSaved;
   byte foundSym;
   rootCtxW = RootContext;
   foundStateB = FoundState;
