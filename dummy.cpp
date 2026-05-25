@@ -4143,7 +4143,7 @@ LABEL_58:
       }
       EscIndexSeed = result;
       // ---------------------------------------------------------------------
-      //  Escape walk (~ ppmd RealEncode's "while (!localFoundState)" loop): keep
+      //  Escape walk (~ ppmd RealEncode's "while (!FoundState)" loop): keep
       //  walking the suffix chain until a context with NStates != entryNStates
       //  is reached, then drop into the multi-state escape body below.
       // ---------------------------------------------------------------------
@@ -4339,7 +4339,7 @@ LABEL_298:
       sumFreqLimit = (int)(sumFreqDivC+MinContext->SummFreq)>>1;
 LABEL_335:
       // Per-state walk through CtxChain[] inside the escape:  each iteration
-      // is the body of ppmd's "localFoundState = MinContext->encode2(c)" search.
+      // is the body of ppmd's "FoundState = MinContext->encode2(c)" search.
       cumFreqMixSave = sumFreqLimit;
       sumFreqF = freqSumE+sumFreqDivC;
       cumFreqAcc = sumFreqF;
