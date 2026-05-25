@@ -959,16 +959,14 @@ sqword InitTables() {
   for( i = 3; i <= 37; ++i) _SSE1[i] = 4;
   for( i = 38; i < 256; ++i) _SSE1[i] = 6;
 
-  // SseSeed = ((OrderFall>2)<<15)+v114+*((uint*)BinMapTable+(v164&0xF))+(v29<<14);
-  for( i = 0; i < 4; ++i ) {
-    BinMapTable[i*4+0] = 0<<9;
-    BinMapTable[i*4+1] = 0<<9;
-    BinMapTable[i*4+2] = 0<<9;
-  }
-  BinMapTable[0*4+3] = 1<<9; //0x200;
-  BinMapTable[1*4+3] = 2<<9; //0x400;
-  BinMapTable[2*4+3] = 1<<9; //0x200;
-  BinMapTable[3*4+3] = 3<<9; //0x600;
+  // BinMapTable: 16-entry uint table, indexed by (mixCtx2New & 0xF) in
+  // SseSeed assembly. Rows [0..3]*4 + [0..2] are 0; only the +3 lane of each
+  // row carries the (1, 2, 1, 3) << 9 weight.
+  for (uint i = 0; i < 16; ++i) BinMapTable[i] = 0;
+  BinMapTable[0*4+3] = 1u << 9; // 0x200
+  BinMapTable[1*4+3] = 2u << 9; // 0x400
+  BinMapTable[2*4+3] = 1u << 9; // 0x200
+  BinMapTable[3*4+3] = 3u << 9; // 0x600
 
   for( i=0,j=0; i < 0x80; i++)  { NextBinFreq[i] = j+1; if( i==RLQBounds[j]) j++; }
   for( i=0,j=0; i < 0x100; i++) { SSE0QTable[i] = j+1;  if( i==SSE0QBounds[j] ) j++; }
