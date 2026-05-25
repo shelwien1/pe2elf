@@ -3556,8 +3556,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int nStatesP1Save, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
-  int walkFreqSumE, walkSymE, mixFreqB, mixHitsB;
-  int cumWeightB, cumFreqB, escSymB;
+  int walkFreqSumE, walkSymE;
+  int cumWeightB, cumFreqB;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
   int sxNStatesC, sumFreqCacheC;
@@ -3579,8 +3579,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
   int *mixSlotA;
-  int *mixSlotB;
-  int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
+  int *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -3844,13 +3843,13 @@ LABEL_58:
     q29 = (sqword)&mixBaseB[2*(mixIdxB^0x20)];
     q34 = (sqword)&mixBaseB[2*(mixIdxB^0x200)];
     q35 = (sqword)&mixBaseB[2*(mixIdxB^0x400)];
-    mixSlotB = &mixBaseB[2*mixIdxB];
-    mixFreqB = *((word*)mixSlotB+2);
+    int* mixSlotB = &mixBaseB[2*mixIdxB];
+    int  mixFreqB = *((word*)mixSlotB+2);
     binMixCenter = (word*)mixSlotB;
     PredBaseAG = (sqword)(mixSlotB-4);
     PredBaseBG = (sqword)(mixSlotB+4);
     MaybeRescale2_(mixSlotB, mixFreqB);
-    mixHitsB = *(word*)mixSlotB;
+    int mixHitsB = *(word*)mixSlotB;
     sseCum = mixHitsB;
     *((word*)mixSlotB+2) = mixFreqB + *((word*)mixSlotB+3);
     sseTot = mixFreqB;
@@ -3859,11 +3858,11 @@ LABEL_58:
     OrderCtxSeed = OrderCtxSeedBuild_(currentSymbol, (int)MatchCtxHi,
                                       sparseFlags, OrderCtxSeed,
                                       (uint)mixFreqB, (uint)mixHitsB);
-    sse1SlotB = &Sse1[2*OrderCtxSeed];
+    int* sse1SlotB = &Sse1[2*OrderCtxSeed];
     sse1Slot = sse1SlotB;
     Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
     centerExpandB = binMixCenter[3];
-    escSymB = MixCtx3;                  // both arms below want this snapshot
+    int escSymB = MixCtx3;              // both arms below want this snapshot
     if( centerExpandB<=0x20 ) {
       sseTot = cumWeightB;
       sseCum = cumFreqB;
