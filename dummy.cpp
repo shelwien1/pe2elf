@@ -2592,7 +2592,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    prevSymCount;     // SymCount before --
   int    symEpoch;         // current SymEpoch (epoch counter)
   int    symEpochN;        // = symEpoch + 1 (next epoch)
-  char*  sseSlot;          // &Sse2State[ (symEpoch & 0x1FFFF) + 133144 ]
+  char*  sseSlot;          // &MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)]
+                           // (upper half of MatchPosHash, used as a history byte ring)
 
   // ---- symbol-derived state -----------------------------------------------
   uint   sym;              // FoundState->Symbol
@@ -2713,7 +2714,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   *wQ19       += sseMatchNumDelta;  wQ19[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
-  sseSlot     = (char*)&Sse2State[(symEpoch & 0x1FFFF) + 133144];
+  // 0x20000 + (symEpoch & 0x1FFFF) selects a byte in MatchPosHash's upper half.
+  sseSlot     = (char*)&MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
   UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * sseCum);
