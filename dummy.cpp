@@ -2448,7 +2448,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- RSContext / Sse2State histogram rotation ---------------------------
   short  rsCtx;
   char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new q12 base)
-  sqword sse2Base;         // q12 (current Sse2State sub-block base)
+  byte*  sse2Base;         // q12 (current Sse2State sub-block base)
   sqword sseHistOff;
   byte   newHistCnt;
   sqword j;                // halving-loop index
@@ -2639,8 +2639,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   q12BaseSel *= 2;
   newQ12Sel   = q12BaseSel;
   if (sym != RSContext) {
-    sse2Base = q12;
-    byte* histo = (byte*)sse2Base;
+    sse2Base = (byte*)q12;
+    byte* histo = sse2Base;
     uint* counter = (uint*)(sse2Base + 512);
     *counter += 2;
     sseHistOff = ((word)sym - rsCtx) & 0x1FF;
