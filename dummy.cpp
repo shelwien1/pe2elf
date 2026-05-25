@@ -3736,8 +3736,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword sseQTableIdxA, summFreqPtr;
   int *mixSlotA, *binMixSlotF, *sse1SlotF, *predWAF;
   int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
-  int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA, *bigSlotC;
-  int *bigSlotA;
+  int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -3897,7 +3896,7 @@ LABEL_18:
             sseTot = mixFreqA;
             mixDeltaA = RescaleAccum1_(mixSlotA, mixWeightA, 0);
             if( mixDeltaA>0x80 ) {
-              bigSlotA = &d29[512*sseQTableIdxA + 2 * (int)(SseIdx{}
+              int* bigSlotA = &d29[512*sseQTableIdxA + 2 * (int)(SseIdx{}
                 .field<0, 2> ((byte)mixIdxA)                  // mixIdxA bits 0-1
                 .bit  <3>    (maskFlagEsc | maskFlagPrev)
                 .field<4, 4> ((byte)mixIdxA))];                // mixIdxA bits 4-7
@@ -4270,7 +4269,7 @@ LABEL_298:
         mixWeightDeltaC = RescaleAccum1_(mixSlotC, (uint)mixWeightC, 0);
         if( mixWeightDeltaC>0x78 ) {
           // d29[]/MixWeight2[] index in 2-int-stride units.
-          bigSlotC = &MixWeight2[2048 * sseQTableIdxC + 2 * (int)(SseIdx{}
+          int* bigSlotC = &MixWeight2[2048 * sseQTableIdxC + 2 * (int)(SseIdx{}
               .field<0, 2> ((byte)mixIdxC)                                       // mixIdxC bits 0-1, in place
               .bit  <2>    (ofallSavedE < 10)                                    // OrderFall band
               .bit  <3>    (MinContext->NStates + 2*sxNStatesC + 2 > NMasked)  // parent context dense
