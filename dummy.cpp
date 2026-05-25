@@ -161,7 +161,7 @@ int& bdiffStickyCnt = d90[9];
 int& matchHashSy = d90[10];
 int& matchPosAge = d90[11];
 int& matchEpoch2 = d90[12];
-int& matchDeltaSaved = d90[13];
+// d90[13] is unused (was matchDeltaSaved, a write-only spill)
 int& sseState3Hash = d90[14];
 int* RecentPos = &d90[15];
 
@@ -2695,7 +2695,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   MatchPosPrev[(symEpoch-1)&0x1FFFF] = matchPrev;
   MatchPosTable[matchKey] = symEpoch-1;
   matchDelta = symEpoch-matchPrev;
-  matchDeltaSaved = matchDelta;
   // 3-bit composite at bit 13: counts how many of these proximity tests pass.
   matchScore = SseIdx{}
     .bits<13, 2>((matchDelta < 0xE800)
