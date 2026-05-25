@@ -2064,13 +2064,13 @@ sqword ReduceOrder() {
   sqword ctxSaved;
   sqword escIdxClipped;
   sqword rootCtxSaved;
-  short foundSymFreq;
+  byte foundSym;
   rootCtxW = RootContext;
   foundStateB = (STATE*)q9;
   orderFall = OrderFall;
   maxOrder = MaxOrder;
   succIdxW = foundStateB->iSuccessor;
-  foundSymFreq = *(word*)foundStateB;   // Symbol (low byte) + Freq (high byte)
+  foundSym = foundStateB->Symbol;
   ctxBW = (PPM_CONTEXT*)RootContext;
   rootCtxSaved = RootContext;
   sse0Bit = SSE0[foundStateB->Symbol];
@@ -2278,10 +2278,10 @@ LABEL_99:
         newStateEnd = allocedUnit + 6;
         curCtxP->SummFreq = (byte)newStateFreq;
       }
-      // Initialize the new tail STATE: Symbol=foundSymFreq (low byte), Freq=0,
+      // Initialize the new tail STATE: Symbol=foundSym, Freq=0,
       // iSuccessor=succIdxSaved.
       STATE* tailState = (STATE*)newStateEnd;
-      tailState->Symbol     = (byte)foundSymFreq;
+      tailState->Symbol     = foundSym;
       tailState->Freq       = 0;
       tailState->iSuccessor = succIdxSaved;
       upperFlagBits = curCtxP->Flags & 0xF0;
