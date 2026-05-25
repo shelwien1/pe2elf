@@ -1409,7 +1409,8 @@ sqword SseScale2(sqword slotAddr) {
     int  bumpUp   =  16 * (4 * hits < scale);            // +16 if hits < scale/4
     newPredHi = (uint)((int)hits + bumpDown + bumpUp) >> 1;
   }
-  *(uint*)slotAddr = (q << 16) | (newPredHi & 0xFFFF);
+  s->hits   = (word)newPredHi;
+  s->predHi = (word)q;
   return gain;
 }
 //--- #return
