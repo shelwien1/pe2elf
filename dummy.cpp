@@ -2633,10 +2633,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    bdiff;            // (byte)(sym - matchHi)
   int    predGuessSym;          // running guess for FoundSymbol
 
-  // ---- recent-pos chain walk
-  int    rp1, rp2;
-  int    hashByte;
-
   // ---- MatchPosTable update ------------------------------------------------
   sqword matchKey;
   int    matchPrev;
@@ -2768,7 +2764,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     b31Key = 0;
     hintSymRecent = -1;
   } else {
-    hashByte = (byte)MatchPosHash[(recentEpoch+1)&0x1FFFF];
+    int hashByte = (byte)MatchPosHash[(recentEpoch+1)&0x1FFFF];
     hintSymRecent = hashByte;
     if (dt >= 50) hashByte = 0;
     b31Key = hashByte;
@@ -2824,13 +2820,13 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
            || (uint)mixScaleCntr > 4 * MixScale - 9)) {
     mixScaleCntr -= MixScale > 13;
   } else if (dt > 1) {
-    rp1 = RecentPos[recentEpoch&0xFFF];
+    int rp1 = RecentPos[recentEpoch&0xFFF];
     // First test: does RecentPos[sym] form a dt-stride progression, with dt small?
     if (dt == recentEpoch - rp1 && dt == rp1 - RecentPos[rp1&0xFFF] && dt <= 256) {
       // Second test: sym repeats at 4*dt stride in the history, OR the matchHi
       // RecentPos chain also forms a dt-stride progression AND matchHi appears
       // at the -3*dt-1 offset.
-      rp2 = RecentPos[recentForHi & 0xFFF];
+      int rp2 = RecentPos[recentForHi & 0xFFF];
       bool symAt4Dt = (sym == (byte)sseSlot[-4*dt]);
       bool hiTriad  = (dt == recentForHi - rp2)
                    && (dt == rp2 - RecentPos[rp2 & 0xFFF])
