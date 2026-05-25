@@ -3325,30 +3325,23 @@ Rangecoder rc;
 //      _F   LABEL_59 per-candidate loop
 //      _M   freq-mixing loop inside the initial multi-state block
 //
-//  File-local helpers (declared in the anonymous namespace below) replace
-//  13 distinct repeated idioms covering ~80 inlined call sites:
+//  File-local helpers (declared in the anonymous namespace below) factor
+//  repeated SSE-cell and CtxChain idioms shared across the cascade arms:
 //
-//      MaybeRescale1_     SseScale1 + freq0 refresh                       9x
-//      MaybeRescale2_     SseScale2 + freq0 refresh                       1x
-//      RescaleAccum1_     MaybeRescale1 + commit slot.freq0 += weight>>n  9x
-//      RescaleAccum2_     MaybeRescale2 variant                          13x
-//      SseClampMean_      mean = scale*slot[0]/slot[1], clamped           5x
-//      SseDeltaUpdate_    Bayesian (num,den) update + overflow halve      8x
-//      SseMixUpdate_      Abbreviated SSE accumulator update              4x
-//      ClampToBand_       Asymmetric clamp [lo, hi] for SSE gain          6x
-//      BubbleSortChain_   CtxChain[] insertion sort by priority           2x
-//      FillFreqMap_       SymFreqs[Sym] = Freq prologue                        2x
-//      WalkEscapeChain_   Walk suffix chain past escape symbol            2x
-//      RewindPredictor_   LABEL_128 "undo this round's deltas"            6x
-//      FreqMixStep_       Freq-mixing inner-loop body                     2x
+//      MaybeRescale1_/2_  SseScaleN_ + freq0 refresh
+//      RescaleAccum1_/2_  MaybeRescaleN_ + commit slot.freq0 += weight>>n
+//      SseClampMean_      mean = scale*slot[0]/slot[1], clamped
+//      SseDeltaUpdate_    Bayesian (num,den) update + overflow halve
+//      SseMixUpdate_      abbreviated SSE accumulator update
+//      ClampToBand_       asymmetric clamp [lo, hi] for SSE gain
+//      BubbleSortChain_   CtxChain[] insertion sort by priority
+//      FillFreqMap_       SymFreqs[Sym] = Freq prologue
+//      WalkEscapeChain_   walk suffix chain past escape symbol
+//      RewindPredictor_   LABEL_128 "undo this round's deltas"
+//      FreqMixStep_       freq-mixing inner-loop body
 //
-//  Also performed: 110+64 dead-variable declarations removed; declaration
-//  block compacted into 70 grouped lines; every v* identifier given a
-//  semantic name; long index/seed mega-expressions formatted vertically
-//  with column-aligned weights; section header comments at every label.
-//
-//  The body's goto layout is preserved exactly -- it's irreducible at the
-//  source level.
+//  The body's goto layout is preserved -- it's irreducible at the source
+//  level.
 // =============================================================================
 
 namespace {
