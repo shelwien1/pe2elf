@@ -2403,13 +2403,12 @@ inline byte HashArmUpdate_(byte* arr, uint readKey, uint writeKey,
 }
 
 // helper 4: linear symbol search + rank-7 bubble-up
-//   Find `sym` in `statesByte`'s STATE array; bubble it up while its saved
-//   freq + `margin` <= prev.freq, stopping at/above rank 7. Record resulting
-//   rank in the low nibble of *flagsByte. Returns the byte* of the new slot.
-inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int margin) {
-  STATE* states = (STATE*)statesByte;
+//   Find `sym` in `states`; bubble it up while its saved freq + `margin` <=
+//   prev.freq, stopping at/above rank 7. Record resulting rank in the low
+//   nibble of *flagsByte. Returns the STATE* of the new slot.
+inline STATE* FindAndBubble7_(STATE* states, byte sym, byte* flagsByte, int margin) {
   STATE* p = states;
-  if (p->Symbol == sym) return (byte*)p;
+  if (p->Symbol == sym) return p;
   do { ++p; } while (p->Symbol != sym);
   STATE saved = *p;
   STATE* stopAt7 = states + 7;
@@ -2418,7 +2417,7 @@ inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int ma
     if (stable && p <= stopAt7) {
       *p = saved;
       *flagsByte |= (byte)(p - states);
-      return (byte*)p;
+      return p;
     }
     *p = *(p - 1);
     --p;
@@ -2539,13 +2538,13 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // deep find-and-bubble path
   sqword deepStatesIdx;    // walkCtx->iStates
   byte   deepFlags;        // walkCtx->Flags
-  byte*  deepFound;        // result of FindAndBubble7_(states, sym, ...)
+  STATE* deepFound;        // result of FindAndBubble7_(states, sym, ...)
 
   // shallow (trailing) find-and-bubble path
   sqword trailStatesIdx;
   byte   trailFlags;
   STATE* trailStates;
-  byte*  trailFound;
+  STATE* trailFound;
 
   STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
@@ -3006,13 +3005,13 @@ LABEL_94:
       }
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
-      deepFound = FindAndBubble7_((byte*)deepStates, searchSym, &walkCtx->Flags, 13);
+      deepFound = FindAndBubble7_(deepStates, searchSym, &walkCtx->Flags, 13);
       foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
       depth3 -= 3;
       --depthLeft;
-      if (foundFreq > 130 || deepFound[1] >= 0xE4u) {
+      if (foundFreq > 130 || deepFound->Freq >= 0xE4u) {
         trailBound = ofallP1;
         ofall = ofallSaved;
         maxOrd = MaxOrder;
@@ -3022,12 +3021,12 @@ LABEL_94:
       deepSumFreq = walkCtx->SummFreq;
       mixBoostA = mixWeight + (depth5 > ofallP3);
       mixWeight >>= 1;
-      mixBoostB = (7*deepSumFreq < 4*deepFound[1] * walkCtx->NStates
-                                 + 4*(uint)deepFound[1])
+      mixBoostB = (7*deepSumFreq < 4*deepFound->Freq * walkCtx->NStates
+                                 + 4*(uint)deepFound->Freq)
                 + (2*depthLeft > ofallP1) + mixBoostA;
       walkCtx->SummFreq = (word)(mixBoostB + deepSumFreq);
-      newFoundFreq = mixBoostB + deepFound[1];
-      deepFound[1] = newFoundFreq;
+      newFoundFreq = mixBoostB + deepFound->Freq;
+      deepFound->Freq = newFoundFreq;
       walkCtx = walkCtx->getSuffix();
     } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag2);
     trailBound = ofallP1;
@@ -3050,7 +3049,7 @@ LABEL_165:
       }
       walkCtx->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
-      trailFound = FindAndBubble7_((byte*)trailStates, searchSym, &walkCtx->Flags, 1);
+      trailFound = FindAndBubble7_(trailStates, searchSym, &walkCtx->Flags, 1);
       trailState0Freq = trailStates[0].Freq;
       trailState1Freq = trailStates[1].Freq;
       *chain++ = (sqword)trailFound;
