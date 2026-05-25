@@ -3781,18 +3781,22 @@ LABEL_18:
                 .field<4, 4> ((byte)mixIdxA))];                // mixIdxA bits 4-7
               q29 = (sqword)bigSlotA;
               mixShiftA = mixDeltaA<0x200;
-              q33 = (sqword)(mixSlotA+2048);
-              // blend the two neighbour cells (mixSlotA - 2048 and + 2048)
-              // into the running (mixWeightA, mixFreqA) accumulators.
-              q32             = (sqword)(mixSlotA-2048);
-              mixWeightSavedA = mixSlotA[2048];
-              mixWeightA = ((mixWeightSavedA + *(mixSlotA-2048))            >> (mixShiftA+1)) + mixWeightA;
-              mixFreqA   = ((uint)(*((word*)mixSlotA+4098)
-                                 + *((word*)mixSlotA-4094))                 >> (mixShiftA+1)) + mixFreqA;
+              // blend the two neighbour cells (mixSlotA ± 2048 ints, where
+              // each cell is 2 ints = weight + freq) into (mixWeightA,
+              // mixFreqA). Freq is read as word at byte offset +4 inside
+              // each int-cell, i.e. ((word*)cell)[2].
+              int* mixUpA = mixSlotA + 2048;
+              int* mixDnA = mixSlotA - 2048;
+              q33 = (sqword)mixUpA;
+              q32 = (sqword)mixDnA;
+              mixWeightSavedA = mixUpA[0];
+              mixWeightA = ((mixWeightSavedA + mixDnA[0])           >> (mixShiftA+1)) + mixWeightA;
+              mixFreqA   = ((uint)(((word*)mixUpA)[2]
+                                 + ((word*)mixDnA)[2])              >> (mixShiftA+1)) + mixFreqA;
               sseCum = mixWeightA;
               sseTot = mixFreqA;
-              wDelta33 = RescaleAccum1_(mixSlotA + 2048, mixWeightSavedA, mixShiftA);
-              wDelta32 = RescaleAccum1_(mixSlotA - 2048, (uint)*(mixSlotA-2048), mixShiftA);
+              wDelta33 = RescaleAccum1_(mixUpA, mixWeightSavedA, mixShiftA);
+              wDelta32 = RescaleAccum1_(mixDnA, (uint)mixDnA[0],   mixShiftA);
               mixShiftLowA = *((word*)mixSlotA+3)<0x400u;
               mixShiftBSel = mixShiftA+mixShiftLowA;
               mixBaseAStride = &mixSlotA[-2*mixIdxA];
