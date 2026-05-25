@@ -353,36 +353,24 @@ dozens of times without a named constant.
 A few patterns remain that no human would write fresh:
 
 ```cpp
-// dummy.cpp:2668 — comma operator + assign-in-condition for triple-byte history check
-if (ssem3==ssem7
-    || (ssem11 = *(sseSlot-11), (byte)(ssem11+(byte)ssem3-2*(byte)ssem7))
-    || (byte)(*(sseSlot-15)+(byte)ssem7-2*ssem11)) {
-```
-
-```cpp
-// dummy.cpp:2614 — matchKey = sym + (matchHi << 8), wrapped in 3 nested casts
-matchKey = sym + (sqword)(int)((uint)matchHi<<8);
-```
-
-```cpp
-// dummy.cpp:3919-3920 — escape probability, multi-line expression with no intermediates
+// RealProcess line ~4015 — escape probability, multi-line expression with no intermediates
 result = (int)(16*(oneStateFreqCachedF*cumFreq + cumFreq - oneStateFreqCachedF*totFreq))
        / (int)(totFreq + totFreq*oneStateFreqCachedF);
 ```
 
 ```cpp
-// dummy.cpp:4423 — q34 slot read via word[3] in caller (no captured wDelta34 for this slot)
+// RealProcess LABEL_128 rewind — q34 read via word[3] in caller (no captured wDelta34)
 RewindPredictor_(q34, ((word*)q34)[3], rewindMult);
 ```
 
 ```cpp
-// dummy.cpp:2294 — promote NStates==0 → NStates==1, with foundSym packed into SummFreq
+// promote NStates==0 → NStates==1, with foundSym packed into SummFreq
 newCtx->NStates  = 0;
 newCtx->Flags    = newFlags;
 newCtx->SummFreq = newSym;   // SummFreq word doubles as (sym, freq=0) when NStates==0
 ```
 
-These are technically correct, but the local expression leaks the
+These are technically correct, but each local expression leaks the
 binary memory layout — the surrounding code reads each field
 through a named pointer, then drops back into byte arithmetic for
 the last assignment.
