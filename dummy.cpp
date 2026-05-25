@@ -4509,8 +4509,8 @@ sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sq
     if( SymCount ) break;
     if( statsCB ) statsResult = statsCB(outFile, File, 0); else statsResult = -1;
     SymCount = statsResult;
-    memset( SymMask, 0, 0x400 );
-    memset( SymLastCtx, 0, 0xC00 );
+    memset(SymMask, 0, sizeof(SymMask));
+    memset(SymLastCtx, 0, 0xC00);
     if( !statsResult ) {
       Interrupted = 1;
       return 0;
