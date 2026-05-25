@@ -1423,7 +1423,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
   if( CutOffCount ) {
     if( GlueCount )
       return 0;
-    textBufBytes = 12*reqUnits;
+    textBufBytes = UNIT_SIZE*reqUnits;
     if( UnitsStart-textBufBytes<=(qword)pText ) {
       return 0;
     } else {
@@ -1505,7 +1505,7 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
     --biggerSizeClass;
     biggerUnits = Indx2Units[biggerSizeClass];
     deltaUnits = sizeClass - biggerUnits;
-    bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + 12*biggerUnits), deltaUnits);
+    bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + UNIT_SIZE*biggerUnits), deltaUnits);
   }
   bList[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
 }
