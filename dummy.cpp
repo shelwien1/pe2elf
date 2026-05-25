@@ -1630,9 +1630,9 @@ sqword StartModelRare(int mode) {
       FoundSymbol = -1;
       HashSeed1 = -1;
       HashSeed2 = -1;
-      memset((int*)SseState2, 0x55u, 0x80000);
-      memset((int*)SseState3, 0x55u, 0x20000);
-      
+      memset(SseState2, 0x55u, 0x80000);
+      memset(SseState3, 0x55u, 0x20000);
+
       // Continuous initialization across secondary state arrays
       memset((byte*)SEE2_5 + 112, 0x55, 1008);
       SseCtx0[3] = 0x55555555;
@@ -1647,7 +1647,7 @@ sqword StartModelRare(int mode) {
 
       SymEpoch = 1;
       memset(MixWeight1, 0, 0x20000);
-      memset((int*)b16, 0, 0x20000);
+      memset(b16, 0, 0x20000);
 
       // Calculate predictor distributions for primary mix model spaces
       MixModel* mix1 = (MixModel*)MixWeight1;
@@ -1661,8 +1661,8 @@ sqword StartModelRare(int mode) {
         MixFreq1_1[4 * outerIdx] = 1024;
       }
 
-      memset((int*)d27, 0, 0x20000);
-      memset((int*)b19, 0, 0x20000);
+      memset(d27, 0, 0x20000);
+      memset(b19, 0, 0x20000);
 
       // Calculate distributions for secondary mix model spaces
       MixModel* mix2 = (MixModel*)&d27;
