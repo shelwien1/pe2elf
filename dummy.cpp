@@ -909,8 +909,6 @@ TARGET_SCALE_FALLBACK:
 
 // PPMII_STARTUP actually
 void InitTables() {
-  uint i,j,k;
-
   memset(SymFreqs,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
@@ -944,12 +942,12 @@ void InitTables() {
   memset( freqmap, 0, sizeof(freqmap) );
   memcpy( freqmap, freqtmp, sizeof(freqtmp) );
 
-  for( i=0; i < 5; ++i ) Indx2Units[0 + i] = 1 + i;
-  for( i=0; i < 3; ++i ) Indx2Units[5 + i] = 7 + 2*i;
-  for( i=0; i < 3; ++i ) Indx2Units[8 + i] = 14 + 3 * i;
-  for( i=0; i < 27; ++i) Indx2Units[11 + i] = 24 + 4 * i;
+  for( uint i=0; i < 5; ++i ) Indx2Units[0 + i] = 1 + i;
+  for( uint i=0; i < 3; ++i ) Indx2Units[5 + i] = 7 + 2*i;
+  for( uint i=0; i < 3; ++i ) Indx2Units[8 + i] = 14 + 3 * i;
+  for( uint i=0; i < 27; ++i) Indx2Units[11 + i] = 24 + 4 * i;
 
-  for( i=0,j=0; i < 0x80; ++i ) {
+  for( uint i=0,j=0; i < 0x80; ++i ) {
     if( Indx2Units[j] < i+1 ) j++;
     Units2Indx4[i] = j;
   }
@@ -959,7 +957,7 @@ void InitTables() {
   // 2.0661 + 1.4084*Sqrt[0.4681+i] also fits, and is a better fit for algorithm below
   int quantStepSize=1, stepRemaining=1;
   SymType[0] = 1; SymType[1] = 2;
-  for( i=2,j=2,k=2; i < 0x100; ++i ) {
+  for( uint i=2,j=2,k=2; i < 0x100; ++i ) {
     SymType[j] = k + 1;
     if( --stepRemaining==0 ) { ++k; stepRemaining = ++quantStepSize; }
     j = i + 1;
@@ -987,10 +985,10 @@ void InitTables() {
   BinMapTable[11] = 1u << 9; // 0x200, row 2 lane +3
   BinMapTable[15] = 3u << 9; // 0x600, row 3 lane +3
 
-  for( i=0,j=0; i < 0x80; i++)  { NextBinFreq[i] = j+1; if( i==RLQBounds[j]) j++; }
-  for( i=0,j=0; i < 0x100; i++) { SSE0QTable[i] = j+1;  if( i==SSE0QBounds[j] ) j++; }
-  for( i=0,j=0; i < 0x80; i++)  { SSE1QTable[i] = j;    if( i==SSE1QBounds[j] ) j++; }
-  for( i=0,j=0; i < 0x100; i++) { SEEQTable[i] = j;     if( i==SEEQBounds[j] ) j++; }
+  for( uint i=0,j=0; i < 0x80; i++)  { NextBinFreq[i] = j+1; if( i==RLQBounds[j]) j++; }
+  for( uint i=0,j=0; i < 0x100; i++) { SSE0QTable[i] = j+1;  if( i==SSE0QBounds[j] ) j++; }
+  for( uint i=0,j=0; i < 0x80; i++)  { SSE1QTable[i] = j;    if( i==SSE1QBounds[j] ) j++; }
+  for( uint i=0,j=0; i < 0x100; i++) { SEEQTable[i] = j;     if( i==SEEQBounds[j] ) j++; }
 }
 //--- #return
 //--- #include "subs_binescfreq2.inc"
