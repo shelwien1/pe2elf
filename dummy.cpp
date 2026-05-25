@@ -939,14 +939,17 @@ void InitTables() {
   }
   SymType[0xFF] = 24;
 
-  // this one is the actual SymType probably
-  for( i = 0; i < 64; ++i)   SSE0[i] = 0;
-  for( i = 64; i < 256; ++i) SSE0[i] = 0x80;
+  // SSE0: sym-class bit (0 for ASCII 0..63, 0x80 for high bytes). PE-variant
+  // equivalent of ppmd.cpp's SymType[256] = { 0 x64, 4 x192 } — different
+  // value, same role.
+  memset(SSE0,        0,    64);
+  memset(SSE0 + 64,   0x80, 256 - 64);
 
-  // or this one
-  SSE1[0] = 0; SSE1[1] = 2; SSE1[2] = 2;
-  for( i = 3; i <= 37; ++i) SSE1[i] = 4;
-  for( i = 38; i < 256; ++i) SSE1[i] = 6;
+  // SSE1: 4-band size-class table — first 3 entries are small, [3..37]
+  // medium, [38..] large.
+  SSE1[0] = 0;  SSE1[1] = 2;  SSE1[2] = 2;
+  memset(SSE1 + 3,    4,    38 - 3);
+  memset(SSE1 + 38,   6,    256 - 38);
 
   // BinMapTable: 16-entry uint table, indexed by (mixCtx2New & 0xF) in
   // SseSeed assembly. Rows [0..3]*4 + [0..2] are 0; only the +3 lane of each
