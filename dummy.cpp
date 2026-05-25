@@ -4343,23 +4343,27 @@ LABEL_59:
           char predBoostShiftF = centerWeightF<0x150;
           int  predWBVal = predWBF[1];
           uint predScaleAF = predWBVal+predWAVal;
-          uint predWAOldA = *predWBF;
           uint predScaledAF = (uint)(predWAVal*(sseEntryC2F+2))>>8;
           uint predScaledBF = (uint)(predWBVal*(sseEntryC2F+2))>>8;
           sqword predBoostF = (predScaleAF >= 0xC000) ? 24 : ((predScaleAF >> 11) & 0xFFFFFFFE);
-          uint predWBOldA = *predWAF;
           uint predTotEarlyF = (predScaledAF+predScaledBF >= 0x6000u) ? 24576u : (predScaledAF+predScaledBF);
           int predConstAF = (byte)b41[predBoostF];
           int predConstBF = (byte)b41[predBoostF+1];
-          uint predWPostF = ((predConstAF*predTotEarlyF+predConstBF*(predWAOldA+*predWAF))>>(predBoostShiftF+7))+mixCumFreqF;
+          // predWPostF mixes both cells' num-slots (predWBF[0] + predWAF[0])
+          // into the running mixCumFreqF accumulator.
+          uint predWPostF = ((predConstAF*predTotEarlyF+predConstBF*(*predWBF+*predWAF))>>(predBoostShiftF+7))+mixCumFreqF;
           char predShiftF = predBoostShiftF + (centerWeightF<0x48) + 3;
           uint predDenIncF = ((uint)(192*(predConstAF+predConstBF))>>predBoostShiftF)+mixCumWeightF;
           predDeltaNum = 0x3000u>>predShiftF;
           char predDenShiftF = predBoostShiftF+4;
           predDeltaDen = 0x3000u>>predDenShiftF;
-          *predWAF = predWBOldA-(predWBOldA>>predShiftF);
+          // each cell's num slot decays by (val >> predShiftF); den slot
+          // accumulates the cross-scaled residue. (The original cross-saved
+          // predWAOldA/predWBOldA temporaries weren't needed -- the two slots
+          // are independent.)
+          *predWAF   -= (*predWAF >> predShiftF);
           predWAF[1] -= (predScaledAF+7)>>predDenShiftF;
-          *predWBF = predWAOldA-(predWAOldA>>predShiftF);
+          *predWBF   -= (*predWBF >> predShiftF);
           predWBF[1] -= (predScaledBF+7)>>predDenShiftF;
           // blend the two neighbour cells (binMixCenter ± 0x8000 words; cell
           // layout: hits at [0], freq at [2]) into (mixCumFreqF,
