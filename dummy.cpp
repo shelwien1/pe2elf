@@ -3653,14 +3653,11 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int inputByte, epoch;
-  int nStatesP1Save;
+  int nStatesP1Save, cumFreqC, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
-  int cumFreqC;
-  int entryNStates;
   int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
   int cumWeightB, cumFreqB, escSymB;
-  int sseSum2A;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
   int sortPriorityC, sxNStatesC, sumFreqCacheC;
@@ -3669,8 +3666,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int escCandidate, seeIdxBase;
   byte flagsSaveA;
   STATE  **chainPtr;
-  sqword *chainEndE;
-  sqword *chainEndF, *sortRangeE, *sortLimitC;
+  sqword *chainEndE, *chainEndF, *sortRangeE, *sortLimitC;
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC, *preCommitMinCtx;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
