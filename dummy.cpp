@@ -1140,31 +1140,31 @@ sqword RescaleCtx(PPM_CONTEXT* ctx) {
   }
 
   // ---- step 2: top-down rescale + compact zero-freq slots to the top ------
-  byte* endPtr     = (byte*)states + 6 * totalCount;  // one past last
-  byte* lastSlot   = endPtr - 6;                       // last state ptr
+  STATE* endState  = states + totalCount;    // one past last
+  STATE* lastState = endState - 1;           // last state
   ctx->Flags    = 0;
   ctx->SummFreq = 0;
   int remaining = totalCount;
   do {
-    endPtr -= 6;
-    int newFreq = (bias + mask * endPtr[1]) >> shift;
-    endPtr[1] = (byte)newFreq;
+    --endState;
+    int newFreq = (bias + mask * endState->Freq) >> shift;
+    endState->Freq = (byte)newFreq;
     ctx->SummFreq += (byte)newFreq;
-    if (endPtr[1]) {
-      ctx->Flags |= SSE0[*endPtr];
+    if (endState->Freq) {
+      ctx->Flags |= SSE0[endState->Symbol];
     } else {
       // Shift STATEs (k+1..N) down to (k..N-1); mark last as removed.
-      for (STATE* p = (STATE*)endPtr; p < (STATE*)lastSlot; ++p) {
+      for (STATE* p = endState; p < lastState; ++p) {
         *p = p[1];
       }
-      lastSlot[1] = 0;
+      lastState->Freq = 0;
     }
     --remaining;
   } while (remaining);
 
   // ---- step 3a: top slot survived -> just record Flags|=0x40 and return ---
-  if (lastSlot[1]) {
-    sqword resultFast = lastSlot[1];
+  if (lastState->Freq) {
+    sqword resultFast = lastState->Freq;
     ctx->Flags |= 0x40;
     q9 = (sqword)Indx2Ptr(ctx->iStates);
     return resultFast;
@@ -1174,8 +1174,8 @@ sqword RescaleCtx(PPM_CONTEXT* ctx) {
   int dropped = 0;
   do {
     ++dropped;
-    lastSlot -= 6;
-  } while (!lastSlot[1]);
+    --lastState;
+  } while (!lastState->Freq);
 
   int newNStates = (byte)(NStates0 - dropped);
   ctx->NStates = (byte)newNStates;
