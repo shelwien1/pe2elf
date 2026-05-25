@@ -2654,8 +2654,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    depth5;           // 5*OrderFall counter (decreasing)
   int    depth3;           // 3*OrderFall counter (decreasing)
   int    mixWeight;        // 2, halved each step
-  uint   mixFlag1;         // computed from NStates / SummFreq
-  uint   mixFlag2;         // copy of mixFlag1 (the loop guard)
   byte   newFoundFreq;     // do-while loop output, read in loop guard
 
   // deep find-and-bubble path
@@ -3004,12 +3002,12 @@ LABEL_94:
       goto LABEL_165;
     }
     mixWeight = 2;
+    uint mixFlag;
     if( minNStates )
       // sign-bit-extract idiom: 1 if SummFreq < 45*minNStates, else 0.
-      mixFlag1 = ((uint)minCtx->SummFreq < (uint)(45*minNStates));
+      mixFlag = ((uint)minCtx->SummFreq < (uint)(45*minNStates));
     else
-      mixFlag1 = orderBumpVariance==0;
-    mixFlag2 = mixFlag1;
+      mixFlag = orderBumpVariance==0;
     ofallSaved = OrderFall;
     ofallP3 = OrderFall+3;
     ofallP1 = OrderFall+1;
@@ -3047,7 +3045,7 @@ LABEL_94:
       newFoundFreq = mixBoostB + deepFound->Freq;
       deepFound->Freq = newFoundFreq;
       walkCtx = walkCtx->getSuffix();
-    } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag2);
+    } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag);
     trailBound = ofallP1;
     ofall = ofallSaved;
 LABEL_201:
