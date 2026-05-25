@@ -2588,10 +2588,12 @@ qword MixUpdate(byte* ctxBytes) {
   wQ23 = (uint*)q23;
   wpQ24 = (int*)q24;
   wpQ25 = (int*)q25;
+  word* binMixCenterMU = (word*)q21;
   prevSymCount = SymCount;
   sc           = SymCount - 1;
   SymCount     = sc;
-  *(uint*)q21 += *(word*)(q21 + 6);
+  // Commit binMixCenter's predExpand counter (word[3]) into its uint accumulator.
+  *(uint*)binMixCenterMU += binMixCenterMU[3];
   *wQ17       += binMixDeltaHi;
   *wQ20       += binMixDeltaLo;
   *wQ22       += predBaseDeltaA;
