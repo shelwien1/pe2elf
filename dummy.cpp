@@ -4326,7 +4326,7 @@ LABEL_59:
         if( centerWeightF<=8 ) {
           sseTot = mixCumWeightF;
           sseCum = mixCumFreqF;
-      } else {
+        } else {
           int* predWBase = &PredWeight[512*(qword)(byte)SEEQTable[candProbBF]+2*(uint)(sparseHitsF<<6)];
           predWAF = &predWBase[2*(seeIdxF&0x1F)];
           int  predWAVal = predWAF[1];
@@ -4354,26 +4354,34 @@ LABEL_59:
           predWAF[1] -= (predScaledAF+7)>>predDenShiftF;
           *predWBF = predWAOldA-(predWAOldA>>predShiftF);
           predWBF[1] -= (predScaledBF+7)>>predDenShiftF;
-          // blend the two neighbour cells (binMixCenter ± 0x8000) into
-          // (mixCumFreqF, mixCumWeightF) for the PredWeight stage output.
-          q17 = (sqword)(binMixCenter+0x8000);
-          q20 = (sqword)(binMixCenter-0x8000);
-          mixCumFreqF   = ((*(binMixCenter-0x8000) + binMixCenter[0x8000])     >> 3) + predWPostF;
-          mixCumWeightF = ((uint)(binMixCenter[32770] + *(binMixCenter-32766)) >> 3) + predDenIncF;
+          // blend the two neighbour cells (binMixCenter ± 0x8000 words; cell
+          // layout: hits at [0], freq at [2]) into (mixCumFreqF,
+          // mixCumWeightF) for the PredWeight stage output.
+          word* binUp8F = binMixCenter + 0x8000;
+          word* binDn8F = binMixCenter - 0x8000;
+          q17 = (sqword)binUp8F;
+          q20 = (sqword)binDn8F;
+          mixCumFreqF   = ((binUp8F[0] + binDn8F[0])               >> 3) + predWPostF;
+          mixCumWeightF = ((uint)(binUp8F[2] + binDn8F[2])         >> 3) + predDenIncF;
           sseCum = mixCumFreqF;
           sseTot = mixCumWeightF;
           {
             char predDoExpandF = (centerWeightF<0x30)+1;
-            binMixDeltaHi = RescaleAccum2_(binMixCenter + 0x8000, predDoExpandF);
-            binMixDeltaLo = RescaleAccum2_(binMixCenter - 0x8000, predDoExpandF);
+            binMixDeltaHi = RescaleAccum2_(binUp8F, predDoExpandF);
+            binMixDeltaLo = RescaleAccum2_(binDn8F, predDoExpandF);
           }
           uint predExpA = binMixCenter[3];
           if( predExpA>0x48 ) {
-            q22 = (sqword)(binMixCenter+0x10000);
-            q18 = (sqword)(binMixCenter-0x10000);
+            // Outer cells (binMixCenter ± 0x10000 words) accumulate the
+            // expansion delta when the central freq's predExpand counter is
+            // beyond the threshold.
+            word* binUp16F = binMixCenter + 0x10000;
+            word* binDn16F = binMixCenter - 0x10000;
+            q22 = (sqword)binUp16F;
+            q18 = (sqword)binDn16F;
             char predExpShiftF = (predExpA<0x1E0)+(predExpA<0x3D0)+1;
-            predBaseDeltaA = RescaleAccum2_(binMixCenter + 0x10000, predExpShiftF);
-            predBaseDeltaB = RescaleAccum2_(binMixCenter - 0x10000, predExpShiftF);
+            predBaseDeltaA = RescaleAccum2_(binUp16F, predExpShiftF);
+            predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
           }
         }
         sseMatchSlotF = &SseMatch[(int)(SseIdx{}
