@@ -1777,7 +1777,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   byte* baseCtxAddr;
   STATE** chainPtrEnd;
   sqword result;
-  int newCtxPacked;
   int newCtxBytePos;
   heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
@@ -1829,17 +1828,18 @@ LABEL_15:
     return (uint)(seedCtx-heapNull);
   chainEndSaved = chainEnd;
   newCtxAddr = seedCtx;
-  LOBYTE(newCtxPacked) = 0;
   baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
-  HIWORD(newCtxPacked) = *baseCtxAddr;
+  byte newSym   = *baseCtxAddr;
+  byte newFlags = ((byte*)SSE0)[newSym];
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
-  BYTE1(newCtxPacked) = ((byte*)SSE0)[*baseCtxAddr];
   while (true) {
     PPM_CONTEXT* newCtx = (PPM_CONTEXT*)AllocContext_();
     if (!newCtx) break;
-    // Write the packed NStates+Flags+SummFreq dword, then iStates and iSuffix.
-    *(uint*)newCtx = newCtxPacked;
+    // Fresh binary context: NStates=0, SummFreq packs (Symbol=newSym, Freq=0).
+    newCtx->NStates  = 0;
+    newCtx->Flags    = newFlags;
+    newCtx->SummFreq = newSym;
     newCtx->iStates = newCtxBytePos;
     newCtx->iSuffix = newCtxAddr - heapNull;
     newCtxAddr = (int)(uintptr_t)newCtx;
