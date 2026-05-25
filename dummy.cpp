@@ -1769,7 +1769,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   uint suffixIdx0;
   sqword ctxAddr;
   int sym;
-  byte* i;
   int stateSuccIdx;
   STATE** chainEnd;
   STATE** chainEndSaved;
@@ -1810,7 +1809,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     } else {
       state = &pc->oneState();
     }
-    i = (byte*)state;
     stateSuccIdx = state->iSuccessor;
     if (stateSuccIdx != seedSuccIdx) break;
     suffixIdx0 = ((PPM_CONTEXT*)ctxAddr)->iSuffix;
