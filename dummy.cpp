@@ -3554,7 +3554,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   short orderCtxSeedSave;
   uint sumFreqF, totFreq, subRange, sumFreqLimit;
   sqword result, *chainEndE, *chainEndF;
-  STATE **chainPtr, *localFoundState, *walkStateIterE, *firstStateE;
+  STATE **chainPtr, *localFoundState, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
@@ -3991,8 +3991,8 @@ LABEL_128:
         remStatesE = freqDeltaE-1;
         wDelta34 = 0;
       }
-      walkStateIterE = MinContext->getStates() - 1;
       if( remStatesE ) {
+        STATE*  walkStateIterE = MinContext->getStates() - 1;
         sqword* sortRangeE = chainEndE;
         sqword* sortLimitC;
         int     sortPriorityC;
