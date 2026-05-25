@@ -2555,8 +2555,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    savedD90Idx;      // d90[epochBit] before update
   sqword newD90Idx;        // new value committed to d90[epochBit]
   bool   otherPar;         // !epochBit
-  sqword oldD90IdxA;       // d90[!epochBit]
-  sqword oldD90IdxB;       // d90[!epochBit] (re-read)
   sqword savedD91;
   sqword newD91;
   int    b33Saved;          // captured b33[newD90Idx] before BijectPairUpdate_
@@ -2813,18 +2811,17 @@ LABEL_94:
   newD90Idx = (word)(16*(word)d90[epochBit]+((sym>>2)&0xFFFC))&0xFFFC;
   d90[epochBit] = newD90Idx;
   otherPar = !epochBit;
-  oldD90IdxA = (uint)d90[otherPar];
-  b33Saved = (byte)b33[newD90Idx];                                     // capture before helper write
-  BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90IdxA, sym, sc);
+  uint oldD90Idx = (uint)d90[otherPar];      // BijectPairUpdate_ doesn't touch d90, so this is reused below
+  b33Saved = (byte)b33[newD90Idx];           // capture before BijectPairUpdate_ writes
+  BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90Idx,    sym, sc);
   hintSymBiject = b33Saved;
 
   savedD91 = (uint)symHalfHistory;
   newD91 = (word)(((sym>>4)&0xFFFE)+8*symHalfHistory)&0xFFFE;
-  BijectPairUpdate_(b35, b34, /*read*/newD91, /*write*/savedD91, sym, sc);
+  BijectPairUpdate_(b35, b34, /*read*/newD91,    /*write*/savedD91,    sym, sc);
   symHalfHistory = newD91;
 
-  oldD90IdxB = (uint)d90[otherPar];
-  BijectPairUpdate_(b36, b37, /*read*/oldD90IdxB, /*write*/savedD90Idx, sym, sc);
+  BijectPairUpdate_(b36, b37, /*read*/oldD90Idx, /*write*/savedD90Idx, sym, sc);
   if (mixScaleCntr) {
     BijectCellInsert_((byte*)bijectCellPtr, sym);
     bmPtr = sseSlot + 1;
