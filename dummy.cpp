@@ -3569,7 +3569,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE  **chainPtr;
   sqword *chainEndE, *chainEndF, *sortRangeE, *sortLimitC;
   STATE *localFoundState, *walkStateIterE, *firstStateE;
-  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC, *preCommitMinCtx;
+  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
   uint totFreqC, subRangeC;
   uint seeIndex, suffixNStates;
@@ -4206,7 +4206,7 @@ LABEL_335:
         if( f_DEC ) rc.DecodeNormalize(inFile); else rc.EncodeNormalize(outFile);
 LABEL_59:
         localFoundState = *chainPtr;
-        preCommitMinCtx = MinContext;
+        PPM_CONTEXT* preCommitMinCtx = MinContext;
         CtxChainEnd = (sqword)(chainPtr+1);
         // Reset the PredBase{A,B}G and BinMix{Hi,Lo}G slots to d27 (the
         // dummy/zero sink) so subsequent RescaleAccum2_ stack writes either
