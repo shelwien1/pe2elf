@@ -3565,15 +3565,11 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword *chainEndE, *chainEndF;
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
-  uint mixDeltaA, sumFreqF;
+  uint sumFreqF;
   uint totFreq, subRange;
   uint sumFreqLimit;
-  uint mixFreqA, mixWeightA;
   char descendFlags;
-  sqword mixIdxA;
   sqword result;
-  sqword sseQTableIdxA;
-  int *mixSlotA;
   short orderCtxSeedSave;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
@@ -3664,6 +3660,9 @@ LABEL_18:
           uint cumFreqDivA = 0;
           uint maskFlagPrev = 0;
           uint maskFlagEsc  = 0;
+          uint mixWeightA = 0, mixFreqA = 0, mixDeltaA = 0;
+          sqword mixIdxA = 0, sseQTableIdxA = 0;
+          int*   mixSlotA = nullptr;
           RSContext = ((STATE*)CtxChain[0])->Symbol;
           SymLastCtx[(byte)b27[RSContext+(Order1Ctx<<8)]] = epoch;
           q29 = q30 = q31 = q32 = q33 = (sqword)d27;
