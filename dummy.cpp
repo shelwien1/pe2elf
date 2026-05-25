@@ -2418,6 +2418,35 @@ inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
   }
 }
 
+// helper 4c: emit hint stamps around two predicted bytes (predA, predB).
+// Used by MixUpdate's b1/b2/b3 prediction ladder when the third-difference
+// (b1+b3-2*b2) is non-zero — the two surrounding bytes get +/-1, +/-2
+// stamps in the appropriate SymLastCtx / MatchPosBySym banks.
+inline void EmitDeltaPredictionHints_(byte predA, byte predB, int sc) {
+  SymLastCtx[(byte)(predB+2)]    = sc;
+  SymLastCtx[(byte)(predB-2)]    = sc;
+  SymLastCtx[(byte)(predB+1)]    = sc;
+  SymLastCtx[predB]              = sc;
+  SymLastCtx2[(byte)(predA+2)]   = sc;
+  MatchPosBySym[(byte)(predA-2)] = sc;
+  MatchPosBySym[(byte)(predA+1)] = sc;
+  MatchPosBySym[(byte)(predA-1)] = sc;
+  MatchPosBySym[predA]           = sc;
+}
+
+// helper 4d: emit hint stamps around a single predicted byte. Used by
+// MixUpdate's b1/b2/b3 ladder when the third-difference is zero (the
+// predictor agrees on a single byte: pred = 2*b1 - b2).
+inline void EmitFlatPredictionHints_(byte pred, int sc) {
+  SymLastCtx[(byte)(pred+1)] = sc;
+  SymLastCtx[(byte)(pred-1)] = sc;
+  SymLastCtx[(byte)(pred+2)] = sc;
+  SymLastCtx[(byte)(pred-2)] = sc;
+  MatchPosBySym[(byte)(pred+1)] = sc;
+  MatchPosBySym[(byte)(pred-1)] = sc;
+  MatchPosBySym[pred]           = sc;
+}
+
 // helper 4b: derive the (matchHashSy, matchPosAge, matchEpoch2) triple from
 // a MatchPosTable hit. If the entry is older than 0x20000 epochs, all three
 // outputs saturate to 0x20000. Otherwise we hash through MatchPosHash and
@@ -2851,15 +2880,7 @@ LABEL_94:
             if( (byte)(predDelta+19)<=0x26u ) {
               predA = 2*b1-b2;
               predB = predA-predDelta;
-              SymLastCtx[(byte)(predB+2)] = sc;
-              SymLastCtx[(byte)(predB-2)] = sc;
-              SymLastCtx[(byte)(predB+1)] = sc;
-              SymLastCtx[predB] = sc;
-              SymLastCtx2[(byte)(predA+2)] = sc;
-              MatchPosBySym[(byte)(predA-2)] = sc;
-              MatchPosBySym[(byte)(predA+1)] = sc;
-              MatchPosBySym[(byte)(predA-1)] = sc;
-              MatchPosBySym[predA] = sc;
+              EmitDeltaPredictionHints_(predA, predB, sc);
             }
           } else {
             FoundSymbol = bmCell[0];
@@ -2867,13 +2888,7 @@ LABEL_94:
         } else {
           FoundSymbol = (byte)(2*b1-b2);
           PrevSymbol  = FoundSymbol;
-          SymLastCtx[(byte)(FoundSymbol+1)] = sc;
-          SymLastCtx[(byte)(FoundSymbol-1)] = sc;
-          SymLastCtx[(byte)(FoundSymbol+2)] = sc;
-          SymLastCtx[(byte)(FoundSymbol-2)] = sc;
-          MatchPosBySym[(byte)(FoundSymbol+1)] = sc;
-          MatchPosBySym[(byte)(FoundSymbol-1)] = sc;
-          MatchPosBySym[FoundSymbol] = sc;
+          EmitFlatPredictionHints_(FoundSymbol, sc);
         }
       }
     } else {
