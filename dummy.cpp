@@ -954,11 +954,11 @@ void InitTables() {
   // BinMapTable: 16-entry uint table, indexed by (mixCtx2New & 0xF) in
   // SseSeed assembly. Rows [0..3]*4 + [0..2] are 0; only the +3 lane of each
   // row carries the (1, 2, 1, 3) << 9 weight.
-  for (uint i = 0; i < 16; ++i) BinMapTable[i] = 0;
-  BinMapTable[0*4+3] = 1u << 9; // 0x200
-  BinMapTable[1*4+3] = 2u << 9; // 0x400
-  BinMapTable[2*4+3] = 1u << 9; // 0x200
-  BinMapTable[3*4+3] = 3u << 9; // 0x600
+  memset(BinMapTable, 0, sizeof(BinMapTable));
+  BinMapTable[3]  = 1u << 9; // 0x200, row 0 lane +3
+  BinMapTable[7]  = 2u << 9; // 0x400, row 1 lane +3
+  BinMapTable[11] = 1u << 9; // 0x200, row 2 lane +3
+  BinMapTable[15] = 3u << 9; // 0x600, row 3 lane +3
 
   for( i=0,j=0; i < 0x80; i++)  { NextBinFreq[i] = j+1; if( i==RLQBounds[j]) j++; }
   for( i=0,j=0; i < 0x100; i++) { SSE0QTable[i] = j+1;  if( i==SSE0QBounds[j] ) j++; }
