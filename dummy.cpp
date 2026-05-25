@@ -653,9 +653,12 @@ struct SseIdx {
   constexpr operator uint() const      { return val; }
 };
 
-// 1. Maximum Order boundary definition
-// Deduced from the maximum path depth condition check: `if (path_depth < 32)`
-constexpr int MAX_O = 128;
+// Upper bound on PPMContextWalk's path[] buffer. Deduced from the path-depth
+// condition checks (`if (path_depth >= 32)` etc.) — the buffer needs only
+// to be larger than the deepest path the walk can produce. Distinct from
+// ppmd.cpp's MAX_O = 16 (max model order), which here is the dynamic
+// MaxOrder global instead.
+constexpr int PATH_BUF_MAX = 128;
 
 // 2. MaxContext definition implemented via an lvalue reference mapping to MaxContext0
 // #define MaxContext (*(PPM_CONTEXT**)&MaxContext0)
@@ -668,7 +671,7 @@ void BinEscFreq(PPM_CONTEXT* pc);
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
 static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffixNStates, int* outMixCtx, sqword* outSummFreqPtr, int* outSparseFlags) {
   // Collect path context history down from the current maximum context
-  PPM_CONTEXT* path[MAX_O];
+  PPM_CONTEXT* path[PATH_BUF_MAX];
   int path_depth = 0;
 
   PPM_CONTEXT* curr = MaxContext;
