@@ -1756,12 +1756,9 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   sqword heapNull;
   uint seedSuccIdx;
   STATE** chainPtr;
-  int curSuccIdx;
-  uint ctxSuffixIdx;
   STATE* foundStateB;
   uint suffixIdx0;
   sqword ctxAddr;
-  int sym;
   int stateSuccIdx;
   heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
@@ -1770,12 +1767,12 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   seedSuccIdx = (*chainStart)->iSuccessor;
   chainPtr = chainStart;
   while (1) {
-    curSuccIdx = (*chainPtr)->iSuccessor;
+    int curSuccIdx = (*chainPtr)->iSuccessor;
     if (curSuccIdx != seedSuccIdx) {
       seedCtx = HeapNull + curSuccIdx;
       goto LABEL_15;
     }
-    ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
+    uint ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
     ++chainPtr;
     if (!ctxSuffixIdx) goto LABEL_15;
     if ((qword)chainPtr >= CtxChainEnd) break;
@@ -1789,7 +1786,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
     STATE* state;
     if (pc->NStates) {
-      sym = foundStateB->Symbol;
+      int sym = foundStateB->Symbol;
       state = pc->getStates();
       while (state->Symbol != sym) state++;
     } else {
