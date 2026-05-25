@@ -3574,6 +3574,21 @@ inline void RewindPredictor_(sqword slotAddr, int delta, int mult) {
   *(uint*)slotAddr       += (uint)(delta * mult);
 }
 
+// Build the sseMatch cascade index used in both region A (binary coder) and
+// region F (per-candidate loop). The only varying input is the symbol; the
+// remaining inputs (recentSym, MixCtx, matchPosAge, FoundSymbol, MixScale,
+// mixScaleCntr) are file-scope globals.
+inline int SseMatchIdxBuild_(int sym) {
+  return (int)SseIdx{}
+    .bits <1, 8>  (sym)                              // bits 1-8: candidate sym
+    .bits <9, 8>  (recentSym)                        // bits 9-16: recent matched sym
+    .bit  <17>    (MixCtx)                           // MixCtx is 0/1
+    .bit  <18>    ((uint)matchPosAge < 0x78)
+    .bit  <19>    (sym == FoundSymbol)
+    .bit  <20>    (MixScale < (uint)mixScaleCntr)
+    .val;
+}
+
 // Build the sse2 cascade index used in both region A (binary coder) and
 // region F (per-candidate loop). Same indexing rule; the only varying
 // inputs are the symbol and the (prevWeight, prevTot) for the bit<13>
@@ -3972,13 +3987,7 @@ LABEL_58:
       wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
       wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
-    sseMatchSlotA = &SseMatch[(int)(SseIdx{}
-        .bits <1, 8>  (escSymB)                          // bits 1-8: candidate sym
-        .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
-        .bit  <17>    (MixCtx)                           // MixCtx is 0/1
-        .bit  <18>    ((uint)matchPosAge < 0x78)
-        .bit  <19>    (escSymB == FoundSymbol)
-        .bit  <20>    (MixScale < (uint)mixScaleCntr))];
+    sseMatchSlotA = &SseMatch[SseMatchIdxBuild_(escSymB)];
     sseMatchSlot = sseMatchSlotA;
     SseMatchStep_(sseMatchSlotA, (int)(60416LL*cumFreqB/cumWeightB));
     sseSum2A = sseCum;
@@ -4406,13 +4415,7 @@ LABEL_59:
             predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
           }
         }
-        sseMatchSlotF = &SseMatch[(int)(SseIdx{}
-            .bits <1, 8>  (candSymbol)                       // bits 1-8: candidate sym
-            .bits <9, 8>  (recentSym)                              // bits 9-16: recent matched sym (recentSym)
-            .bit  <17>    (MixCtx)                           // MixCtx is 0/1
-            .bit  <18>    ((uint)matchPosAge < 0x78)
-            .bit  <19>    (candSymbol == FoundSymbol)
-            .bit  <20>    (MixScale < (uint)mixScaleCntr))];
+        sseMatchSlotF = &SseMatch[SseMatchIdxBuild_(candSymbol)];
         sseMatchSlot = sseMatchSlotF;
         SseMatchStep_(sseMatchSlotF, (int)(60416LL*mixCumFreqF/mixCumWeightF));
         int cumWeightF = sseCum;
