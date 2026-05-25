@@ -3574,6 +3574,34 @@ inline void RewindPredictor_(sqword slotAddr, int delta, int mult) {
   *(uint*)slotAddr       += (uint)(delta * mult);
 }
 
+// Build OrderCtxSeed in both region B (binary coder) and region F
+// (per-candidate loop). Both use the same 14-bit predicate ladder over a
+// candidate symbol plus carried bits. The diverging inputs:
+//   sym          : currentSymbol (B) or candSymbol (F)
+//   matchCtxHi   : MatchCtxHi (B, live)  or matchCtxHiSave (F, snapshot)
+//   sparseFlag   : sparseFlags (B, from PPMContextWalk)  or sparseHitsF (F)
+//   carriedFrom  : OrderCtxSeed itself (B) or orderCtxSeedSave (F snapshot)
+//   freq, hits   : (mixFreqB, mixHitsB) (B) or (freq0F, hitsF) (F)
+inline uint OrderCtxSeedBuild_(int sym, int matchCtxHi, int sparseFlag,
+                               int carriedFrom, uint freq, uint hits) {
+  return SseIdx{}
+    .bit  <0>    (sym == hintSymB31)
+    .bit  <1>    (sym == hintSymB29)
+    .bit  <2>    (sym == hintSymBiject)
+    .bit  <3>    (sym == b31Key)
+    .bit  <4>    (sym == Order1Ctx)
+    .field<5, 3> (sym)                                   // bits 5-7 of the sym
+    .bit  <8>    (sym == matchHintByte)
+    .field<9, 1> (carriedFrom)                           // bit  9    carried
+    .field<10,1> ((word)recentSym - (word)sym)           // bit 10    sign trick
+    .field<11,1> ((word)sym - (word)matchCtxHi)          // bit 11    sign trick
+    .bit  <12>   (sparseFlag)
+    .field<13,3> (carriedFrom)                           // bits 13-15 carried
+    .bits <16,2> ((freq < (uint)(56*hits))
+                + (freq < (uint)( 6*hits)))              // bits 16-17 hits/freq band
+    .val;
+}
+
 // Build the sseMatch cascade index used in both region A (binary coder) and
 // region F (per-candidate loop). The only varying input is the symbol; the
 // remaining inputs (recentSym, MixCtx, matchPosAge, FoundSymbol, MixScale,
@@ -3920,21 +3948,9 @@ LABEL_58:
     sseTot = mixFreqB;
     sse2DenDelta = mixHitsB;
     sse2NumDelta = mixFreqB;
-    OrderCtxSeed = SseIdx{}
-      .bit  <0>    (currentSymbol == hintSymB31)
-      .bit  <1>    (currentSymbol == hintSymB29)
-      .bit  <2>    (currentSymbol == hintSymBiject)
-      .bit  <3>    (currentSymbol == b31Key)
-      .bit  <4>    (currentSymbol == Order1Ctx)
-      .field<5, 3> (currentSymbol)                              // bits 5-7 of the symbol
-      .bit  <8>    (currentSymbol == matchHintByte)
-      .field<9, 1> (OrderCtxSeed)                               // bit  9     carried
-      .field<10,1> ((word)recentSym - (word)currentSymbol)            // bit 10    sign trick (subtraction underflow)
-      .field<11,1> ((word)currentSymbol - (word)MatchCtxHi)     // bit 11    sign trick
-      .bit  <12>   (sparseFlags)
-      .field<13,3> (OrderCtxSeed)                               // bits 13-15 carried
-      .bits <16,2> ((mixFreqB < (uint)(56*mixHitsB))
-                  + (mixFreqB < (uint)( 6*mixHitsB)));          // bits 16-17 hits/freq ratio band
+    OrderCtxSeed = OrderCtxSeedBuild_(currentSymbol, (int)MatchCtxHi,
+                                      sparseFlags, OrderCtxSeed,
+                                      (uint)mixFreqB, (uint)mixHitsB);
     sse1SlotB = &Sse1[2*OrderCtxSeed];
     sse1Slot = sse1SlotB;
     Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
@@ -4330,21 +4346,9 @@ LABEL_59:
         sse2DenDelta = hitsF;
         sse2NumDelta = freq0F;
         // OrderCtxSeed composite for the per-candidate Sse1 table lookup.
-        OrderCtxSeed = SseIdx{}
-          .bit  <0>    (candSymbol == hintSymB31)              // matches b31 hint
-          .bit  <1>    (candSymbol == hintSymB29)              // matches b29 hint
-          .bit  <2>    (candSymbol == hintSymBiject)              // matches BijectMap hint
-          .bit  <3>    (candSymbol == b31Key)              // matches MatchPosHash hint
-          .bit  <4>    (candSymbol == Order1Ctx)        // matches order-1 context
-          .field<5, 3> (candSymbol)                     // high 3 bits of the candidate sym
-          .bit  <8>    (candSymbol == matchHintByte)              // matches sparse-submodel hint
-          .field<9, 1> (orderCtxSeedSave)               // carried from outer
-          .field<10,1> ((word)recentSym - (word)candSymbol)   // delta-from-recentSym sign trick
-          .field<11,1> ((word)candSymbol - matchCtxHiSave) // delta-from-prev sign trick
-          .bit  <12>   (sparseHitsF)                    // sparse-submodel hint
-          .field<13,3> (orderCtxSeedSave)               // carried from outer
-          .bits <16,2> ((freq0F < (uint)(56*hitsF))
-                      + (freq0F < (uint)( 6*hitsF)));   // hits/freq ratio band
+        OrderCtxSeed = OrderCtxSeedBuild_(candSymbol, matchCtxHiSave,
+                                          sparseHitsF, orderCtxSeedSave,
+                                          (uint)freq0F, (uint)hitsF);
         sse1SlotF = &Sse1[2*OrderCtxSeed];
         sse1Slot = sse1SlotF;
         int mixCumWeightF, mixCumFreqF;
