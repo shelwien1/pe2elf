@@ -4488,8 +4488,6 @@ int RealEncode(FILE* outFile, FILE* inFile) {
 //--- #include "stats.inc"
 
 sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sqword), int initMode) {
-  int statsResult;
-
   if( !SubAllocatorSize ) return 0;
 
   if( Interrupted ) {
@@ -4503,7 +4501,7 @@ sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sq
   while( 1 ) {
     RealEncode(File, outFile);
     if( SymCount ) break;
-    if( statsCB ) statsResult = statsCB(outFile, File, 0); else statsResult = -1;
+    int statsResult = statsCB ? statsCB(outFile, File, 0) : -1;
     SymCount = statsResult;
     memset(SymMask, 0, sizeof(SymMask));
     // Clear SymLastCtx + SymLastCtx2 + MatchPosBySym (the three aliased
@@ -4523,8 +4521,6 @@ sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sq
 }
 
 sqword PPMIIDecode(FILE* inFile, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sqword), int initMode) {
-  int statsResult;
-
   if( !SubAllocatorSize ) return 0;
 
   if( Interrupted ) {
@@ -4540,7 +4536,7 @@ sqword PPMIIDecode(FILE* inFile, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, 
 
     if( SymCount ) break;
 
-    if( statsCB ) statsResult = statsCB(inFile, outFile, 0); else statsResult = -1;
+    int statsResult = statsCB ? statsCB(inFile, outFile, 0) : -1;
 
     SymCount = statsResult;
 
