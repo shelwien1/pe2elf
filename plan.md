@@ -517,9 +517,13 @@ PE stream format, not a target for un-doing.
 
 The ppmd.cpp names that **should** propagate into dummy.cpp where the
 mapping is exact: `MAX_O`, `UNIT_SIZE`, `N_INDEXES`, `MAX_FREQ`
-(enums match), `H_BITS`/`H_SHIFT` for the `sseState3Hash`
-arithmetic, the `ROUND0`/`ROUND1` constants if any of the SSE0/SSE1
-arithmetic actually uses them.
+(all already in the constants enum), `MEM_DIVISOR` (now propagated to
+PPMIIDeleteModel / StartSubAllocator). Skip `H_BITS`/`H_SHIFT` because
+dummy's `sseState3Hash` uses a 17-bit mask where ppmd uses 15-bit —
+the values aren't interchangeable. `ROUND0`/`ROUND1` would propagate
+if the SSE0/SSE1 arithmetic referenced them; dummy's cells use
+different rescale math (the SseScale1/SseScale2 helpers) so the
+constants don't appear directly.
 
 The names that **should not** propagate: anything starting with
 `Sse1` / `SseMatch` / `Sse2` / `Sse3` / `MatchPosTable` /
