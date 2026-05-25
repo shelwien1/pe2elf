@@ -3554,7 +3554,7 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int nStatesP1Save, cumFreqC, entryNStates, sseSum2A;
+  int nStatesP1Save, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
@@ -4359,7 +4359,7 @@ LABEL_59:
                                                        (uint)sse2IdxF, sse2Counter,
                                                        (uint)sse2HistByteF)];
         sse3Slot = sse3SlotF;
-        cumFreqC = sseCum;
+        int cumFreqC = sseCum;
         Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
         uint totFreqC = sseTot;
         uint subRangeC = rc.getSubRange(cumFreqC, totFreqC);
