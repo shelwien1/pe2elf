@@ -2706,7 +2706,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   sqword trailStatesIdx;
   byte   trailFlags;
   STATE* trailStates;
-  STATE* trailFound;
 
   STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
@@ -3109,7 +3108,7 @@ LABEL_165:
       RefreshIfRank0Empty_(walkCtx, trailStatesIdx, trailFlags, trailStates, (sqword)chain);
       walkCtx->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
-      trailFound = FindAndBubble7_(trailStates, searchSym, &walkCtx->Flags, 1);
+      STATE* trailFound = FindAndBubble7_(trailStates, searchSym, &walkCtx->Flags, 1);
       *chain++ = (sqword)trailFound;
       if ((uint)(trailStates[0].Freq + trailStates[1].Freq) > 0x5F)
         break;
