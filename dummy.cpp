@@ -3074,16 +3074,13 @@ sqword PPMIIGetCurrentModelSize() {
   return result;
 }
 
-sqword StartSubAllocator(uint memsize_mb, int a2_order, int a3) {
-  int maxOrderArg;
-  size_t memsize_b;
-  maxOrderArg = a2_order;
+sqword StartSubAllocator(uint memsize_mb, int order, int cutOff) {
   if( !memsize_mb ) return 0;
   if( memsize_mb>0xFFF ) return 0;
-  if( a2_order<2 ) return 0;
-  if( a2_order>16 ) return 0;
+  if( order<2 ) return 0;
+  if( order>16 ) return 0;
   if( SubAllocatorSize ) return 0;
-  memsize_b = memsize_mb<<20;
+  size_t memsize_b = memsize_mb<<20;
   HeapStart = new char[memsize_b]; // malloc(memsize_b);
   //  HeapStart = VAlloc<char>(memsize_b);
   // printf( "!p=%I64X size=%I64X!\n", memsize_b, qword(memsize_b) );
@@ -3091,10 +3088,10 @@ sqword StartSubAllocator(uint memsize_mb, int a2_order, int a3) {
   RunLength = -100;
   SubAllocatorSize = memsize_b;
   InitsCount = 0;
-  CutOff = a3;
+  CutOff = cutOff;
   Interrupted = 0;
-  if( maxOrderArg>12 )maxOrderArg = 16<<((maxOrderArg+19)&31);
-  MaxOrder = maxOrderArg;
+  if (order > 12) order = 16 << ((order + 19) & 31);
+  MaxOrder = order;
   return 1;
 }
 
