@@ -1989,26 +1989,23 @@ at_return:
 //--- #include "subs_reduceorder.inc"
 
 sqword ReduceOrder() {
-  sqword rootCtxW, result, pTextEntry, heapNull, pTextNewSlot, maxCtxStart;
+  sqword result, pTextEntry, heapNull, pTextNewSlot, maxCtxStart;
   sqword succIdx, succAddr, newStatesIdx2, allocedUnit, curCtx;
-  sqword rootCtxSaveLab99, rootCtxSaveCS, rootCtxSaved;
-  uint succIdxW, newByteIdx, curCtxSuffix;
-  int orderFall, maxOrder, sym;
-  STATE *foundStateB, *stateBW, *chainStatePtr;
+  sqword rootCtxSaveLab99, rootCtxSaveCS;
+  uint newByteIdx, curCtxSuffix;
+  int sym;
+  STATE *stateBW, *chainStatePtr;
   STATE **chainPtrW, **chainPtrSave;
   qword newStateEnd, ctxChainEndS;
-  PPM_CONTEXT* ctxBW;
-  char sse0Bit;
-  byte foundSym;
-  rootCtxW = RootContext;
-  foundStateB = FoundState;
-  orderFall = OrderFall;
-  maxOrder = MaxOrder;
-  succIdxW = foundStateB->iSuccessor;
-  foundSym = foundStateB->Symbol;
-  ctxBW = (PPM_CONTEXT*)RootContext;
-  rootCtxSaved = RootContext;
-  sse0Bit = SSE0[foundStateB->Symbol];
+  sqword rootCtxW = RootContext;
+  STATE* foundStateB = FoundState;
+  int orderFall = OrderFall;
+  int maxOrder = MaxOrder;
+  uint succIdxW = foundStateB->iSuccessor;
+  byte foundSym = foundStateB->Symbol;
+  PPM_CONTEXT* ctxBW = (PPM_CONTEXT*)RootContext;
+  sqword rootCtxSaved = RootContext;
+  char sse0Bit = SSE0[foundStateB->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
     uint succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
     foundStateB->iSuccessor = succCreatedTop;
