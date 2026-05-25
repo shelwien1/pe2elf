@@ -1486,9 +1486,6 @@ sqword AllocUnitsRare(uint unitsIdx) {
 //--- #return
 //--- #include "subs_freeunitsrare.inc"
 void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
-  sqword biggerSizeClass;
-  sqword biggerUnits;
-  int deltaUnits;
   // Coalesce: walk trailing blocks whose Stamp is 0xFF, unlinking each from
   // its size-class queue and absorbing its units into our running size.
   while (true) {
@@ -1513,12 +1510,12 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   // Tail-split + insert: figure out the right size-class queue for the
   // remaining block, optionally split off any leftover into a separate
   // freelist entry, then push the block onto its queue.
-  biggerSizeClass = Units2Indx[sizeClass+3];
-  biggerUnits = Indx2Units[biggerSizeClass];
+  sqword biggerSizeClass = Units2Indx[sizeClass+3];
+  sqword biggerUnits = Indx2Units[biggerSizeClass];
   if (sizeClass != (uint)biggerUnits) {
     --biggerSizeClass;
     biggerUnits = Indx2Units[biggerSizeClass];
-    deltaUnits = sizeClass - biggerUnits;
+    int deltaUnits = sizeClass - biggerUnits;
     BListPtr[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + UNIT_SIZE*biggerUnits), deltaUnits);
   }
   BListPtr[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
