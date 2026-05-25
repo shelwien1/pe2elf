@@ -3700,7 +3700,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int *mixSlotA;
   int *mixBaseB, *mixSlotB;
   int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
-  short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
+  short matchCtxHiSave, orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
@@ -4499,8 +4499,8 @@ LABEL_59:
           predWeightB[0] += predDeltaNum;
           predWeightB[1] += predDeltaDen;
           byte flagsCtxFC = MinContext->Flags;
-          freqBoostFC = (matchPosAge>0x4800) + (matchPosAge>0x380) + (matchPosAge>0x80)
-                      + ((flagsCtxFC&0x40)==0 || matchPosAge>0xE00) + 4;
+          short freqBoostFC = (matchPosAge>0x4800) + (matchPosAge>0x380) + (matchPosAge>0x80)
+                            + ((flagsCtxFC&0x40)==0 || matchPosAge>0xE00) + 4;
           MinContext->Flags = flagsCtxFC&0xF0;
           MinContext->SummFreq += freqBoostFC;
           localFoundState->Freq += freqBoostFC;
