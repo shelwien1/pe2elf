@@ -2090,7 +2090,6 @@ sqword ReduceOrder() {
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
   sqword ctxSaved;
-  int bListCountIdx;
   sqword escIdxClipped;
   sqword succAddrSaved;
   sqword rootCtxSaved;
@@ -2264,7 +2263,6 @@ LABEL_11:
     if( escIdx<0 )
       escIdx = 0;
     sse0BitSaved = sse0Bit;
-    bListCountIdx = BList-heapNull+444;
     escIdxClipped = escIdx;
     succIdxSaved = newByteIdx;
     while( 1 ) {
