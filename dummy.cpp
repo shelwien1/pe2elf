@@ -3569,7 +3569,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint totFreq, subRange;
   uint sumFreqLimit;
   uint maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
-  char descendFlags, predShiftIncC;
+  char descendFlags;
   sqword mixIdxA;
   sqword result;
   sqword sseQTableIdxA, summFreqPtr;
@@ -4143,7 +4143,7 @@ LABEL_298:
           wDelta32 = RescaleAccum1_(mixDnC, *(uint*)mixDnC, shiftSelC);
           uint centerExpandC = *((word*)mixSlotC+3);    // central cell predExpand counter
           wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, centerExpandC<0x200u);
-          predShiftIncC = (centerExpandC<0x400u)+predLoBeyondC+1;
+          char predShiftIncC = (centerExpandC<0x400u)+predLoBeyondC+1;
           char* mixStrideC = &mixSlotC[-8*mixIdxC];
           // Two more neighbour cells along XOR-stretch dimensions 2, 8
           char* sse3Nbr = &mixStrideC[8*(int)(mixIdxC^2)];
