@@ -299,23 +299,25 @@ int SparseBit;
 //typedef byte t_byte_140029940[0x2358D0]; t_byte_140029940& Sse2State = *(t_byte_140029940*)(blob1+ 0x140029940 -0x1400227B0);
 //byte Sse2State[0x2358D0];
 byte Sse2State[0xC0818];
-sqword& q12 = *(sqword*)((byte*)&Sse2State + (0x14002A150-0x140029940));
-typedef byte t_byte_14002A158[0x40000]; t_byte_14002A158& MatchPosHash = *(t_byte_14002A158*)((byte*)&Sse2State + (0x14002A158-0x140029940));
-typedef byte t_byte_14006A158[0x80000]; t_byte_14006A158& SseState2 = *(t_byte_14006A158*)((byte*)&Sse2State + (0x14006A158-0x140029940));
-typedef byte t_byte_14007A158[0x10000]; t_byte_14007A158& b28 = *(t_byte_14007A158*)((byte*)&Sse2State + (0x14007A158-0x140029940));
-typedef byte t_byte_14008A158[0x10000]; t_byte_14008A158& b29 = *(t_byte_14008A158*)((byte*)&Sse2State + (0x14008A158-0x140029940));
-typedef byte t_byte_14009A158[0x10000]; t_byte_14009A158& b30 = *(t_byte_14009A158*)((byte*)&Sse2State + (0x14009A158-0x140029940));
-typedef byte t_byte_1400AA158[0x10000]; t_byte_1400AA158& b31 = *(t_byte_1400AA158*)((byte*)&Sse2State + (0x1400AA158-0x140029940));
+// Overlays on Sse2State at fixed byte offsets (the decompiler emitted
+// the offsets as differences from the original module base address).
+sqword& q12          = *(sqword*)((byte*)&Sse2State + 0x00810);
+typedef byte t_byte_14002A158[0x40000]; t_byte_14002A158& MatchPosHash = *(t_byte_14002A158*)((byte*)&Sse2State + 0x00818);
+typedef byte t_byte_14006A158[0x80000]; t_byte_14006A158& SseState2    = *(t_byte_14006A158*)((byte*)&Sse2State + 0x40818);
+typedef byte t_byte_14007A158[0x10000]; t_byte_14007A158& b28          = *(t_byte_14007A158*)((byte*)&Sse2State + 0x50818);
+typedef byte t_byte_14008A158[0x10000]; t_byte_14008A158& b29          = *(t_byte_14008A158*)((byte*)&Sse2State + 0x60818);
+typedef byte t_byte_14009A158[0x10000]; t_byte_14009A158& b30          = *(t_byte_14009A158*)((byte*)&Sse2State + 0x70818);
+typedef byte t_byte_1400AA158[0x10000]; t_byte_1400AA158& b31          = *(t_byte_1400AA158*)((byte*)&Sse2State + 0x80818);
 
-typedef byte t_byte_1400BA158[0x10000]; t_byte_1400BA158& b34 = *(t_byte_1400BA158*)((byte*)&Sse2State + (0x1400BA158-0x140029940));
+typedef byte t_byte_1400BA158[0x10000]; t_byte_1400BA158& b34          = *(t_byte_1400BA158*)((byte*)&Sse2State + 0x90818);
 byte* b35 = &b34[1];
 
-typedef byte t_byte_1400CA158[0x10000]; t_byte_1400CA158& b36 = *(t_byte_1400CA158*)((byte*)&Sse2State + (0x1400CA158-0x140029940));
+typedef byte t_byte_1400CA158[0x10000]; t_byte_1400CA158& b36          = *(t_byte_1400CA158*)((byte*)&Sse2State + 0xA0818);
 byte* b37 = &b36[1];
 byte* b33 = &b36[2];
 byte* b32 = &b36[3];
 
-typedef byte t_byte_1400DA158[0x10000]; t_byte_1400DA158& b27 = *(t_byte_1400DA158*)((byte*)&Sse2State + (0x1400DA158-0x140029940));
+typedef byte t_byte_1400DA158[0x10000]; t_byte_1400DA158& b27          = *(t_byte_1400DA158*)((byte*)&Sse2State + 0xB0818);
 //typedef byte t_byte_1400EA158[0x20000]; t_byte_1400EA158& SseState3 = *(t_byte_1400EA158*)((byte*)&Sse2State + (0x1400EA158-0x140029940));
 
 
