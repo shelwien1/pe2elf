@@ -499,6 +499,11 @@ struct MEM_BLK {
 
 //MEM_BLK* BList;
 
+// Typed alias of BList: the suballocator's free-list array, indexed by
+// size-class. Used by FreeUnits_/FreeContext_/MoveUnits_/ShrinkUnits_/
+// MoveContext_ to walk the doubly-linked free queues.
+MEM_BLK*& BListPtr = (MEM_BLK*&)BList;
+
 STATE* GetStatesPtr(uint iStates) {
   return (STATE*)Indx2Ptr(iStates);
 }
@@ -569,44 +574,40 @@ inline void UnitsCpy_(void* Dest, const void* Src, uint NU) {
 }
 
 inline void FreeUnits_(void* ptr, uint NU) {
-  MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   uint indx = Units2Indx4[NU - 1];
   NU = Indx2Units[indx];
   MEM_BLK* p = (MEM_BLK*)ptr;
   if (!p[NU].canMerge())
-    BList_[indx].linkNext(p, NU);
+    BListPtr[indx].linkNext(p, NU);
   else
     FreeUnitsRare((sqword)p, NU);
 }
 
 inline void FreeContext_(PPM_CONTEXT* ptr) {
-  MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   MEM_BLK* p = (MEM_BLK*)ptr;
   if (!p[1].canMerge())
-    BList_[0].linkPrev(p, 1);
+    BListPtr[0].linkPrev(p, 1);
   else
     FreeUnitsRare((sqword)p, 1);
 }
 
 inline void* MoveUnits_(void* OldPtr, uint NU) {
-  MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   uint indx = Units2Indx4[NU - 1];
   uint NewNU = Indx2Units[indx];
   MEM_BLK* p = (MEM_BLK*)OldPtr;
-  if (!p[NewNU].canMerge() || !BList_[indx].avail()) return OldPtr;
-  void* NewPtr = BList_[indx].unlinkNext();
+  if (!p[NewNU].canMerge() || !BListPtr[indx].avail()) return OldPtr;
+  void* NewPtr = BListPtr[indx].unlinkNext();
   UnitsCpy_(NewPtr, OldPtr, NU);
   FreeUnitsRare((sqword)p, NewNU);
   return NewPtr;
 }
 
 inline void* ShrinkUnits_(void* OldPtr, uint OldNU, uint NewNU) {
-  MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   uint i0 = Units2Indx4[OldNU - 1];
   uint i1 = Units2Indx4[NewNU - 1];
   if (i0 == i1) return OldPtr;
-  if (BList_[i1].avail()) {
-    void* ptr = BList_[i1].unlinkNext();
+  if (BListPtr[i1].avail()) {
+    void* ptr = BListPtr[i1].unlinkNext();
     UnitsCpy_(ptr, OldPtr, NewNU);
     FreeUnits_(OldPtr, Indx2Units[i0]);
     return ptr;
@@ -617,10 +618,9 @@ inline void* ShrinkUnits_(void* OldPtr, uint OldNU, uint NewNU) {
 }
 
 inline PPM_CONTEXT* MoveContext_(PPM_CONTEXT* OldPtr) {
-  MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   MEM_BLK* p = (MEM_BLK*)OldPtr;
-  if (!p[1].canMerge() || !BList_[0].avail()) return OldPtr;
-  PPM_CONTEXT* NewPtr = (PPM_CONTEXT*)BList_[0].unlinkPrev();
+  if (!p[1].canMerge() || !BListPtr[0].avail()) return OldPtr;
+  PPM_CONTEXT* NewPtr = (PPM_CONTEXT*)BListPtr[0].unlinkPrev();
   UnitsCpy_(NewPtr, OldPtr, 1);
   FreeUnitsRare((sqword)p, 1);
   return NewPtr;
