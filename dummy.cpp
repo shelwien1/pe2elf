@@ -2931,7 +2931,7 @@ LABEL_94:
         predDelta = b1+b3-2*b2;
         if( predDelta ) {
           PrevSymbol = predGuessSym;
-          if( *(byte*)(q26+3)<=0x10u ) {
+          if (bmCell[3] <= 0x10u) {
             if( (byte)(predDelta+19)<=0x26u ) {
               predA = 2*b1-b2;
               predB = predA-predDelta;
@@ -2946,7 +2946,7 @@ LABEL_94:
               MatchPosBySym[predA] = sc;
             }
           } else {
-            FoundSymbol = *(byte*)q26;
+            FoundSymbol = bmCell[0];
           }
         } else {
           FoundSymbol = (byte)(2*b1-b2);
