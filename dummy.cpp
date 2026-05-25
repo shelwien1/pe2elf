@@ -2442,7 +2442,7 @@ inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int ma
   }
 }
 
-qword MixUpdate(byte* ctxBytes) {
+qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- mixing-predictor weight pointers (q17..q25 hold heap addresses) -----
   uint* wQ17;     // single  += binMixDeltaHi
   uint* wQ18;     // single  += predBaseDeltaB
@@ -2943,7 +2943,6 @@ LABEL_94:
     .bit  <9> (recentSym & 0x80)
     .raw  ((uint)matchScore)
     .bit  <15>(OrderFall > 0);
-  PPM_CONTEXT* minCtx = (PPM_CONTEXT*)ctxBytes;
   minNStates = minCtx->NStates;
   NMasked = minNStates;
   searchSym = foundState->Symbol;
@@ -4512,7 +4511,7 @@ LABEL_250:
     // -----------------------------------------------------------------------
     if( f_DEC ) putc(FoundState->Symbol, outFile);
     rc.commitRange();
-    result = MixUpdate((byte*)MinContext);
+    result = MixUpdate(MinContext);
     if( f_DEC ) rc.DecodeNormalize(inFile); else rc.EncodeNormalize(outFile);
     epoch = SymCount;
   } while( SymCount );
