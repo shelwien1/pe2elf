@@ -831,7 +831,7 @@ TARGET_SCALE_FALLBACK:
 
   PPM_CONTEXT* max_suffix_ctx = MaxContext->getSuffix();
   uint suffixNStates = max_suffix_ctx->NStates;
-  MixCtxExtra += (suffixNStates==0)<<7;
+  MixCtxExtra += SseIdx{}.bit<7>(suffixNStates == 0);
 
   uint orderShortfall = OrderFall-total_depth;
   byte ctxFoundSym    = ctx->getStates()[ctx->Flags&0x0F].Symbol;
