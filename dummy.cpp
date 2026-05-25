@@ -2688,7 +2688,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int      maxOrd;         // MaxOrder
   qword    result;
 
-  sqword heap;             // HeapNull
   PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
   int    depthLeft;        // counts down from OrderFall
   int    depth5;           // 5*OrderFall counter (decreasing)
@@ -3014,7 +3013,6 @@ LABEL_94:
     .bits <12, 3>((OrderFall>32) + (OrderFall>8) + (OrderFall>4)
                 + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
   if (minISuffix) {
-    heap = HeapNull;
     walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
     depthLeft = OrderFall;
     depth5 = 5 * OrderFall;
@@ -3028,7 +3026,7 @@ LABEL_94:
         fastSuffix = walkCtx->iSuffix;
         *chain++ = (sqword)onestatePtr;
         --depthLeft;
-        walkCtx = (PPM_CONTEXT*)(heap + fastSuffix);
+        walkCtx = (PPM_CONTEXT*)Indx2Ptr(fastSuffix);
       } while (walkCtx->NStates == 0);
       maxOrd = MaxOrder;
       if (ofall < MaxOrder) {
@@ -3046,7 +3044,7 @@ LABEL_94:
       }
       trailStatesIdx = walkCtx->iStates;
       trailFlags = walkCtx->Flags;
-      trailStates = (STATE*)(heap + trailStatesIdx);
+      trailStates = (STATE*)Indx2Ptr(trailStatesIdx);
       goto LABEL_165;
     }
     mixWeight = 2;
@@ -3062,7 +3060,7 @@ LABEL_94:
     do {
       deepStatesIdx = walkCtx->iStates;
       deepFlags = walkCtx->Flags;
-      STATE* deepStates = (STATE*)(heap + deepStatesIdx);
+      STATE* deepStates = (STATE*)Indx2Ptr(deepStatesIdx);
       RefreshIfRank0Empty_(walkCtx, deepStatesIdx, deepFlags, deepStates, (sqword)chain);
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
@@ -3097,7 +3095,7 @@ LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = walkCtx->iStates;
       trailFlags = walkCtx->Flags;
-      trailStates = (STATE*)(heap + trailStatesIdx);
+      trailStates = (STATE*)Indx2Ptr(trailStatesIdx);
       if (trailStates[trailFlags & 0xF].Symbol == (byte)searchSym)
         break;
 LABEL_165:
