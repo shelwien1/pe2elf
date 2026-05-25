@@ -1753,15 +1753,12 @@ sqword StartModelRare(int mode) {
 //--- #return
 //--- #include "subs_createsuccessors.inc"
 sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
-  sqword heapNull;
-  uint seedSuccIdx;
-  STATE** chainPtr;
-  heapNull = HeapNull;
+  sqword heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
   // first entry whose state->iSuccessor differs from the head's, or the end of
   // the chain (suffix == 0).
-  seedSuccIdx = (*chainStart)->iSuccessor;
-  chainPtr = chainStart;
+  uint seedSuccIdx = (*chainStart)->iSuccessor;
+  STATE** chainPtr = chainStart;
   while (1) {
     int curSuccIdx = (*chainPtr)->iSuccessor;
     if (curSuccIdx != seedSuccIdx) {
