@@ -3026,7 +3026,7 @@ LABEL_94:
       do {
         if (chain > &CtxChain_2[1]) {
           STATE* prevSt = (STATE*)*(chain - 2);
-          prevSt->Freq += (prevSt->Freq - 2 < 0);
+          prevSt->Freq += (prevSt->Freq < 2);   // +1 if Freq is 0 or 1
         }
         onestatePtr = &walkCtx->oneState();
         fastSuffix = walkCtx->iSuffix;
@@ -3043,7 +3043,7 @@ LABEL_94:
           } else {
             ++((STATE*)CtxChain_2[0])->Freq;
             if (chain > CtxChain_4) {
-              head0->Freq += (head0->Freq - 4 < 0);
+              head0->Freq += (head0->Freq < 4);   // +1 if Freq is below 4
             }
           }
         }
