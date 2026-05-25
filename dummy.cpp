@@ -2642,7 +2642,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   char*  b1Ptr;            // &bmPtr[-MixScale]
   int    bm1;              // (byte)*(b1Ptr-1)
   sqword bmComposite;      // BijectMap row index
-  sqword bmByte;
 
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
@@ -2931,10 +2930,9 @@ LABEL_94:
     bijectCellPtr = (sqword)&BijectMap[4*bmComposite + 4*b1];
     byte* bmCell = (byte*)bijectCellPtr;       // 4-byte cell: sym/prev1/prev2/count
     SymLastCtx[(byte)bmCell[2]] = sc;
-    SymLastCtx[bmCell[1]] = sc;
-    bmByte = bmCell[0];
+    SymLastCtx[bmCell[1]]       = sc;
+    SymLastCtx[bmCell[0]]       = sc;
     hintSymBmCell = bmCell[0];
-    SymLastCtx[bmByte] = sc;
     if (bmCell[3]) {
       if (bmCell[3] > 1u || hintSymRecent <= 0)
         hintSymRecent = bmCell[0];
