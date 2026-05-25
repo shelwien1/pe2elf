@@ -4109,7 +4109,7 @@ LABEL_298:
         if( 16*freqDeltaE<=freqSumE||(MinContext->Flags&0x40)!=0 ) {
           CtxChainEnd = (sqword)chainEndF;
           sumFreqCacheC = MinContext->SummFreq;
-      } else {
+        } else {
           FillFreqMap_(suffixCtxC);
           int  walkFreqSumC   = 0;
           int  sumFreqC       = MinContext->SummFreq;
