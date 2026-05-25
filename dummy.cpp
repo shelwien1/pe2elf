@@ -2261,7 +2261,7 @@ LABEL_99:
         STATE* newStates = (STATE*)allocedUnit;
         *newStates = curCtxP->oneState();
         freqBoost = b24[escIdxClipped];
-        curCtxP->iStates = (uint)((sqword)allocedUnit - heapNull);
+        curCtxP->iStates = Ptr2Indx(allocedUnit);
         newStateFreq = 4 * (int)newStates->Freq + freqBoost;
         if (newStateFreq >= 238) newStateFreq = 238;
         if (newStateFreq <   2)  newStateFreq = 2;
