@@ -2200,7 +2200,6 @@ LABEL_73:
   maxCtxStart = MaxContext0;
   succIdx = succIdxW;
   if( unitsStart>heapNull+(qword)succIdxW ) {
-    newByteIdx = pTextEntry + 1 - heapNull;
     succIdxW = CreateSuccessors(0, (STATE**)CtxChain, MaxContext0);
     goto LABEL_9;
   }
