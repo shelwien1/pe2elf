@@ -1246,7 +1246,7 @@ struct SseCounter {     // matches the 8-byte (sum, freq0, freq1) layout
 
 } // namespace
 
-sqword SseScale1(SseCounter* cnt) {
+void SseScale1(SseCounter* cnt) {
   PPM_CONTEXT* topCtx = (PPM_CONTEXT*)MaxContext0;
 
   // ---- step 1: compose the weight (and clamp the low 16 bits to 2048) -----
@@ -1273,7 +1273,7 @@ sqword SseScale1(SseCounter* cnt) {
     cnt->sum   = halfRoundUp_((uint)halfSum);
     cnt->freq0 = (word)halfRoundUp_(halfFreq0);
     cnt->freq1 = (word)weight >> 1;
-    return (word)halfFreq0 >> 1;
+    return;
   }
 
   // moderate: commit the half-rounded sum/freq0
@@ -1291,7 +1291,6 @@ sqword SseScale1(SseCounter* cnt) {
     newFreq1 = (short)(weight - dec);
   }
   cnt->freq1 = (word)newFreq1;
-  return halfSum;
 }
 //--- #return
 //--- #include "subs_ssescale2a.inc"
@@ -1339,7 +1338,7 @@ struct SseSlot {       // 8-byte (hits, predHi, scale, weight) counter
 
 } // namespace
 
-sqword SseScale2(SseSlot* s) {
+void SseScale2(SseSlot* s) {
 
   // ---- step 1: observed Q15 probability, clamped to [1, 0x7FFF] -----------
   uint scale = s->scale;
@@ -1404,7 +1403,6 @@ sqword SseScale2(SseSlot* s) {
   }
   s->hits   = (word)newPredHi;
   s->predHi = (word)q;
-  return gain;
 }
 //--- #return
 //--- #include "subs_allocunitsrare.inc"
