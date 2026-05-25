@@ -885,16 +885,13 @@ TARGET_SCALE_FALLBACK:
         deeperBit = (2*suffixNStates<deeper_suffix_ctx->NStates);
       }
       mixCtx = mixCtxComposite+8*deeperBit+16;
-    } else if( path_depth>=6 ) {
-      if( path_depth>=14 ) {
-        mixCtx = mixCtxComposite+14;
-        if( path_depth<32 )
-          mixCtx = mixCtxComposite+12;
-      } else {
-        mixCtx = mixCtxComposite+10;
-      }
     } else {
-      mixCtx = mixCtxComposite+8;
+      // path_depth-based boost: +8 / +10 / +12 / +14 at thresholds 0, 6, 14, 32.
+      int depthBoost = 8
+                     + (path_depth >= 6)  * 2
+                     + (path_depth >= 14) * 2
+                     + (path_depth >= 32) * 2;
+      mixCtx = mixCtxComposite + depthBoost;
     }
   }
 
