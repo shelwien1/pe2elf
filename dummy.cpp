@@ -1573,10 +1573,11 @@ sqword StartModelRare(int mode) {
     HeapNull = (sqword)heapBlocks - 1;
     
     // Initialize all 38 allocation queues to point to themselves symmetrically
+    // (each queue starts empty: Next == Prev == Ptr2Indx(queue), QueueSize == 0).
+    MEM_BLK* bList = (MEM_BLK*)heapBlocks;
     for (uint i = 0; i < 0x26; ++i) {
-      heapBlocks[3 * i + 2] = 12 * i + 1; // Next pointer index [cite: 83]
-      heapBlocks[3 * i + 1] = 12 * i + 1; // Prev pointer index [cite: 84]
-      heapBlocks[3 * i + 0] = 0;      // Queue size count [cite: 84]
+      bList[i].QueueSize = 0;
+      bList[i].Next = bList[i].Prev = 12 * i + 1;
     }
 
     sqword allocatedContextAddr;
