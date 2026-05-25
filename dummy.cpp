@@ -764,7 +764,10 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
         int suffix_found_freq = suffix_state->Freq;
         int base_weight = 5*verification_nstates+5;
         uint tunedSumm = summ_freq+2*base_weight;
-        int tunedSuffix = (2*(2*base_weight<summ_freq)+5)*(suffix_nstates+1)+suffix_summ_freq;
+        // suffix scale = 5 or 7 depending on whether the summ_freq exceeded
+        // 2*base_weight (the "high-density" indicator).
+        int suffixScale = (2*base_weight < summ_freq) ? 7 : 5;
+        int tunedSuffix = suffixScale*(suffix_nstates+1)+suffix_summ_freq;
         if( tunedSuffix*found_state->Freq<(int)(tunedSumm*suffix_found_freq) ) {
           if( found_state->Freq>228 )
             goto TARGET_SCALE_FALLBACK;
