@@ -2688,15 +2688,14 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   HashSeed2 = -1;
   symEpochN = symEpoch + 1;
   SymEpoch  = symEpochN;
+  FoundSymbol = -1;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
       predGuessSym = (byte)(2*sym-matchHi);
       FoundSymbol = predGuessSym;
       goto LABEL_94;
     }
-    FoundSymbol = -1;
   } else {
-    FoundSymbol = -1;
     bdiffStickyCnt = 0;
     bdiffSaved = bdiff-(bdiff==0);
   }
