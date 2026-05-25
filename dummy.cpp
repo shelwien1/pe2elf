@@ -3640,11 +3640,10 @@ LABEL_18:
           // goto LABEL_58 below doesn't bypass init.
           int  sxNStates = 0, minSumFreqA = 0, sxSumFreqA0 = 0, sumFreqSaveA = 0;
           int  nStatesP1Save = nStates+1;
-          uint cumFreqMixA = 0, cumFreqDivA = 0;
-          uint maskFlagPrev = 0, maskFlagEsc = 0;
+          uint cumFreqMixA = 0, cumFreqDivA = 0, maskFlagPrev = 0, maskFlagEsc = 0;
           uint mixWeightA = 0, mixFreqA = 0, mixDeltaA = 0;
           sqword mixIdxA = 0, sseQTableIdxA = 0;
-          int*   mixSlotA = nullptr;
+          int* mixSlotA = nullptr;
           RSContext = ((STATE*)CtxChain[0])->Symbol;
           SymLastCtx[(byte)b27[RSContext+(Order1Ctx<<8)]] = epoch;
           q29 = q30 = q31 = q32 = q33 = (sqword)d27;
