@@ -2644,14 +2644,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
 
   // ---- three paired byte-hash predictors (b32/b33, b34/b35, b36/b37) ------
 
-  // ---- MixScale BijectMap predictor ---------------------------------------
-  char*  bmPtr;            // = sseSlot + 1
-  uint   b1, b2;
-  int    b3;
-  char*  b1Ptr;            // &bmPtr[-MixScale]
-  int    bm1;              // (byte)*(b1Ptr-1)
-  sqword bmComposite;      // BijectMap row index
-
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
   int      ofallSaved;     // OrderFall captured at the start of the walk
@@ -2918,19 +2910,19 @@ LABEL_94:
   BijectPairUpdate_(b36, b37, /*read*/oldD90Idx, /*write*/savedD90Idx, sym, sc);
   if (mixScaleCntr) {
     BijectCellInsert_((byte*)bijectCellPtr, sym);
-    bmPtr = sseSlot + 1;
-    b1 = (byte)bmPtr[-MixScale];
-    b2 = (byte)bmPtr[-2*MixScale];
-    b3 = (byte)bmPtr[-3*MixScale];
+    char* bmPtr = sseSlot + 1;
+    uint b1 = (byte)bmPtr[-MixScale];
+    uint b2 = (byte)bmPtr[-2*MixScale];
+    int  b3 = (byte)bmPtr[-3*MixScale];
     if( --mixScaleCntr>(uint)MixScale )
       recentSym = b1;
-    b1Ptr = &bmPtr[-MixScale];
-    bm1 = (byte)*(b1Ptr-1);
+    char* b1Ptr = &bmPtr[-MixScale];
+    int   bm1 = (byte)*(b1Ptr-1);
     // bmComposite indexes the 4-uint BijectMap row; the bitfield mixes:
     //   bits  8-13 : raw   (b2 & 0x2E) plus a same-direction prediction bit
     //   bit  12    : history-match flag (same 3rd byte at the two offsets)
     //   bits 14-16 : 3-bit count of "sym near bm1" comparisons
-    bmComposite = SseIdx{}
+    sqword bmComposite = SseIdx{}
       .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
       .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
       // 0..3 score by sym's position relative to bm1: 0 (sym<bm1),
