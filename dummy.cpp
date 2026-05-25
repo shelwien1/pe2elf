@@ -2561,15 +2561,10 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
-  STATE* foundState;       // captured FoundState at function entry
-  int    symEpoch;         // current SymEpoch (epoch counter)
   int    symEpochN;        // = symEpoch + 1 (next epoch)
-  char*  sseSlot;          // &MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)]
                            // (upper half of MatchPosHash, used as a history byte ring)
 
   // ---- symbol-derived state -----------------------------------------------
-  uint   sym;              // FoundState->Symbol
-  sqword matchHi;          // MatchCtxHi (high-byte context)
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
   int    recentEpoch;      // SseCtx0_1[sym] before update
   int    dt;               // symEpoch - recentEpoch
@@ -2614,19 +2609,19 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   *wSse1      += sse2NumDelta;       wSse1[1]     -= sse2DenDelta;
   *wSseMatch  += sseMatchNumDelta;   wSseMatch[1] -= sseMatchDenDelta;
 
-  symEpoch    = SymEpoch;
+  int   symEpoch = SymEpoch;
   // 0x20000 + (symEpoch & 0x1FFFF) selects a byte in MatchPosHash's upper half.
-  sseSlot     = (char*)&MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)];
+  char* sseSlot  = (char*)&MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
   UpdateWeightPair_((int*)Sse2SlotG, predWeightDelta + predSseTotDelta, 2 * sseCum);
   UpdateWeightPair_((int*)Sse3SlotG, predWeightDelta,                   sseCum);
 
-  foundState = FoundState;
+  STATE* foundState = FoundState;
   SparseBitmapA[SparseIdxA] |= SparseBit;
   SparseBitmapB[SparseIdxB] |= SparseBit;
-  sym = foundState->Symbol;
-  matchHi = (qword)MatchCtxHi;
+  uint   sym     = foundState->Symbol;
+  sqword matchHi = (qword)MatchCtxHi;
   SseState3[sseState3Hash] = sym;
   // Write sym at both halves of MatchPosHash. sseSlot points to the upper
   // half at (0x20000 + (symEpoch & 0x1FFFF)); -0x20000 wraps to the lower
