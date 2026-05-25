@@ -2421,6 +2421,21 @@ inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
   }
 }
 
+// helper 4ba: walk the RecentPos chain backwards starting at `recentEpoch`
+// and stamp SymLastCtx2 with MatchPosHash bytes at each hop. Walk stops
+// after at most 192 hops or once the chain age (symEpoch - rp) exceeds
+// the running counter.
+inline void WalkRecentPosChain_(int recentEpoch, int symEpoch, int sc) {
+  int rp = RecentPos[recentEpoch & 0xFFF];
+  if ((uint)(symEpoch - rp) >= 0xC0) return;
+  uint cnt = 192;
+  do {
+    --cnt;
+    SymLastCtx2[(byte)MatchPosHash[(rp+1) & 0x1FFFF]] = sc;
+    rp = RecentPos[rp & 0xFFF];
+  } while (cnt > symEpoch - rp);
+}
+
 // helper 4c: emit hint stamps around two predicted bytes (predA, predB).
 // Used by MixUpdate's b1/b2/b3 prediction ladder when the third-difference
 // (b1+b3-2*b2) is non-zero — the two surrounding bytes get +/-1, +/-2
@@ -2531,10 +2546,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    bdiff;            // (byte)(sym - matchHi)
   int    predGuessSym;          // running guess for FoundSymbol
 
-  // ---- recent-pos chain walk (rp = walker, hashByte = MatchPosHash lookup)
-  int    rp, rp1, rp2;
+  // ---- recent-pos chain walk
+  int    rp1, rp2;
   int    hashByte;
-  uint   cnt;              // 192-counter
 
   // ---- MatchPosTable update ------------------------------------------------
   sqword matchKey;
@@ -2678,18 +2692,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   } else {
     hashByte = (byte)MatchPosHash[(recentEpoch+1)&0x1FFFF];
     hintSymRecent = hashByte;
-    if( dt>=50 )
-      hashByte = 0;
-    cnt = 192;
+    if (dt >= 50) hashByte = 0;
     b31Key = hashByte;
-    rp = RecentPos[recentEpoch&0xFFF];
-    if( (uint)(symEpoch-rp)<0xC0 ) {
-      do {
-        --cnt;
-        SymLastCtx2[(byte)MatchPosHash[(rp+1)&0x1FFFF]] = sc;
-        rp = RecentPos[rp&0xFFF];
-      } while( cnt>symEpoch-rp );
-    }
+    WalkRecentPosChain_(recentEpoch, symEpoch, sc);
   }
   matchKey = sym+(sqword)(int)((uint)matchHi<<8);
   matchPrev = MatchPosTable[matchKey];
