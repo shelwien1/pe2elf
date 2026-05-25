@@ -2781,7 +2781,7 @@ LABEL_94:
       SymLastCtx2[m2_h2] = sc;
       if( m2_h1==(uint)m2_h2 )
         MatchPosBySym[m2_h1] = sc;
-      LODWORD(m2_h3) = -1;
+      m2_h3 = -1;
       m2_prev3 = MatchPosPrev[m2_prev2&0x1FFFF];
       if( (uint)(symEpochN-m2_prev3)<0x20000 ) {
         m2_bias = 0;
@@ -2790,7 +2790,7 @@ LABEL_94:
           m2_h3 = (byte)MatchPosHash[(m2_prev3+3)&0x1FFFF];
           SymLastCtx2[m2_h3] = sc;
           m2_h1 &= m2_h3;
-          LODWORD(m2_h2) = m2_h3|m2_h2;
+          m2_h2 = m2_h3|m2_h2;
           m2_prev3 = MatchPosPrev[m2_prev3&0x1FFFF];
         } while( (uint)(m2_bias+symEpochN-m2_prev3)<0x20000 );
       }
