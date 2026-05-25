@@ -2064,7 +2064,6 @@ sqword ReduceOrder() {
   uint newStatesIdx;
   sqword newStatesIdx2;
   qword newStateEnd;
-  int prevStateSucc;
   sqword allocedUnit;
   int freqBoost;
   int newStateFreq;
@@ -2281,12 +2280,13 @@ LABEL_11:
         }
         newStateEnd = newStatesIdx2 + heapNull + 6LL*nStatesP1;
         if (newStateEnd > heapNull + newStatesIdx2 + 42) {
+          // Shift STATEs back by one slot to make room for the new tail STATE.
+          STATE* dst = (STATE*)newStateEnd;
           do {
-            prevStateSucc = *(uint*)(newStateEnd - 4);
-            *(word*)newStateEnd = *(word*)(newStateEnd - 6);
-            *(uint*)(newStateEnd + 2) = prevStateSucc;
-            newStateEnd -= 6LL;
-          } while (newStateEnd > heapNull + (qword)curCtxP->iStates + 42);
+            *dst = dst[-1];
+            --dst;
+          } while ((qword)dst > heapNull + (qword)curCtxP->iStates + 42);
+          newStateEnd = (qword)dst;
         }
       } else {
         allocedUnit = AllocUnits_(Units2Indx4[0]);
