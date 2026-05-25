@@ -83,7 +83,7 @@ byte SSE0QTable[256];
 int BinSse[0x280];
 
 int MixWeight1[0xF0000/2]; // memset(MixWeight1, 0, 0x20000);
-short& MixFreq1 = (short&)MixWeight1[2/2];
+short& MixFreq1 = (short&)MixWeight1[1];
 auto& MixFreq1_1 = *(short(*)[0xF0000-3])(((char*)MixWeight1)+6);
 
 int d29[0x2040];
