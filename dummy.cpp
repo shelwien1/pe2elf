@@ -3004,8 +3004,10 @@ LABEL_94:
     depth5 = 5 * OrderFall;
     if (((PPM_CONTEXT*)walkCtx)->NStates == 0) {
       do {
-        if (chain > &CtxChain_2[1])
-          *(byte*)(*(chain-2) + 1) += *(byte*)(*(chain-2) + 1) - 2 < 0;
+        if (chain > &CtxChain_2[1]) {
+          STATE* prevSt = (STATE*)*(chain - 2);
+          prevSt->Freq += (prevSt->Freq - 2 < 0);
+        }
         onestatePtr = walkCtx + 2;
         fastSuffix = ((PPM_CONTEXT*)walkCtx)->iSuffix;
         *chain++ = (sqword)onestatePtr;
