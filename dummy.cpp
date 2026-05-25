@@ -4480,9 +4480,9 @@ LABEL_59:
     oneStateFreqF = FoundState->Freq;
     q9 = (sqword)FoundState;
     MixCtx = 1;
-    MinContext->oneState().Freq = (oneStateFreqF-127<0)
-                                + oneStateFreqF
-                                + (oneStateFreqF==1 && totFreq < 4*cumFreq);
+    FoundState->Freq = (oneStateFreqF-127<0)
+                     + oneStateFreqF
+                     + (oneStateFreqF==1 && totFreq < 4*cumFreq);
     // commit the per-step predictor deltas (no freq0 rewind in this path)
     binSseCell[0] += 1568;
     *(uint*)q32 += wDelta32;
