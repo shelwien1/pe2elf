@@ -2192,7 +2192,7 @@ LABEL_73:
       return StartModelRare(2);
     if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
       bListSaved2 = BList;
-      if( !*ctxBW&&(byte*)rootCtxW!=ctxBW ) {
+      if (((PPM_CONTEXT*)ctxBW)->NStates == 0 && (byte*)rootCtxW != ctxBW) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
         // each one's 2-STATE[] block down to a single oneState. The kept state
         // is the one whose Symbol matches ctxBW[2] (the parent ctx's Flags
