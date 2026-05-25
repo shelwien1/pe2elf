@@ -3675,7 +3675,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
-  byte flagsCtxFC, minCtxFlagsC, flagsSaveA;
+  byte minCtxFlagsC, flagsSaveA;
   STATE  **chainPtr;
   sqword *chainEndE;
   sqword *chainEndF, *sortRangeE, *sortLimitC;
@@ -4498,7 +4498,7 @@ LABEL_59:
           predWeightA[1] += predDeltaDen;
           predWeightB[0] += predDeltaNum;
           predWeightB[1] += predDeltaDen;
-          flagsCtxFC = MinContext->Flags;
+          byte flagsCtxFC = MinContext->Flags;
           freqBoostFC = (matchPosAge>0x4800) + (matchPosAge>0x380) + (matchPosAge>0x80)
                       + ((flagsCtxFC&0x40)==0 || matchPosAge>0xE00) + 4;
           MinContext->Flags = flagsCtxFC&0xF0;
