@@ -2535,12 +2535,14 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   wQ23 = (uint*)q23;
   wpQ24 = (int*)q24;
   wpQ25 = (int*)q25;
-  word* binMixCenterMU = (word*)q21;
   prevSymCount = SymCount;
   sc           = SymCount - 1;
   SymCount     = sc;
   // Commit binMixCenter's predExpand counter (word[3]) into its uint accumulator.
-  *(uint*)binMixCenterMU += binMixCenterMU[3];
+  {
+    word* binMixCenter = (word*)q21;
+    *(uint*)binMixCenter += binMixCenter[3];
+  }
   *wQ17       += binMixDeltaHi;
   *wQ20       += binMixDeltaLo;
   *wQ22       += predBaseDeltaA;
