@@ -3558,7 +3558,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int cumFreq, oneStateFreqCachedF;
   int descendNStatesP1E, ofallSavedE;
-  int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
+  int descendNStatesP1C, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
   byte flagsSaveA;
   STATE  **chainPtr;
@@ -3823,6 +3823,7 @@ LABEL_58:
     uint seeIndex, suffixNStates;
     int mixCtx;
     sqword summFreqPtr;
+    int sparseFlags;
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
     sqword mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
     int* mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
