@@ -349,12 +349,6 @@ dozens of times without a named constant.
 A few patterns remain that no human would write fresh:
 
 ```cpp
-// RealProcess line ~4015 — escape probability, multi-line expression with no intermediates
-result = (int)(16*(oneStateFreqCachedF*cumFreq + cumFreq - oneStateFreqCachedF*totFreq))
-       / (int)(totFreq + totFreq*oneStateFreqCachedF);
-```
-
-```cpp
 // RealProcess LABEL_128 rewind — q34 read via word[3] in caller (no captured wDelta34)
 RewindPredictor_(q34, ((word*)q34)[3], rewindMult);
 ```
