@@ -1763,13 +1763,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   sqword ctxAddr;
   int sym;
   int stateSuccIdx;
-  STATE** chainEnd;
-  STATE** chainEndSaved;
-  int newCtxAddr;
-  byte* baseCtxAddr;
-  STATE** chainPtrEnd;
-  sqword result;
-  int newCtxBytePos;
   heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
   // first entry whose state->iSuccessor differs from the head's, or the end of
@@ -1814,16 +1807,16 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   }
   seedCtx = heapNull+stateSuccIdx;
 LABEL_15:
-  chainEnd = chainStart + depth;
+  STATE** chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
     return (uint)(seedCtx-heapNull);
-  chainEndSaved = chainEnd;
-  newCtxAddr = seedCtx;
-  baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
+  STATE** chainEndSaved = chainEnd;
+  int newCtxAddr = seedCtx;
+  byte* baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
   byte newSym   = *baseCtxAddr;
   byte newFlags = SSE0[newSym];
-  newCtxBytePos = Ptr2Indx(baseCtxAddr) + 1;
-  chainPtrEnd = chainPtr;
+  int newCtxBytePos = Ptr2Indx(baseCtxAddr) + 1;
+  STATE** chainPtrEnd = chainPtr;
   while (true) {
     PPM_CONTEXT* newCtx = AllocContext_();
     if (!newCtx) break;
@@ -1834,7 +1827,7 @@ LABEL_15:
     newCtx->iStates = newCtxBytePos;
     newCtx->iSuffix = newCtxAddr - heapNull;
     newCtxAddr = (int)(uintptr_t)newCtx;
-    result = Ptr2Indx(newCtx);
+    sqword result = Ptr2Indx(newCtx);
     --chainPtrEnd;
     // Hook the new context into the chain entry above us: that entry's
     // STATE.iSuccessor now points at the freshly allocated context.
