@@ -1202,7 +1202,7 @@ sqword RescaleCtx(byte* ctxBytes) {
 
   FreeUnits_(states, (uint)((NStates0 + 2) >> 1));
 
-  q9                          = (sqword)(ctxBytes + 2);     // FoundState = &oneState
+  q9                          = (sqword)&ctx->oneState();  // FoundState = &oneState
   ctx->oneState().Symbol      = (byte)firstSF;
   ctx->oneState().Freq        = (byte)(firstSF >> 8);
   ctx->oneState().iSuccessor  = firstSucc;
