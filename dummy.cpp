@@ -1339,8 +1339,7 @@ struct SseSlot {       // 8-byte (hits, predHi, scale, weight) counter
 
 } // namespace
 
-sqword SseScale2(sqword slotAddr) {
-  SseSlot* s = (SseSlot*)slotAddr;
+sqword SseScale2(SseSlot* s) {
 
   // ---- step 1: observed Q15 probability, clamped to [1, 0x7FFF] -----------
   uint scale = s->scale;
@@ -3327,7 +3326,7 @@ inline void MaybeRescale1_(void* slot, T& freq0Local, uint weight) {
 template<typename T>
 inline void MaybeRescale2_(void* slot, T& freq0Local) {
   if ((uint)freq0Local > 0x8000u) {
-    SseScale2((sqword)slot);
+    SseScale2((SseSlot*)slot);
     freq0Local = (T)((SseCounter*)slot)->freq0;
   }
 }
