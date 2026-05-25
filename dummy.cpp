@@ -2627,7 +2627,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
   int    mixCtx2New;       // new MixCtx2
   int    recentEpoch;      // SseCtx0_1[sym] before update
-  int    recentForHi;      // SseCtx0_1[(int)matchHi]
   int    dt;               // symEpoch - recentEpoch
   int    bdiff;            // (byte)(sym - matchHi)
   int    predGuessSym;          // running guess for FoundSymbol
@@ -2790,7 +2789,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     }
   }
   Sse2BaseG = (sqword)&Sse2State[516*(newQ12Sel&3)];
-  recentForHi = SseCtx0_1[matchHi];
+  int recentForHi = SseCtx0_1[matchHi];
   if (sym == FoundSymbol && MixScale <= 256) {
     mixScaleCntr = 4 * MixScale;
   } else if (mixScaleCntr > (uint)(3 * MixScale)
