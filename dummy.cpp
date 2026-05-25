@@ -3012,15 +3012,17 @@ LABEL_94:
     do {
       deepStatesIdx = walkCtx->iStates;
       deepFlags = walkCtx->Flags;
-      if (((STATE*)(heap + deepStatesIdx))[deepFlags & 0xF].Freq == 0) {
+      STATE* deepStates = (STATE*)(heap + deepStatesIdx);
+      if (deepStates[deepFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         deepStatesIdx = walkCtx->iStates;
-        deepFlags = walkCtx->Flags;
+        deepFlags     = walkCtx->Flags;
+        deepStates    = (STATE*)(heap + deepStatesIdx);
       }
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
-      deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx->Flags, 13);
+      deepFound = FindAndBubble7_((byte*)deepStates, searchSym, &walkCtx->Flags, 13);
       foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
