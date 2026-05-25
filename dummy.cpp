@@ -3659,13 +3659,14 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
       }
       uint nStatesPlus1 = nStates+1;
       int  remStates = nStates+1;
-      CtxChain[0] = (sqword)&MinContext->getStates()[ctxFlags&0xF];
+      STATE* escState = &MinContext->getStates()[ctxFlags&0xF];
+      CtxChain[0] = (sqword)escState;
       sqword* chainEnd = &CtxChain_1;
       sqword* chainStart = &CtxChain_1;
-      escSymbol = ((STATE*)CtxChain[0])->Symbol;
+      escSymbol = escState->Symbol;
       MixCtx3 = escSymbol;
       STATE* stateIter = MinContext->getStates() - 1;
-      SymMask[((STATE*)CtxChain[0])->Symbol] = epoch;
+      SymMask[escState->Symbol] = epoch;
       while( 1 ) {
         stateIter += 1;
         int walkSym = stateIter->Symbol;
