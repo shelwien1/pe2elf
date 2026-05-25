@@ -2559,6 +2559,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // shallow (trailing) find-and-bubble path
   sqword trailStatesIdx;
   byte   trailFlags;
+  STATE* trailStates;
   byte*  trailFound;
 
   STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
@@ -2995,6 +2996,7 @@ LABEL_94:
       }
       trailStatesIdx = walkCtx->iStates;
       trailFlags = walkCtx->Flags;
+      trailStates = (STATE*)(heap + trailStatesIdx);
       goto LABEL_165;
     }
     mixWeight = 2;
@@ -3051,17 +3053,18 @@ LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = walkCtx->iStates;
       trailFlags = walkCtx->Flags;
-      if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Symbol == (byte)searchSym)
+      trailStates = (STATE*)(heap + trailStatesIdx);
+      if (trailStates[trailFlags & 0xF].Symbol == (byte)searchSym)
         break;
 LABEL_165:
-      if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Freq == 0) {
+      if (trailStates[trailFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         trailStatesIdx = walkCtx->iStates;
         trailFlags    = walkCtx->Flags;
+        trailStates   = (STATE*)(heap + trailStatesIdx);
       }
       walkCtx->Flags = trailFlags & 0xF0;
-      STATE* trailStates = (STATE*)(heap + trailStatesIdx);
       // shallow find-and-bubble (freq margin 1 == strict less)
       trailFound = FindAndBubble7_((byte*)trailStates, searchSym, &walkCtx->Flags, 1);
       trailState0Freq = trailStates[0].Freq;
