@@ -3057,7 +3057,7 @@ LABEL_94:
       deepStatesPtr = heap + deepStatesIdx;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx[1], 13);
-      foundFreq = foundState[1];
+      foundFreq = ((STATE*)foundState)->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
       depth3 -= 3;
