@@ -2659,7 +2659,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // deep find-and-bubble path
   sqword deepStatesIdx;    // walkCtx->iStates
   byte   deepFlags;        // walkCtx->Flags
-  STATE* deepFound;        // result of FindAndBubble7_(states, sym, ...)
 
   // shallow (trailing) find-and-bubble path
   sqword trailStatesIdx;
@@ -3020,7 +3019,7 @@ LABEL_94:
       RefreshIfRank0Empty_(walkCtx, deepStatesIdx, deepFlags, deepStates, (sqword)chain);
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
-      deepFound = FindAndBubble7_(deepStates, searchSym, &walkCtx->Flags, 13);
+      STATE* deepFound = FindAndBubble7_(deepStates, searchSym, &walkCtx->Flags, 13);
       int foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
