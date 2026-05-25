@@ -2963,7 +2963,9 @@ LABEL_94:
     bmComposite = SseIdx{}
       .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
       .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
-      .bits <14, 3>(((bm1 + 32 - sym) >> 31) + ((bm1 - sym) >> 31) + ((int)sym >= bm1));
+      // 0..3 score by sym's position relative to bm1: 0 (sym<bm1),
+      // 1 (sym==bm1), 2 (bm1<sym≤bm1+32), 3 (sym>bm1+32).
+      .bits <14, 3>((sym > (uint)(bm1 + 32)) + (sym > (uint)bm1) + ((int)sym >= bm1));
     bijectCellPtr = (sqword)&BijectMap[4*bmComposite + 4*b1];
     byte* bmCell = (byte*)bijectCellPtr;       // 4-byte cell: sym/prev1/prev2/count
     SymLastCtx[(byte)bmCell[2]] = sc;
