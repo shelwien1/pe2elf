@@ -3922,12 +3922,15 @@ LABEL_58:
       mixShiftB = mixShiftSelB<0x220;
       predBaseDeltaA = RescaleAccum2_((void*)q22, mixShiftB);
       predBaseDeltaB = RescaleAccum2_((void*)q18, mixShiftB);
-      // blend the two neighbour cells (binMixCenter ± 0x10000) into the
-      // (cumFreqB, cumWeightB) accumulators.
-      q20 = (sqword)(binMixCenter-0x10000);
-      q17 = (sqword)(binMixCenter+0x10000);
-      cumFreqB   = ((binMixCenter[0x10000] + *(binMixCenter-0x10000))    >> (mixShiftB+1)) + mixSseMeanB;
-      cumWeightB = ((uint)(binMixCenter[65538] + *(binMixCenter-65534))  >> (mixShiftB+1)) + mixSseFreqB;
+      // blend the two neighbour cells (binMixCenter ± 0x10000 words) into
+      // the (cumFreqB, cumWeightB) accumulators. binUpCell[0]/binDnCell[0]
+      // are the hits slot of each neighbour; [2] is the freq slot.
+      word* binUpCell = binMixCenter + 0x10000;
+      word* binDnCell = binMixCenter - 0x10000;
+      q20 = (sqword)binDnCell;
+      q17 = (sqword)binUpCell;
+      cumFreqB   = ((binUpCell[0] + binDnCell[0])                >> (mixShiftB+1)) + mixSseMeanB;
+      cumWeightB = ((uint)(binUpCell[2] + binDnCell[2])          >> (mixShiftB+1)) + mixSseFreqB;
       sseCum = cumFreqB;
       sseTot = cumWeightB;
       binMixDeltaHi = RescaleAccum2_(binMixCenter+0x10000, mixShiftB);
