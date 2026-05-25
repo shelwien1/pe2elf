@@ -3553,12 +3553,11 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStatesP1C, remCandF, escSymbol, escCandidate, seeIdxBase;
   byte flagsSaveA;
   char descendFlags;
-  uint sumFreqF, totFreq, subRange, sumFreqLimit;
-  STATE **chainPtr, *localFoundState, *walkStateIterE, *firstStateE;
-  sqword *chainEndE, *chainEndF;
-  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
-  sqword result;
   short orderCtxSeedSave;
+  uint sumFreqF, totFreq, subRange, sumFreqLimit;
+  sqword result, *chainEndE, *chainEndF;
+  STATE **chainPtr, *localFoundState, *walkStateIterE, *firstStateE;
+  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
   // Each SSE cascade stage publishes its slot pointer through one q-global so
