@@ -2843,7 +2843,7 @@ LABEL_94:
       .bits <14, 3>(((bm1 + 32 - sym) >> 31) + ((bm1 - sym) >> 31) + ((int)sym >= bm1));
     bijectCellPtr = (sqword)&BijectMap[4*bmComposite + 4*b1];
     byte* bmCell = (byte*)bijectCellPtr;       // 4-byte cell: sym/prev1/prev2/count
-    SymLastCtx[(byte)BijectMap[4*bmComposite + 2 + 4*b1]] = sc;
+    SymLastCtx[(byte)bmCell[2]] = sc;
     SymLastCtx[bmCell[1]] = sc;
     bmByte = bmCell[0];
     hintSymQ26 = bmCell[0];
