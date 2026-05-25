@@ -3574,6 +3574,31 @@ inline void RewindPredictor_(sqword slotAddr, int delta, int mult) {
   *(uint*)slotAddr       += (uint)(delta * mult);
 }
 
+// Build the sse2 cascade index used in both region A (binary coder) and
+// region F (per-candidate loop). Same indexing rule; the only varying
+// inputs are the symbol and the (prevWeight, prevTot) for the bit<13>
+// "weight scarcity" predicate. Reads several globals (hint*, matchPosAge,
+// matchEpoch2, matchHashSy, FoundSymbol, PrevSymbol, OrderCtxSeed, SseSeed,
+// SSE0).
+inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
+  return SseIdx{}
+    .bit  <0>    (sym == hintSymM2)
+    .bit  <1>    (sym == hintSymMatch3)                     // overlaid with SSE0 byte below
+    .bit  <2>    (sym == hintSymBmCell)
+    .bit  <3>    (sym == FoundSymbol)
+    .bit  <4>    (sym == PrevSymbol)
+    .bits <5, 2> (((uint)matchPosAge < 0xA800)
+                + ((uint)matchPosAge < 0x600)
+                + ((uint)matchPosAge < 0xD))                // 0..3 at bits 5-6
+    .bit  <7>    ((uint)matchEpoch2 < 0x29)
+    .bits <1, 8> (SSE0[sym])                                // SSE0 byte at bits 1-8 (overlaps boolean bits)
+    .field<11,1> (OrderCtxSeed)
+    .field<12,1> ((word)matchHashSy - (word)sym)            // sign-trick bit 12 of word subtraction
+    .bit  <13>   (17*prevWeight < prevTot)
+    .raw         (SseSeed)
+    .val;
+}
+
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
@@ -3957,21 +3982,7 @@ LABEL_58:
     sseMatchSlot = sseMatchSlotA;
     SseMatchStep_(sseMatchSlotA, (int)(60416LL*cumFreqB/cumWeightB));
     sseSum2A = sseCum;
-    sse2IdxA = SseIdx{}
-      .bit  <0>    (escSymB == hintSymM2)
-      .bit  <1>    (escSymB == hintSymMatch3)                              // overlaid with SSE0 byte below
-      .bit  <2>    (escSymB == hintSymBmCell)
-      .bit  <3>    (escSymB == FoundSymbol)
-      .bit  <4>    (escSymB == PrevSymbol)
-      .bits <5, 2> (((uint)matchPosAge < 0xA800)
-                  + ((uint)matchPosAge < 0x600)
-                  + ((uint)matchPosAge < 0xD))                          // sum of 3 matchPosAge thresholds (0..3) at bits 5-6
-      .bit  <7>    ((uint)matchEpoch2 < 0x29)
-      .bits <1, 8> (SSE0[escSymB])                    // SSE0 byte at bits 1-8 (overlaps boolean bits)
-      .field<11,1> (OrderCtxSeed)
-      .field<12,1> ((word)matchHashSy - (word)escSymB)                  // sign-trick bit 12 of word subtraction
-      .bit  <13>   (17*sseSum2A < (uint)sseTot)
-      .raw         (SseSeed);                                    // pre-positioned multi-bit accumulator
+    sse2IdxA = Sse2IdxBuild_(escSymB, sseSum2A, (uint)sseTot);
     sse2SlotA = &Sse2[2*sse2IdxA];
     sse2Slot = sse2SlotA;
     sse2CumInA = sseSum2A;
@@ -4405,21 +4416,7 @@ LABEL_59:
         sseMatchSlot = sseMatchSlotF;
         SseMatchStep_(sseMatchSlotF, (int)(60416LL*mixCumFreqF/mixCumWeightF));
         int cumWeightF = sseCum;
-        sqword sse2IdxF = SseIdx{}
-          .bit  <0>    (candSymbol == hintSymM2)
-          .bit  <1>    (candSymbol == hintSymMatch3)                          // overlaid with SSE0 byte below
-          .bit  <2>    (candSymbol == hintSymBmCell)
-          .bit  <3>    (candSymbol == FoundSymbol)
-          .bit  <4>    (candSymbol == PrevSymbol)
-          .bits <5, 2> (((uint)matchPosAge < 0xA800)
-                      + ((uint)matchPosAge < 0x600)
-                      + ((uint)matchPosAge < 0xD))                         // sum of 3 matchPosAge thresholds (0..3) at bits 5-6
-          .bit  <7>    ((uint)matchEpoch2 < 0x29)
-          .bits <1, 8> (SSE0[candSymbol])                  // SSE0 byte at bits 1-8 (overlaps boolean bits)
-          .field<11,1> (OrderCtxSeed)
-          .field<12,1> ((word)matchHashSy - (word)candSymbol)              // sign-trick bit 12 of word subtraction
-          .bit  <13>   (17*cumWeightF < (uint)sseTot)
-          .raw         (SseSeed);                                   // pre-positioned multi-bit accumulator
+        sqword sse2IdxF = Sse2IdxBuild_(candSymbol, cumWeightF, (uint)sseTot);
         sse2SlotF = &Sse2[2*sse2IdxF];
         sse2Slot = sse2SlotF;
         int sse2CumInF  = cumWeightF;
