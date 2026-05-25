@@ -3734,9 +3734,9 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword mixIdxC, mixOffsetC, priorFoundStateF;
   sqword sseQTableIdxC;
   sqword sseQTableIdxA, summFreqPtr;
-  int *mixSlotA, *binMixSlotF, *predWAF;
+  int *mixSlotA, *predWAF;
   int *predWBF, *mixBaseB, *mixSlotB;
-  int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
+  int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -4027,7 +4027,7 @@ LABEL_58:
     } else {
       // Deeper sub-stage: take the BinSse path and run ~6 more SSE-mix
       // accumulators before joining the range coder dispatch below.
-      binSseSlotB = &BinSse[(int)(SseIdx{}
+      int* binSseSlotB = &BinSse[(int)(SseIdx{}
           .bits <0, 2> ((uint)mixIdxB >> 6)                   // mixIdxB bits 6-7 -> result bits 0-1
           .bit  <2>    (SymLastCtx2[MixCtx3] == SymCount)
           .bit  <3>    ((uint)mixIdxB & 0x200)                // mixIdxB bit 9   -> result bit 3
@@ -4398,7 +4398,7 @@ LABEL_59:
           .bit  <10>   (candSymbol == escSymbol)          // candidate is the entry escape symbol
           .bit  <11>   (sumFreqF      < sumFreqLimit)        // freq summary below threshold
           .bit  <12>   ((uint)matchEpoch2 < 0x220));      // recent match
-        binMixSlotF = &d27[0x4000*mixSseSizeF+2*seeIdxF];
+        int* binMixSlotF = &d27[0x4000*mixSseSizeF+2*seeIdxF];
         int freq0F = (word)MixBound2[0x8000*mixSseSizeF+4*seeIdxF];
         binMixCenter = (word*)binMixSlotF;
         // Refresh matchCtxHiSave before the rescale path runs: behaviour-
