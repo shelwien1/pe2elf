@@ -2562,8 +2562,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
   STATE* foundState;       // captured FoundState at function entry
-  int    sc;               // = SymCount - 1, the new SymCount
-  int    prevSymCount;     // SymCount before --
   int    symEpoch;         // current SymEpoch (epoch counter)
   int    symEpochN;        // = symEpoch + 1 (next epoch)
   char*  sseSlot;          // &MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)]
@@ -2592,9 +2590,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   STATE* trailStates;
   int    trailBound;       // gating cutoff in trailing loop
 
-  prevSymCount = SymCount;
-  sc           = SymCount - 1;
-  SymCount     = sc;
+  int prevSymCount = SymCount;
+  int sc           = SymCount - 1;
+  SymCount         = sc;
   // Commit binMixCenter's predExpand counter (word[3]) into its uint accumulator.
   {
     word* binMixCenter = (word*)BinMixCenterG;
