@@ -2012,9 +2012,6 @@ sqword ReduceOrder() {
   sqword maxCtxStart;
   sqword succIdx;
   sqword succAddr;
-  int escIdx;
-  char sse0BitSaved;
-  uint succIdxSaved;
   sqword newStatesIdx2;
   qword newStateEnd;
   sqword allocedUnit;
@@ -2028,7 +2025,6 @@ sqword ReduceOrder() {
   STATE** chainPtrSave;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
-  sqword escIdxClipped;
   sqword rootCtxSaved;
   byte foundSym;
   rootCtxW = RootContext;
@@ -2176,13 +2172,13 @@ LABEL_11:
     result = succCtx->iStates;
   }
   if( rootCtxW!=maxCtxStart ) {
-    escIdx = EscIndexSeed+8;
+    int escIdx = EscIndexSeed+8;
     rootCtxSaveLab99 = rootCtxW;
     if (escIdx >= 14) escIdx = 14;
     if (escIdx <  0) escIdx = 0;
-    sse0BitSaved = sse0Bit;
-    escIdxClipped = escIdx;
-    succIdxSaved = newByteIdx;
+    char sse0BitSaved = sse0Bit;
+    sqword escIdxClipped = escIdx;
+    uint succIdxSaved = newByteIdx;
     while( 1 ) {
       PPM_CONTEXT* curCtxP = ctxBW;
       uint nStatesP1 = curCtxP->NStates + 1;
