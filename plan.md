@@ -7,16 +7,16 @@ driver. `ppmd.cpp` in the same directory is Shkarin's readable reference
 implementation of the same algorithm; use it as the behaviour and naming
 oracle.
 
-`RealProcess<f_DEC>` is still the largest single function (~950 lines,
+`RealProcess<f_DEC>` is the largest single function (~950 lines,
 templated for encode/decode) and gets the bulk of the remaining
 structural work. The other large functions — `MixUpdate` (~635 lines),
 `ReduceOrder` (~280 lines), `StartModelRare` (~215 lines),
 `CreateSuccessors`, `UpdateModel`, `PPMContextWalk`, the `Sse*`
-helpers — have had their `v##`/`a#` locals renamed by role, their
-byte-offset arithmetic typified via `PPM_CONTEXT*`/`STATE*`/`SseCounter*`/
-`SseSlot*` member access, and their dead writes removed. File is now
-~4800 lines (down from ~5400 originally). Treat the whole file as the
-refactoring target.
+helpers — read like ordinary if-dense C++: locals are role-named,
+byte-offset access goes through `PPM_CONTEXT*`/`STATE*`/`SseCounter*`/
+`SseSlot*` member access, and the helpers are factored out. Total
+file size: ~4800 lines. Treat the whole file as the refactoring
+target.
 
 ## The goal
 
@@ -48,15 +48,15 @@ factored `auxFindAndUpdate`/`rescale`/`cutOff` equivalents
 (`BinEscFreq`, `RescaleCtx`, `UpdateModel`). The full ppmd.cpp ↔
 dummy.cpp mapping table is in appendix §A.8.
 
-## What's still wrong
+## What's wrong
 
-The file is now ~4800 lines. The helpers, allocator, range coder, and
-non-`RealProcess` model code (ReduceOrder, MixUpdate, CreateSuccessors,
-UpdateModel, BinEscFreq, RescaleCtx, StartModelRare, the SSE rescalers)
-all read like ordinary if-dense C++. What still **doesn't** read like
-idiomatic C++ is described below, in roughly decreasing order of impact.
+The helpers, allocator, range coder, and non-`RealProcess` model
+code (ReduceOrder, MixUpdate, CreateSuccessors, UpdateModel,
+BinEscFreq, RescaleCtx, StartModelRare, the SSE rescalers) read
+like ordinary if-dense C++. What **doesn't** read like idiomatic
+C++ is described below, in roughly decreasing order of impact.
 
-### A. `RealProcess` is still a 950-line decompilation
+### A. `RealProcess` is a 950-line decompilation
 
 The body of `RealProcess<f_DEC>` runs from line ~3490 to ~4441. It has:
 
@@ -96,11 +96,10 @@ The body of `RealProcess<f_DEC>` runs from line ~3490 to ~4441. It has:
   (lines ~4040–4130, the escape mirror), region F (lines ~4200–4290,
   per-candidate). The per-stage helpers (`Sse1Step_` etc.) exist, but
   the surrounding feature-index computation and the q##-slot
-  publishing are still spelled out three times.
+  publishing are spelled out three times.
 
-`ReduceOrder`, `MixUpdate`, and `StartModelRare` once looked like
-this — they were unwound function-by-function. `RealProcess` is the
-last function still in its decompiled shape.
+`RealProcess` is the only function in this shape; the other large
+functions in the file read like normal C++.
 
 ### B. The labels make the textbook structure invisible
 
@@ -184,7 +183,7 @@ first promoting the surrounding locals from "_A/_F-suffixed
 function-scope" to "parameters of an extracted helper", which is
 section A above.
 
-### D. `MixUpdate` is logically sectioned but still one 635-line function
+### D. `MixUpdate` is one 635-line function with extractable sections
 
 `MixUpdate` (dummy.cpp:2382-3017) is clean per-section but each
 section is a 30-60 line stretch of dense arithmetic that would be
@@ -235,7 +234,7 @@ particular is currently a 60-line block of nested `if/else if/else`
 on `(b1,b2,b3)` equality patterns that would read much better as a
 small predicate ladder.
 
-### E. The q-globals still don't have semantic names
+### E. The q-globals don't have semantic names
 
 Twenty-two `sqword q##` globals (q9, q12, q14, q17..q25, q26, q29..q37,
 q39) survive. Inside each function they're aliased to a typed pointer
@@ -272,7 +271,7 @@ A reader has to grep five other functions to learn which q## means
 what. Goal: rename each of these at the definition site, the same way
 `d51 → sseCum` was done.
 
-### F. The d-arrays still expose raw byte-offset arithmetic
+### F. The d-arrays expose raw byte-offset arithmetic
 
 ```cpp
 // dummy.cpp:89-92
@@ -383,8 +382,10 @@ newCtx->Flags    = newFlags;
 newCtx->SummFreq = newSym;   // SummFreq word doubles as (sym, freq=0) when NStates==0
 ```
 
-These are technically correct and the surrounding helpers have been
-named, but the local expression still leaks the binary memory layout.
+These are technically correct, but the local expression leaks the
+binary memory layout — the surrounding code reads each field
+through a named pointer, then drops back into byte arithmetic for
+the last assignment.
 
 ### J. Section-suffix names live on outside `RealProcess` too
 
@@ -403,23 +404,23 @@ shares one function scope.
 
 ### K. The textbook PPM-arm decomposition is missing
 
-`ppmd.cpp` (Shkarin's reference) implements the core algorithm in
-**~50 lines** of `RealEncode`/`RealDecode` plus eight short methods
-on `PPM_CONTEXT`: paired `encode0`/`decode0`, `encodeLES1`/`decodeLES1`,
-`encode1`/`decode1`, `encode2`/`decode2`. Each pair is two copies of
-the same arm — same SEE-index build, same probability math, with
-only the range-coder operation differing (`rcEncodeSymbol` vs
-`rcRemoveSubrange`). The PE variant has already collapsed this
-pair-wise duplication: `RealProcess<int f_DEC>` is one templated
-function that handles both directions, with `if (f_DEC) ...` /
-`if (!f_DEC) ...` arms at the few points where encoder and decoder
-diverge. **Keep that template.** A literal port to `encode0` +
-`decode0` separate methods would *re-introduce* the duplication
-that the template eliminates.
+`ppmd.cpp` (the reference implementation) factors the core algorithm
+into **~50 lines** of `RealEncode`/`RealDecode` plus eight short
+methods on `PPM_CONTEXT`: paired `encode0`/`decode0`,
+`encodeLES1`/`decodeLES1`, `encode1`/`decode1`, `encode2`/`decode2`.
+Each pair is two copies of the same arm — same SEE-index build,
+same probability math, with only the range-coder operation
+differing (`rcEncodeSymbol` vs `rcRemoveSubrange`).
+
+The PE variant collapses each ppmd pair into a single templated
+arm: `RealProcess<int f_DEC>` handles both directions in one body
+with `if (f_DEC) ...` / `if (!f_DEC) ...` arms at the few points
+where encoder and decoder diverge. **Keep that template.** A
+literal port to `encode0` + `decode0` separate methods would
+*re-introduce* the duplication that the template eliminates.
 
 What's missing is the **per-arm extraction** itself. The eight
-`encode*`/`decode*` pairs collapse to **four arms** under the
-template:
+ppmd `encode*`/`decode*` pairs map to **four templated arms**:
 
 | Algorithm arm (templated)                  | dummy.cpp location (current)                          |
 |--------------------------------------------|-------------------------------------------------------|
@@ -430,10 +431,10 @@ template:
 | `update1(STATE*)`                          | LABEL_250 + bubble-up at ~4365–4385 (no encode/decode split) |
 | `update2(STATE*)`                          | escape-tail freq bump at ~4400–4425 (ditto)           |
 | `makeEsc1Freq()` / `makeEsc2Freq()`        | SEE-index build inside regions A and F                |
-| `PrepareNextStep(MinContext, FoundState)`  | RealProcess LABEL_250 tail (still inlined)            |
+| `PrepareNextStep(MinContext, FoundState)`  | RealProcess LABEL_250 tail (inlined)                  |
 
-Already factored (and the names match ppmd's free-function
-equivalents):
+The ppmd helpers that have direct dummy.cpp counterparts as free
+functions (no extraction needed):
 
 | ppmd.cpp                              | dummy.cpp                            |
 |---------------------------------------|--------------------------------------|
@@ -443,8 +444,8 @@ equivalents):
 | free `RestoreModelRare(pc)`           | inlined in `ReduceOrder` LABEL_73 path |
 | free `FinishCutOff()`                 | inlined in `ReduceOrder`'s glue cleanup |
 
-Of the four arms still to extract, `processEscape` (region F) is the
-big one: ppmd.cpp's `encode2` is ~30 lines; dummy's LABEL_59 candidate
+Of the four arms to extract, `processEscape` (region F) is the big
+one: ppmd.cpp's `encode2` is ~30 lines; dummy's LABEL_59 candidate
 dispatch is ~270 lines because it inlines the full SSE cascade per
 candidate.
 
@@ -499,15 +500,15 @@ parameters instead of file-scope q-globals — Section E.
 #### Sub-arm factorings worth pulling out
 
 Independently of the arm extraction, several blocks **inside the
-arms** still appear three times across regions A / C / F and would
+arms** appear three times across regions A / C / F and would
 collapse to one helper if the surrounding locals were lifted:
 
 - **The Sse1 → SseMatch → Sse2 → Sse3 cascade** appears in region A
   (~3680–3860), region C (~4040–4130), and region F (~4200–4290).
   The per-stage helpers (`Sse1Step_`, `SseMatchStep_`, `Sse2Step_`,
-  `Sse3Step_`) exist; what's still duplicated is the slot-pointer
-  computation, the SSE-index build, and the q##-publish boilerplate
-  surrounding each stage. (Section C.)
+  `Sse3Step_`) cover the cell math; the duplication is in the
+  slot-pointer computation, the SSE-index build, and the
+  q##-publish boilerplate surrounding each stage. (Section C.)
 - **The SEE-index bitfield build** for `makeEsc1Freq` (region A) and
   `makeEsc2Freq` (region F) — both are 8–10-term SseIdx{} compositions,
   most terms shared.
@@ -519,42 +520,42 @@ collapse to one helper if the surrounding locals were lifted:
 These don't require breaking the `<f_DEC>` template — they're
 sub-bodies inside one direction.
 
-### L. Constants and names ppmd.cpp standardises
+### L. Named constants from ppmd.cpp to propagate
 
-`ppmd.cpp` introduces names for several constants and helpers that
-dummy.cpp uses with magic numbers or local renames:
+`ppmd.cpp` has names for several constants and helpers that dummy.cpp
+spells as magic numbers or local renames. The mapping:
 
-| ppmd.cpp                          | dummy.cpp equivalent (current)                       |
+| ppmd.cpp                          | dummy.cpp form                                       |
 |-----------------------------------|------------------------------------------------------|
-| `MAX_O = 16`                      | local `MaxOrder` global (dynamic)                    |
-| `UNIT_SIZE = 12`                  | magic `12` inline                                    |
-| `N_INDEXES = 38`                  | magic `38` / `0x26` inline                           |
+| `MAX_O = 16`                      | dynamic `MaxOrder` global                            |
+| `UNIT_SIZE = 12`                  | bare `12` inline                                     |
+| `N_INDEXES = 38`                  | bare `38` / `0x26` inline                            |
 | `INT_BITS = 6, PERIOD_BITS = 7`   | not named — implicit in SSE cell math                |
 | `TOT_BITS = 13, BIN_SCALE = 8192` | implicit                                             |
-| `H_BITS=15, H_SHIFT=5, H_MASK=0x7FFF` | magic `0x1FFFF`/`0xFFF`/`<<6` for sseState3Hash etc. |
-| `ROUND0 = 31, ROUND1 = 53`        | `0x1F` / `0x35` literals if present                  |
-| `MAX_FREQ = 123`                  | already a `PPM_CONTEXT::MAX_FREQ` enum               |
-| `O_BOUND = 9`                     | already a `PPM_CONTEXT::O_BOUND` enum                |
-| `MEM_DIVISOR = 10`                | magic `120` / `108 / 9` arithmetic                   |
+| `H_BITS=15, H_SHIFT=5, H_MASK=0x7FFF` | bare `0x1FFFF`/`0xFFF`/`<<6` for sseState3Hash etc. |
+| `ROUND0 = 31, ROUND1 = 53`        | bare `0x1F` / `0x35` literals if present             |
+| `MAX_FREQ = 123`                  | matches: `PPM_CONTEXT::MAX_FREQ` enum                |
+| `O_BOUND = 9`                     | matches: `PPM_CONTEXT::O_BOUND` enum                 |
+| `MEM_DIVISOR = 10`                | bare `120` / `108 / 9` arithmetic                    |
 | `RLSM[2][12]` (RunLength state machine) | inlined in update1/update2 sites              |
-| `RLQTable[12]`, `SSE0QTable[72]`, `SSE1QTable[64]`, `SEEQTable[256]` | same names, larger sizes (PE variant) |
+| `RLQTable`, `SSE0QTable`, `SSE1QTable`, `SEEQTable` | same names, larger sizes (PE variant) |
 | `RLQBounds`, `SSE0QBounds`, `SSE1QBounds`, `SEEQBounds` | same names (compatible)             |
-| `Indx2Units[N_INDEXES]`, `Units2Indx[128]` | same names, plus `Units2Indx4[128]` (PE-only) |
+| `Indx2Units[N_INDEXES]`, `Units2Indx[128]` | same names, plus PE-only `Units2Indx4[128]` |
 | `SymType[256]`                    | same name                                            |
 | `RecentSymbol[H_SIZE]`            | not present — PE uses `RecentPos[]` / different      |
 | `EscList[MAX_O]`                  | not present — PE keeps SSE-cascade deltas instead    |
 | `SEE_CONTEXT { Summ, Shift, Count }` | replaced by PE's larger SSE cell layout           |
 
-`Range` (the SUBRANGE struct in ppmd) is replaced by `Rangecoder rc`
+ppmd's `Range` struct (`SUBRANGE`) maps to dummy's `Rangecoder rc`
 with members `Range`, `Low`, `Code`, `Cache`, `ff_count`, `SubRange`.
-The arithmetic packing trick used in ppmd's range coder
-(`(low^(low+range))<TOP` etc.) is replaced by an explicit `Cache +
-ff_count` carry queue in dummy.cpp — that's intentional and bit-exact
-for the PE stream format, not a target for un-doing.
+The arithmetic packing trick in ppmd's range coder
+(`(low^(low+range))<TOP` etc.) is spelled in dummy as an explicit
+`Cache + ff_count` carry queue — intentional and bit-exact for the
+PE stream format, not a target for un-doing.
 
 The ppmd.cpp names that **should** propagate into dummy.cpp where the
-mapping is exact: `MAX_O`, `UNIT_SIZE`, `N_INDEXES`, `MAX_FREQ` (the
-enums already match), `H_BITS`/`H_SHIFT` for the `sseState3Hash`
+mapping is exact: `MAX_O`, `UNIT_SIZE`, `N_INDEXES`, `MAX_FREQ`
+(enums match), `H_BITS`/`H_SHIFT` for the `sseState3Hash`
 arithmetic, the `ROUND0`/`ROUND1` constants if any of the SSE0/SSE1
 arithmetic actually uses them.
 
@@ -565,140 +566,27 @@ The names that **should not** propagate: anything starting with
 `ppmd.cpp`. Don't try to rename them after ppmd's `SEE_CONTEXT` —
 they're different cells with different update math.
 
-## What's already been cleaned up
-
-Reference list of what's *not* wrong any more, kept here so future
-passes don't try to redo work that's been done. Every function
-outside `RealProcess` has had its `v##` locals renamed by role, its
-`a#` parameters renamed, its byte-offset arithmetic typified, its
-dead writes pruned, and its single-use locals folded into their
-callers. Summary by category:
-
-**Helper functions factored out of inlined bodies:**
-- `FreeUnitsRare`, `AllocUnits_`, `AllocContext_`, `UnitsCpy_`,
-  `MoveContext_` cover the four allocator paths previously inlined.
-- `emitOneByte` shared between Rangecoder's `EncodeShift` and `Flush`.
-- `Sse1Step_` / `Sse2Step_` / `Sse3Step_` / `SseMatchStep_` collapse
-  the four-stage SSE cascade between RealProcess regions A and F into
-  one body each.
-- `MaybeRescale1_` / `MaybeRescale2_` / `RescaleAccum1_` /
-  `RescaleAccum2_` / `SseClampMean_` / `ClampToBand_` /
-  `SseDeltaUpdate_` / `SseMixUpdate_` standardise the per-cell SSE
-  update operations.
-- `MatchPosHint_` / `MatchPosHint16_` / `HashArmUpdate_` /
-  `BijectPairUpdate_` / `WalkEscapeChain_` / `RewindPredictor_` /
-  `FreqMixStep_` / `FillFreqMap_` / `FindAndBubble7_` /
-  `BubbleSortChain_` factor the recurring MixUpdate / region-mirror
-  patterns.
-- `PopCountWeighted_` / `ClampMixWeight_` / `InitMixCell_` /
-  `initSseCells` lambda factor the StartModelRare init loops.
-- `MEM_BLK::unlink()` / `linkNext` / `linkPrev` / `unlinkNext` /
-  `unlinkPrev` / `avail` / `canMerge` cover the allocator's doubly-
-  linked-list manipulations; `AllocUnitsRare`'s bootstrap unlink now
-  uses `bList[0].unlinkPrev()`.
-- `SseIdx` (file-scope) is used by `PPMContextWalk`, `MixUpdate`, and
-  `RealProcess` to build composite bitfield indices
-  (`mixCtxComposite`, `matchScore`, `OrderCtxSeed`, `SseSeed`,
-  `MixCtxExtra`, `bmComposite`, `sparseFlags`).
-- `Ptr2Indx` / `Indx2Ptr` cover every `addr ↔ heap index` conversion
-  (no remaining manual `(uint)(uintptr_t)x - heapNull` patterns).
-
-**Function signature retypings** (now take/return their natural type
-instead of `byte*` / `void*` / `sqword`):
-- `BinEscFreq(PPM_CONTEXT*)`, `RescaleCtx(PPM_CONTEXT*)`,
-  `UpdateModel(PPM_CONTEXT*, uint)`, `MixUpdate(PPM_CONTEXT*)`,
-  `FreeContext_(PPM_CONTEXT*)`, `MoveContext_(PPM_CONTEXT*)
-  → PPM_CONTEXT*`, `AllocContext_() → PPM_CONTEXT*`.
-- `FindAndBubble7_(STATE*, byte, byte*, int) → STATE*`.
-- `SseScale1(SseCounter*)`, `SseScale2(SseSlot*)`.
-- `CreateSuccessors(int, STATE**, sqword)` — chain threaded as
-  `STATE**` end-to-end; per-chain access is direct
-  `(*chainPtr)->iSuccessor` / `*chainPtr = state`.
-- ReduceOrder / MixUpdate locals retyped to their natural pointer
-  types: `ctxBW`, `walkCtx`, `foundState`, `foundStateB`, `stateBW`,
-  `chainStatePtr`, `onestatePtr`, `tailState`, `deepFound`,
-  `trailFound`, `deepStates`, `trailStates`, `chainPtr`, `chainPtrW`,
-  `chainPtrSave`, `sse2Base`, `minCtx`, `rootCtxP`, `rootCtxP1`, `pc`.
-- `FreeUnitsRare` / `RescaleCtx` / `SseScale1` / `SseScale2` /
-  `InitTables` / `BinEscFreq` made `void` (return values were
-  discarded by every caller).
-
-**Byte-offset access typified:**
-- `*(uint*)(p + 4)` / `*(word*)(p + 2)` etc. across ReduceOrder,
-  CreateSuccessors, MixUpdate, StartModelRare, PPMContextWalk
-  converted to `ctx->iStates` / `ctx->SummFreq` / `state->iSuccessor`
-  etc.
-- `MaybeRescale*_` / `RescaleAccum*_` use `((SseCounter*)slot)->freq0`
-  / `->freq1` member access instead of `*((word*)slot + n)`.
-- `RescaleCtx` step-2 byte arithmetic rewritten using `STATE*`
-  iteration (`endState`, `lastState`) instead of 6-byte stride.
-- Root STATE[256] init in StartModelRare uses `states[i].Symbol`
-  member writes instead of 6-byte interleaved bytes.
-
-**Hex-Rays macro residues removed:**
-- `LODWORD(x)` on sqword args (no-op for 64-bit), `LOWORD(d90[i])`
-  in reads, `((byte*)SSE0)` no-op casts on `SSE0[256]` /
-  `SSE1[256]` / `Indx2Units[48]`.
-- Dead "prefetch hints" `(void)(x + heapNull)`.
-- Unused macros `DWORDn` / `LODWORD` / `LOBYTE` / `HIWORD` / `BYTE1` /
-  `BYTE2` / `BYTE4` / `WORD2` and the unused `hword` typedef.
-
-**Dead writes proven by data-flow inspection and deleted:**
-- `succAddrSaved` / `succAddr = succAddrSaved` (loop never mutates
-  `succAddr`).
-- Two `newByteIdx = pTextEntry+1-heapNull` refreshes (value never
-  clobbered between init and use).
-- `matchHi = (int)matchHi` self-assign (all reads use explicit casts).
-- `ctxSuffixIdx`, `deepStatesPtr`, `predGuessSym = Order1Ctx` (all
-  assigned to a value they already hold).
-
-**Single-use locals inlined into callers:**
-`oldIStates`, `stateIdxU`, `unitsStart`, `rsCtx`, `symEpochS`,
-`sseRowOff`, `scale`, `heapNullOffset`, `runLengthVal`, `param1/2/3`,
-`maxOrderArg`, `memsize_b`, `unitsInRun`. Counter locals
-`j` / `halved` moved into their for-loop bodies;
-`sseHistOff` / `newHistCnt` / `binMixCenter` scoped to the owning
-block.
-
-**Repeated computations consolidated:**
-- Chained assigns: `Order1Ctx = predGuessSym = ...`,
-  `FoundSymbol = predGuessSym = ...`, `PrevSymbol = FoundSymbol`.
-- Reused locals: `pTextEntry+1` → `newSlot`, `descendNStates` reuses
-  `walkNStates`, `(uint)(symEpoch-matchPrev)` reuses `matchDelta`,
-  `(uint)(symEpoch-recentEpoch)` reuses `dt`, `symEpochN` reused for
-  the `SymEpoch` increment, `bList` reused as `queue0`,
-  `Indx2Ptr(...)` instead of `HeapNull + ...`.
-- Branch-invariant `FoundSymbol = -1` hoisted above its two-arm init.
-
-**Renames at file scope:**
-- `b39` → `SymFreqs` (per-symbol frequency cache populated by
-  `FillFreqMap_`).
-- `StartSubAllocator`'s `a2_order` / `a3` params → `order` / `cutOff`;
-  caller's `param1/2/3` → `memoryMB` / `modelOrder` / `resetMethod`.
-
-(Remaining work is enumerated in "What's still wrong", sections
-A–L above.)
-
 ## Non-goals
 
 ### Splitting the `<f_DEC>` template into separate encode/decode pairs
 
 `ppmd.cpp` has eight `PPM_CONTEXT::encode*`/`decode*` methods —
 four arm pairs, each pair structurally identical except for which
-range-coder call it makes. `dummy.cpp` already collapses the pair
-into one templated `RealProcess<f_DEC>` with `if (f_DEC)` branches
-at the divergence points. **Keep this template.** When extracting
-the per-arm functions (`processBinary<f_DEC>`, `processLES1<f_DEC>`,
-`processMulti<f_DEC>`, `processEscape<f_DEC>` — see Section K) keep
-each as one templated function with `if (f_DEC)` inside, not as two
-separate `encode*` / `decode*` methods. Encoder and decoder
+range-coder call it makes. `dummy.cpp` collapses each pair into one
+templated `RealProcess<f_DEC>` body with `if (f_DEC)` branches at
+the divergence points. **Keep this template.** When extracting the
+per-arm functions (`processBinary<f_DEC>`, `processLES1<f_DEC>`,
+`processMulti<f_DEC>`, `processEscape<f_DEC>` — see Section K),
+each stays as one templated function with `if (f_DEC)` inside, not
+as two separate `encode*` / `decode*` methods. Encoder and decoder
 diverge only at a handful of operations (range-coder call, where
-the byte comes from / goes to), and forcing them to live in the
-same function body makes drift impossible.
+the input byte comes from / where the output byte goes), and
+forcing them to live in the same function body makes drift
+impossible.
 
 Factoring out repeated *direction-independent* sub-bodies inside an
 arm (the SSE cascade staging, the SEE-index bitfield build, the
-state bubble-up, etc.) is still a goal — those don't require
+state bubble-up, etc.) is a separate goal — those don't require
 breaking the template.
 
 ### Eliminating the gotos completely
@@ -721,23 +609,22 @@ before/after stream comparison.
 ### Re-routing region B through `PPMContextWalk`
 
 `PPMContextWalk` is a partial extraction, not a behaviour-identical
-helper. Region B inside `RealProcess` still does the binary-context
-work inline. Don't replace the inline body with a call to
+helper. Region B inside `RealProcess` does the binary-context work
+inline. Don't replace the inline body with a call to
 `PPMContextWalk` without re-validating round-trip.
 
 ### Wrapping all model state in a class
 
 A `Predictor`/`PPMCodec` struct holding `MaxContext`, `OrderFall`, the
-SSE tables etc. is the right end state but it touches every function in
-the file at once. Do the per-function rename/clean-up passes first;
-collect related globals into a struct only once their names and lifetimes
-are clear.
+SSE tables etc. is the right end state, but it touches every function
+in the file at once. Collect related globals into a struct only once
+their per-function roles are clear; don't do it before the q##
+renames in Section E.
 
 ### Reorganising into multiple files
 
-`dummy.cpp` is intentionally single-file. Don't split it back out into
-the `subs_*.inc` layout it came from — that structure was an artefact
-of decompilation, not a design.
+`dummy.cpp` is intentionally single-file. Don't split it out — the
+codec fits in one source file with room to spare.
 
 ## Critical preservation rules
 
@@ -948,11 +835,11 @@ do {                              // find next un-masked state
 } while (SymMask[Sym] == SymCount);
 ```
 
-In `RealProcess`, `epoch` is the renamed `SymCount`; `SymMask[X] =
-epoch` writes and `epoch == SymMask[X]` reads appear in both region A
-(the multi-state path's state scan) and region C (the masked recoding).
-`SymCount` is still the global name; renaming it at file scope to
-`symEpoch` is a candidate cleanup.
+In `RealProcess`, `epoch` is a local capture of `SymCount`;
+`SymMask[X] = epoch` writes and `epoch == SymMask[X]` reads appear
+in both region A (the multi-state path's state scan) and region C
+(the masked recoding). The global is named `SymCount`; renaming it
+at file scope to `symEpoch` is a candidate cleanup.
 
 ### A.4 Per-symbol reordering of the STATE[] array
 
@@ -1152,8 +1039,7 @@ Steps 4, 8 and 11 all run the *same* SSE cascade (and that's why
 `SseClampMean_` / `SseDeltaUpdate_` etc. — they implement one stage of
 the cascade and get reused across regions). Steps 12-16 happen
 inside the `LABEL_250` tail (`commitSymbol()` in spirit) and in
-`UpdateModel` / `CreateSuccessors` / `ReduceOrder`, which are the next
-refactoring targets after `RealProcess` itself.
+`UpdateModel` / `CreateSuccessors` / `ReduceOrder`.
 
 ### A.8 Function map: ppmd.cpp ↔ dummy.cpp
 
@@ -1192,13 +1078,13 @@ sparse submodels of §A.6. Mapping the named entry points:
 | `PPMIIEncode` / `PPMIIDecode`       | same (just different stats-callback signatures)        |
 | `StartModelRare(Mode)`              | `StartModelRare(mode)` (compatible)                    |
 | `RealEncode` / `RealDecode`         | `RealEncode` / `RealDecode` (templated `RealProcess<f_DEC>`) |
-| `PrepareNextStep`                   | RealProcess LABEL_250 tail (still inlined)             |
+| `PrepareNextStep`                   | RealProcess LABEL_250 tail (inlined)                   |
 | `UpdateModel(MinContext, FoundState)` | `UpdateModel(ctx, order)` — **different role!**       |
 | `CreateSuccessors(skip, p, pc, fs)` | `CreateSuccessors(depth, chain, seedCtx)` — different signature, similar role |
 | `ReduceOrder(p, pc, fs)`            | `ReduceOrder()` — covers both `ReduceOrder` and `RestoreModelRare` from ppmd |
 | `RestoreModelRare`                  | folded into dummy's `ReduceOrder` LABEL_73 path        |
 
-**PPM-arm methods (still to extract — see Section K above):**
+**PPM-arm methods to extract — see Section K above:**
 
 ppmd.cpp's `encode*`/`decode*` pairs collapse into single templated
 arms under dummy.cpp's existing `<f_DEC>` template. Keep the
