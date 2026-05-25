@@ -1110,7 +1110,7 @@ sqword BinEscFreq(PPM_CONTEXT* pc) {
 //     * SSE0[] replaces SymType[] (0 / 0x80 vs textbook 0 / 4).
 // =============================================================================
 
-sqword RescaleCtx(PPM_CONTEXT* ctx) {
+void RescaleCtx(PPM_CONTEXT* ctx) {
   int          NStates0   = ctx->NStates;             // original NStates (= last index)
   int          totalCount = NStates0 + 1;             // # states to iterate (incl. found)
   STATE*       states     = ctx->getStates();
@@ -1161,10 +1161,9 @@ sqword RescaleCtx(PPM_CONTEXT* ctx) {
 
   // ---- step 3a: top slot survived -> just record Flags|=0x40 and return ---
   if (lastState->Freq) {
-    sqword resultFast = lastState->Freq;
     ctx->Flags |= 0x40;
     q9 = (sqword)Indx2Ptr(ctx->iStates);
-    return resultFast;
+    return;
   }
 
   // ---- step 3b: count trailing zero-freq slots ----------------------------
@@ -1185,7 +1184,7 @@ sqword RescaleCtx(PPM_CONTEXT* ctx) {
     ctx->iStates = Ptr2Indx(newStates);
     ctx->Flags  |= 0x40;
     q9 = (sqword)newStates;
-    return (sqword)((((newNStates + 2) >> 1) - 1));   // matches PE's leaked intermediate
+    return;
   }
 
   // ---- step 3b-ii: collapse to oneState -----------------------------------
@@ -1202,7 +1201,6 @@ sqword RescaleCtx(PPM_CONTEXT* ctx) {
   ctx->oneState().Freq        = (byte)(firstSF >> 8);
   ctx->oneState().iSuccessor  = firstSucc;
   ctx->Flags                  = SSE0[(byte)firstSF];
-  return firstSF;
 }
 //--- #return
 //--- #include "subs_ssescale1a.inc"
