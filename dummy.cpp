@@ -2184,15 +2184,13 @@ LABEL_73:
       }
     }
     // Walk the suffix chain down to the order-(-1) context (iSuffix == 0).
-    {
-      PPM_CONTEXT* ctx = (PPM_CONTEXT*)rootCtxW;
-      if (ctx->iSuffix) {
-        while (ctx->iSuffix) ctx = ctx->getSuffix();
-        rootCtxW = (sqword)ctx;
-        RootContext = rootCtxW;
-      }
+    PPM_CONTEXT* rootCtxP = (PPM_CONTEXT*)rootCtxW;
+    if (rootCtxP->iSuffix) {
+      while (rootCtxP->iSuffix) rootCtxP = rootCtxP->getSuffix();
+      rootCtxW = (sqword)rootCtxP;
+      RootContext = rootCtxW;
     }
-    result = UpdateModel((PPM_CONTEXT*)rootCtxW, 0);
+    result = UpdateModel(rootCtxP, 0);
     ++GlueCount;
     CutOffCount = 0;
     pText = BList + 456;
