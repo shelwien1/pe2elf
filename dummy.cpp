@@ -2064,9 +2064,9 @@ sqword ReduceOrder() {
   int sym;
   sqword curCtx;
   sqword* chainPtrW;
-  byte* stateBW;
+  STATE* stateBW;
   uint curCtxSuffix;
-  byte* chainStatePtr;
+  STATE* chainStatePtr;
   sqword* chainPtrSave;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
@@ -2123,15 +2123,15 @@ sqword ReduceOrder() {
         } else {
           state = &pc->oneState();
         }
-        stateBW = (byte*)state;
+        stateBW = state;
         *chainPtrW++ = (sqword)stateBW;
       } else {
-        stateBW = (byte*)*chainPtrW++;
+        stateBW = (STATE*)*chainPtrW++;
       }
-      succIdxW = ((STATE*)stateBW)->iSuccessor;
+      succIdxW = stateBW->iSuccessor;
       if( succIdxW )
         break;
-      ((STATE*)stateBW)->iSuccessor = newByteIdx;
+      stateBW->iSuccessor = newByteIdx;
       curCtxSuffix = ((PPM_CONTEXT*)curCtx)->iSuffix;
       OrderFall = --orderFall;
       if (!curCtxSuffix) {
@@ -2148,11 +2148,11 @@ sqword ReduceOrder() {
       // local pTextEntry that was set at function entry.
       newByteIdx = pTextEntry + 1 - heapNull;
       succIdxW = CreateSuccessors(0, (STATE**)(chainPtrSave-1), curCtx);
-      ((STATE*)chainStatePtr)->iSuccessor = succIdxW;
+      chainStatePtr->iSuccessor = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
       foundStateB->iSuccessor = succIdxW;
-      succIdxW = ((STATE*)chainStatePtr)->iSuccessor;
+      succIdxW = chainStatePtr->iSuccessor;
       pTextNewSlot = pTextEntry;
       pText = pTextEntry;
     }
