@@ -3554,7 +3554,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   short orderCtxSeedSave;
   uint sumFreqF, totFreq, subRange, sumFreqLimit;
   sqword result, *chainEndE, *chainEndF;
-  STATE **chainPtr, *localFoundState, *firstStateE;
+  STATE **chainPtr, *localFoundState;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
@@ -3974,22 +3974,24 @@ LABEL_128:
       freqSumE = 0;
       chainEndE = CtxChain;
       chainEndF = CtxChain;
-      firstStateE = &MinContext->getStates()[MinContext->Flags&0xF];
       epoch = SymCount;
-      escSymbol = firstStateE->Symbol;
-      MixCtx3 = escSymbol;
-      if( SymCount==SymMask[escSymbol] ) {
-        wDelta34 = 0x8000;
-      } else {
-        descendFlags = 1;
-        chainEndE = &CtxChain_1;
-        CtxChain[0] = (sqword)firstStateE;
-        SymMask[escSymbol] = SymCount;
-        chainEndF = &CtxChain_1;
-        freqSumE = firstStateE->Freq;
-        predShiftFlags = 0;
-        remStatesE = freqDeltaE-1;
-        wDelta34 = 0;
+      {
+        STATE* firstStateE = &MinContext->getStates()[MinContext->Flags&0xF];
+        escSymbol = firstStateE->Symbol;
+        MixCtx3 = escSymbol;
+        if( SymCount==SymMask[escSymbol] ) {
+          wDelta34 = 0x8000;
+        } else {
+          descendFlags = 1;
+          chainEndE = &CtxChain_1;
+          CtxChain[0] = (sqword)firstStateE;
+          SymMask[escSymbol] = SymCount;
+          chainEndF = &CtxChain_1;
+          freqSumE = firstStateE->Freq;
+          predShiftFlags = 0;
+          remStatesE = freqDeltaE-1;
+          wDelta34 = 0;
+        }
       }
       if( remStatesE ) {
         STATE*  walkStateIterE = MinContext->getStates() - 1;
