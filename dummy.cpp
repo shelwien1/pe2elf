@@ -194,8 +194,8 @@ sqword BList;
 sqword MaxContext0;
 sqword HeapNull;
 
-sqword q37;             // predWeightB storage (aliased in RealProcess)
-sqword q39;             // predWeightA storage (aliased in RealProcess)
+sqword PredWeightBG;             // predWeightB storage (aliased in RealProcess)
+sqword PredWeightAG;             // predWeightA storage (aliased in RealProcess)
 sqword RootContext;
 
 int InitsCount;
@@ -265,7 +265,7 @@ sqword q18;
 sqword q23;
 sqword q20;
 sqword q17;
-sqword q36;
+sqword BinSseCellG;
 sqword q19;
 sqword q24;
 sqword q25;
@@ -908,7 +908,7 @@ void InitTables() {
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
-  q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
+  q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=BinSseCellG=q19=q24=q25=q9=q33=CtxChainEnd=0;
   hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymBmCell=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
@@ -3612,11 +3612,11 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   word*& binMixCenter = (word*&)q21;
   // BinSse cell and the PredWeight A/B cells. Each is a 2-uint cell; the
   // commit-tail reads/writes them as `slot[0] += d##; slot[1] += d##;`.
-  // (q36, q37, q39 are only ever referenced from this file; they got hoisted
+  // (BinSseCellG, PredWeightBG, PredWeightAG are only ever referenced from this file; they got hoisted
   // to file scope by the decompiler but are really per-symbol scratch.)
-  uint*& binSseCell  = (uint*&)q36;
-  uint*& predWeightA = (uint*&)q39;
-  uint*& predWeightB = (uint*&)q37;
+  uint*& binSseCell  = (uint*&)BinSseCellG;
+  uint*& predWeightA = (uint*&)PredWeightAG;
+  uint*& predWeightB = (uint*&)PredWeightBG;
   // q12 holds the base of the current Sse2State sub-block (a 516-byte chunk;
   // the histogram occupies bytes 0..511, the running counter sits at +512).
   byte*& sse2Base = (byte*&)q12;
