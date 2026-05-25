@@ -946,8 +946,8 @@ sqword InitTables() {
   SymType[0xFF] = 24;
 
   // this one is the actual SymType probably
-  for( i = 0; i < 64; ++i)   ((byte*)SSE0)[i] = 0;
-  for( i = 64; i < 256; ++i) ((byte*)SSE0)[i] = 0x80;
+  for( i = 0; i < 64; ++i)   SSE0[i] = 0;
+  for( i = 64; i < 256; ++i) SSE0[i] = 0x80;
 
   // or this one
   byte* _SSE1 = (byte*)SSE1;
@@ -1823,7 +1823,7 @@ LABEL_15:
   newCtxAddr = seedCtx;
   baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
   byte newSym   = *baseCtxAddr;
-  byte newFlags = ((byte*)SSE0)[newSym];
+  byte newFlags = SSE0[newSym];
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
   while (true) {
@@ -2077,7 +2077,7 @@ sqword ReduceOrder() {
   foundSymFreq = *(word*)foundStateB;   // Symbol (low byte) + Freq (high byte)
   ctxBW = (PPM_CONTEXT*)RootContext;
   rootCtxSaved = RootContext;
-  sse0Bit = ((byte*)SSE0)[foundStateB->Symbol];
+  sse0Bit = SSE0[foundStateB->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
     succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
     foundStateB->iSuccessor = succCreatedTop;
@@ -2623,7 +2623,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   order1CtxSaved = Order1Ctx;
   SparseHashA = ((matchHi&0xFFFFFFF8)<<10)+32*(sym&0xFFFFFFF8);
   mixCtxOld = MixCtx;
-  sse0sym = ((byte*)SSE0)[sym];
+  sse0sym = SSE0[sym];
   RunLength += MixCtx;
   SparseHashB = (8*(sym+SparseHashB))&0xFFF00;
   recentEpoch = SseCtx0_1[sym];
