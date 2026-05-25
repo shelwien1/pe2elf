@@ -3734,12 +3734,12 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword mixIdxC, mixOffsetC, priorFoundStateF;
   sqword sseQTableIdxC;
   sqword sseQTableIdxA, summFreqPtr;
-  int *mixSlotA, *mixBaseAStride, *binMixSlotF, *sse1SlotF, *predWAF;
+  int *mixSlotA, *binMixSlotF, *sse1SlotF, *predWAF;
   int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
   int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA, *bigSlotC;
   int *bigSlotA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
-  char *mixSlotC, *mixStrideC;
+  char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
   // Each SSE cascade stage publishes its slot pointer through one q-global so
@@ -3922,7 +3922,7 @@ LABEL_18:
               uint centerExpandA = *((word*)mixSlotA+3);  // central cell predExpand counter
               bool mixShiftLowA = centerExpandA<0x400u;
               char mixShiftBSel = mixShiftA+mixShiftLowA;
-              mixBaseAStride = &mixSlotA[-2*mixIdxA];
+              int* mixBaseAStride = &mixSlotA[-2*mixIdxA];
               // Two more neighbour cells along XOR-stretch dimensions 0x100, 0x200
               int* sse3Nbr = &mixBaseAStride[2*(int)(mixIdxA^0x100)];
               int* sse4Nbr = &mixBaseAStride[2*(int)(mixIdxA^0x200)];
@@ -4297,7 +4297,7 @@ LABEL_298:
           uint centerExpandC = *((word*)mixSlotC+3);    // central cell predExpand counter
           wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, centerExpandC<0x200u);
           predShiftIncC = (centerExpandC<0x400u)+predLoBeyondC+1;
-          mixStrideC = &mixSlotC[-8*mixIdxC];
+          char* mixStrideC = &mixSlotC[-8*mixIdxC];
           // Two more neighbour cells along XOR-stretch dimensions 2, 8
           char* sse3Nbr = &mixStrideC[8*(int)(mixIdxC^2)];
           char* sse4Nbr = &mixStrideC[8*(int)(mixIdxC^8)];
