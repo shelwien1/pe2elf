@@ -3712,7 +3712,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqF;
   int sortPriorityC;
-  int sxNStatesC, mixFreqC;
+  int sxNStatesC;
   int oneStateFreqCachedF;
   int maskFlagPrevC, sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
@@ -4270,11 +4270,10 @@ LABEL_298:
         // mixSlotC and the matching freq slot (w12 is d29 offset by +4 bytes).
         mixSlotC        = (char*)d29 + mixOffsetC;
         mixWeightC      = *(int*) mixSlotC;
-        mixFreqC        = *(word*)((char*)&w12 + mixOffsetC);
+        mixFreqCacheC   = *(word*)((char*)&w12 + mixOffsetC);
         q34             = (sqword)mixSlotC;
         sseCum          = mixWeightC;
-        mixFreqCacheC   = mixFreqC;
-        sseTot          = mixFreqC;
+        sseTot          = mixFreqCacheC;
         mixWeightDeltaC = RescaleAccum1_(mixSlotC, (uint)mixWeightC, 0);
         if( mixWeightDeltaC>0x78 ) {
           // d29[]/MixWeight2[] index in 2-int-stride units.
