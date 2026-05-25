@@ -4116,9 +4116,9 @@ LABEL_58:
 
     subRange = rc.getSubRange(cumFreq, totFreq);
     if( f_DEC ? !rc.IsDecodeMatched(subRange) : (inputByte != MinContext->oneState().Symbol) ) {
-      // Snapshot the single-state context before MinContext gets reassigned
-      // to MaxContext below; both the freq*totFreq product and the line-745
-      // probability calc need the OLD MinContext.
+      // Snapshot the single-state context's Freq before MinContext gets
+      // reassigned to MaxContext below; the escape-probability formula
+      // (a few lines later) needs the OLD MinContext.
       oneStateFreqCachedF = MinContext->oneState().Freq;
       if( f_DEC ) rc.DecodeNotMatched(subRange); else rc.encodeEscape(subRange);
       SymMask[MinContext->oneState().Symbol] = SymCount;
