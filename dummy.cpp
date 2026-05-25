@@ -2997,12 +2997,12 @@ LABEL_94:
     .bit  <6> (true)
     .bits <12, 3>((OrderFall>32) + (OrderFall>8) + (OrderFall>4)
                 + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
-  if( minISuffix ) {
+  if (minISuffix) {
     heap = HeapNull;
-    walkCtx = (byte*)(HeapNull+minISuffix);
+    walkCtx = (byte*)(HeapNull + minISuffix);
     depthLeft = OrderFall;
-    depth5 = 5*OrderFall;
-    if( !*walkCtx ) {
+    depth5 = 5 * OrderFall;
+    if (((PPM_CONTEXT*)walkCtx)->NStates == 0) {
       do {
         if (chain > &CtxChain_2[1])
           *(byte*)(*(chain-2) + 1) += *(byte*)(*(chain-2) + 1) - 2 < 0;
