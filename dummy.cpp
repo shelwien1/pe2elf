@@ -2684,7 +2684,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   STATE* trailStates;
 
 
-  short  mixBoostA, mixBoostB;
   byte   newFoundFreq;
 
   int    trailBound;       // gating cutoff in trailing loop
@@ -3054,15 +3053,15 @@ LABEL_94:
         goto LABEL_201;
       }
       int deepSumFreq = walkCtx->SummFreq;
-      mixBoostA = mixWeight + (depth5 > ofallP3);
+      short mixBoostA = mixWeight + (depth5 > ofallP3);
       mixWeight >>= 1;
       // mixBoostB sums three contributions:
       //   1. 7*SummFreq < 4*Freq*(NStates+1)  (frequency-dominance test)
       //   2. 2*depthLeft > OrderFall+1          (still climbing)
       //   3. mixBoostA                         (mixWeight + threshold bit)
-      mixBoostB = (7*deepSumFreq < 4u*(uint)deepFound->Freq*(walkCtx->NStates + 1u))
-                + (2*depthLeft > ofallP1)
-                + mixBoostA;
+      short mixBoostB = (7*deepSumFreq < 4u*(uint)deepFound->Freq*(walkCtx->NStates + 1u))
+                      + (2*depthLeft > ofallP1)
+                      + mixBoostA;
       walkCtx->SummFreq = (word)(mixBoostB + deepSumFreq);
       newFoundFreq = mixBoostB + deepFound->Freq;
       deepFound->Freq = newFoundFreq;
