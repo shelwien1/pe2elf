@@ -4054,6 +4054,7 @@ LABEL_298:
       //  block above, but uses CtxChain[] populated by the walk for which
       //  symbols to mix into the escape distribution.
       // ---------------------------------------------------------------------
+      {
       q29 = q30 = q31 = q32 = q33 = (sqword)d27;
       if( descendNStates==255 ) {
         escCandidate = -1;
@@ -4194,6 +4195,7 @@ LABEL_335:
                     + 7 * (descendNStatesP1E > 74)                       // weight 7 (was >>31 sign trick)
                     + 7 * (descendNStatesP1E > 2)                        // weight 7 (was >>31 sign trick)
                     + (ofallSavedE         > 16));                       // weight 1
+      }
       while( 1 ) {
         // -------------------------------------------------------------------
         //  One candidate symbol per iteration. The original LABEL_59 is the
