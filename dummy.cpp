@@ -2118,7 +2118,7 @@ sqword ReduceOrder() {
   }
   pTextEntry = pText;
   heapNull = HeapNull;
-  *(byte*)pText = *(word*)q9;
+  *(byte*)pText = ((STATE*)q9)->Symbol;       // emit the symbol byte into the text buffer
   unitsStart = UnitsStart;
   pTextNewSlot = pTextEntry+1;
   pText = pTextEntry+1;
