@@ -2016,7 +2016,6 @@ sqword ReduceOrder() {
   sqword result;
   sqword pTextEntry;
   sqword heapNull;
-  qword unitsStart;
   sqword pTextNewSlot;
   uint newByteIdx;
   sqword maxCtxStart;
@@ -2075,7 +2074,6 @@ sqword ReduceOrder() {
   pTextEntry = pText;
   heapNull = HeapNull;
   *(byte*)pText = foundStateB->Symbol;        // emit the symbol byte into the text buffer
-  unitsStart = UnitsStart;
   pTextNewSlot = pTextEntry+1;
   pText = pTextEntry+1;
   newByteIdx = pTextEntry+1-heapNull;
@@ -2182,7 +2180,7 @@ LABEL_73:
   }
   maxCtxStart = MaxContext0;
   succIdx = succIdxW;
-  if( unitsStart>heapNull+(qword)succIdxW ) {
+  if( (qword)UnitsStart > heapNull+(qword)succIdxW ) {
     succIdxW = CreateSuccessors(0, (STATE**)CtxChain, MaxContext0);
     goto LABEL_9;
   }
