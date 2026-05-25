@@ -3333,22 +3333,24 @@ inline void MaybeRescale2_(void* slot, T& freq0Local) {
   }
 }
 
-// MaybeRescale1_ + commit "slot.freq0 += (slot.weight >> shift)" pattern.
+// MaybeRescale1_ + commit "slot.freq0 += (slot.freq1 >> shift)" pattern.
 // Returns the accumulated delta so callers can stash it in a d-global.
 inline int RescaleAccum1_(void* slot, uint weight, int shift) {
-  word freq0 = *((word*)slot + 2);
+  SseCounter* cnt = (SseCounter*)slot;
+  word freq0 = cnt->freq0;
   MaybeRescale1_(slot, freq0, weight);
-  int  delta = (int)((uint)*((word*)slot + 3) >> shift);
-  *((word*)slot + 2) = (word)(freq0 + delta);
+  int  delta = (int)((uint)cnt->freq1 >> shift);
+  cnt->freq0 = (word)(freq0 + delta);
   return delta;
 }
 
 // MaybeRescale2_ variant of the above.
 inline int RescaleAccum2_(void* slot, int shift) {
-  word freq0 = *((word*)slot + 2);
+  SseCounter* cnt = (SseCounter*)slot;
+  word freq0 = cnt->freq0;
   MaybeRescale2_(slot, freq0);
-  int  delta = (int)((uint)*((word*)slot + 3) >> shift);
-  *((word*)slot + 2) = (word)(freq0 + delta);
+  int  delta = (int)((uint)cnt->freq1 >> shift);
+  cnt->freq0 = (word)(freq0 + delta);
   return delta;
 }
 
