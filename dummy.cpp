@@ -145,7 +145,7 @@ int* Sse2_1 = &Sse2[1];
 int Sse3[0x2A03E];
 int* Sse3_1 = &Sse3[1];
 
-char b39[256];
+char SymFreqs[256];
 
 int MixWeight2[0x8040];
 auto& MixFreq2_1 = (short(&)[0x803F*2])MixWeight2[1];
@@ -906,7 +906,7 @@ TARGET_SCALE_FALLBACK:
 sqword InitTables() {
   uint i,j,k;
 
-  memset(b39,0,256);
+  memset(SymFreqs,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
@@ -3295,7 +3295,7 @@ Rangecoder rc;
 //      SseMixUpdate_      Abbreviated SSE accumulator update              4x
 //      ClampToBand_       Asymmetric clamp [lo, hi] for SSE gain          6x
 //      BubbleSortChain_   CtxChain[] insertion sort by priority           2x
-//      FillFreqMap_       b39[Sym] = Freq prologue                        2x
+//      FillFreqMap_       SymFreqs[Sym] = Freq prologue                        2x
 //      WalkEscapeChain_   Walk suffix chain past escape symbol            2x
 //      RewindPredictor_   LABEL_128 "undo this round's deltas"            6x
 //      FreqMixStep_       Freq-mixing inner-loop body                     2x
@@ -3412,7 +3412,7 @@ inline sqword SseClampMean_(int* slot, sqword scale, sqword lo, sqword hi) {
 }
 
 // One step of the freq-mixing loop: given the current state's freq, the
-// suffix-context's freq for this symbol (b39[sym]), the running (sumFreq,
+// suffix-context's freq for this symbol (SymFreqs[sym]), the running (sumFreq,
 // sumFreqW) state and the constant term `constMix`, conditionally rescale
 // the state's freq and accumulate the new value back into the parent
 // context's SummFreq. Used 2x (initial mix loop + LABEL_298 mirror).
@@ -3446,14 +3446,14 @@ inline void BubbleSortChain_(sqword* chainEnd, sqword* sortLimit, int sortPriori
   }
 }
 
-// Populate the b39[] frequency lookup table from a PPM context's states.
-// b39[state.Symbol] = state.Freq, for each of NStates+1 states. Used 2x as
+// Populate the SymFreqs[] frequency lookup table from a PPM context's states.
+// SymFreqs[state.Symbol] = state.Freq, for each of NStates+1 states. Used 2x as
 // the prologue to the freq-mixing loops below.
 inline void FillFreqMap_(PPM_CONTEXT* ctx) {
   int   n = ctx->NStates + 1;
   STATE* s = ctx->getStates();
   do {
-    b39[s->Symbol] = s->Freq;
+    SymFreqs[s->Symbol] = s->Freq;
     ++s;
   } while (--n);
 }
@@ -3702,7 +3702,7 @@ LABEL_18:
               int  mixWeightM = nStatesP1Save*(((uint)(mixConstM-sumFreqM)>>28)|7)+sxSumFreqA0;
               do {
                 stateBackM -= 1;
-                FreqMixStep_(stateBackM, b39[stateBackM->Symbol], mixWeightM,
+                FreqMixStep_(stateBackM, SymFreqs[stateBackM->Symbol], mixWeightM,
                              mixConstM, sumFreqM, sumFreqWM, MinContext);
               } while( --nStatesCnt );
               sumFreqSaveA = sumFreqWM;
@@ -4084,7 +4084,7 @@ LABEL_298:
           int  sumFreqW0C     = (word)sumFreqC;
           do {
             STATE* st = (STATE*)*--chainEndE;
-            FreqMixStep_(st, b39[st->Symbol], mixWeightCfull,
+            FreqMixStep_(st, SymFreqs[st->Symbol], mixWeightCfull,
                          2*mixFiveC, sumFreqC, sumFreqW0C, MinContext);
             walkFreqSumC += st->Freq;
           } while( chainEndE!=CtxChain );
