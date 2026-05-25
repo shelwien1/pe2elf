@@ -949,10 +949,9 @@ sqword InitTables() {
   for( i = 64; i < 256; ++i) SSE0[i] = 0x80;
 
   // or this one
-  byte* _SSE1 = (byte*)SSE1;
-  _SSE1[0] = 0; _SSE1[1] = 2; _SSE1[2] = 2;
-  for( i = 3; i <= 37; ++i) _SSE1[i] = 4;
-  for( i = 38; i < 256; ++i) _SSE1[i] = 6;
+  SSE1[0] = 0; SSE1[1] = 2; SSE1[2] = 2;
+  for( i = 3; i <= 37; ++i) SSE1[i] = 4;
+  for( i = 38; i < 256; ++i) SSE1[i] = 6;
 
   // BinMapTable: 16-entry uint table, indexed by (mixCtx2New & 0xF) in
   // SseSeed assembly. Rows [0..3]*4 + [0..2] are 0; only the +3 lane of each
