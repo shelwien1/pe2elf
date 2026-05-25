@@ -2684,7 +2684,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int      ofallSaved;     // OrderFall captured at the start of the walk
   int      ofallP1;        // OrderFall + 1
   int      ofallP3;        // OrderFall + 3
-  int      orderShift15;   // (OrderFall > 0) << 15
   int      minNStates;     // MinContext->NStates
   int      searchSym;      // foundState->Symbol (for FindAndBubble7_)
   uint     minISuffix;     // MinContext->iSuffix
@@ -2993,7 +2992,6 @@ LABEL_94:
   }
   ofall = OrderFall;
   CtxChain[0] = (sqword)foundState;
-  orderShift15 = (OrderFall>0)<<15;
   // OrderCtxSeed bitfield:
   //   bit  9     : recentSym's bit-7 (sym was in the >= 0x80 char class)
   //   bits 13-14 : matchScore (proximity-test count, already shifted)
@@ -3010,7 +3008,7 @@ LABEL_94:
   //   raw   : BinMapTable[mixCtx2New & 0xF]  (low-order bits feed the binary
   //           mix-cell address)
   //   bit 14+: mixCtxOld at bit 14
-  //   bit 15 : OrderFall > 0  (orderShift15, already computed)
+  //   bit 15 : OrderFall > 0
   //   bit 15 : OrderFall > 2  (additional contribution; carries into bit 16)
   SseSeed = SseIdx{}
     .raw  (BinMapTable[mixCtx2New & 0xF])
