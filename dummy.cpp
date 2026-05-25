@@ -2592,6 +2592,21 @@ inline STATE* FindAndBubble7_(STATE* states, byte sym, byte* flagsByte, int marg
   }
 }
 
+// Both the deep and trail walks in MixUpdate's suffix loop need to refresh
+// a context's STATE[] view if rank-0 is empty: stash chainEnd into the
+// global CtxChainEnd, call BinEscFreq, re-read iStates/Flags. Pulls the
+// 7-line pattern into a single inline.
+inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
+                                  STATE*& states, sqword chainEnd) {
+  if (states[flags & 0xF].Freq == 0) {
+    CtxChainEnd = chainEnd;
+    BinEscFreq(ctx);
+    idx    = ctx->iStates;
+    flags  = ctx->Flags;
+    states = (STATE*)Indx2Ptr(idx);
+  }
+}
+
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- mixing-predictor weight pointers (BinMix{Hi,Lo}G + PredBase{A,B}G + Sse{1,2,3}SlotG + SseMatchSlotG hold heap addresses) -----
   uint* wQ17;     // single  += binMixDeltaHi
@@ -3048,13 +3063,7 @@ LABEL_94:
       deepStatesIdx = walkCtx->iStates;
       deepFlags = walkCtx->Flags;
       STATE* deepStates = (STATE*)(heap + deepStatesIdx);
-      if (deepStates[deepFlags & 0xF].Freq == 0) {
-        CtxChainEnd = (sqword)chain;
-        BinEscFreq(walkCtx);
-        deepStatesIdx = walkCtx->iStates;
-        deepFlags     = walkCtx->Flags;
-        deepStates    = (STATE*)(heap + deepStatesIdx);
-      }
+      RefreshIfRank0Empty_(walkCtx, deepStatesIdx, deepFlags, deepStates, (sqword)chain);
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_(deepStates, searchSym, &walkCtx->Flags, 13);
@@ -3092,13 +3101,7 @@ LABEL_201:
       if (trailStates[trailFlags & 0xF].Symbol == (byte)searchSym)
         break;
 LABEL_165:
-      if (trailStates[trailFlags & 0xF].Freq == 0) {
-        CtxChainEnd = (sqword)chain;
-        BinEscFreq(walkCtx);
-        trailStatesIdx = walkCtx->iStates;
-        trailFlags    = walkCtx->Flags;
-        trailStates   = (STATE*)(heap + trailStatesIdx);
-      }
+      RefreshIfRank0Empty_(walkCtx, trailStatesIdx, trailFlags, trailStates, (sqword)chain);
       walkCtx->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
       trailFound = FindAndBubble7_(trailStates, searchSym, &walkCtx->Flags, 1);
