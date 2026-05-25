@@ -2869,16 +2869,18 @@ LABEL_94:
 
   oldD90IdxB = (uint)d90[otherPar];
   BijectPairUpdate_(b36, b37, /*read*/oldD90IdxB, /*write*/savedD90Idx, sym, sc);
-  if( mixScaleCntr ) {
-    if( sym==*(byte*)q26 ) {
-      *(byte*)(q26+3) += *(byte*)(q26+3)-255<0;
+  if (mixScaleCntr) {
+    // q26 is a 4-byte BijectMap cell: byte[0]=sym, [1]=prev1, [2]=prev2, [3]=count.
+    byte* bm = (byte*)q26;
+    if (sym == bm[0]) {
+      bm[3] += (bm[3] - 255 < 0);
     } else {
-      *(byte*)(q26+2) = *(byte*)(q26+1);
-      *(byte*)(q26+1) = *(byte*)q26;
-      *(byte*)q26 = sym;
-      *(byte*)(q26+3) = 0;
+      bm[2] = bm[1];
+      bm[1] = bm[0];
+      bm[0] = sym;
+      bm[3] = 0;
     }
-    bmPtr = sseSlot+1;
+    bmPtr = sseSlot + 1;
     b1 = (byte)bmPtr[-MixScale];
     b2 = (byte)bmPtr[-2*MixScale];
     b3 = (byte)bmPtr[-3*MixScale];
