@@ -674,6 +674,7 @@ constexpr int PATH_BUF_MAX = 128;
 PPM_CONTEXT*&MaxContext = *(PPM_CONTEXT**)&MaxContext0;
 
 void BinEscFreq(PPM_CONTEXT* pc);
+inline void ComputeMatchHints_(int matchTblHit, uint sym);
 
 // Walks the context suffix chain to update local frequency statistics, perform inertia
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
@@ -825,15 +826,7 @@ TARGET_SCALE_FALLBACK:
     .bit<0>(SparseBit & SparseBitmapA[SparseIdxA])
     .bit<1>(SparseBit & SparseBitmapB[SparseIdxB]);
   int matchTableEntry = MatchPosTable[sym+(MatchCtxHi<<8)];
-  if( (uint)(SymEpoch-matchTableEntry)>=0x20000 ) {
-    matchEpoch2 = 0x20000;
-    matchPosAge = 0x20000;
-    matchHashSy = 0x20000;
-  } else {
-    matchHashSy = (byte)MatchPosHash[(matchTableEntry + 2) & 0x1FFFF];
-    matchPosAge = SymEpoch - matchTableEntry;
-    matchEpoch2 = SymEpoch - MatchPosTable[matchHashSy + (sym << 8)];
-  }
+  ComputeMatchHints_(matchTableEntry, sym);
 
   PPM_CONTEXT* max_suffix_ctx = MaxContext->getSuffix();
   uint suffixNStates = max_suffix_ctx->NStates;
@@ -2422,6 +2415,22 @@ inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
       HashSeed2 = m2_h1;
     else if (HashSeed2 == m2_h1)
       HashSeed1 = m2_h1;
+  }
+}
+
+// helper 4b: derive the (matchHashSy, matchPosAge, matchEpoch2) triple from
+// a MatchPosTable hit. If the entry is older than 0x20000 epochs, all three
+// outputs saturate to 0x20000. Otherwise we hash through MatchPosHash and
+// follow one MatchPosTable indirection to the second epoch.
+inline void ComputeMatchHints_(int matchTblHit, uint sym) {
+  if ((uint)(SymEpoch-matchTblHit) >= 0x20000) {
+    matchEpoch2 = 0x20000;
+    matchPosAge = 0x20000;
+    matchHashSy = 0x20000;
+  } else {
+    matchHashSy = (byte)MatchPosHash[(matchTblHit+2) & 0x1FFFF];
+    matchPosAge = SymEpoch - matchTblHit;
+    matchEpoch2 = SymEpoch - MatchPosTable[256*sym + matchHashSy];
   }
 }
 
@@ -4196,15 +4205,7 @@ LABEL_59:
         predWeightA = (uint*)&predWeightSink2;
           matchCtxHiSave = MatchCtxHi;
         int matchTblHitF = MatchPosTable[256*MatchCtxHi+candSymbol];
-        if( (uint)(SymEpoch-matchTblHitF)>=0x20000 ) {
-          matchEpoch2 = 0x20000;
-          matchPosAge = 0x20000;
-          matchHashSy = 0x20000;
-      } else {
-          matchHashSy = (byte)MatchPosHash[(matchTblHitF+2)&0x1FFFF];
-          matchPosAge = SymEpoch-matchTblHitF;
-          matchEpoch2 = SymEpoch-MatchPosTable[256*candSymbol+matchHashSy];
-        }
+        ComputeMatchHints_(matchTblHitF, candSymbol);
         // seeIdxF: composite index for the per-candidate mix table d27[].
         // Outer OR with seeIdxBase (the prior-section accumulator) preserves
         // the bit-merge semantics where seeIdxBase and the inner sum may
