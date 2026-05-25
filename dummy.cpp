@@ -2137,10 +2137,8 @@ sqword ReduceOrder() {
     chainStatePtr = stateBW;
     chainPtrSave = chainPtrW;
     if( succIdxW<=newByteIdx ) {
-      // pTextEntry / sse0Bit are locals and survive the call as-is; the
-      // newByteIdx assignment refreshes its successor-index value from the
-      // local pTextEntry that was set at function entry.
-      newByteIdx = pTextEntry + 1 - heapNull;
+      // newByteIdx is already pTextEntry+1-heapNull from function entry and
+      // hasn't been clobbered; just call CreateSuccessors with the chain.
       succIdxW = CreateSuccessors(0, (STATE**)(chainPtrSave-1), curCtx);
       chainStatePtr->iSuccessor = succIdxW;
     }
