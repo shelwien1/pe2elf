@@ -3724,10 +3724,10 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint centerExpandB, binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC;
-  uint mixWeightSavedA, mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
+  uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   uint sumFreqLimit;
   char descendFlags, mixShiftB, mixShiftC, predShiftIncC;
-  char mixShiftBSel, mixShiftA;
+  char mixShiftA;
   sqword mixIdxA;
   sqword result, mixIdxB;
   sqword sse2IdxA;
@@ -3738,7 +3738,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
   int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA, *bigSlotC;
   int *bigSlotA;
-  bool mixShiftLowA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC, *mixStrideC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -3912,7 +3911,7 @@ LABEL_18:
               int* mixDnA = mixSlotA - 2048;
               q33 = (sqword)mixUpA;
               q32 = (sqword)mixDnA;
-              mixWeightSavedA = mixUpA[0];
+              uint mixWeightSavedA = (uint)mixUpA[0];
               mixWeightA = ((mixWeightSavedA + mixDnA[0])           >> (mixShiftA+1)) + mixWeightA;
               mixFreqA   = ((uint)(((word*)mixUpA)[2]
                                  + ((word*)mixDnA)[2])              >> (mixShiftA+1)) + mixFreqA;
@@ -3921,8 +3920,8 @@ LABEL_18:
               wDelta33 = RescaleAccum1_(mixUpA, mixWeightSavedA, mixShiftA);
               wDelta32 = RescaleAccum1_(mixDnA, (uint)mixDnA[0],   mixShiftA);
               uint centerExpandA = *((word*)mixSlotA+3);  // central cell predExpand counter
-              mixShiftLowA = centerExpandA<0x400u;
-              mixShiftBSel = mixShiftA+mixShiftLowA;
+              bool mixShiftLowA = centerExpandA<0x400u;
+              char mixShiftBSel = mixShiftA+mixShiftLowA;
               mixBaseAStride = &mixSlotA[-2*mixIdxA];
               // Two more neighbour cells along XOR-stretch dimensions 0x100, 0x200
               int* sse3Nbr = &mixBaseAStride[2*(int)(mixIdxA^0x100)];
