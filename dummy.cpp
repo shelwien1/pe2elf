@@ -3556,7 +3556,7 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int nStatesP1Save, cumFreqC, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
-  int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
+  int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
   int cumWeightB, cumFreqB, escSymB;
   int sse2CumInA, totFreqA;
@@ -3970,6 +3970,8 @@ LABEL_58:
       //  walking the suffix chain until a context with NStates != entryNStates
       //  is reached, then drop into the multi-state escape body below.
       // ---------------------------------------------------------------------
+      int walkNStates;
+      int walkDelta;
       do {
 LABEL_128:
         uint walkSuffix = MinContext->iSuffix;
