@@ -4357,6 +4357,10 @@ LABEL_59:
         localFoundState = *chainPtr;
         preCommitMinCtx = MinContext;
         CtxChainEnd = (sqword)(chainPtr+1);
+        // Reset the PredBase{A,B}G and BinMix{Hi,Lo}G slots to d27 (the
+        // dummy/zero sink) so subsequent RescaleAccum2_ stack writes either
+        // see a real cell (set during the PredWeight stage below) or quietly
+        // write into d27 and have no effect.
         PredBaseBG = PredBaseAG = BinMixLoG = BinMixHiG = (sqword)d27;
         uint candSymbol = localFoundState->Symbol;
         sqword candProbBF = ((localFoundState->Freq<<8)-predBinFlags)/sumFreqF;
