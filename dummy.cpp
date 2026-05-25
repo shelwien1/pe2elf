@@ -2723,7 +2723,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
 
       // final independent hint from RecentPos chain
-      byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFFLL] + 2) & 0x1FFFF];
+      byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFF] + 2) & 0x1FFFF];
       SymLastCtx[256 * (sc == SymLastCtx[vh]) + vh] = sc;
     }
   } else {
