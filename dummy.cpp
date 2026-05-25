@@ -3054,7 +3054,8 @@ LABEL_94:
     }
     mixWeight = 2;
     if( minNStates )
-      mixFlag1 = (-45*minNStates + (uint)minCtx->SummFreq) >> 31;
+      // sign-bit-extract idiom: 1 if SummFreq < 45*minNStates, else 0.
+      mixFlag1 = ((uint)minCtx->SummFreq < (uint)(45*minNStates));
     else
       mixFlag1 = orderBumpVariance==0;
     mixFlag2 = mixFlag1;
