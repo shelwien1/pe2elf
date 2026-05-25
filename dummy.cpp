@@ -3554,7 +3554,6 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int inputByte;
   int nStatesP1Save, cumFreqC, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
   int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
@@ -3615,7 +3614,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
     //  Per-symbol outer loop: read input byte (encode), pick context, dispatch
     //  on the multi-state / single-state branch.
     // -----------------------------------------------------------------------
-    if( !f_DEC ) inputByte = getc(inFile);
+    int inputByte = f_DEC ? 0 : getc(inFile);
     MinContext = MaxContext;
     if( MinContext->NStates ) {
       // ---------------------------------------------------------------------
