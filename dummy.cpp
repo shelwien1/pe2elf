@@ -4544,7 +4544,6 @@ LABEL_250:
 int RealDecode(FILE* outFile, FILE* inFile) { return RealProcess<1>(outFile, inFile); }
 
 int RealEncode(FILE* outFile, FILE* inFile) {
-  //printf( "!q32=%I64X!\n", q32);
   return RealProcess<0>(outFile, inFile);
 }
 //--- #return
