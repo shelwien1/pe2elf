@@ -2628,7 +2628,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    mixCtx2New;       // new MixCtx2
   int    recentEpoch;      // SseCtx0_1[sym] before update
   int    dt;               // symEpoch - recentEpoch
-  int    bdiff;            // (byte)(sym - matchHi)
   int    predGuessSym;          // running guess for FoundSymbol
 
   // ---- MatchPosTable update ------------------------------------------------
@@ -2822,7 +2821,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   hintSymMatch3 = -1;
   hintSymBmCell = -1;
   HashSeed1 = -1;
-  bdiff = (byte)(sym-matchHi);
+  int bdiff = (byte)(sym-matchHi);
   HashSeed2 = -1;
   symEpochN = symEpoch + 1;
   SymEpoch  = symEpochN;
