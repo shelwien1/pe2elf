@@ -922,14 +922,13 @@ sqword InitTables() {
   memset( freqmap, 0, sizeof(freqmap) );
   memcpy( freqmap, freqtmp, sizeof(freqtmp) );
 
-  byte* indx2units = (byte*)&Indx2Units;
-  for( i=0; i < 5; ++i ) indx2units[0 + i] = 1 + i;
-  for( i=0; i < 3; ++i ) indx2units[5 + i] = 7 + 2*i;
-  for( i=0; i < 3; ++i ) indx2units[8 + i] = 14 + 3 * i;
-  for( i=0; i < 27; ++i) indx2units[11 + i] = 24 + 4 * i;
+  for( i=0; i < 5; ++i ) Indx2Units[0 + i] = 1 + i;
+  for( i=0; i < 3; ++i ) Indx2Units[5 + i] = 7 + 2*i;
+  for( i=0; i < 3; ++i ) Indx2Units[8 + i] = 14 + 3 * i;
+  for( i=0; i < 27; ++i) Indx2Units[11 + i] = 24 + 4 * i;
 
   for( i=0,j=0; i < 0x80; ++i ) {
-    if( indx2units[j] < i+1 ) j++;
+    if( Indx2Units[j] < i+1 ) j++;
     Units2Indx4[i] = j;
   }
 
