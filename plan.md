@@ -193,37 +193,12 @@ clearer as a named helper. Major sections:
 2855-3015   Section 10: OrderFall suffix walk (deep / trail find-and-bubble)
 ```
 
-Sections 5, 7, and 9 are obvious extraction candidates:
-
-```cpp
-// dummy.cpp:2646-2652 — section 5, histogram halve-on-overflow
-if (newHistCnt > 0xA7u) {
-  *counter = 0;
-  for (sqword j = 0; j < 512; ++j) {
-    int halved = sse2Base[j] >>= 1;
-    *counter += halved;
-  }
-}
-```
-```cpp
-// dummy.cpp:2715-2725 — section 7, m2-chain consensus loop
-m2_bias = 0;
-do {
-  m2_bias += 6144;
-  m2_h3 = (byte)MatchPosHash[(m2_prev3+3)&0x1FFFF];
-  SymLastCtx2[m2_h3] = sc;
-  m2_h1 &= m2_h3;
-  m2_h2 = m2_h3 | m2_h2;
-  m2_prev3 = MatchPosPrev[m2_prev3&0x1FFFF];
-} while ((uint)(m2_bias+symEpochN-m2_prev3) < 0x20000);
-```
-
-Goal: **extract Section 5/7/9 as `HalveHistogram_`,
-`WalkM2Consensus_`, `BijectPrediction_` helpers**, taking the locals
-they need as parameters. Each is self-contained — Section 9 in
-particular is currently a 60-line block of nested `if/else if/else`
-on `(b1,b2,b3)` equality patterns that would read much better as a
-small predicate ladder.
+Sections 5, 7, and 9 are now extracted as helpers:
+`HalveSse2Histogram_`, `WalkM2Consensus_`, and `BijectTriPrediction_`.
+Section 9 (the 60-line nested `if/else if/else` on `(b1,b2,b3)`
+equality patterns) is now a single call site in MixUpdate. Section 1
+still has the wQ## delta-commit pattern, which is now compact enough
+not to need further factoring (6 lines).
 
 ### E. The q-globals don't have semantic names
 
