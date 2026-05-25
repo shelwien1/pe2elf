@@ -4437,7 +4437,8 @@ LABEL_59:
         }
         if( !--remCandF ) {
           uint rewindMult = predRescaleDiv / (MinContext->NStates + 1);
-          RewindPredictor_(q34, *(word*)(q34+6), rewindMult);
+          // q34 has no captured wDelta; read it back from the slot (word index 3).
+          RewindPredictor_(q34, ((word*)q34)[3], rewindMult);
           RewindPredictor_(q33, wDelta33,             rewindMult);
           RewindPredictor_(q32, wDelta32,             rewindMult);
           RewindPredictor_(q31, wDelta31,            rewindMult);
