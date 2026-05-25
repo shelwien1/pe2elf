@@ -2346,6 +2346,48 @@ inline void BijectPairUpdate_(byte* arrA, byte* arrB, uint readIdx, uint writeId
   arrB[writeIdx] = sym;
 }
 
+// helper 3b: walk MatchPosPrev chain backwards from (symEpoch-2), pulling
+// consensus hints out of MatchPosHash at fixed offsets. Up to three "ticks"
+// are read directly (h1, h2, h3); subsequent ticks are folded into the same
+// (h1 &=, h2 |=) accumulators inside the m2_bias loop until age > 0x20000.
+// Writes:
+//   hintSymM2  := first-tick hash byte (used in MixUpdate's later sse2 lookup)
+//   SymLastCtx2[tick]  := sc at every visited tick
+//   MatchPosBySym[h1]  := sc if h1 and h2 agree (consensus)
+//   HashSeed1/HashSeed2 := promoted if consensus reaches 3+ ticks
+inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
+  int m2_prev1 = MatchPosPrev[(symEpoch-2) & 0x1FFFF];
+  if ((uint)(symEpochN-m2_prev1) >= 0x20000) return;
+  int    m2_h1 = (byte)MatchPosHash[(m2_prev1+3) & 0x1FFFF];
+  hintSymM2 = m2_h1;
+  SymLastCtx2[m2_h1] = sc;
+  int m2_prev2 = MatchPosPrev[m2_prev1 & 0x1FFFF];
+  if ((uint)(symEpochN-m2_prev2) >= 0x20000) return;
+  sqword m2_h2 = (byte)MatchPosHash[(m2_prev2+3) & 0x1FFFF];
+  SymLastCtx2[m2_h2] = sc;
+  if (m2_h1 == (uint)m2_h2)
+    MatchPosBySym[m2_h1] = sc;
+  sqword m2_h3 = -1;
+  int    m2_prev3 = MatchPosPrev[m2_prev2 & 0x1FFFF];
+  if ((uint)(symEpochN-m2_prev3) < 0x20000) {
+    int m2_bias = 0;
+    do {
+      m2_bias += 6144;
+      m2_h3 = (byte)MatchPosHash[(m2_prev3+3) & 0x1FFFF];
+      SymLastCtx2[m2_h3] = sc;
+      m2_h1 &= m2_h3;
+      m2_h2 = m2_h3 | m2_h2;
+      m2_prev3 = MatchPosPrev[m2_prev3 & 0x1FFFF];
+    } while ((uint)(m2_bias+symEpochN-m2_prev3) < 0x20000);
+  }
+  if (m2_h1 == (uint)m2_h2 && (int)m2_h3 >= 0) {
+    if (HashSeed2 < 0)
+      HashSeed2 = m2_h1;
+    else if (HashSeed2 == m2_h1)
+      HashSeed1 = m2_h1;
+  }
+}
+
 // helper 5: 8-arm-style byte-hash predictor (used 4x with SseState2/b28/b29/b30)
 //   Read arr[readKey]; if it just got hit by us, also mark SymLastCtx2 at the
 //   same byte; otherwise mark SymLastCtx. Then store the new symbol at writeKey.
@@ -2429,15 +2471,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
   int    ssem3, ssem7;
   char   ssem11;
-
-  // ---- offset-2 MatchPosPrev hint chain -----------------------------------
-  int    m2_prev1;
-  int    m2_h1;
-  int    m2_prev2;
-  sqword m2_h2;
-  sqword m2_h3;
-  int    m2_prev3;
-  int    m2_bias;
 
   // ---- three paired byte-hash predictors (b32/b33, b34/b35, b36/b37) ------
   qword  epochBit;
@@ -2700,39 +2733,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
   }
 LABEL_94:
-  m2_prev1 = MatchPosPrev[(symEpoch-2)&0x1FFFF];
-  if( (uint)(symEpochN-m2_prev1)<0x20000 ) {
-    m2_h1 = (byte)MatchPosHash[(m2_prev1+3)&0x1FFFF];
-    hintSymM2 = m2_h1;
-    SymLastCtx2[m2_h1] = sc;
-    m2_prev2 = MatchPosPrev[m2_prev1&0x1FFFF];
-    if( (uint)(symEpochN-m2_prev2)<0x20000 ) {
-      m2_h2 = (byte)MatchPosHash[(m2_prev2+3)&0x1FFFF];
-      SymLastCtx2[m2_h2] = sc;
-      if( m2_h1==(uint)m2_h2 )
-        MatchPosBySym[m2_h1] = sc;
-      m2_h3 = -1;
-      m2_prev3 = MatchPosPrev[m2_prev2&0x1FFFF];
-      if( (uint)(symEpochN-m2_prev3)<0x20000 ) {
-        m2_bias = 0;
-        do {
-          m2_bias += 6144;
-          m2_h3 = (byte)MatchPosHash[(m2_prev3+3)&0x1FFFF];
-          SymLastCtx2[m2_h3] = sc;
-          m2_h1 &= m2_h3;
-          m2_h2 = m2_h3|m2_h2;
-          m2_prev3 = MatchPosPrev[m2_prev3&0x1FFFF];
-        } while( (uint)(m2_bias+symEpochN-m2_prev3)<0x20000 );
-      }
-      if( m2_h1==(uint)m2_h2&&(int)m2_h3>=0 ) {
-        if( HashSeed2<0 ) {
-          HashSeed2 = m2_h1;
-        } else if( HashSeed2==m2_h1 ) {
-          HashSeed1 = m2_h1;
-        }
-      }
-    }
-  }
+  WalkM2Consensus_(symEpoch, symEpochN, sc);
   // three paired byte-hash predictor updates (b32/b33, b34/b35, b36/b37).
   // Each reads at a "new" index and writes back at a different "old" index.
   epochBit = (symEpochN&1)==0;
