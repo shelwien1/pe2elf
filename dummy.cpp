@@ -2768,8 +2768,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   recentSym = sym;
   MatchCtxHi = sym;
   sseState3Hash = (sym+(sseState3Hash<<6))&0x1FFFF;
-  if( FoundSymbol>=0&&FoundSymbol!=MixCtx3 )
-    foundSymHist += foundSymHist+(sym==FoundSymbol);
+  if (FoundSymbol >= 0 && FoundSymbol != MixCtx3)
+    // shift-left-1 and push the (sym==FoundSymbol) consensus bit at bit 0
+    foundSymHist = (foundSymHist << 1) | (sym == FoundSymbol);
   b31KeyPrev = b31Key;
   order1CtxSaved = Order1Ctx;
   // SparseHashA folds (matchHi, sym) into a 14-bit hash for SparseBitmapA[].
