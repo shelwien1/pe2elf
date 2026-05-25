@@ -3568,7 +3568,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint mixDeltaA, sumFreqF;
   uint totFreq, subRange;
   uint sumFreqLimit;
-  uint maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
+  uint mixFreqA, mixWeightA;
   char descendFlags;
   sqword mixIdxA;
   sqword result;
@@ -3662,6 +3662,8 @@ LABEL_18:
           int  nStatesP1Save = nStates+1;
           uint cumFreqMixA = 0;
           uint cumFreqDivA = 0;
+          uint maskFlagPrev = 0;
+          uint maskFlagEsc  = 0;
           RSContext = ((STATE*)CtxChain[0])->Symbol;
           SymLastCtx[(byte)b27[RSContext+(Order1Ctx<<8)]] = epoch;
           q29 = q30 = q31 = q32 = q33 = (sqword)d27;
