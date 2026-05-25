@@ -3569,11 +3569,10 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
-  uint binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC, sumFreqLimit;
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
-  char descendFlags, mixShiftB, mixShiftC, predShiftIncC;
+  char descendFlags, predShiftIncC;
   sqword mixIdxA, mixIdxC, sse2IdxA;
   sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
@@ -3882,14 +3881,14 @@ LABEL_58:
           .bit  <6>    (RunLength > -9)
           .bits <7, 8> ((byte)SSE1QTable[seeIndex]))];        // SSE1QTable byte at bits 7-14
 
-      binSseVal = *binSseSlotB;
+      uint binSseVal = *binSseSlotB;
       binSseCell = (uint*)binSseSlotB;
       int mixSseMeanB = (binSseVal>>(centerExpandB<0x230))+cumFreqB;
       int mixSseFreqB = (0x3100u>>(centerExpandB<0x230))+cumWeightB;
       sseCum = mixSseMeanB;
       sseTot = mixSseFreqB;
       *binSseSlotB = binSseVal-((binSseVal+2)>>3);
-      mixShiftB = centerExpandB<0x220;
+      char mixShiftB = centerExpandB<0x220;
       predBaseDeltaA = RescaleAccum2_((void*)PredBaseAG, mixShiftB);
       predBaseDeltaB = RescaleAccum2_((void*)PredBaseBG, mixShiftB);
       // blend the two neighbour cells (binMixCenter ± 0x10000 words) into
@@ -3905,7 +3904,7 @@ LABEL_58:
       sseTot = cumWeightB;
       binMixDeltaHi = RescaleAccum2_(binMixCenter+0x10000, mixShiftB);
       binMixDeltaLo = RescaleAccum2_(binMixCenter-0x10000, mixShiftB);
-      mixShiftC = (binMixCenter[3]<0x398u) + mixShiftB;
+      char mixShiftC = (binMixCenter[3]<0x398u) + mixShiftB;
       wDelta32  = RescaleAccum2_((void*)q32, mixShiftC);
       wDelta31 = RescaleAccum2_((void*)q31, mixShiftC);
       wDelta30 = RescaleAccum2_((void*)q30, mixShiftC);
