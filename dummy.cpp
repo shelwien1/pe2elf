@@ -259,16 +259,16 @@ sqword q30;
 sqword q29;
 sqword q34;
 sqword q35;
-sqword q21;
+sqword BinMixCenterG;
 sqword q22;
 sqword q18;
-sqword q23;
+sqword Sse1SlotG;
 sqword q20;
 sqword q17;
 sqword BinSseCellG;
-sqword q19;
-sqword q24;
-sqword q25;
+sqword SseMatchSlotG;
+sqword Sse2SlotG;
+sqword Sse3SlotG;
 sqword q9;
 sqword q33;
 sqword CtxChainEnd;
@@ -911,7 +911,7 @@ void InitTables() {
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
-  q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=BinSseCellG=q19=q24=q25=q9=q33=CtxChainEnd=0;
+  q32=q31=q30=q29=q34=q35=BinMixCenterG=q22=q18=Sse1SlotG=q20=q17=BinSseCellG=SseMatchSlotG=Sse2SlotG=Sse3SlotG=q9=q33=CtxChainEnd=0;
   hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymBmCell=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
@@ -2573,7 +2573,7 @@ inline STATE* FindAndBubble7_(STATE* states, byte sym, byte* flagsByte, int marg
 }
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
-  // ---- mixing-predictor weight pointers (q17..q25 hold heap addresses) -----
+  // ---- mixing-predictor weight pointers (q17..q22 + Sse{1,2,3}SlotG + SseMatchSlotG hold heap addresses) -----
   uint* wQ17;     // single  += binMixDeltaHi
   uint* wQ18;     // single  += predBaseDeltaB
   uint* wQ19;     // pair    += sseMatchNumDelta / -= sseMatchDenDelta
@@ -2689,18 +2689,18 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- Section 1: simple additive predictor-weight updates ----------------
   wQ17 = (uint*)q17;
   wQ18 = (uint*)q18;
-  wQ19 = (uint*)q19;
+  wQ19 = (uint*)SseMatchSlotG;
   wQ20 = (uint*)q20;
   wQ22 = (uint*)q22;
-  wQ23 = (uint*)q23;
-  wpQ24 = (int*)q24;
-  wpQ25 = (int*)q25;
+  wQ23 = (uint*)Sse1SlotG;
+  wpQ24 = (int*)Sse2SlotG;
+  wpQ25 = (int*)Sse3SlotG;
   prevSymCount = SymCount;
   sc           = SymCount - 1;
   SymCount     = sc;
   // Commit binMixCenter's predExpand counter (word[3]) into its uint accumulator.
   {
-    word* binMixCenter = (word*)q21;
+    word* binMixCenter = (word*)BinMixCenterG;
     *(uint*)binMixCenter += binMixCenter[3];
   }
   *wQ17       += binMixDeltaHi;
@@ -3625,13 +3625,13 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   // because MixUpdate also reads sseCum on its way out.
   // Each SSE cascade stage publishes its slot pointer through one q-global so
   // MixUpdate can update that same cell on the way back out.
-  int*& sse1Slot     = (int*&)q23;
-  int*& sseMatchSlot = (int*&)q19;
-  int*& sse2Slot     = (int*&)q24;
-  int*& sse3Slot     = (int*&)q25;
+  int*& sse1Slot     = (int*&)Sse1SlotG;
+  int*& sseMatchSlot = (int*&)SseMatchSlotG;
+  int*& sse2Slot     = (int*&)Sse2SlotG;
+  int*& sse3Slot     = (int*&)Sse3SlotG;
   // The center pointer of the current binary-mix cell (4-word layout). Set
   // once per branch, then re-read by the deeper sub-stage to grab the weight.
-  word*& binMixCenter = (word*&)q21;
+  word*& binMixCenter = (word*&)BinMixCenterG;
   // BinSse cell and the PredWeight A/B cells. Each is a 2-uint cell; the
   // commit-tail reads/writes them as `slot[0] += d##; slot[1] += d##;`.
   // (BinSseCellG, PredWeightBG, PredWeightAG are only ever referenced from this file; they got hoisted
