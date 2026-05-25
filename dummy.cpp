@@ -1423,9 +1423,6 @@ void SseScale2(SseSlot* s) {
 //--- #include "subs_allocunitsrare.inc"
 sqword AllocUnitsRare(uint unitsIdx) {
   sqword result;
-  sqword textBufBytes;
-  int sentinelField2;
-  sqword sentinelField1;
   uint reqSizeIdx = unitsIdx;
   uint reqUnits = Indx2Units[unitsIdx];
   while (++unitsIdx != N_INDEXES) {
@@ -1441,7 +1438,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
   if( CutOffCount ) {
     if( GlueCount )
       return 0;
-    textBufBytes = UNIT_SIZE*reqUnits;
+    sqword textBufBytes = UNIT_SIZE*reqUnits;
     if( UnitsStart-textBufBytes<=(qword)pText ) {
       return 0;
     } else {
@@ -1455,8 +1452,8 @@ sqword AllocUnitsRare(uint unitsIdx) {
     // terminator: we insert it at each queue's head, then walk backward
     // (via Prev) from the queue's original tail until we loop back to it.
     MEM_BLK* sentinel = (MEM_BLK*)((char*)HeapStart + SubAllocatorSize - UNIT_SIZE);
-    sentinelField2 = sentinel->Prev;
-    sentinelField1 = *(qword*)sentinel;
+    int sentinelField2 = sentinel->Prev;
+    sqword sentinelField1 = *(qword*)sentinel;
     for (uint queueIdxOuter = 0; queueIdxOuter < N_INDEXES; ++queueIdxOuter) {
       MEM_BLK* queue = &BListPtr[queueIdxOuter];
       // Push sentinel at the head; pop the (original) tail as our starting
