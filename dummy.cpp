@@ -2798,8 +2798,17 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     mixScaleCntr -= MixScale>13;
   } else if( dt>1 ) {
     rp1 = RecentPos[recentEpoch&0xFFF];
-    if( dt==recentEpoch-rp1&&dt==rp1-RecentPos[rp1&0xFFF]&&dt<=256 ) {
-      if( sym==(byte)sseSlot[-4*dt]||(rp2 = RecentPos[recentForHi&0xFFF], dt==recentForHi-rp2)&&dt==rp2-RecentPos[rp2&0xFFF]&&(uint)matchHi==(byte)sseSlot[-3*dt-1] ) {
+    // First test: does RecentPos[sym] form a dt-stride progression, with dt small?
+    if (dt == recentEpoch - rp1 && dt == rp1 - RecentPos[rp1&0xFFF] && dt <= 256) {
+      // Second test: sym repeats at 4*dt stride in the history, OR the matchHi
+      // RecentPos chain also forms a dt-stride progression AND matchHi appears
+      // at the -3*dt-1 offset.
+      rp2 = RecentPos[recentForHi & 0xFFF];
+      bool symAt4Dt = (sym == (byte)sseSlot[-4*dt]);
+      bool hiTriad  = (dt == recentForHi - rp2)
+                   && (dt == rp2 - RecentPos[rp2 & 0xFFF])
+                   && ((uint)matchHi == (byte)sseSlot[-3*dt - 1]);
+      if (symAt4Dt || hiTriad) {
         MixScale = dt;
         mixScaleCntr = dt;
         bijectCellPtr = (sqword)&bijectCellSink;
