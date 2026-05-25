@@ -1813,7 +1813,7 @@ LABEL_15:
   baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
   byte newSym   = *baseCtxAddr;
   byte newFlags = SSE0[newSym];
-  newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
+  newCtxBytePos = Ptr2Indx(baseCtxAddr) + 1;
   chainPtrEnd = chainPtr;
   while (true) {
     PPM_CONTEXT* newCtx = AllocContext_();
@@ -1825,7 +1825,7 @@ LABEL_15:
     newCtx->iStates = newCtxBytePos;
     newCtx->iSuffix = newCtxAddr - heapNull;
     newCtxAddr = (int)(uintptr_t)newCtx;
-    result = (uint)((uint)(uintptr_t)newCtx - heapNull);
+    result = Ptr2Indx(newCtx);
     --chainPtrEnd;
     // Hook the new context into the chain entry above us: that entry's
     // STATE.iSuccessor now points at the freshly allocated context.
