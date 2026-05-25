@@ -3637,18 +3637,13 @@ LABEL_14:
 LABEL_18:
         // After scanning all states in MinContext: enter the SSE-mix block.
         if( !--remStates ) {
-          // These are written only in the else branch but read inside the
-          // if(nStatesPlus1<24) ... LABEL_58 path; declare at this scope so
-          // the goto LABEL_58 below doesn't bypass init.
-          int  sxNStates    = 0;
-          int  minSumFreqA  = 0;
-          int  sxSumFreqA0  = 0;
-          int  sumFreqSaveA = 0;
+          // These are written in either the if/else below but read inside the
+          // if(nStatesPlus1<24) ... LABEL_58 path; declare here so the
+          // goto LABEL_58 below doesn't bypass init.
+          int  sxNStates = 0, minSumFreqA = 0, sxSumFreqA0 = 0, sumFreqSaveA = 0;
           int  nStatesP1Save = nStates+1;
-          uint cumFreqMixA = 0;
-          uint cumFreqDivA = 0;
-          uint maskFlagPrev = 0;
-          uint maskFlagEsc  = 0;
+          uint cumFreqMixA = 0, cumFreqDivA = 0;
+          uint maskFlagPrev = 0, maskFlagEsc = 0;
           uint mixWeightA = 0, mixFreqA = 0, mixDeltaA = 0;
           sqword mixIdxA = 0, sseQTableIdxA = 0;
           int*   mixSlotA = nullptr;
