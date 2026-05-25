@@ -301,7 +301,7 @@ int SparseBit;
 byte Sse2State[0xC0818];
 // Overlays on Sse2State at fixed byte offsets (the decompiler emitted
 // the offsets as differences from the original module base address).
-sqword& q12          = *(sqword*)((byte*)&Sse2State + 0x00810);
+sqword& Sse2BaseG          = *(sqword*)((byte*)&Sse2State + 0x00810);
 typedef byte t_byte_14002A158[0x40000]; t_byte_14002A158& MatchPosHash = *(t_byte_14002A158*)((byte*)&Sse2State + 0x00818);
 typedef byte t_byte_14006A158[0x80000]; t_byte_14006A158& SseState2    = *(t_byte_14006A158*)((byte*)&Sse2State + 0x40818);
 typedef byte t_byte_14007A158[0x10000]; t_byte_14007A158& b28          = *(t_byte_14007A158*)((byte*)&Sse2State + 0x50818);
@@ -1627,7 +1627,7 @@ sqword StartModelRare(int mode) {
       memset(Sse2State, 0, sizeof(Sse2State));
 
       MixScale = 1024;
-      q12 = (sqword)Sse2State;
+      Sse2BaseG = (sqword)Sse2State;
       FoundSymbol = -1;
       HashSeed1 = -1;
       HashSeed2 = -1;
@@ -2656,8 +2656,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
   // ---- RSContext / Sse2State histogram rotation ---------------------------
-  char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new q12 base)
-  byte*  sse2Base;         // q12 (current Sse2State sub-block base)
+  char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new Sse2BaseG base)
+  byte*  sse2Base;         // Sse2BaseG (current Sse2State sub-block base)
 
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
   int    ssem3, ssem7;
@@ -2826,7 +2826,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   q12BaseSel *= 2;
   newQ12Sel   = q12BaseSel;
   if (sym != RSContext) {
-    sse2Base = (byte*)q12;
+    sse2Base = (byte*)Sse2BaseG;
     uint* counter = (uint*)(sse2Base + 512);
     *counter += 2;
     sqword sseHistOff = ((word)sym - (word)RSContext) & 0x1FF;
@@ -2840,7 +2840,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       newQ12Sel = q12BaseSel;
     }
   }
-  q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
+  Sse2BaseG = (sqword)&Sse2State[516*(newQ12Sel&3)];
   recentForHi = SseCtx0_1[matchHi];
   if (sym == FoundSymbol && MixScale <= 256) {
     mixScaleCntr = 4 * MixScale;
@@ -3781,9 +3781,9 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint*& binSseCell  = (uint*&)BinSseCellG;
   uint*& predWeightA = (uint*&)PredWeightAG;
   uint*& predWeightB = (uint*&)PredWeightBG;
-  // q12 holds the base of the current Sse2State sub-block (a 516-byte chunk;
+  // Sse2BaseG holds the base of the current Sse2State sub-block (a 516-byte chunk;
   // the histogram occupies bytes 0..511, the running counter sits at +512).
-  byte*& sse2Base = (byte*&)q12;
+  byte*& sse2Base = (byte*&)Sse2BaseG;
   epoch = SymCount;
   do {
     // -----------------------------------------------------------------------
