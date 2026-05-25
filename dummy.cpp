@@ -4270,8 +4270,7 @@ LABEL_298:
         descendNStatesP1C = sxNStatesC+1;
         maskFlagPrevC = epoch!=SymMask[PrevSymbol];
         // mixIdxC: composite index for the escape mirror's mix table.
-        // Same construction as mixIdxA; the ">> 26 & 0xFFFFFFE0" term is the
-        // same sign-bit-extract idiom (1-bit predicate at position 5).
+        // Same shape as mixIdxA but with different inputs at each predicate.
         mixIdxC = SseIdx{}
           .bits <0, 2> (MixCtx2)                                       // low 2 bits of mix counter
           .bit  <2>    (descendNStatesP1E*freqSumE > sumFreqCacheC*freqDeltaE) // freq-sum cross-product comparison
