@@ -2015,11 +2015,6 @@ sqword ReduceOrder() {
   int escIdx;
   char sse0BitSaved;
   uint succIdxSaved;
-  uint nStatesP1;
-  uint* statesPtr;
-  uint sizeClassP;
-  sqword sizeClass4P;
-  uint* newStatesPtr;
   sqword newStatesIdx2;
   qword newStateEnd;
   sqword allocedUnit;
@@ -2195,17 +2190,17 @@ LABEL_11:
     succIdxSaved = newByteIdx;
     while( 1 ) {
       PPM_CONTEXT* curCtxP = ctxBW;
-      nStatesP1 = curCtxP->NStates + 1;
+      uint nStatesP1 = curCtxP->NStates + 1;
       if (curCtxP->NStates) {
         if ((nStatesP1 & 1) != 0) {
           newStatesIdx2 = curCtxP->iStates;
         } else {
-          statesPtr = (uint*)(heapNull + curCtxP->iStates);
+          uint* statesPtr = (uint*)(heapNull + curCtxP->iStates);
           uint halfNStatesP1 = nStatesP1 >> 1;
-          sizeClassP = Units2Indx[halfNStatesP1 + 3];
+          uint sizeClassP = Units2Indx[halfNStatesP1 + 3];
           if (sizeClassP != Units2Indx4[halfNStatesP1]) {
-            sizeClass4P = Units2Indx4[halfNStatesP1];
-            newStatesPtr = (uint*)AllocUnits_((uint)sizeClass4P);
+            sqword sizeClass4P = Units2Indx4[halfNStatesP1];
+            uint* newStatesPtr = (uint*)AllocUnits_((uint)sizeClass4P);
             // AllocUnits_ may have called AllocUnitsRare which clobbers sizeClassP;
             // recompute (matches the inlined pattern's restoration).
             sizeClassP = Units2Indx[halfNStatesP1 + 3];
