@@ -2018,9 +2018,6 @@ sqword ReduceOrder() {
   sqword newStatesIdx2;
   qword newStateEnd;
   sqword allocedUnit;
-  char upperFlagBits;
-  sqword statesBaseAddr;
-  sqword stateByteOff;
   qword ctxChainEndS;
   int sym;
   sqword curCtx;
@@ -2250,10 +2247,10 @@ LABEL_99:
       tailState->Symbol     = foundSym;
       tailState->Freq       = 0;
       tailState->iSuccessor = succIdxSaved;
-      upperFlagBits = curCtxP->Flags & 0xF0;
-      statesBaseAddr = heapNull + curCtxP->iStates;
+      char upperFlagBits = curCtxP->Flags & 0xF0;
+      sqword statesBaseAddr = heapNull + curCtxP->iStates;
       ++curCtxP->NStates;
-      stateByteOff = newStateEnd - statesBaseAddr;
+      sqword stateByteOff = newStateEnd - statesBaseAddr;
       result = 0x2AAAAAAAAAAAAAABLL * stateByteOff;
       curCtxP->Flags = sse0BitSaved | (stateByteOff / 6) | upperFlagBits;
       ctxBW = curCtxP->getSuffix();
