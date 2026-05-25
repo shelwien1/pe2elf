@@ -7,13 +7,16 @@ driver. `ppmd.cpp` in the same directory is Shkarin's readable reference
 implementation of the same algorithm; use it as the behaviour and naming
 oracle.
 
-`RealProcess<f_DEC>` is still the largest single function (~1000 lines,
-templated for encode/decode) and gets the bulk of the structural work,
-but the same decompiler-output problems appear throughout the file:
-`ReduceOrder`, the `Sse*` helpers, `PPMContextWalk`, `CreateSuccessors`,
-and `UpdateModel` all carry varying amounts of `v0`/`v1`/… locals,
-unstructured control flow, and references to the file-scope `d##`/`q##`
-globals. Treat the whole file as the refactoring target.
+`RealProcess<f_DEC>` is still the largest single function (~950 lines,
+templated for encode/decode) and gets the bulk of the remaining
+structural work. The other large functions — `MixUpdate` (~635 lines),
+`ReduceOrder` (~280 lines), `StartModelRare` (~215 lines),
+`CreateSuccessors`, `UpdateModel`, `PPMContextWalk`, the `Sse*`
+helpers — have had their `v##`/`a#` locals renamed by role, their
+byte-offset arithmetic typified via `PPM_CONTEXT*`/`STATE*`/`SseCounter*`/
+`SseSlot*` member access, and their dead writes removed. File is now
+~4800 lines (down from ~5400 originally). Treat the whole file as the
+refactoring target.
 
 ## The goal
 
@@ -36,10 +39,10 @@ they still live as anonymous numeric globals:
 
 ```cpp
 // near the top of dummy.cpp
-sqword q9, q12, q14, q17, q18, q19, q20, q21, q22, q23,
+sqword q9, q12, q17, q18, q19, q20, q21, q22, q23,
        q24, q25, q26, q29, q30, q31, q32, q33, q34, q35,
-       q36, q37, q38, q39;     // 24 "register" slots
-int d45, d46, d47, d48, /* ... */, d113;     // ~46 d-globals referenced by RealProcess
+       q36, q37, q39;          // 22 "register" slots still here
+int    d27[0x70040], d29[0x2040], d90[4096];   // the surviving d-arrays
 ```
 
 Inside `RealProcess`, the q-slots get assigned in pairs alongside the
@@ -69,26 +72,45 @@ The cross-file ABI rationale that previously forced typed `int&` aliases
 is gone — `d51 → sseCum` can be a flat rename.
 
 A small carve-out remains: some d-globals are `int&` aliases into
-`d90[]` (e.g. `int& d108 = d90[108];` -style declarations are not
-present today, but the same codegen sensitivity exists for any
-reference into a large array). For those, leave the storage as an
+`d90[]` (e.g. `int& matchPosAge = d90[11];`). Leave that storage as an
 array element and rename only the reference identifier; turning a
 file-scope reference into a function-local one can perturb `-Ofast`
 register-allocation enough to change the encoded stream.
 
-Examples already done as in-function aliases (these can now be
-converted to direct renames of the underlying global, one at a time,
-each verified by `sh t.sh`):
+Already done as direct renames at the definition site (file scope, no
+alias layer):
 
 ```cpp
-int&   sseCum = d51;       // running cumulative freq in the SSE cascade
-int&   sseTot = d97;       // running total freq      in the SSE cascade
-int&   predRescaleDiv = d95;  // total weight / (NStates+1) in the rewind path
-int&   cumFreqAcc     = d96;  // running cum-freq accumulator
-int*&  sse1Slot     = (int*&)q23;
-int*&  sseMatchSlot = (int*&)q19;
-int*&  sse2Slot     = (int*&)q24;
-int*&  sse3Slot     = (int*&)q25;
+int  sseCum, sseTot;           // d51, d97  — SSE cascade running pair
+int  predRescaleDiv;           // d95       — rewind-mult denominator
+int  cumFreqAcc;               // d96       — running cum-freq accumulator
+int  binMixDeltaHi, binMixDeltaLo, predBaseDeltaA, predBaseDeltaB;
+int  wDelta29..wDelta35;       // MixUpdate's predictor-delta stash
+int  predSseTotDelta, predWeightDelta;
+int  orderBumpVariance;        // d93 (PPMContextWalk variance tracker)
+char SymFreqs[256];            // b39        — per-symbol freq cache
+```
+
+Already done as `int&`/`sqword&` aliases at file scope (still needed:
+either they index into `d90[]` or the original `q##` storage is shared
+with other code paths):
+
+```cpp
+int&   q12BaseSel = d90[2];    // d90[2..14] are individually-named scratch slots
+int&   b31Key, Order1Ctx, b31KeyPrev, order1CtxSaved, matchHintByte;
+int&   bdiffSaved, bdiffStickyCnt, matchHashSy, matchPosAge, matchEpoch2;
+int&   matchDeltaSaved, sseState3Hash;
+sqword& CtxChainEnd = q14;
+sqword& q12 = (...overlay onto Sse2State at a specific byte offset...);
+```
+
+Inside `RealProcess`, the per-function `(int*&) q##` aliases survive:
+
+```cpp
+int*&  sse1Slot     = (int*&)q23;     // SSE cascade slot pointers,
+int*&  sseMatchSlot = (int*&)q19;     // each published into one q-global
+int*&  sse2Slot     = (int*&)q24;     // so MixUpdate can update the same
+int*&  sse3Slot     = (int*&)q25;     // cell on the way back out.
 word*& binMixCenter = (word*&)q21;
 uint*& binSseCell   = (uint*&)q36;
 uint*& predWeightA  = (uint*&)q39;
@@ -96,29 +118,16 @@ uint*& predWeightB  = (uint*&)q37;
 byte*& sse2Base     = (byte*&)q12;
 ```
 
-Examples already at file scope (likewise candidates for direct rename):
-
-```cpp
-int&   matchPosAge   = d108;  // epoch delta to most-recent matching position
-int&   matchEpoch2   = d107;  // second epoch delta in the per-candidate match block
-int&   matchHashSy   = d109;  // MatchPosHash byte snapshot
-int&   recentSym     = d64;   // just-encoded symbol byte
-int&   sseState3Hash = d63;   // 17-bit rolling sym-context hash, indexes SseState3
-sqword& CtxChainEnd  = q14;
-int&    EscIndexSeed = d45;
-```
-
-…plus `STATE*& FoundState = (STATE*&)q9;` used both in `ReduceOrder`
+Plus `STATE*& FoundState = (STATE*&)q9;` used both in `ReduceOrder`
 and inlined into `RealProcess`.
 
-Same memory, same layout, just self-documenting. The remaining q/d
-globals are candidates for the same treatment as their semantics become
-clear — and most can now be renamed at the definition rather than via
-an alias layer.
+The remaining q-globals (q9, q17..q25, q29..q36, q37, q39) and the
+large arrays `d27` / `d29` are candidates for the same treatment as
+their semantics become clear.
 
 ### B. The locals are still numerous and section-suffixed
 
-`RealProcess`'s declaration block holds about 145 locals organised by
+`RealProcess`'s declaration block holds ~140 locals organised by
 C type rather than by role:
 
 ```cpp
@@ -138,23 +147,25 @@ Two things wrong here:
    structure forces declarations to the top (a mid-function declaration
    would be skipped by a goto into a later block).
 
-2. **Names still carry suffix tags** (`_A`, `_M`, `_F`, etc.) so the
-   reader can tell which section of the function the variable belongs
-   to. That's a workaround for the goto structure: when every block
-   shares the same scope, you need section tags to disambiguate. With
-   structured code, `sumFreq` in two functions is fine.
+2. **Names still carry suffix tags** (`_A`, `_B`, `_C`, `_E`, `_F`,
+   `_M`) so the reader can tell which section of the function the
+   variable belongs to. That's a workaround for the goto structure:
+   when every block shares the same scope, you need section tags to
+   disambiguate. With structured code, `sumFreq` in two functions is
+   fine. Roughly 500 identifier occurrences in `RealProcess` still
+   carry one of these suffixes.
 
-`ReduceOrder` (line 2247) is the other end of the spectrum: ~70 locals
-named `v0, v1, v2, …, v68` straight from the decompiler. None of those
-names survive past a reading pass; they need to be classified and
-renamed the same way `StartModelRare` already has been (compare lines
-1679+ — that function reads cleanly).
+`ReduceOrder` is no longer in this state — its ~70 `v##` decompiler
+locals have been renamed by role, and the function now reads
+comparably to `StartModelRare`. The same per-function cleanup has been
+applied to `MixUpdate`, `CreateSuccessors`, `UpdateModel`, `BinEscFreq`,
+`RescaleCtx`, and the SSE helpers; `RealProcess` is the last holdout.
 
 Goal: **let the goto-eliminated structure shrink the scopes**, then
 drop the suffix tags. Names like `mixWeightM`, `cumFreqMixA`,
 `sumFreqW0C` are tolerable in the current code but should be plain
 `mixWeight`, `cumFreq`, `sumFreqW` once they live in separate
-functions. `v0…v68` are never tolerable.
+functions.
 
 ### C. The labels make the textbook structure invisible
 
@@ -281,98 +292,133 @@ them.
 ### F. The non-`RealProcess` functions
 
 Status: largely cleaned up. Every function outside `RealProcess` has
-had its `v##` locals renamed by role and its `a#` parameters renamed.
+had its `v##` locals renamed by role, its `a#` parameters renamed,
+its byte-offset arithmetic typified, its dead writes pruned, and its
+single-use locals folded into their callers. Summary by category:
 
-Several inlined-function patterns have been factored out into shared
-helpers:
-- `FreeUnitsRare` body (coalesce + chunk + split + insert) used to be
-  inlined in 4 places (AllocUnitsRare leftover-split, AllocUnitsRare
-  GlueFreeBlocks inner loop, ReduceOrder binary-context restore,
-  ReduceOrder PrepareNextStep). All now call `FreeUnitsRare` directly.
-- `AllocUnits_` (try freelist queue, else bump LoUnit, else
-  AllocUnitsRare) factored out and used at 4 sites (AllocUnitsRare
-  bottom, two PrepareNextStep sites, StartModelRare init).
-- `AllocContext_` (HiUnit-bump or BList[0].unlinkPrev or
-  AllocUnitsRare(0)) factored out for CreateSuccessors's per-context
-  alloc loop.
-- `UnitsCpy_` replaces the inline 6-uint-per-iter state-copy in
-  PrepareNextStep.
-- `emitOneByte` factored out as the shared body of Rangecoder's
-  EncodeShift and Flush.
-- `Sse1Step_`/`Sse2Step_`/`Sse3Step_`/`SseMatchStep_` collapse the
-  four-stage cascade between RealProcess regions A and F.
-- `SseIdx` was moved to file scope (was anonymous-namespace before
-  RealProcess only) and is now used by PPMContextWalk and MixUpdate
-  to build composite bitfield indices (mixCtxComposite, matchScore,
-  OrderCtxSeed, SseSeed, MixCtxExtra, bmComposite, sparseFlags).
-- `MEM_BLK::unlink()` method added; the FreeUnitsRare coalesce loop and
-  the AllocUnitsRare GlueFreeBlocks sentinel walk now use it.
-- `PopCountWeighted_`, `ClampMixWeight_`, `InitMixCell_` factor the
-  two mix-model init loops in StartModelRare; an `initSseCells` lambda
-  collapses four parallel SSE-cell init loops.
-- Byte-offset PPM_CONTEXT / STATE access (`*(uint*)(p + 4)` etc.) is
-  largely converted to typed `ctx->iStates` / `state->iSuccessor` etc.
-  across ReduceOrder, CreateSuccessors, MixUpdate, StartModelRare,
-  PPMContextWalk.
-- Function signatures retyped: `BinEscFreq`, `RescaleCtx`, `UpdateModel`,
-  `MixUpdate`, `FreeContext_`, `MoveContext_`, `AllocContext_`,
-  `FindAndBubble7_` all now take/return their natural PPM_CONTEXT*/STATE*
-  type instead of byte*/void*/sqword. ReduceOrder/MixUpdate locals
-  `ctxBW`/`walkCtx`/`foundState`/`stateBW`/`chainStatePtr`/`onestatePtr`/
-  `foundStateB`/`tailState`/`deepFound`/`trailFound`/`deepStates`/
-  `trailStates` likewise retyped.
-- CreateSuccessors's chain pointer threaded as `STATE**` end-to-end
-  (caller passes `(STATE**)CtxChain`); the per-chain `*(sqword*)chainPtr`
-  / `*chainPtr = (qword)i` access pattern is now a direct
+**Helper functions factored out of inlined bodies:**
+- `FreeUnitsRare`, `AllocUnits_`, `AllocContext_`, `UnitsCpy_`,
+  `MoveContext_` cover the four allocator paths previously inlined.
+- `emitOneByte` shared between Rangecoder's `EncodeShift` and `Flush`.
+- `Sse1Step_` / `Sse2Step_` / `Sse3Step_` / `SseMatchStep_` collapse
+  the four-stage SSE cascade between RealProcess regions A and F into
+  one body each.
+- `MaybeRescale1_` / `MaybeRescale2_` / `RescaleAccum1_` /
+  `RescaleAccum2_` / `SseClampMean_` / `ClampToBand_` /
+  `SseDeltaUpdate_` / `SseMixUpdate_` standardise the per-cell SSE
+  update operations.
+- `MatchPosHint_` / `MatchPosHint16_` / `HashArmUpdate_` /
+  `BijectPairUpdate_` / `WalkEscapeChain_` / `RewindPredictor_` /
+  `FreqMixStep_` / `FillFreqMap_` / `FindAndBubble7_` /
+  `BubbleSortChain_` factor the recurring MixUpdate / region-mirror
+  patterns.
+- `PopCountWeighted_` / `ClampMixWeight_` / `InitMixCell_` /
+  `initSseCells` lambda factor the StartModelRare init loops.
+- `MEM_BLK::unlink()` / `linkNext` / `linkPrev` / `unlinkNext` /
+  `unlinkPrev` / `avail` / `canMerge` cover the allocator's doubly-
+  linked-list manipulations; `AllocUnitsRare`'s bootstrap unlink now
+  uses `bList[0].unlinkPrev()`.
+- `SseIdx` (file-scope) is used by `PPMContextWalk`, `MixUpdate`, and
+  `RealProcess` to build composite bitfield indices
+  (`mixCtxComposite`, `matchScore`, `OrderCtxSeed`, `SseSeed`,
+  `MixCtxExtra`, `bmComposite`, `sparseFlags`).
+- `Ptr2Indx` / `Indx2Ptr` cover every `addr ↔ heap index` conversion
+  (no remaining manual `(uint)(uintptr_t)x - heapNull` patterns).
+
+**Function signature retypings** (now take/return their natural type
+instead of `byte*` / `void*` / `sqword`):
+- `BinEscFreq(PPM_CONTEXT*)`, `RescaleCtx(PPM_CONTEXT*)`,
+  `UpdateModel(PPM_CONTEXT*, uint)`, `MixUpdate(PPM_CONTEXT*)`,
+  `FreeContext_(PPM_CONTEXT*)`, `MoveContext_(PPM_CONTEXT*)
+  → PPM_CONTEXT*`, `AllocContext_() → PPM_CONTEXT*`.
+- `FindAndBubble7_(STATE*, byte, byte*, int) → STATE*`.
+- `SseScale1(SseCounter*)`, `SseScale2(SseSlot*)`.
+- `CreateSuccessors(int, STATE**, sqword)` — chain threaded as
+  `STATE**` end-to-end; per-chain access is direct
   `(*chainPtr)->iSuccessor` / `*chainPtr = state`.
-- Several Hex-Rays macro residues (`LODWORD` on sqword args, `LOWORD`
-  on int reads, `((byte*)SSE0)` no-op casts, dead "prefetch hints"
-  `(void)(x+heapNull)`) removed.
-- Dead writes proven by data-flow inspection have been deleted:
-  `succAddrSaved`/`succAddr=succAddrSaved`, two `newByteIdx =
-  pTextEntry+1-heapNull` refreshes, `matchHi = (int)matchHi` self-assign,
-  `ctxSuffixIdx` (only fed the removed prefetch hint), `deepStatesPtr`
-  (only assigned, never read), `predGuessSym = Order1Ctx` (both equal
-  the same value).
-- Single-use locals folded into their callers: `oldIStates`, `stateIdxU`,
-  `unitsStart`, `rsCtx`, `symEpochS`, `sseRowOff`, `scale`, `heapNullOffset`,
-  `runLengthVal`, `param1/2/3`, `maxOrderArg`, `memsize_b`. Counter locals
-  `j`/`halved` moved into their loop bodies; `sseHistOff`/`newHistCnt`
-  scoped to the owning if-block; `binMixCenter` ditto.
-- Repeated computations consolidated: `Order1Ctx = predGuessSym = ...`
-  and `FoundSymbol = predGuessSym = ...` chained; `pTextEntry+1`,
-  `descendNStates`/`walkNStates`, `matchDelta` reuse; `FoundSymbol=-1`
-  hoisted above its two-branch initialisation.
-- BinEscFreq / SseScale1 / SseScale2 / RescaleAccum1_/2_ /
-  MaybeRescale1_/2_ now use typed `SseCounter*` / `SseSlot*` member
-  access instead of `*((word*)slot + n)` offsets.
-- AllocUnitsRare bootstrap unlink folded into `bList[0].unlinkPrev()`;
-  `(uint)(uintptr_t)x - heapNull` patterns folded into `Ptr2Indx(x)`.
-- FreeUnitsRare made `void` (no caller consumed its char* return).
-- RescaleCtx / SseScale1 / SseScale2 / InitTables / BinEscFreq all
-  made `void` (return values were discarded by every caller).
-- `b39` renamed to `SymFreqs` (per-symbol frequency cache populated by
+- ReduceOrder / MixUpdate locals retyped to their natural pointer
+  types: `ctxBW`, `walkCtx`, `foundState`, `foundStateB`, `stateBW`,
+  `chainStatePtr`, `onestatePtr`, `tailState`, `deepFound`,
+  `trailFound`, `deepStates`, `trailStates`, `chainPtr`, `chainPtrW`,
+  `chainPtrSave`, `sse2Base`, `minCtx`, `rootCtxP`, `rootCtxP1`, `pc`.
+- `FreeUnitsRare` / `RescaleCtx` / `SseScale1` / `SseScale2` /
+  `InitTables` / `BinEscFreq` made `void` (return values were
+  discarded by every caller).
+
+**Byte-offset access typified:**
+- `*(uint*)(p + 4)` / `*(word*)(p + 2)` etc. across ReduceOrder,
+  CreateSuccessors, MixUpdate, StartModelRare, PPMContextWalk
+  converted to `ctx->iStates` / `ctx->SummFreq` / `state->iSuccessor`
+  etc.
+- `MaybeRescale*_` / `RescaleAccum*_` use `((SseCounter*)slot)->freq0`
+  / `->freq1` member access instead of `*((word*)slot + n)`.
+- `RescaleCtx` step-2 byte arithmetic rewritten using `STATE*`
+  iteration (`endState`, `lastState`) instead of 6-byte stride.
+- Root STATE[256] init in StartModelRare uses `states[i].Symbol`
+  member writes instead of 6-byte interleaved bytes.
+
+**Hex-Rays macro residues removed:**
+- `LODWORD(x)` on sqword args (no-op for 64-bit), `LOWORD(d90[i])`
+  in reads, `((byte*)SSE0)` no-op casts on `SSE0[256]` /
+  `SSE1[256]` / `Indx2Units[48]`.
+- Dead "prefetch hints" `(void)(x + heapNull)`.
+- Unused macros `DWORDn` / `LODWORD` / `LOBYTE` / `HIWORD` / `BYTE1` /
+  `BYTE2` / `BYTE4` / `WORD2` and the unused `hword` typedef.
+
+**Dead writes proven by data-flow inspection and deleted:**
+- `succAddrSaved` / `succAddr = succAddrSaved` (loop never mutates
+  `succAddr`).
+- Two `newByteIdx = pTextEntry+1-heapNull` refreshes (value never
+  clobbered between init and use).
+- `matchHi = (int)matchHi` self-assign (all reads use explicit casts).
+- `ctxSuffixIdx`, `deepStatesPtr`, `predGuessSym = Order1Ctx` (all
+  assigned to a value they already hold).
+
+**Single-use locals inlined into callers:**
+`oldIStates`, `stateIdxU`, `unitsStart`, `rsCtx`, `symEpochS`,
+`sseRowOff`, `scale`, `heapNullOffset`, `runLengthVal`, `param1/2/3`,
+`maxOrderArg`, `memsize_b`, `unitsInRun`. Counter locals
+`j` / `halved` moved into their for-loop bodies;
+`sseHistOff` / `newHistCnt` / `binMixCenter` scoped to the owning
+block.
+
+**Repeated computations consolidated:**
+- Chained assigns: `Order1Ctx = predGuessSym = ...`,
+  `FoundSymbol = predGuessSym = ...`, `PrevSymbol = FoundSymbol`.
+- Reused locals: `pTextEntry+1` → `newSlot`, `descendNStates` reuses
+  `walkNStates`, `(uint)(symEpoch-matchPrev)` reuses `matchDelta`,
+  `(uint)(symEpoch-recentEpoch)` reuses `dt`, `symEpochN` reused for
+  the `SymEpoch` increment, `bList` reused as `queue0`,
+  `Indx2Ptr(...)` instead of `HeapNull + ...`.
+- Branch-invariant `FoundSymbol = -1` hoisted above its two-arm init.
+
+**Renames at file scope:**
+- `b39` → `SymFreqs` (per-symbol frequency cache populated by
   `FillFreqMap_`).
-- RealProcess's per-candidate `chainPtr` retyped from `sqword*` to
-  `STATE**` so the LABEL_59 entry `FoundState = (STATE*)*chainPtr;`
-  reduces to `FoundState = *chainPtr;`. ReduceOrder's `chainPtrW` /
-  `chainPtrSave` likewise retyped (drops 3 inline casts plus the
-  `(STATE**)(chainPtrSave-1)` cast at the CreateSuccessors call).
+- `StartSubAllocator`'s `a2_order` / `a3` params → `order` / `cutOff`;
+  caller's `param1/2/3` → `memoryMB` / `modelOrder` / `resetMethod`.
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
-  decompiler-output shape (sections B, C, D, E below). Locals are
+  decompiler-output shape (sections B, C, D, E above). Locals are
   semantically named but section-suffixed (`_A`/`_B`/`_C`/`_E`/`_F`/`_M`);
   control flow is still goto-driven.
 - **d27 / d29 arrays** — large mix-model heaps. Renaming the array
   identifier is mechanical but each has 4-7 sibling `auto&` byte-offset
   aliases (MixBound2..6, b19, w11, w12) that would need to update in
   lockstep. Defer until a clear naming scheme emerges.
-- **b##-named hash tables** (b25, b27, b29, b31, b32..b37) — these are
+- **b##-named hash tables** (b25, b27, b28, b29, b30, b31, b32..b37) —
   hash-table views overlaid on `Sse2State` at specific byte offsets,
   with semantic roles (SymLastCtx routing, byte-hash arm predictors,
   paired byte-hash predictors). The bN names are short enough that
   renaming is low value until their roles are fully understood.
+- **small const tables b11/b17/b18/b20/b21/b22/b23/b24** — init-time
+  constants used by `PopCountWeighted_` and the StartModelRare prior
+  computations. Renaming requires understanding what each table
+  represents.
+- **Region A/F SSE cascade unification** (section D below) — the
+  per-stage helpers exist but the surrounding locals are still
+  duplicated `_A` / `_F` pairs.
 
 ## Non-goals
 
