@@ -2468,6 +2468,58 @@ inline void EmitFlatPredictionHints_(byte pred, int sc) {
   MatchPosBySym[pred]           = sc;
 }
 
+// helper 3ab: BijectMap trigram-consensus prediction.
+//
+// Inspects the three recent symbols at MixScale strides (b1/b2/b3 = newest .. older)
+// plus a 5-stride history window via bmPtr, and bmCell (the 4-byte BijectMap row).
+// May resolve FoundSymbol; in all branches sets PrevSymbol = predGuessSym.
+// Mutates globals PrevSymbol, FoundSymbol, MatchPosBySym, SymLastCtx2.
+inline void BijectTriPrediction_(uint b1, uint b2, int b3,
+                                 char* bmPtr, int mixScale,
+                                 const byte* bmCell, int sc, int predGuessSym) {
+  if (b1 == b2 && b2 == b3) {
+    PrevSymbol = predGuessSym;
+    FoundSymbol = b1;
+    MatchPosBySym[(byte)(b1+1)] = sc;
+    SymLastCtx2 [(byte)(b1-1)] = sc;
+  } else if (FoundSymbol < 0) {
+    if (b1 == b2 || b2 == b3) {
+      PrevSymbol = predGuessSym;
+      FoundSymbol = b1;
+      SymLastCtx2 [(byte)(b3+1)] = sc;
+      MatchPosBySym[(byte)(b1+1)] = sc;
+      SymLastCtx2 [(byte)(b1-1)] = sc;
+      MatchPosBySym[b3]          = sc;
+    } else if (b1 == b3) {
+      PrevSymbol = predGuessSym;
+      if (b2 == (byte)bmPtr[-4*mixScale] && (byte)bmPtr[-5*mixScale] == b3)
+        b1 = b2;
+      FoundSymbol = b1;
+      MatchPosBySym[b2] = sc;
+    } else {
+      char predDelta = b1 + b3 - 2*b2;
+      if (predDelta) {
+        PrevSymbol = predGuessSym;
+        if (bmCell[3] <= 0x10u) {
+          if ((byte)(predDelta+19) <= 0x26u) {
+            byte predA = 2*b1 - b2;
+            byte predB = predA - predDelta;
+            EmitDeltaPredictionHints_(predA, predB, sc);
+          }
+        } else {
+          FoundSymbol = bmCell[0];
+        }
+      } else {
+        FoundSymbol = (byte)(2*b1 - b2);
+        PrevSymbol  = FoundSymbol;
+        EmitFlatPredictionHints_(FoundSymbol, sc);
+      }
+    }
+  } else {
+    PrevSymbol = predGuessSym;
+  }
+}
+
 // helper 4b: derive the (matchHashSy, matchPosAge, matchEpoch2) triple from
 // a MatchPosTable hit. If the entry is older than 0x20000 epochs, all three
 // outputs saturate to 0x20000. Otherwise we hash through MatchPosHash and
@@ -2585,8 +2637,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    bm1;              // (byte)*(b1Ptr-1)
   sqword bmComposite;      // BijectMap row index
   sqword bmByte;
-  char   predDelta;
-  byte   predA, predB;
 
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
@@ -2868,47 +2918,7 @@ LABEL_94:
         hintSymRecent = bmCell[0];
       MatchPosBySym[bmCell[0]] = sc;
     }
-    if( b1==b2&&b2==b3 ) {
-      PrevSymbol = predGuessSym;
-      FoundSymbol = b1;
-      MatchPosBySym[(byte)(b1+1)] = sc;
-      SymLastCtx2[(byte)(b1-1)] = sc;
-    } else if( FoundSymbol<0 ) {
-      if( b1==b2||b2==b3 ) {
-        PrevSymbol = predGuessSym;
-        FoundSymbol = b1;
-        SymLastCtx2[(byte)(b3+1)] = sc;
-        MatchPosBySym[(byte)(b1+1)] = sc;
-        SymLastCtx2[(byte)(b1-1)] = sc;
-        MatchPosBySym[b3] = sc;
-      } else if( b1==b3 ) {
-        PrevSymbol = predGuessSym;
-        if( b2==(byte)bmPtr[-4*MixScale]&&(byte)bmPtr[-5*MixScale]==b3 )
-          b1 = b2;
-        FoundSymbol = b1;
-        MatchPosBySym[b2] = sc;
-      } else {
-        predDelta = b1+b3-2*b2;
-        if( predDelta ) {
-          PrevSymbol = predGuessSym;
-          if (bmCell[3] <= 0x10u) {
-            if( (byte)(predDelta+19)<=0x26u ) {
-              predA = 2*b1-b2;
-              predB = predA-predDelta;
-              EmitDeltaPredictionHints_(predA, predB, sc);
-            }
-          } else {
-            FoundSymbol = bmCell[0];
-          }
-        } else {
-          FoundSymbol = (byte)(2*b1-b2);
-          PrevSymbol  = FoundSymbol;
-          EmitFlatPredictionHints_(FoundSymbol, sc);
-        }
-      }
-    } else {
-      PrevSymbol = predGuessSym;
-    }
+    BijectTriPrediction_(b1, b2, b3, bmPtr, MixScale, bmCell, sc, predGuessSym);
   } else {
     PrevSymbol = predGuessSym;
     MixScale = 1024;
