@@ -4179,9 +4179,9 @@ LABEL_59:
         SparseIdxA = ((candSymbol+SparseHashA)>>5)+0x2000;
         SparseIdxB = predShiftFlags+((candSymbol+SparseHashB)>>5);
         bool tagSymLastCtx2F = epoch==SymLastCtx2[candSymbol];
-        int sparseHitsF =
-              ((SparseBit & SparseBitmapA[((candSymbol+SparseHashA) >> 5) + 0x2000]) != 0)
-          + 2*((SparseBit & SparseBitmapB[predShiftFlags + ((candSymbol+SparseHashB) >> 5)]) != 0);
+        int sparseHitsF = (int)SseIdx{}
+          .bit<0>(SparseBit & SparseBitmapA[((candSymbol+SparseHashA) >> 5) + 0x2000])
+          .bit<1>(SparseBit & SparseBitmapB[predShiftFlags + ((candSymbol+SparseHashB) >> 5)]);
         predWeightB = (uint*)&predWeightSink2;      // dummy sink: PredWeight stage not taken
         predWeightA = (uint*)&predWeightSink2;
           matchCtxHiSave = MatchCtxHi;
