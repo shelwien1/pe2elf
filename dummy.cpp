@@ -2565,7 +2565,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
   int    recentEpoch;      // SseCtx0_1[sym] before update
   int    dt;               // symEpoch - recentEpoch
-  int    predGuessSym;          // running guess for FoundSymbol
 
   // ---- MatchPosTable update ------------------------------------------------
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
@@ -2667,9 +2666,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     .bits<13, 2>((matchDelta < 0xE800)
                + (matchDelta < 0xF0)
                + (matchDelta < 7));
+  int predGuessSym = 0;
   if( matchDelta>=0x1000 ) {
     Order1Ctx = 0;
-    predGuessSym = 0;
     matchHintByte = -1;
   } else {
     Order1Ctx = predGuessSym = (byte)MatchPosHash[(matchPrev+2)&0x1FFFF];
