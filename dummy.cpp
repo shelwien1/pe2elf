@@ -4039,10 +4039,7 @@ LABEL_298:
       // ---------------------------------------------------------------------
       {
       q29 = q30 = q31 = q32 = q33 = (sqword)d27;
-      uint sumFreqDivC;
-      uint sumFreqCacheC = 0;
-      uint mixFreqCacheC = 0;
-      uint mixWeightC    = 0;
+      uint sumFreqDivC, sumFreqCacheC = 0, mixFreqCacheC = 0, mixWeightC = 0;
       if( descendNStates==255 ) {
         escCandidate = -1;
         EscapeSymbol = -1;
