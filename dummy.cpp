@@ -2630,9 +2630,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     predGuessSym = (byte)MatchPosHash[(matchPrev+2)&0x1FFFF];
     Order1Ctx = predGuessSym;
     matchHintByte = (byte)MatchPosHash[(MatchPosPrev[matchPrev&0x1FFFF]+2)&0x1FFFF];
-    if( predGuessSym==matchHintByte ) {
+    if (predGuessSym == matchHintByte) {
       MatchPosBySym[predGuessSym] = sc;
-      predGuessSym = Order1Ctx;
     }
     if( matchDelta>=0x240 )
       predGuessSym = 0;
