@@ -4401,9 +4401,10 @@ LABEL_59:
         binMixSlotF = &d27[0x4000*mixSseSizeF+2*seeIdxF];
         int freq0F = (word)MixBound2[0x8000*mixSseSizeF+4*seeIdxF];
         binMixCenter = (word*)binMixSlotF;
-        if (freq0F > 0x8000) matchCtxHiSave = MatchCtxHi;     // preserved side-effect: original
-                                                 // reloads matchCtxHiSave from MatchCtxHi when
-                                                 // it rescales
+        // Refresh matchCtxHiSave before the rescale path runs: behaviour-
+        // identical to the original (which reloaded matchCtxHiSave inside
+        // the same branch that triggers MaybeRescale2_).
+        if (freq0F > 0x8000) matchCtxHiSave = MatchCtxHi;
         MaybeRescale2_(binMixSlotF, freq0F);
         int hitsF = *(word*)binMixSlotF;
         sseCum = hitsF;
