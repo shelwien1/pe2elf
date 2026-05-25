@@ -2029,7 +2029,7 @@ sqword ReduceOrder() {
   int orderFall;
   int maxOrder;
   uint succIdxW;
-  byte* ctxBW;
+  PPM_CONTEXT* ctxBW;
   char sse0Bit;
   uint succCreatedTop;
   sqword result;
@@ -2081,7 +2081,7 @@ sqword ReduceOrder() {
   maxOrder = MaxOrder;
   succIdxW = foundStateB->iSuccessor;
   foundSymFreq = *(word*)foundStateB;   // Symbol (low byte) + Freq (high byte)
-  ctxBW = (byte*)RootContext;
+  ctxBW = (PPM_CONTEXT*)RootContext;
   rootCtxSaved = RootContext;
   sse0Bit = ((byte*)SSE0)[foundStateB->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
@@ -2165,8 +2165,8 @@ LABEL_73:
     if( !CutOff )
       return StartModelRare(2);
     if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
-      PPM_CONTEXT* parentCtx = (PPM_CONTEXT*)ctxBW;
-      if (parentCtx->NStates == 0 && (byte*)rootCtxW != ctxBW) {
+      PPM_CONTEXT* parentCtx = ctxBW;
+      if (parentCtx->NStates == 0 && (PPM_CONTEXT*)rootCtxW != ctxBW) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
         // each one's 2-STATE[] block down to a single oneState. The kept state
         // is the one whose Symbol matches the parent's oneState.Symbol -- if
@@ -2185,7 +2185,7 @@ LABEL_73:
           walker->NStates                = 0;
           FreeUnitsRare((sqword)states, 1);
           walker = walker->getSuffix();
-        } while ((byte*)walker != ctxBW);
+        } while (walker != ctxBW);
         rootCtxW = ctxSaved;
       }
     }
@@ -2239,7 +2239,7 @@ LABEL_11:
     escIdxClipped = escIdx;
     succIdxSaved = newByteIdx;
     while( 1 ) {
-      PPM_CONTEXT* curCtxP = (PPM_CONTEXT*)ctxBW;
+      PPM_CONTEXT* curCtxP = ctxBW;
       nStatesP1 = curCtxP->NStates + 1;
       if (curCtxP->NStates) {
         if ((nStatesP1 & 1) != 0) {
@@ -2309,8 +2309,8 @@ LABEL_99:
       stateByteOff = newStateEnd - statesBaseAddr;
       result = 0x2AAAAAAAAAAAAAABLL * stateByteOff;
       curCtxP->Flags = sse0BitSaved | (stateByteOff / 6) | upperFlagBits;
-      ctxBW = (byte*)curCtxP->getSuffix();
-      if (ctxBW == (byte*)maxCtxStart) {
+      ctxBW = curCtxP->getSuffix();
+      if (ctxBW == (PPM_CONTEXT*)maxCtxStart) {
         succAddr = succAddrSaved;
         break;
       }
