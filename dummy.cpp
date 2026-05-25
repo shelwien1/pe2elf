@@ -4499,7 +4499,7 @@ LABEL_59:
             MixCtx = 0;
           } else if( FoundState<=MinContext->getStates() ) {
             MinContext = MaxContext;
-        } else {
+          } else {
             MinContext = MaxContext;
             wDelta34 = 0x8000;
           }
