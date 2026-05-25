@@ -2750,7 +2750,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     b31Key = hashByte;
     WalkRecentPosChain_(recentEpoch, symEpoch, sc);
   }
-  matchKey = sym+(sqword)(int)((uint)matchHi<<8);
+  matchKey = sym + (matchHi << 8);
   matchPrev = MatchPosTable[matchKey];
   MatchPosPrev[(symEpoch-1)&0x1FFFF] = matchPrev;
   MatchPosTable[matchKey] = symEpoch-1;
