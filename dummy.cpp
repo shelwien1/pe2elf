@@ -403,6 +403,9 @@ struct STATE {
   byte Symbol, Freq;
   uint iSuccessor;
 };
+// Typed alias of q9: FoundState pointer. Used throughout RealProcess,
+// MixUpdate, RescaleCtx, ReduceOrder, etc. Defined here once STATE is known.
+STATE*& FoundState = (STATE*&)q9;
 struct PPM_CONTEXT {
   enum { MAX_FREQ = 123, O_BOUND = 9 };
   byte NStates, Flags;
@@ -1122,7 +1125,7 @@ void RescaleCtx(PPM_CONTEXT* ctx) {
 
   // ---- step 1: SWAP the found state up to states[0] -----------------------
   {
-    STATE* fp = (STATE*)q9;
+    STATE* fp = FoundState;
     while (fp != states) {
       // SWAP(fp[0], fp[-1])
       STATE tmp = *fp;
@@ -1158,7 +1161,7 @@ void RescaleCtx(PPM_CONTEXT* ctx) {
   // ---- step 3a: top slot survived -> just record Flags|=0x40 and return ---
   if (lastState->Freq) {
     ctx->Flags |= 0x40;
-    q9 = (sqword)Indx2Ptr(ctx->iStates);
+    FoundState = (STATE*)Indx2Ptr(ctx->iStates);
     return;
   }
 
@@ -1179,7 +1182,7 @@ void RescaleCtx(PPM_CONTEXT* ctx) {
     STATE* newStates = (STATE*)ShrinkUnits_(states, oldNU, newNU);
     ctx->iStates = Ptr2Indx(newStates);
     ctx->Flags  |= 0x40;
-    q9 = (sqword)newStates;
+    FoundState = newStates;
     return;
   }
 
@@ -1192,7 +1195,7 @@ void RescaleCtx(PPM_CONTEXT* ctx) {
 
   FreeUnits_(states, (uint)((NStates0 + 2) >> 1));
 
-  q9                          = (sqword)&ctx->oneState();  // FoundState = &oneState
+  FoundState                  = &ctx->oneState();
   ctx->oneState().Symbol      = (byte)firstSF;
   ctx->oneState().Freq        = (byte)(firstSF >> 8);
   ctx->oneState().iSuccessor  = firstSucc;
@@ -1578,7 +1581,7 @@ sqword StartModelRare(int mode) {
     // would have used.
     sqword stateStorageAddr = AllocUnits_((uint)preferredIndex);
 
-    q9 = stateStorageAddr;
+    FoundState = (STATE*)stateStorageAddr;
     rootCtxP->iStates = Ptr2Indx(stateStorageAddr);
     MixCtx = 0;
     MixCtx2 = 0;
@@ -1760,7 +1763,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     if ((qword)chainPtr >= CtxChainEnd) break;
     seedCtx = HeapNull + ctxSuffixIdx;
   }
-  foundStateB = (STATE*)q9;
+  foundStateB = FoundState;
   suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
   while (1) {
     ctxAddr = heapNull + suffixIdx0;
@@ -1985,8 +1988,6 @@ at_return:
 //--- #return
 //--- #include "subs_reduceorder.inc"
 
-STATE*& FoundState = (STATE*&)q9;
-
 sqword ReduceOrder() {
   sqword rootCtxW;
   STATE* foundStateB;
@@ -2035,7 +2036,7 @@ sqword ReduceOrder() {
   sqword rootCtxSaved;
   byte foundSym;
   rootCtxW = RootContext;
-  foundStateB = (STATE*)q9;
+  foundStateB = FoundState;
   orderFall = OrderFall;
   maxOrder = MaxOrder;
   succIdxW = foundStateB->iSuccessor;
@@ -2582,7 +2583,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int*  wpQ25;    // pred-pair (overflow halving)
 
   // ---- per-step state ------------------------------------------------------
-  STATE* foundState;       // == FoundState (alias of q9)
+  STATE* foundState;       // captured FoundState at function entry
   int    sc;               // = SymCount - 1, the new SymCount
   int    prevSymCount;     // SymCount before --
   int    symEpoch;         // current SymEpoch (epoch counter)
@@ -2714,7 +2715,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * sseCum);
   UpdateWeightPair_(wpQ25, predWeightDelta,                       sseCum);
 
-  foundState = (STATE*)q9;
+  foundState = FoundState;
   SparseBitmapA[SparseIdxA] |= SparseBit;
   SparseBitmapB[SparseIdxB] |= SparseBit;
   sym = foundState->Symbol;
@@ -4453,6 +4454,10 @@ LABEL_59:
             *FoundState = saved;
             MinContext = MaxContext;
           }
+          // FoundState (local) and q9 (global FoundState) are distinct here:
+          // RescaleCtx may move the global FoundState as it compacts the
+          // STATE[]; save into q9 first so the function sees us, then copy
+          // back into the local for the LABEL_250 read.
           q9 = (sqword)FoundState;
           if( FoundState->Freq > 244 ) {
             RescaleCtx(preCommitMinCtx);
@@ -4488,7 +4493,7 @@ LABEL_59:
     if( !f_DEC ) rc.encodeSymbol(subRange);
     FoundState = &MinContext->oneState();
     oneStateFreqF = FoundState->Freq;
-    q9 = (sqword)FoundState;
+    q9 = (sqword)FoundState;       // publish local FoundState back to the global
     MixCtx = 1;
     FoundState->Freq = (oneStateFreqF-127<0)
                      + oneStateFreqF
