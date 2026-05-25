@@ -3912,7 +3912,8 @@ LABEL_18:
               sseTot = mixFreqA;
               wDelta33 = RescaleAccum1_(mixUpA, mixWeightSavedA, mixShiftA);
               wDelta32 = RescaleAccum1_(mixDnA, (uint)mixDnA[0],   mixShiftA);
-              mixShiftLowA = *((word*)mixSlotA+3)<0x400u;
+              uint centerExpandA = *((word*)mixSlotA+3);  // central cell predExpand counter
+              mixShiftLowA = centerExpandA<0x400u;
               mixShiftBSel = mixShiftA+mixShiftLowA;
               mixBaseAStride = &mixSlotA[-2*mixIdxA];
               sseSlot3A = (sqword)&mixBaseAStride[2*(int)(mixIdxA^0x100)];
