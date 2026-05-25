@@ -25,7 +25,6 @@ typedef unsigned int uint;
 typedef unsigned short word;
 typedef unsigned long long qword;
 typedef long long sqword;
-typedef unsigned __int128 hword;
 typedef __int128 shword;
 
 // Some convenience macros to make partial accesses nicer
