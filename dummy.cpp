@@ -2582,21 +2582,12 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
 
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
-  int      ofallSaved;     // OrderFall captured at the start of the walk
-  int      ofallP1;        // OrderFall + 1
-  int      ofallP3;        // OrderFall + 3
   qword    result;
 
   PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
   int    depthLeft;        // counts down from OrderFall
   int    depth5;           // 5*OrderFall counter (decreasing)
-  int    depth3;           // 3*OrderFall counter (decreasing)
-  int    mixWeight;        // 2, halved each step
   byte   newFoundFreq;     // do-while loop output, read in loop guard
-
-  // deep find-and-bubble path
-  sqword deepStatesIdx;    // walkCtx->iStates
-  byte   deepFlags;        // walkCtx->Flags
 
   // shallow (trailing) find-and-bubble path
   sqword trailStatesIdx;
@@ -2941,20 +2932,21 @@ LABEL_94:
       trailStates = (STATE*)Indx2Ptr(trailStatesIdx);
       goto LABEL_165;
     }
-    mixWeight = 2;
+    {
+    int mixWeight = 2;
     uint mixFlag;
     if( minNStates )
       // sign-bit-extract idiom: 1 if SummFreq < 45*minNStates, else 0.
       mixFlag = ((uint)minCtx->SummFreq < (uint)(45*minNStates));
     else
       mixFlag = orderBumpVariance==0;
-    ofallSaved = OrderFall;
-    ofallP3 = OrderFall+3;
-    ofallP1 = OrderFall+1;
-    depth3 = 3*OrderFall;
+    int ofallSaved = OrderFall;
+    int ofallP3 = OrderFall+3;
+    int ofallP1 = OrderFall+1;
+    int depth3 = 3*OrderFall;
     do {
-      deepStatesIdx = walkCtx->iStates;
-      deepFlags = walkCtx->Flags;
+      sqword deepStatesIdx = walkCtx->iStates;
+      byte deepFlags = walkCtx->Flags;
       STATE* deepStates = (STATE*)Indx2Ptr(deepStatesIdx);
       RefreshIfRank0Empty_(walkCtx, deepStatesIdx, deepFlags, deepStates, (sqword)chain);
       walkCtx->Flags = deepFlags & 0xF0;
@@ -2988,6 +2980,7 @@ LABEL_94:
     } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag);
     trailBound = ofallP1;
     ofall = ofallSaved;
+    }
 LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = walkCtx->iStates;
