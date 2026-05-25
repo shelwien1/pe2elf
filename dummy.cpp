@@ -1956,7 +1956,7 @@ sqword UpdateModel(PPM_CONTEXT* ctx, uint order) {
         if (s < 2*f - 2)
           newFreq = (byte)((f - 1) / s + 2);
         else
-          newFreq = (int)(((uint)(s - (3*f - 3))) >> 31);
+          newFreq = (s < 3*f - 3);    // 1 if s < 3*f-3, else 0
         states[0].Freq = (byte)(newFreq + 1);
 
         p0 = &ctx->oneState();
