@@ -2602,7 +2602,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   SparseBitmapA[SparseIdxA] |= SparseBit;
   SparseBitmapB[SparseIdxB] |= SparseBit;
   sym = foundState->Symbol;
-  LODWORD(matchHi) = MatchCtxHi;
+  matchHi = (qword)MatchCtxHi;
   SseState3[sseState3Hash] = sym;
   *(sseSlot-0x20000) = sym;
   *sseSlot = sym;
