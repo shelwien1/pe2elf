@@ -2923,7 +2923,7 @@ LABEL_94:
                 + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
   if (minISuffix) {
     heap = HeapNull;
-    walkCtx = (PPM_CONTEXT*)(HeapNull + minISuffix);
+    walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
     depthLeft = OrderFall;
     depth5 = 5 * OrderFall;
     if (walkCtx->NStates == 0) {
