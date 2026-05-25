@@ -2038,7 +2038,6 @@ sqword ReduceOrder() {
   STATE** chainPtrSave;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
-  sqword ctxSaved;
   sqword escIdxClipped;
   sqword rootCtxSaved;
   byte foundSym;
@@ -2136,7 +2135,7 @@ LABEL_73:
         // each one's 2-STATE[] block down to a single oneState. The kept state
         // is the one whose Symbol matches the parent's oneState.Symbol -- if
         // states[0] mismatches, take states[1] instead.
-        ctxSaved = rootCtxW;
+        sqword ctxSaved = rootCtxW;
         byte parentSym = parentCtx->oneState().Symbol;
         PPM_CONTEXT* walker = (PPM_CONTEXT*)rootCtxSaved;
         do {
