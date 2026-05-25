@@ -1568,13 +1568,11 @@ sqword StartModelRare(int mode) {
 
     sqword allocatedContextAddr;
     if (heapEnd == unitsSegment) {
-      if (*heapBlocks == 0) {
+      MEM_BLK* queue0 = (MEM_BLK*)heapBlocks;
+      if (!queue0->avail()) {
         allocatedContextAddr = AllocUnitsRare(0);
       } else {
-        allocatedContextAddr = (sqword)heapBlocks + (uint)heapBlocks[2] - 1;
-        heapBlocks[2] = *(uint*)(allocatedContextAddr + 8);
-        *(uint*)&heapNullOffset[*(uint*)(allocatedContextAddr + 8) + 4] = 1;
-        --*heapBlocks;
+        allocatedContextAddr = (sqword)queue0->unlinkPrev();
       }
     } else {
       heapEnd = (byte*)heapBlocks + allocatorSize - 12;
