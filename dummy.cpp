@@ -2689,8 +2689,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   FoundSymbol = -1;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
-      predGuessSym = (byte)(2*sym-matchHi);
-      FoundSymbol = predGuessSym;
+      FoundSymbol = predGuessSym = (byte)(2*sym-matchHi);
       goto LABEL_94;
     }
   } else {
@@ -2730,8 +2729,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       SymLastCtx[256 * (sc == SymLastCtx[vh]) + vh] = sc;
     }
   } else {
-    predGuessSym = (byte)(2*ssem3-ssem7);
-    FoundSymbol = predGuessSym;
+    FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
   }
 LABEL_94:
   m2_prev1 = MatchPosPrev[(symEpoch-2)&0x1FFFF];
