@@ -2562,8 +2562,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
   // ---- context-suffix walk -------------------------------------------------
-  qword    result;
-
   byte   newFoundFreq;     // do-while loop output, read in loop guard
 
   // shallow (trailing) find-and-bubble path
@@ -2981,7 +2979,7 @@ LABEL_165:
   } else {
     CtxChainEnd = (sqword)&CtxChain_1;
   }
-  result = HeapNull + foundState->iSuccessor;
+  qword result = HeapNull + foundState->iSuccessor;
   if (ofall == MaxOrder && result >= UnitsStart) {
     RootContext = result;
     MaxContext0 = result;
