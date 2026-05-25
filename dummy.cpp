@@ -2451,7 +2451,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   byte*  sse2Base;         // q12 (current Sse2State sub-block base)
   sqword sseHistOff;
   byte   newHistCnt;
-  sqword j;                // halving-loop index
   int    halved;
 
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
@@ -2647,7 +2646,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     sse2Base[sseHistOff] = newHistCnt;
     if (newHistCnt > 0xA7u) {
       *counter = 0;
-      for (j = 0; j < 512; ++j) {
+      for (sqword j = 0; j < 512; ++j) {
         halved = sse2Base[j] >>= 1;
         *counter += halved;
       }
