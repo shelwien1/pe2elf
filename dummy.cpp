@@ -325,8 +325,10 @@ byte SseState3[0x20000];
 //--- #return
 //--- #include "context.h"
 
-enum { 
-  UNIT_SIZE = 12, N_INDEXES = 38
+enum {
+  UNIT_SIZE = 12,
+  N_INDEXES = 38,
+  MAX_O     = 16     // max PPM model order accepted by StartSubAllocator
 };
 
 // Reconstructs an absolute pointer from a 32-bit field like iStates of iSuffix or iSuccessor
@@ -3051,7 +3053,7 @@ sqword StartSubAllocator(uint memsize_mb, int order, int cutOff) {
   if( !memsize_mb ) return 0;
   if( memsize_mb>0xFFF ) return 0;
   if( order<2 ) return 0;
-  if( order>16 ) return 0;
+  if( order>MAX_O ) return 0;
   if( SubAllocatorSize ) return 0;
   size_t memsize_b = memsize_mb<<20;
   HeapStart = new char[memsize_b]; // malloc(memsize_b);
