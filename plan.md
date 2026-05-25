@@ -314,6 +314,25 @@ helpers:
   largely converted to typed `ctx->iStates` / `state->iSuccessor` etc.
   across ReduceOrder, CreateSuccessors, MixUpdate, StartModelRare,
   PPMContextWalk.
+- Function signatures retyped: `BinEscFreq`, `RescaleCtx`, `UpdateModel`,
+  `MixUpdate`, `FreeContext_`, `MoveContext_`, `AllocContext_`,
+  `FindAndBubble7_` all now take/return their natural PPM_CONTEXT*/STATE*
+  type instead of byte*/void*/sqword. ReduceOrder/MixUpdate locals
+  `ctxBW`/`walkCtx`/`foundState`/`stateBW`/`chainStatePtr`/`onestatePtr`/
+  `foundStateB`/`tailState`/`deepFound`/`trailFound`/`deepStates`/
+  `trailStates` likewise retyped.
+- CreateSuccessors's chain pointer threaded as `STATE**` end-to-end
+  (caller passes `(STATE**)CtxChain`); the per-chain `*(sqword*)chainPtr`
+  / `*chainPtr = (qword)i` access pattern is now a direct
+  `(*chainPtr)->iSuccessor` / `*chainPtr = state`.
+- Several Hex-Rays macro residues (`LODWORD` on sqword args, `LOWORD`
+  on int reads, `((byte*)SSE0)` no-op casts, dead "prefetch hints"
+  `(void)(x+heapNull)`) removed.
+- Dead writes proven by data-flow inspection have been deleted:
+  `succAddrSaved`/`succAddr=succAddrSaved`, two `newByteIdx =
+  pTextEntry+1-heapNull` refreshes, `matchHi = (int)matchHi` self-assign,
+  `ctxSuffixIdx` (only fed the removed prefetch hint), `deepStatesPtr`
+  (only assigned, never read).
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
