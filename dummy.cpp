@@ -2638,8 +2638,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       predGuessSym = 0;
   }
   rsCtx = RSContext;
-  newQ12Sel = 2*q12BaseSel;
   q12BaseSel *= 2;
+  newQ12Sel   = q12BaseSel;
   if (sym != RSContext) {
     sse2Base = q12;
     byte* histo = (byte*)sse2Base;
