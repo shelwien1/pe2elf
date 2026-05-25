@@ -3553,11 +3553,10 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int nStatesP1Save, entryNStates, sseSum2A;
+  int nStatesP1Save, entryNStates;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE;
-  int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
   int sxNStatesC, sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
@@ -3573,11 +3572,10 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint sumFreqDivC, sumFreqLimit;
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   char descendFlags, predShiftIncC;
-  sqword mixIdxA, mixIdxC, sse2IdxA;
+  sqword mixIdxA, mixIdxC;
   sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
   int *mixSlotA;
-  int *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -3912,28 +3910,24 @@ LABEL_58:
       wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
       wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
-    sseMatchSlotA = &SseMatch[SseMatchIdxBuild_(escSymB)];
+    int* sseMatchSlotA = &SseMatch[SseMatchIdxBuild_(escSymB)];
     sseMatchSlot = sseMatchSlotA;
     SseMatchStep_(sseMatchSlotA, (int)(60416LL*cumFreqB/cumWeightB));
-    sseSum2A = sseCum;
-    sse2IdxA = Sse2IdxBuild_(escSymB, sseSum2A, (uint)sseTot);
-    sse2SlotA = &Sse2[2*sse2IdxA];
+    int    sseSum2A   = sseCum;
+    sqword sse2IdxA   = Sse2IdxBuild_(escSymB, sseSum2A, (uint)sseTot);
+    int*   sse2SlotA  = &Sse2[2*sse2IdxA];
     sse2Slot = sse2SlotA;
-    sse2CumInA = sseSum2A;
+    int sse2CumInA = sseSum2A;
     Sse2Step_(sse2SlotA);
-    totFreqA = sseTot;
+    int totFreqA = sseTot;
     predWeightDelta = totFreqA;
-    {
-      // Scope-locals so the goto-into-LABEL_59 path doesn't trip
-      // "jump bypasses initialization".
-      int  sse2HistByte = sse2Base[((word)escSymB-(word)RSContext)&0x1FF];
-      uint sse2CounterA = *(uint*)(sse2Base+512);
-      sse3SlotA = &Sse3[2 * (int)Sse3IdxBuild_(escSymB,
-                                                SymLastCtx2[escSymB]==SymCount,
-                                                *(uint*)(summFreqPtr+2),
-                                                (uint)sse2IdxA, sse2CounterA,
-                                                (uint)sse2HistByte)];
-    }
+    int sse2HistByte = sse2Base[((word)escSymB-(word)RSContext)&0x1FF];
+    uint sse2CounterA = *(uint*)(sse2Base+512);
+    int* sse3SlotA = &Sse3[2 * (int)Sse3IdxBuild_(escSymB,
+                                                  SymLastCtx2[escSymB]==SymCount,
+                                                  *(uint*)(summFreqPtr+2),
+                                                  (uint)sse2IdxA, sse2CounterA,
+                                                  (uint)sse2HistByte)];
     sse3Slot = sse3SlotA;
     cumFreq = sseCum;
     Sse3Step_(sse3SlotA, sse2CumInA, totFreqA);
