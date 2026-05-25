@@ -2021,11 +2021,11 @@ sqword ReduceOrder() {
   qword ctxChainEndS;
   int sym;
   sqword curCtx;
-  sqword* chainPtrW;
+  STATE** chainPtrW;
   STATE* stateBW;
   uint curCtxSuffix;
   STATE* chainStatePtr;
-  sqword* chainPtrSave;
+  STATE** chainPtrSave;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
   sqword ctxSaved;
@@ -2067,7 +2067,7 @@ sqword ReduceOrder() {
     sym = foundStateB->Symbol;
     rootCtxSaveCS = rootCtxW;
     curCtx = MaxContext0;
-    chainPtrW = CtxChain;
+    chainPtrW = (STATE**)CtxChain;
     while( 1 ) {
       PPM_CONTEXT* pc = (PPM_CONTEXT*)curCtx;
       if( (qword)chainPtrW>=ctxChainEndS ) {
@@ -2080,9 +2080,9 @@ sqword ReduceOrder() {
           state = &pc->oneState();
         }
         stateBW = state;
-        *chainPtrW++ = (sqword)stateBW;
+        *chainPtrW++ = stateBW;
       } else {
-        stateBW = (STATE*)*chainPtrW++;
+        stateBW = *chainPtrW++;
       }
       succIdxW = stateBW->iSuccessor;
       if( succIdxW )
@@ -2101,7 +2101,7 @@ sqword ReduceOrder() {
     if( succIdxW<=newByteIdx ) {
       // newByteIdx is already pTextEntry+1-heapNull from function entry and
       // hasn't been clobbered; just call CreateSuccessors with the chain.
-      succIdxW = CreateSuccessors(0, (STATE**)(chainPtrSave-1), curCtx);
+      succIdxW = CreateSuccessors(0, chainPtrSave-1, curCtx);
       chainStatePtr->iSuccessor = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
