@@ -4714,12 +4714,12 @@ int __main(int argc, const char** argv) {
         exit(-1);
       }
 
-      uint param1 = arch_hdr.ModelSize + 1;
-      uint param2 = arch_hdr.ModelOrder + 2;
-      int param3  = arch_hdr.CutOff;
+      uint memoryMB    = arch_hdr.ModelSize  + 1;
+      uint modelOrder  = arch_hdr.ModelOrder + 2;
+      int  resetMethod = arch_hdr.CutOff;
 
       PPMIIDeleteModel();
-      if( !StartSubAllocator(param1, param2, param3) ) {
+      if( !StartSubAllocator(memoryMB, modelOrder, resetMethod) ) {
         printf("Out of memory!");
         exit(-1);
       }
