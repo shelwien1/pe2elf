@@ -1811,7 +1811,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     }
     stateSuccIdx = state->iSuccessor;
     if (stateSuccIdx != seedSuccIdx) break;
-    suffixIdx0 = ((PPM_CONTEXT*)ctxAddr)->iSuffix;
+    suffixIdx0 = pc->iSuffix;
     *chainPtr = state;
     ++chainPtr;
     if (!suffixIdx0) {
