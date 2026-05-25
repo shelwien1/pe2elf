@@ -2085,7 +2085,6 @@ sqword ReduceOrder() {
   uint curCtxSuffix;
   byte* chainStatePtr;
   sqword* chainPtrSave;
-  byte* ctxBSaveCS;
   sqword rootCtxSaveLab99;
   sqword rootCtxSaveCS;
   sqword ctxSaved;
@@ -2127,9 +2126,8 @@ sqword ReduceOrder() {
     maxCtxStart = MaxContext0;
     ctxChainEndS = CtxChainEnd;
     sym = *foundStateB;
-    ctxBSaveCS = ctxBW;
-    curCtx = MaxContext0;
     rootCtxSaveCS = rootCtxW;
+    curCtx = MaxContext0;
     chainPtrW = CtxChain;
     while( 1 ) {
       if( (qword)chainPtrW>=ctxChainEndS ) {
@@ -2153,18 +2151,14 @@ sqword ReduceOrder() {
       ((STATE*)stateBW)->iSuccessor = newByteIdx;
       curCtxSuffix = ((PPM_CONTEXT*)curCtx)->iSuffix;
       OrderFall = --orderFall;
-      if( !curCtxSuffix ) {
-        ctxBW = ctxBSaveCS;
-        rootCtxW = rootCtxSaveCS;
-        succIdxW = curCtx-heapNull;
+      if (!curCtxSuffix) {
+        succIdxW = curCtx - heapNull;
         goto LABEL_9;
       }
       curCtx = heapNull+curCtxSuffix;
     }
     chainStatePtr = stateBW;
-    ctxBW = ctxBSaveCS;
     chainPtrSave = chainPtrW;
-    rootCtxW = rootCtxSaveCS;
     if( succIdxW<=newByteIdx ) {
       // pTextEntry / sse0Bit are locals and survive the call as-is; the
       // newByteIdx assignment refreshes its successor-index value from the
