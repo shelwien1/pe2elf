@@ -1582,13 +1582,13 @@ sqword StartModelRare(int mode) {
     PPM_CONTEXT* rootCtxP = (PPM_CONTEXT*)allocatedContextAddr;
     rootCtxP->iSuffix = 0;                  // root has no suffix
     RootContext = allocatedContextAddr;
-    rootCtxP->Flags = (byte)-57;
+    rootCtxP->Flags = 0xC7;                 // -57 as byte
     MaxContext0 = allocatedContextAddr;
     rootCtxP->SummFreq = 256;
 
     sqword preferredIndex = (byte)b11;
     NMasked = 255;
-    rootCtxP->NStates = (byte)-1;           // NStates = 255 (256 states)
+    rootCtxP->NStates = 255;                // NStates+1 = 256 (all symbols)
     // Allocate the root context's STATE[] storage. HiUnit was just set to
     // heapEnd above, so AllocUnits_ uses the same boundary the inlined code
     // would have used.
