@@ -2710,7 +2710,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
 
-  int    foundFreq;        // foundState->Freq
   int    deepSumFreq;      // walkCtx->SummFreq
   short  mixBoostA, mixBoostB;
   byte   newFoundFreq;
@@ -3069,7 +3068,7 @@ LABEL_94:
       walkCtx->Flags = deepFlags & 0xF0;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_(deepStates, searchSym, &walkCtx->Flags, 13);
-      foundFreq = foundState->Freq;
+      int foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
       depth3 -= 3;
