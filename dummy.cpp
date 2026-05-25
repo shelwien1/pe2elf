@@ -1609,14 +1609,11 @@ sqword StartModelRare(int mode) {
     PrevSymbol = 0;
     
     // Initialize state fields across all 256 unique symbols
-    byte* statePtr = (byte*)heapBlocks + rootCtxP->iStates - 1;
+    STATE* states = (STATE*)((byte*)heapBlocks + rootCtxP->iStates - 1);
     for (int i = 0; i < 256; ++i) {
-      statePtr[6 * i + 0] = i; // Symbol [cite: 102]
-      statePtr[6 * i + 1] = 1; // Freq [cite: 103]
-      statePtr[6 * i + 2] = 0; // Successor low bounds [cite: 103]
-      statePtr[6 * i + 3] = 0;
-      statePtr[6 * i + 4] = 0;
-      statePtr[6 * i + 5] = 0;
+      states[i].Symbol     = (byte)i;
+      states[i].Freq       = 1;
+      states[i].iSuccessor = 0;
     }
     result = 1536;
 
