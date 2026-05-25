@@ -2719,18 +2719,20 @@ qword MixUpdate(byte* ctxBytes) {
   rsCtx = RSContext;
   newQ12Sel = 2*q12BaseSel;
   q12BaseSel *= 2;
-  if( sym!=RSContext ) {
+  if (sym != RSContext) {
     sse2Base = q12;
-    *(uint*)(q12+512) += 2;
-    sseHistOff = ((word)sym-rsCtx)&0x1FF;
-    newHistCnt = *(byte*)(sseHistOff+sse2Base)+2;
-    *(byte*)(sseHistOff+sse2Base) = newHistCnt;
-    if( newHistCnt>0xA7u ) {
-      *(uint*)(sse2Base+512) = 0;
-      for( j = 0; j<512; ++j ) {
-        halved = *(byte*)(j+sse2Base)>>1;
-        *(byte*)(j+sse2Base) >>= 1;
-        *(uint*)(sse2Base+512) += halved;
+    byte* histo = (byte*)sse2Base;
+    uint* counter = (uint*)(sse2Base + 512);
+    *counter += 2;
+    sseHistOff = ((word)sym - rsCtx) & 0x1FF;
+    newHistCnt = histo[sseHistOff] + 2;
+    histo[sseHistOff] = newHistCnt;
+    if (newHistCnt > 0xA7u) {
+      *counter = 0;
+      for (j = 0; j < 512; ++j) {
+        halved = histo[j] >> 1;
+        histo[j] >>= 1;
+        *counter += halved;
       }
     }
     newQ12Sel = ++q12BaseSel;
