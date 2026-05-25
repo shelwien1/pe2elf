@@ -24,6 +24,26 @@ Make `dummy.cpp` **readable, idiomatic and structured** without changing
 the algorithm. The compressed output must remain bit-exact; round-trip
 on `book1` (via `make && sh t.sh`) must keep passing after every commit.
 
+The structural target is `ppmd.cpp` in this tree — a ~1700-line readable
+implementation of the same PPMII algorithm. Both files share the
+allocator names (`AllocUnits`, `FreeContext`, `MEM_BLK::link*`,
+`UnitsCpy`, `MoveContext`, `ShrinkUnits`, etc.), the on-disk struct
+layouts (`PPM_CONTEXT { NStates, Flags, SummFreq, iStates, iSuffix }`,
+`STATE { Symbol, Freq, iSuccessor }`), the quantisation table names
+(`SSE0QTable`, `SSE1QTable`, `SEEQTable`, `RLQBounds`, `SSE0QBounds`,
+`SSE1QBounds`, `SEEQBounds`, `Indx2Units`, `Units2Indx`, `SymType`),
+the model-state globals (`MaxContext`, `OrderFall`, `OrderFall0`,
+`MaxOrder`, `RunLength`, `RSContext`, `NMasked`, `SymCount`,
+`SymMask[]`, `CutOff`, `Interrupted`), and the API entry points
+(`PPMIICreateModel`, `PPMIIEncode`, `PPMIIDecode`, `PPMIIDeleteModel`,
+`PPMIIGetCurrentModelSize`). What `dummy.cpp` lacks — and what the
+remaining refactoring should add — is `ppmd.cpp`'s **method-per-arm
+decomposition** of `PPM_CONTEXT`: `encode0`/`decode0`,
+`encodeLES1`/`decodeLES1`, `encode1`/`decode1`, `encode2`/`decode2`,
+`update1`/`update2`, `makeEsc1Freq`/`makeEsc2Freq`, `auxFindAndUpdate`,
+`rescale`, `cutOff`. The full ppmd.cpp ↔ dummy.cpp mapping table is in
+appendix §A.8.
+
 ## What's still wrong
 
 The file is now ~4800 lines. The helpers, allocator, range coder, and
@@ -376,6 +396,128 @@ real.
 The truly bad ones are the `_A` / `_B` / `_C` / `_E` / `_F` / `_M`
 suffixes inside `RealProcess`, which exist only because every local
 shares one function scope.
+
+### K. `ppmd.cpp`'s `PPM_CONTEXT` methods are missing
+
+The biggest single readability win available is to extract the
+textbook `PPM_CONTEXT` methods from `RealProcess`. `ppmd.cpp`
+(Shkarin's reference) implements the core algorithm in **~50 lines**
+of `RealEncode`/`RealDecode` plus eight short methods on the
+`PPM_CONTEXT` struct. The PE variant inlines all eight into one ~950
+line function. The methods (with their dummy.cpp current
+counterparts):
+
+| ppmd.cpp method                       | dummy.cpp location                                    |
+|---------------------------------------|-------------------------------------------------------|
+| `PPM_CONTEXT::encode0(int)`           | RealProcess single-state branch, ~3762–3924 (region B) |
+| `PPM_CONTEXT::decode0()`              | the `f_DEC ? ...` branches inside region B            |
+| `PPM_CONTEXT::encodeLES1(int)`        | RealProcess multi-state first arm, ~3568–3603         |
+| `PPM_CONTEXT::decodeLES1()`           | matching decoder branch                               |
+| `PPM_CONTEXT::encode1(int)`           | RealProcess multi-state state-search, ~3604–3760 (region A) |
+| `PPM_CONTEXT::decode1()`              | matching decoder branch                               |
+| `PPM_CONTEXT::encode2(int)`           | RealProcess LABEL_59 per-candidate, ~4154–4427 (region F) |
+| `PPM_CONTEXT::decode2()`              | matching decoder branch                               |
+| `PPM_CONTEXT::update1(STATE*)`        | LABEL_250 + bubble-up at ~4365–4385                   |
+| `PPM_CONTEXT::update2(STATE*)`        | escape-tail freq bump at ~4400–4425                   |
+| `PPM_CONTEXT::makeEsc1Freq()`         | SEE-index build inside region A's `LABEL_18` body     |
+| `PPM_CONTEXT::makeEsc2Freq()`         | SEE-index build inside region F                       |
+| `PPM_CONTEXT::auxFindAndUpdate(b,a)`  | `BinEscFreq(pc)` already factored (different signature!) |
+| `PPM_CONTEXT::rescale(STATE*)`        | `RescaleCtx(pc)` already factored                     |
+| `PPM_CONTEXT::cutOff(uint)`           | `UpdateModel(pc, order)` already factored             |
+| free `RestoreModelRare(pc)`           | inlined in `ReduceOrder` LABEL_73 path                |
+| free `FinishCutOff()`                 | inlined in `ReduceOrder`'s glue cleanup               |
+| free `PrepareNextStep`                | RealProcess LABEL_250 tail                            |
+
+Three of the eight methods (`encode2`, `update2`, `makeEsc2Freq`) are
+the escape-recoding paths. ppmd.cpp's `encode2` is ~30 lines; dummy's
+LABEL_59 candidate dispatch is ~270 lines because it inlines the full
+SSE cascade per candidate.
+
+Goal: **extract these eight methods**, even with their PE-extended
+bodies. `RealProcess` would then look like ppmd.cpp's `RealEncode`
+with a templated `<f_DEC>` flag — ~80 lines of dispatch plus calls,
+mirroring:
+
+```cpp
+do {
+  PPM_CONTEXT* MinContext = MaxContext;
+  if (!f_DEC) inputByte = getc(inFile);
+  if (MinContext->NStates) {
+    FoundState = f_DEC ? MinContext->decodeLES1()
+                       : MinContext->encodeLES1(inputByte);
+    if (FoundState) goto SYMBOL_FOUND;
+    rc.normalize<f_DEC>(...);
+    FoundState = f_DEC ? MinContext->decode1()
+                       : MinContext->encode1(inputByte);
+    if (!f_DEC) rc.encodeSymbol(...);
+  } else
+    FoundState = f_DEC ? MinContext->decode0()
+                       : MinContext->encode0(inputByte);
+  while (!FoundState) {
+    rc.normalize<f_DEC>(...);
+    /* descend suffix chain ... */
+    FoundState = f_DEC ? MinContext->decode2()
+                       : MinContext->encode2(inputByte);
+    if (!f_DEC) rc.encodeSymbol(...);
+  }
+SYMBOL_FOUND:
+  PrepareNextStep(MinContext, FoundState);
+  if (f_DEC) putc(FoundState->Symbol, outFile);
+  rc.commitRange();
+  rc.normalize<f_DEC>(...);
+} while (--SymCount);
+```
+
+This is the **shape** the file should have. Achieving it requires
+threading the PE variant's larger SSE state (cascade slot pointers,
+the q##-published intermediates) through method parameters instead of
+file-scope q-globals — Section E.
+
+### L. Constants and names ppmd.cpp standardises
+
+`ppmd.cpp` introduces names for several constants and helpers that
+dummy.cpp uses with magic numbers or local renames:
+
+| ppmd.cpp                          | dummy.cpp equivalent (current)                       |
+|-----------------------------------|------------------------------------------------------|
+| `MAX_O = 16`                      | local `MaxOrder` global (dynamic)                    |
+| `UNIT_SIZE = 12`                  | magic `12` inline                                    |
+| `N_INDEXES = 38`                  | magic `38` / `0x26` inline                           |
+| `INT_BITS = 6, PERIOD_BITS = 7`   | not named — implicit in SSE cell math                |
+| `TOT_BITS = 13, BIN_SCALE = 8192` | implicit                                             |
+| `H_BITS=15, H_SHIFT=5, H_MASK=0x7FFF` | magic `0x1FFFF`/`0xFFF`/`<<6` for sseState3Hash etc. |
+| `ROUND0 = 31, ROUND1 = 53`        | `0x1F` / `0x35` literals if present                  |
+| `MAX_FREQ = 123`                  | already a `PPM_CONTEXT::MAX_FREQ` enum               |
+| `O_BOUND = 9`                     | already a `PPM_CONTEXT::O_BOUND` enum                |
+| `MEM_DIVISOR = 10`                | magic `120` / `108 / 9` arithmetic                   |
+| `RLSM[2][12]` (RunLength state machine) | inlined in update1/update2 sites              |
+| `RLQTable[12]`, `SSE0QTable[72]`, `SSE1QTable[64]`, `SEEQTable[256]` | same names, larger sizes (PE variant) |
+| `RLQBounds`, `SSE0QBounds`, `SSE1QBounds`, `SEEQBounds` | same names (compatible)             |
+| `Indx2Units[N_INDEXES]`, `Units2Indx[128]` | same names, plus `Units2Indx4[128]` (PE-only) |
+| `SymType[256]`                    | same name                                            |
+| `RecentSymbol[H_SIZE]`            | not present — PE uses `RecentPos[]` / different      |
+| `EscList[MAX_O]`                  | not present — PE keeps SSE-cascade deltas instead    |
+| `SEE_CONTEXT { Summ, Shift, Count }` | replaced by PE's larger SSE cell layout           |
+
+`Range` (the SUBRANGE struct in ppmd) is replaced by `Rangecoder rc`
+with members `Range`, `Low`, `Code`, `Cache`, `ff_count`, `SubRange`.
+The arithmetic packing trick used in ppmd's range coder
+(`(low^(low+range))<TOP` etc.) is replaced by an explicit `Cache +
+ff_count` carry queue in dummy.cpp — that's intentional and bit-exact
+for the PE stream format, not a target for un-doing.
+
+The ppmd.cpp names that **should** propagate into dummy.cpp where the
+mapping is exact: `MAX_O`, `UNIT_SIZE`, `N_INDEXES`, `MAX_FREQ` (the
+enums already match), `H_BITS`/`H_SHIFT` for the `sseState3Hash`
+arithmetic, the `ROUND0`/`ROUND1` constants if any of the SSE0/SSE1
+arithmetic actually uses them.
+
+The names that **should not** propagate: anything starting with
+`Sse1` / `SseMatch` / `Sse2` / `Sse3` / `MatchPosTable` /
+`MatchPosPrev` / `MatchPosHash` / `SparseBitmap*` / `BijectMap` /
+`b28..b37` — those are PE-specific extensions with no analogue in
+`ppmd.cpp`. Don't try to rename them after ppmd's `SEE_CONTEXT` —
+they're different cells with different update math.
 
 ## What's already been cleaned up
 
@@ -947,12 +1089,120 @@ inside the `LABEL_250` tail (`commitSymbol()` in spirit) and in
 `UpdateModel` / `CreateSuccessors` / `ReduceOrder`, which are the next
 refactoring targets after `RealProcess` itself.
 
-### A.8 References
+### A.8 Function map: ppmd.cpp ↔ dummy.cpp
+
+Both files share the algorithm and the on-disk PPM_CONTEXT / STATE
+layout, but the PE variant adds a much larger SSE cascade and the
+sparse submodels of §A.6. Mapping the named entry points:
+
+**Allocator (mostly 1:1, same shape):**
+
+| ppmd.cpp                | dummy.cpp                                                |
+|-------------------------|----------------------------------------------------------|
+| `MEM_BLK` struct        | `MEM_BLK` (same fields, same methods)                    |
+| `StartSubAllocator`     | `StartSubAllocator`                                      |
+| `InitSubAllocator`      | inlined into the first half of `StartModelRare`          |
+| `AllocUnitsRare`        | `AllocUnitsRare`                                         |
+| `AllocUnits`            | `AllocUnits_`                                            |
+| `AllocContext`          | `AllocContext_`                                          |
+| `FreeUnits`             | `FreeUnits_`                                             |
+| `FreeUnitsRare`         | `FreeUnitsRare` (PE version takes an `sqword` not `MEM_BLK*`) |
+| `FreeContext`           | `FreeContext_`                                           |
+| `ShrinkUnits`           | `ShrinkUnits_`                                           |
+| `ExpandUnits`           | inlined in dummy's `UpdateModel` even-NStates branch     |
+| `MoveUnits`             | `MoveUnits_`                                             |
+| `MoveContext`           | `MoveContext_`                                           |
+| `UnitsCpy`              | `UnitsCpy_`                                              |
+| `GlueFreeBlocks`        | inlined in `AllocUnitsRare`'s `if (!CutOffCount)` arm    |
+| `FinishCutOff`          | inlined in `ReduceOrder` LABEL_73 / glue-cleanup path    |
+
+**Model (algorithm core, names already match):**
+
+| ppmd.cpp                            | dummy.cpp                                              |
+|-------------------------------------|--------------------------------------------------------|
+| `PPMIICreateModel`                  | `StartSubAllocator` + `StartModelRare(initMode)` pair  |
+| `PPMIIDeleteModel`                  | `PPMIIDeleteModel`                                     |
+| `PPMIIGetCurrentModelSize`          | `PPMIIGetCurrentModelSize`                             |
+| `PPMIIEncode` / `PPMIIDecode`       | same (just different stats-callback signatures)        |
+| `StartModelRare(Mode)`              | `StartModelRare(mode)` (compatible)                    |
+| `RealEncode` / `RealDecode`         | `RealEncode` / `RealDecode` (templated `RealProcess<f_DEC>`) |
+| `PrepareNextStep`                   | RealProcess LABEL_250 tail (still inlined)             |
+| `UpdateModel(MinContext, FoundState)` | `UpdateModel(ctx, order)` — **different role!**       |
+| `CreateSuccessors(skip, p, pc, fs)` | `CreateSuccessors(depth, chain, seedCtx)` — different signature, similar role |
+| `ReduceOrder(p, pc, fs)`            | `ReduceOrder()` — covers both `ReduceOrder` and `RestoreModelRare` from ppmd |
+| `RestoreModelRare`                  | folded into dummy's `ReduceOrder` LABEL_73 path        |
+
+**PPM_CONTEXT methods (still to extract — see Section K above):**
+
+| ppmd.cpp method                      | dummy.cpp counterpart                                  |
+|--------------------------------------|--------------------------------------------------------|
+| `encode0(c)` / `decode0()`           | RealProcess single-state branch (region B)             |
+| `encodeLES1(c)` / `decodeLES1()`     | RealProcess multi-state first arm                      |
+| `encode1(c)` / `decode1()`           | RealProcess multi-state state-search (region A)        |
+| `encode2(c)` / `decode2()`           | RealProcess LABEL_59 candidate dispatch (region F)     |
+| `update1(p)` / `update2(p)`          | RealProcess SYMBOL_FOUND tail and escape-tail bumps    |
+| `makeEsc1Freq()` / `makeEsc2Freq()`  | SEE-index build inside regions A and F                 |
+| `auxFindAndUpdate(sym, add)`         | `BinEscFreq(pc)` already factored                      |
+| `rescale(STATE*)`                    | `RescaleCtx(pc)` already factored                      |
+| `cutOff(Order)`                      | `UpdateModel(pc, order)` already factored              |
+
+**Range coder (compatible, larger interface in dummy):**
+
+| ppmd.cpp free function   | dummy.cpp `Rangecoder` method                              |
+|--------------------------|------------------------------------------------------------|
+| `rcInitEncoder`          | `rc.initEncoder()`                                         |
+| `rcEncodeSymbol`         | `rc.encodeSymbol(subRange)` + `rc.commitRange()`           |
+| `rcFlushEncoder`         | `rc.Flush(File)`                                           |
+| `rcInitDecoder`          | `rc.initDecoder(file)`                                     |
+| `rcGetCurrentCount`      | `rc.getSubRange(freq, totFreq)` (different signature)      |
+| `rcRemoveSubrange`       | `rc.DecodeNotMatched(subRange)` / `rc.commitRange()`       |
+| `rcBinStart`             | (none — PE variant doesn't use the binary-coder shortcut)  |
+| `rcBinDecode`            | (none)                                                     |
+| `rcBinCorrect0`/`1`      | (none)                                                     |
+| inline `normalize` macro | `rc.EncodeNormalize(file)` / `rc.DecodeNormalize(file)`    |
+
+The range coder is structurally the same (same `low + range/scale * freq`
+arithmetic with TOP/BOT thresholds), but dummy.cpp's PE variant uses a
+deferred-carry / FF-stuffing emit path (`Cache`, `ff_count`,
+`emitOneByte`) rather than ppmd.cpp's "shift while range < BOT" loop
+inline. Both produce equivalent byte streams under different framing.
+
+**Tables (sizes diverge dramatically):**
+
+| ppmd.cpp                          | dummy.cpp                                                |
+|-----------------------------------|----------------------------------------------------------|
+| `SSE0[12][64]` (768 words)        | `BinSse[0x280]` (640 ints; covers SSE0+SSE1 role)        |
+| `SSE1[15][16]` (240 words)        | merged into `BinSse[]`                                   |
+| `SEE1[12][64]` (3072 bytes of SEE_CONTEXT) | (no direct counterpart; PE uses the larger Sse* tables) |
+| `SEE2[12][32]` (1536 bytes)       | (no direct counterpart)                                  |
+| `RecentSymbol[H_SIZE]` (32 KB)    | (no direct counterpart; PE uses `RecentPos[4096]` differently) |
+| `EscList[MAX_O]`                  | inlined into MixUpdate's `predSseTotDelta`/cascade deltas |
+| `RLQTable[12]`                    | `NextBinFreq[128]` (similar role, larger)                |
+| `SSE0QTable[72]`                  | `SSE0QTable[256]` (same name, larger)                    |
+| `SSE1QTable[64]`                  | `SSE1QTable[128]` (same)                                 |
+| `SEEQTable[256]`                  | `SEEQTable[256]` (same)                                  |
+| `SymType[256]`                    | `SymType[256]` (same)                                    |
+| `Indx2Units[N_INDEXES]`, `Units2Indx[128]` | same, plus PE adds `Units2Indx4[128]`           |
+| (none)                            | `Sse1[0x60040]` (PE-only, 1.5 M ints)                    |
+| (none)                            | `SseMatch[0x200040]` (PE-only, ~8 M ints — the big one)  |
+| (none)                            | `Sse2[0x30040]` (PE-only, ~786 K ints)                   |
+| (none)                            | `Sse3[0x2A03E]` (PE-only, ~688 K ints)                   |
+| (none)                            | `PredWeight[0xA1C]`, `MixWeight1`/`MixWeight2`           |
+| (none)                            | `MatchPosTable[0x10000]`, `MatchPosPrev[131072]`, `MatchPosHash[0x40000]` |
+| (none)                            | `BijectMap[0x40000]`, `SparseBitmapA/B`                  |
+| (none)                            | `b27..b37` byte-pair hash arms                           |
+
+The bottom block — anything from `Sse1` down — is PE-only machinery
+that has no name in `ppmd.cpp`. Don't try to rename these after
+ppmd's `SEE_CONTEXT` / `SSE0` / `SSE1`; the semantics are different
+even when the role rhymes.
+
+### A.9 References
 
 - D. Shkarin, *PPM: One Step to Practicality* (DCC 2002) and the
   PPMII series — the algorithmic basis.
 - `ppmd.cpp` in this tree — Shkarin's reference C++ implementation,
-  used as the readability oracle.
+  used as the readability and naming oracle.
 - `dummy.cpp` — the PE-binary codec being refactored. Function map:
   `InitTables`, `BinEscFreq`, `RescaleCtx`, `SseScale1`, `SseScale2`,
   `AllocUnitsRare`, `StartModelRare`, `CreateSuccessors`, `UpdateModel`,
