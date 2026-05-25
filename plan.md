@@ -440,15 +440,14 @@ Independently of the arm extraction, several blocks **inside the
 arms** appear three times across regions A / C / F and would
 collapse to one helper if the surrounding locals were lifted:
 
-- **The Sse1 → SseMatch → Sse2 → Sse3 cascade** appears in region A
-  (~3680–3860), region C (~4040–4130), and region F (~4200–4290).
-  The per-stage helpers (`Sse1Step_`, `SseMatchStep_`, `Sse2Step_`,
-  `Sse3Step_`) cover the cell math; the duplication is in the
-  slot-pointer computation, the SSE-index build, and the
-  q##-publish boilerplate surrounding each stage. (Section C.)
-- **The SEE-index bitfield build** for `makeEsc1Freq` (region A) and
-  `makeEsc2Freq` (region F) — both are 8–10-term SseIdx{} compositions,
-  most terms shared.
+- **The Sse1 → SseMatch → Sse2 → Sse3 cascade** appears in region A,
+  region C, and region F. The per-stage step helpers (`Sse1Step_`,
+  `SseMatchStep_`, `Sse2Step_`, `Sse3Step_`) cover the cell math; the
+  per-stage SSE-index build is now factored into `SseMatchIdxBuild_`,
+  `Sse2IdxBuild_`, `Sse3IdxBuild_`, and `OrderCtxSeedBuild_` helpers
+  (regions A/B/F). The remaining duplication is region C's bigSlotC
+  index (separate predicate set) and the surrounding "neighbour cells
+  + RescaleAccum1_ stack" boilerplate, which uses different mix tables.
 - **The state-bubble-up after a frequency increment** appears at
   LABEL_250 (~4365–4385) and inside `BinEscFreq` (lines ~1061–1078).
   Both bubble one state up while `Freq > previous` — different
