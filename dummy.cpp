@@ -2710,7 +2710,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
 
-  int    deepSumFreq;      // walkCtx->SummFreq
   short  mixBoostA, mixBoostB;
   byte   newFoundFreq;
 
@@ -3079,7 +3078,7 @@ LABEL_94:
         walkCtx = walkCtx->getSuffix();
         goto LABEL_201;
       }
-      deepSumFreq = walkCtx->SummFreq;
+      int deepSumFreq = walkCtx->SummFreq;
       mixBoostA = mixWeight + (depth5 > ofallP3);
       mixWeight >>= 1;
       // mixBoostB sums three contributions:
