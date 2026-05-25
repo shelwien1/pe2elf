@@ -4463,7 +4463,7 @@ LABEL_59:
             MinContext = MaxContext;
             if( (sqword)MaxContext==RootContext )
               MixCtx = totFreqC<2*cumFreqC;
-      } else {
+          } else {
             // Bubble the matched STATE up toward index 0 (cf. ppmd update1).
             STATE saved = *FoundState;
             do {
