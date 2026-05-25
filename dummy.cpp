@@ -3090,8 +3090,7 @@ LABEL_165:
 
 sqword PPMIIGetCurrentModelSize() {
   if (!SubAllocatorSize) return 0;
-  sqword result;
-  LODWORD(result) = pText - UnitsStart + LoUnit + SubAllocatorSize - HiUnit;
+  sqword result = pText - UnitsStart + LoUnit + SubAllocatorSize - HiUnit;
   MEM_BLK* bList = (MEM_BLK*)BList;
   for (uint i = 0; i < 0x26; ++i) {
     // Each entry: QueueSize * 12 bytes/block * Indx2Units[i] units/block
