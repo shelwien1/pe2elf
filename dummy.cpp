@@ -2449,8 +2449,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   short  rsCtx;
   char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new q12 base)
   byte*  sse2Base;         // q12 (current Sse2State sub-block base)
-  sqword sseHistOff;
-  byte   newHistCnt;
 
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
   int    ssem3, ssem7;
@@ -2640,8 +2638,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     sse2Base = (byte*)q12;
     uint* counter = (uint*)(sse2Base + 512);
     *counter += 2;
-    sseHistOff = ((word)sym - rsCtx) & 0x1FF;
-    newHistCnt = sse2Base[sseHistOff] + 2;
+    sqword sseHistOff = ((word)sym - rsCtx) & 0x1FF;
+    byte newHistCnt = sse2Base[sseHistOff] + 2;
     sse2Base[sseHistOff] = newHistCnt;
     if (newHistCnt > 0xA7u) {
       *counter = 0;
