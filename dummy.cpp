@@ -2584,8 +2584,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int      ofall;          // tracks OrderFall through the function
   qword    result;
 
-  PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
-  int    depthLeft;        // counts down from OrderFall
   byte   newFoundFreq;     // do-while loop output, read in loop guard
 
   // shallow (trailing) find-and-bubble path
@@ -2898,8 +2896,8 @@ LABEL_94:
     .bits <12, 3>((OrderFall>32) + (OrderFall>8) + (OrderFall>4)
                 + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
   if (minISuffix) {
-    walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
-    depthLeft = OrderFall;
+    PPM_CONTEXT* walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
+    int depthLeft = OrderFall;
     if (walkCtx->NStates == 0) {
       do {
         if (chain > &CtxChain_2[1]) {
