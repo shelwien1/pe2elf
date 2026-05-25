@@ -260,11 +260,11 @@ sqword q29;
 sqword q34;
 sqword q35;
 sqword BinMixCenterG;
-sqword q22;
-sqword q18;
+sqword PredBaseAG;
+sqword PredBaseBG;
 sqword Sse1SlotG;
-sqword q20;
-sqword q17;
+sqword BinMixLoG;
+sqword BinMixHiG;
 sqword BinSseCellG;
 sqword SseMatchSlotG;
 sqword Sse2SlotG;
@@ -911,7 +911,7 @@ void InitTables() {
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
-  q32=q31=q30=q29=q34=q35=BinMixCenterG=q22=q18=Sse1SlotG=q20=q17=BinSseCellG=SseMatchSlotG=Sse2SlotG=Sse3SlotG=q9=q33=CtxChainEnd=0;
+  q32=q31=q30=q29=q34=q35=BinMixCenterG=PredBaseAG=PredBaseBG=Sse1SlotG=BinMixLoG=BinMixHiG=BinSseCellG=SseMatchSlotG=Sse2SlotG=Sse3SlotG=q9=q33=CtxChainEnd=0;
   hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymBmCell=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
@@ -2576,7 +2576,7 @@ inline STATE* FindAndBubble7_(STATE* states, byte sym, byte* flagsByte, int marg
 }
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
-  // ---- mixing-predictor weight pointers (q17..q22 + Sse{1,2,3}SlotG + SseMatchSlotG hold heap addresses) -----
+  // ---- mixing-predictor weight pointers (BinMix{Hi,Lo}G + PredBase{A,B}G + Sse{1,2,3}SlotG + SseMatchSlotG hold heap addresses) -----
   uint* wQ17;     // single  += binMixDeltaHi
   uint* wQ18;     // single  += predBaseDeltaB
   uint* wQ19;     // pair    += sseMatchNumDelta / -= sseMatchDenDelta
@@ -2690,11 +2690,11 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    trailState1Freq;
 
   // ---- Section 1: simple additive predictor-weight updates ----------------
-  wQ17 = (uint*)q17;
-  wQ18 = (uint*)q18;
+  wQ17 = (uint*)BinMixHiG;
+  wQ18 = (uint*)PredBaseBG;
   wQ19 = (uint*)SseMatchSlotG;
-  wQ20 = (uint*)q20;
-  wQ22 = (uint*)q22;
+  wQ20 = (uint*)BinMixLoG;
+  wQ22 = (uint*)PredBaseAG;
   wQ23 = (uint*)Sse1SlotG;
   wpQ24 = (int*)Sse2SlotG;
   wpQ25 = (int*)Sse3SlotG;
@@ -3871,8 +3871,8 @@ LABEL_58:
     mixSlotB = &mixBaseB[2*mixIdxB];
     mixFreqB = *((word*)mixSlotB+2);
     binMixCenter = (word*)mixSlotB;
-    q22 = (sqword)(mixSlotB-4);
-    q18 = (sqword)(mixSlotB+4);
+    PredBaseAG = (sqword)(mixSlotB-4);
+    PredBaseBG = (sqword)(mixSlotB+4);
     MaybeRescale2_(mixSlotB, mixFreqB);
     mixHitsB = *(word*)mixSlotB;
     sseCum = mixHitsB;
@@ -3903,7 +3903,7 @@ LABEL_58:
     if( mixShiftSelB<=0x20 ) {
       sseTot = cumWeightB;
       sseCum = cumFreqB;
-      q35 = q34 = q29 = q30 = q31 = q32 = q18 = q22 = q20 = q17 = (sqword)d27;
+      q35 = q34 = q29 = q30 = q31 = q32 = PredBaseBG = PredBaseAG = BinMixLoG = BinMixHiG = (sqword)d27;
       binSseCell = (uint*)&predWeightSink;        // dummy sink: deeper sub-stage not taken
     } else {
       // Deeper sub-stage: take the BinSse path and run ~6 more SSE-mix
@@ -3924,15 +3924,15 @@ LABEL_58:
       sseTot = mixSseFreqB;
       *binSseSlotB = binSseVal-((binSseVal+2)>>3);
       mixShiftB = mixShiftSelB<0x220;
-      predBaseDeltaA = RescaleAccum2_((void*)q22, mixShiftB);
-      predBaseDeltaB = RescaleAccum2_((void*)q18, mixShiftB);
+      predBaseDeltaA = RescaleAccum2_((void*)PredBaseAG, mixShiftB);
+      predBaseDeltaB = RescaleAccum2_((void*)PredBaseBG, mixShiftB);
       // blend the two neighbour cells (binMixCenter ± 0x10000 words) into
       // the (cumFreqB, cumWeightB) accumulators. binUpCell[0]/binDnCell[0]
       // are the hits slot of each neighbour; [2] is the freq slot.
       word* binUpCell = binMixCenter + 0x10000;
       word* binDnCell = binMixCenter - 0x10000;
-      q20 = (sqword)binDnCell;
-      q17 = (sqword)binUpCell;
+      BinMixLoG = (sqword)binDnCell;
+      BinMixHiG = (sqword)binUpCell;
       cumFreqB   = ((binUpCell[0] + binDnCell[0])                >> (mixShiftB+1)) + mixSseMeanB;
       cumWeightB = ((uint)(binUpCell[2] + binDnCell[2])          >> (mixShiftB+1)) + mixSseFreqB;
       sseCum = cumFreqB;
@@ -4262,7 +4262,7 @@ LABEL_59:
         FoundState = *chainPtr;
         preCommitMinCtx = MinContext;
         CtxChainEnd = (sqword)(chainPtr+1);
-        q18 = q22 = q20 = q17 = (sqword)d27;
+        PredBaseBG = PredBaseAG = BinMixLoG = BinMixHiG = (sqword)d27;
         uint candSymbol = FoundState->Symbol;
         sqword candProbBF = ((FoundState->Freq<<8)-predBinFlags)/sumFreqF;
         SparseBit = 1<<FoundState->Symbol;
@@ -4366,8 +4366,8 @@ LABEL_59:
           // mixCumWeightF) for the PredWeight stage output.
           word* binUp8F = binMixCenter + 0x8000;
           word* binDn8F = binMixCenter - 0x8000;
-          q17 = (sqword)binUp8F;
-          q20 = (sqword)binDn8F;
+          BinMixHiG = (sqword)binUp8F;
+          BinMixLoG = (sqword)binDn8F;
           mixCumFreqF   = ((binUp8F[0] + binDn8F[0])               >> 3) + predWPostF;
           mixCumWeightF = ((uint)(binUp8F[2] + binDn8F[2])         >> 3) + predDenIncF;
           sseCum = mixCumFreqF;
@@ -4384,8 +4384,8 @@ LABEL_59:
             // beyond the threshold.
             word* binUp16F = binMixCenter + 0x10000;
             word* binDn16F = binMixCenter - 0x10000;
-            q22 = (sqword)binUp16F;
-            q18 = (sqword)binDn16F;
+            PredBaseAG = (sqword)binUp16F;
+            PredBaseBG = (sqword)binDn16F;
             char predExpShiftF = (predExpA<0x1E0)+(predExpA<0x3D0)+1;
             predBaseDeltaA = RescaleAccum2_(binUp16F, predExpShiftF);
             predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
