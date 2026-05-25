@@ -2694,7 +2694,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       newQ12Sel = q12BaseSel;
     }
   }
-  matchHi = (int)matchHi;
   q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
   recentForHi = SseCtx0_1[(int)matchHi];
   if( sym==FoundSymbol&&MixScale<=256 ) {
