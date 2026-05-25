@@ -4635,7 +4635,10 @@ sqword PPMIIEncode(FILE* File, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, sq
     if( statsCB ) statsResult = statsCB(outFile, File, 0); else statsResult = -1;
     SymCount = statsResult;
     memset(SymMask, 0, sizeof(SymMask));
-    memset(SymLastCtx, 0, 0xC00);
+    // Clear SymLastCtx + SymLastCtx2 + MatchPosBySym (the three aliased
+    // 256-int sub-arrays at the start of the 1024-int SymLastCtx[] block;
+    // 768 ints = 0xC00 bytes).
+    memset(SymLastCtx, 0, 3*256*sizeof(int));
     if( !statsResult ) {
       Interrupted = 1;
       return 0;
@@ -4671,7 +4674,8 @@ sqword PPMIIDecode(FILE* inFile, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, 
     SymCount = statsResult;
 
     memset(SymMask, 0, sizeof(SymMask) );
-    memset(SymLastCtx, 0, 0xC00);
+    // SymLastCtx + SymLastCtx2 + MatchPosBySym (see PPMIIEncode for layout)
+    memset(SymLastCtx, 0, 3*256*sizeof(int));
 
     if( !statsResult ) {
       Interrupted = 1;
