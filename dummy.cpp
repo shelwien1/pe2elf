@@ -2693,8 +2693,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   HashSeed1 = -1;
   bdiff = (byte)(sym-matchHi);
   HashSeed2 = -1;
-  symEpochN = symEpoch+1;
-  SymEpoch = symEpoch+1;
+  symEpochN = symEpoch + 1;
+  SymEpoch  = symEpochN;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
       predGuessSym = (byte)(2*sym-matchHi);
