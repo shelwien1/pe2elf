@@ -2235,7 +2235,7 @@ LABEL_11:
             statesPtr = newStatesPtr;
           }
           if (!statesPtr) goto LABEL_99;
-          newStatesIdx = (uint)(uintptr_t)statesPtr - heapNull;
+          newStatesIdx = Ptr2Indx(statesPtr);
           newStatesIdx2 = newStatesIdx;
           curCtxP->iStates = newStatesIdx;
         }
