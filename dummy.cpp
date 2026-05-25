@@ -2719,8 +2719,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   byte   newFoundFreq;
 
   int    trailBound;       // gating cutoff in trailing loop
-  int    trailState0Freq;
-  int    trailState1Freq;
 
   // ---- Section 1: simple additive predictor-weight updates ----------------
   wBinMixHi = (uint*)BinMixHiG;
@@ -3118,10 +3116,8 @@ LABEL_165:
       walkCtx->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
       trailFound = FindAndBubble7_(trailStates, searchSym, &walkCtx->Flags, 1);
-      trailState0Freq = trailStates[0].Freq;
-      trailState1Freq = trailStates[1].Freq;
       *chain++ = (sqword)trailFound;
-      if ((uint)(trailState1Freq + trailState0Freq) > 0x5F)
+      if ((uint)(trailStates[0].Freq + trailStates[1].Freq) > 0x5F)
         break;
       walkCtx = walkCtx->getSuffix();
       --depthLeft;
