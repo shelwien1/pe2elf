@@ -3497,8 +3497,8 @@ inline void FreqMixStep_(STATE* st, byte sxFreq, uint mixWeight,
   if (curFreq * mixWeight >= comb * sxFreq || curFreq > 0xE4u) return;
   int  freqDelta = sumFreq - (int)curFreq;
   uint cm        = comb - curFreq;
-  uint newFreq   = (cm*(3*curFreq + sxFreq) + 3*cm + mixWeight - sxFreq - 4)
-                   / (3*cm + mixWeight - sxFreq);
+  uint denom     = 3*cm + mixWeight - sxFreq;
+  uint newFreq   = (cm*(3*curFreq + sxFreq) + denom - 4) / denom;
   if (newFreq > curFreq + 11) newFreq = curFreq + 11;
   sumFreq      = (int)(newFreq + freqDelta);
   ctx->SummFreq = (word)sumFreq;
