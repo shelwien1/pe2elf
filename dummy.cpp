@@ -2799,7 +2799,7 @@ LABEL_94:
   // Each reads at a "new" index and writes back at a different "old" index.
   epochBit = (symEpochN&1)==0;
   savedD90Idx = d90[epochBit];                                           // saved idx (current parity)
-  newD90Idx = (word)(16*LOWORD(d90[epochBit])+((sym>>2)&0xFFFC))&0xFFFC;
+  newD90Idx = (word)(16*(word)d90[epochBit]+((sym>>2)&0xFFFC))&0xFFFC;
   d90[epochBit] = newD90Idx;
   otherPar = !epochBit;
   oldD90IdxA = (uint)d90[otherPar];
