@@ -2190,7 +2190,7 @@ LABEL_9:
 LABEL_73:
     if( !CutOff )
       return StartModelRare(2);
-    if( *(byte*)rootCtxW==1 ) {
+    if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
       bListSaved2 = BList;
       if( !*ctxBW&&(byte*)rootCtxW!=ctxBW ) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
