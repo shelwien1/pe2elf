@@ -3557,7 +3557,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE;
-  int cumWeightB, cumFreqB;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
   int sxNStatesC, sumFreqCacheC;
@@ -3570,7 +3569,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
-  uint centerExpandB, binSseVal;
+  uint binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC, sumFreqLimit;
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
@@ -3860,9 +3859,10 @@ LABEL_58:
                                       (uint)mixFreqB, (uint)mixHitsB);
     int* sse1SlotB = &Sse1[2*OrderCtxSeed];
     sse1Slot = sse1SlotB;
+    int cumWeightB, cumFreqB;
     Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
-    centerExpandB = binMixCenter[3];
-    int escSymB = MixCtx3;              // both arms below want this snapshot
+    uint centerExpandB = binMixCenter[3];
+    int  escSymB       = MixCtx3;       // both arms below want this snapshot
     if( centerExpandB<=0x20 ) {
       sseTot = cumWeightB;
       sseCum = cumFreqB;
