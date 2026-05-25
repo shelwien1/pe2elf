@@ -912,7 +912,13 @@ void InitTables() {
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
   q32=q31=q30=q29=q34=q35=BinMixCenterG=PredBaseAG=PredBaseBG=Sse1SlotG=BinMixLoG=BinMixHiG=BinSseCellG=SseMatchSlotG=Sse2SlotG=Sse3SlotG=q9=q33=CtxChainEnd=0;
-  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymBmCell=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  // Zero-init grouped by role.
+  hintSymB31    = hintSymM2  = hintSymB29 = hintSymBiject =
+    hintSymMatch3 = hintSymBmCell = 0;                              // per-step hint chains
+  sse2DenDelta  = sse2NumDelta = sseMatchDenDelta = sseMatchNumDelta = 0; // SSE delta accumulators
+  predSseTotDelta = predWeightDelta = 0;                            // predictor accumulators
+  MatchCtxHi  = recentSym = mixScaleCntr = symHalfHistory = 0;      // per-symbol carry state
+  SparseHashA = SparseIdxA = SparseHashB = SparseIdxB = SparseBit = 0; // sparse bitmap state
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
