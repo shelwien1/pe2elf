@@ -3601,8 +3601,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
       int  remStates = nStates+1;
       STATE* escState = &MinContext->getStates()[ctxFlags&0xF];
       CtxChain[0] = (sqword)escState;
-      sqword* chainEnd = &CtxChain_1;
-      sqword* chainStart = &CtxChain_1;
+      sqword *chainEnd = &CtxChain_1, *chainStart = &CtxChain_1;
       escSymbol = escState->Symbol;
       MixCtx3 = escSymbol;
       STATE* stateIter = MinContext->getStates() - 1;
