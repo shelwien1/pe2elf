@@ -1781,7 +1781,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   while (1) {
     curSuccIdx = (*chainPtr)->iSuccessor;
     if (curSuccIdx != seedSuccIdx) {
-      LODWORD(seedCtx) = HeapNull + curSuccIdx;
+      seedCtx = HeapNull + curSuccIdx;
       goto LABEL_15;
     }
     ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
@@ -1810,11 +1810,11 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     *chainPtr = state;
     ++chainPtr;
     if (!suffixIdx0) {
-      LODWORD(seedCtx) = ctxAddr;
+      seedCtx = ctxAddr;
       goto LABEL_15;
     }
   }
-  LODWORD(seedCtx) = heapNull+stateSuccIdx;
+  seedCtx = heapNull+stateSuccIdx;
 LABEL_15:
   chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
