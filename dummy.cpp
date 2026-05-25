@@ -2573,7 +2573,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   uint   sym;              // FoundState->Symbol
   sqword matchHi;          // MatchCtxHi (high-byte context)
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
-  int    mixCtx2New;       // new MixCtx2
   int    recentEpoch;      // SseCtx0_1[sym] before update
   int    dt;               // symEpoch - recentEpoch
   int    predGuessSym;          // running guess for FoundSymbol
@@ -2669,7 +2668,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   RunLength += MixCtx;
   SparseHashB = (8*(sym+SparseHashB))&0xFFF00;
   recentEpoch = SseCtx0_1[sym];
-  mixCtx2New = MixCtx2+MixCtx2+(sse0sym>>7);
+  int mixCtx2New = MixCtx2+MixCtx2+(sse0sym>>7);
   MixCtx2 = mixCtx2New;
   RecentPos[symEpoch & 0xFFF] = recentEpoch;
   SseCtx0_1[sym] = symEpoch;
