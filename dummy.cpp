@@ -3125,11 +3125,13 @@ sqword PPMIIGetCurrentModelSize() {
   if( !SubAllocatorSize )
     return 0;
   entryIdx = 0;
-  LODWORD(result) = pText-UnitsStart+LoUnit+SubAllocatorSize-HiUnit;
-  for( i = 0; i<0x26; ++i ) {
-    bytesUsed = *(uint*)(BList + 12*entryIdx) * 12 * Indx2Units[entryIdx];
-    entryIdx = i+1;
-    result = (uint)(result-bytesUsed);
+  LODWORD(result) = pText - UnitsStart + LoUnit + SubAllocatorSize - HiUnit;
+  MEM_BLK* bList = (MEM_BLK*)BList;
+  for (i = 0; i < 0x26; ++i) {
+    // Each entry: QueueSize * 12 bytes/block * Indx2Units[entryIdx] units/block
+    bytesUsed = bList[entryIdx].QueueSize * 12 * Indx2Units[entryIdx];
+    entryIdx = i + 1;
+    result = (uint)(result - bytesUsed);
   }
   return result;
 }
