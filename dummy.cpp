@@ -3577,7 +3577,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC, sumFreqLimit;
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
-  char descendFlags, mixShiftA, mixShiftB, mixShiftC, predShiftIncC;
+  char descendFlags, mixShiftB, mixShiftC, predShiftIncC;
   sqword mixIdxA, mixIdxB, mixIdxC, sse2IdxA;
   sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
@@ -3749,7 +3749,7 @@ LABEL_18:
                 .bit  <3>    (maskFlagEsc | maskFlagPrev)
                 .field<4, 4> ((byte)mixIdxA))];                // mixIdxA bits 4-7
               q29 = (sqword)bigSlotA;
-              mixShiftA = mixDeltaA<0x200;
+              char mixShiftA = mixDeltaA<0x200;
               // blend the two neighbour cells (mixSlotA ± 2048 ints, where
               // each cell is 2 ints = weight + freq) into (mixWeightA,
               // mixFreqA). Freq is read as word at byte offset +4 inside
