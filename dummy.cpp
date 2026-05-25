@@ -2294,9 +2294,10 @@ LABEL_99:
       }
       // Initialize the new tail STATE: Symbol=foundSymFreq (low byte), Freq=0,
       // iSuccessor=succIdxSaved.
-      ((STATE*)newStateEnd)->Symbol     = (byte)foundSymFreq;
-      ((STATE*)newStateEnd)->Freq       = 0;
-      ((STATE*)newStateEnd)->iSuccessor = succIdxSaved;
+      STATE* tailState = (STATE*)newStateEnd;
+      tailState->Symbol     = (byte)foundSymFreq;
+      tailState->Freq       = 0;
+      tailState->iSuccessor = succIdxSaved;
       upperFlagBits = curCtxP->Flags & 0xF0;
       statesBaseAddr = heapNull + curCtxP->iStates;
       ++curCtxP->NStates;
