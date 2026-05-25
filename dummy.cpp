@@ -2446,7 +2446,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
   // ---- RSContext / Sse2State histogram rotation ---------------------------
-  short  rsCtx;
   char   newQ12Sel;        // 2*q12BaseSel or ++q12BaseSel (selects new q12 base)
   byte*  sse2Base;         // q12 (current Sse2State sub-block base)
 
@@ -2631,14 +2630,13 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     if( matchDelta>=0x240 )
       predGuessSym = 0;
   }
-  rsCtx = RSContext;
   q12BaseSel *= 2;
   newQ12Sel   = q12BaseSel;
   if (sym != RSContext) {
     sse2Base = (byte*)q12;
     uint* counter = (uint*)(sse2Base + 512);
     *counter += 2;
-    sqword sseHistOff = ((word)sym - rsCtx) & 0x1FF;
+    sqword sseHistOff = ((word)sym - (word)RSContext) & 0x1FF;
     byte newHistCnt = sse2Base[sseHistOff] + 2;
     sse2Base[sseHistOff] = newHistCnt;
     if (newHistCnt > 0xA7u) {
