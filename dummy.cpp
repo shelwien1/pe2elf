@@ -1113,7 +1113,6 @@ sqword BinEscFreq(PPM_CONTEXT* pc) {
 sqword RescaleCtx(PPM_CONTEXT* ctx) {
   int          NStates0   = ctx->NStates;             // original NStates (= last index)
   int          totalCount = NStates0 + 1;             // # states to iterate (incl. found)
-  uint         oldIStates = ctx->iStates;
   STATE*       states     = ctx->getStates();
 
   // Rescale-mode parameters selected by Flags bit 6:
