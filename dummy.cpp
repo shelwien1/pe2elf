@@ -3973,7 +3973,7 @@ LABEL_128:
         }
         walkDelta = walkNStates-entryNStates;
       } while( !walkDelta );
-      descendNStates = MinContext->NStates;
+      descendNStates = walkNStates;
       ofallSavedE = OrderFall;
       freqDeltaE = descendNStates-entryNStates;
       remCandF = walkDelta;
