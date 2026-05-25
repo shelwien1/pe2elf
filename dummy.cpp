@@ -1971,8 +1971,7 @@ sqword UpdateModel(byte* ctxBytes, uint order) {
         states[0].Freq = (byte)(newFreq + 1);
 
         p0 = &ctx->oneState();
-        *(word*)p0     = *(word*)states;                 // copy Symbol/Freq
-        p0->iSuccessor = states[0].iSuccessor;
+        *p0 = states[0];
         FreeUnits_(states, NU);
       } else {
         // i > 0: shrink the states block and rescale freqs.
