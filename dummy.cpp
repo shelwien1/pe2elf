@@ -191,8 +191,8 @@ sqword BList;
 sqword MaxContext0;
 sqword HeapNull;
 
-sqword q37;
-sqword q39;
+sqword q37;             // predWeightB storage (aliased in RealProcess)
+sqword q39;             // predWeightA storage (aliased in RealProcess)
 sqword RootContext;
 
 int InitsCount;
@@ -3530,7 +3530,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int maskFlagPrevC, sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
-  int escCandidate, d106Cache;
+  int escCandidate, seeIdxBase;
   byte flagsCtxFC, minCtxFlagsC, flagsSaveA;
   STATE  **chainPtr;
   sqword *chainEndE;
@@ -3544,7 +3544,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC;
   uint mixWeightSavedA, mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
-  uint d103Cache;
+  uint sumFreqLimit;
   char descendFlags, mixShiftB, mixShiftC, predShiftIncC, shiftSelC;
   char mixShiftBSel, mixShiftA;
   sqword mixIdxA, sseSlot4A;
@@ -3750,7 +3750,7 @@ LABEL_58:
               // SSE-mix preamble: zero out the per-step predictor accumulators
               // and seed the LABEL_59 escape walk.
               wDelta35 = 171;
-              d103Cache = cumFreqDivA;
+              sumFreqLimit = cumFreqDivA;
               predShiftFlags = 0;
               wDelta34 = 0;
               predBinFlags = 171;
@@ -3758,7 +3758,7 @@ LABEL_58:
                 .bit  <1>    (OrderFall < 3)
                 .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
                 .bits <5, 2> (MixCtx2 & 3);
-              d106Cache = sseIdxStorage;
+              seeIdxBase = sseIdxStorage;
               remCandF = nStates+1;
               chainPtr = (STATE**)CtxChain;
               // MixCtxExtra accumulator update: a few bits at fixed positions
@@ -4127,15 +4127,15 @@ LABEL_298:
         }
         sumFreqDivC = ((mixFreqCacheC>>1)+descendNStatesP1E*mixWeightC)/mixFreqCacheC+2;
         if( descendNStatesP1E<24 ) {
-          d103Cache = 0;
+          sumFreqLimit = 0;
           goto LABEL_335;
         }
       }
-      d103Cache = (int)(sumFreqDivC+MinContext->SummFreq)>>1;
+      sumFreqLimit = (int)(sumFreqDivC+MinContext->SummFreq)>>1;
 LABEL_335:
       // Per-state walk through CtxChain[] inside the escape:  each iteration
       // is the body of ppmd's "FoundState = MinContext->encode2(c)" search.
-      cumFreqMixSave = d103Cache;
+      cumFreqMixSave = sumFreqLimit;
       sumFreqF = freqSumE+sumFreqDivC;
       cumFreqAcc = sumFreqF;
       RunLength = runLengthInit;
@@ -4150,12 +4150,12 @@ LABEL_335:
         OrderCtxSeed    = orderShift15C + (OrderCtxSeed & 0xFFFF7FFF);
         SseSeed = ((ofallSavedE>3)<<15) + orderShift15C + (SseSeed & 0x4600);
       }
-      // d106Cache: starting bitfield for the escape-mirror SSE seed.
-      d106Cache = SseIdx{}
+      // seeIdxBase: starting bitfield for the escape-mirror SSE seed.
+      seeIdxBase = SseIdx{}
         .bit  <1>    (ofallSavedE < 3 || ofallSavedE+23 < OrderFall0)
         .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
         .bits <5, 2> (MixCtx2 & 3);
-      sseIdxStorage = d106Cache;
+      sseIdxStorage = seeIdxBase;
       // MixCtxExtra: outer-loop accumulator seeding the SSE-mix tables for
       // the upcoming per-candidate iterations. Bits 12-16 form a 5-bit
       // weighted-predicate score (weights 1/1/2/7/7/1, max sum 19), packed
@@ -4206,11 +4206,11 @@ LABEL_59:
           matchEpoch2 = SymEpoch-MatchPosTable[256*candSymbol+matchHashSy];
         }
         // seeIdxF: composite index for the per-candidate mix table d27[].
-        // Outer OR with d106Cache (the prior-section accumulator) preserves
-        // the bit-merge semantics where d106Cache and the inner sum may
+        // Outer OR with seeIdxBase (the prior-section accumulator) preserves
+        // the bit-merge semantics where seeIdxBase and the inner sum may
         // share bit positions. The inner sum itself uses +-with-carry — the
         // SSE0[sym] byte can overlap the boolean bits 0..7.
-        sqword seeIdxF = d106Cache | (uint)(SseIdx{}
+        sqword seeIdxF = seeIdxBase | (uint)(SseIdx{}
           .bit  <0>    (tagSymLastCtx2F)                  // SymLastCtx2 hit on candidate
           .bit  <2>    (epoch == MatchPosBySym[candSymbol])// MatchPosBySym hit on candidate
           .bit  <3>    (candSymbol == escCandidate)       // candidate is the escape candidate
@@ -4220,7 +4220,7 @@ LABEL_59:
           .bit  <9>    (candSymbol == hintSymRecent                                              // strong position-bias hint
                        || *(uint*)(sse2Base+512) < (uint)(sse2Base[((word)candSymbol-(word)RSContext)&0x1FF]<<7))
           .bit  <10>   (candSymbol == escSymbol)          // candidate is the entry escape symbol
-          .bit  <11>   (sumFreqF      < d103Cache)        // freq summary below threshold
+          .bit  <11>   (sumFreqF      < sumFreqLimit)        // freq summary below threshold
           .bit  <12>   ((uint)matchEpoch2 < 0x220));      // recent match
         binMixSlotF = &d27[0x4000*mixSseSizeF+2*seeIdxF];
         int freq0F = (word)MixBound2[0x8000*mixSseSizeF+4*seeIdxF];
@@ -4429,8 +4429,8 @@ LABEL_59:
         chainPtr = (STATE**)CtxChainEnd;
         orderCtxSeedSave = OrderCtxSeed;
         sumFreqF = cumFreqAcc;
-        d103Cache = cumFreqMixSave;
-        d106Cache = sseIdxStorage;
+        sumFreqLimit = cumFreqMixSave;
+        seeIdxBase = sseIdxStorage;
       }
     }
     if( !f_DEC ) rc.encodeSymbol(subRange);
