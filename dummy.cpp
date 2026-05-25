@@ -530,13 +530,9 @@ inline sqword AllocContext_() {
 // size-class queue if non-empty; else bump LoUnit toward HiUnit; if that
 // would collide, fall back to AllocUnitsRare. Returns 0 on out-of-memory.
 inline sqword AllocUnits_(uint sizeClass) {
-  uint* queue = (uint*)(::BList + 12LL * (uint)sizeClass);
-  if (*queue) {
-    sqword result = ::HeapNull + (uint)queue[1];
-    queue[1] = *(uint*)(result + 4);
-    *(uint*)(*(uint*)(result + 4) + ::HeapNull + 8) = (uint)(uintptr_t)queue - ::HeapNull;
-    --*queue;
-    return result;
+  MEM_BLK* queue = &((MEM_BLK*)::BList)[sizeClass];
+  if (queue->avail()) {
+    return (sqword)queue->unlinkNext();
   }
   uint byteOff = 12u * (uint)Indx2Units[sizeClass];
   if (::LoUnit + byteOff > (sqword)::HiUnit) {
