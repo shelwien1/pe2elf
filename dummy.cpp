@@ -3320,7 +3320,7 @@ template<typename T>
 inline void MaybeRescale1_(void* slot, T& freq0Local, uint weight) {
   if ((uint)freq0Local > 0x8000u || weight > 0x80000u) {
     SseScale1((sqword)slot);
-    freq0Local = (T)*((word*)slot + 2);     // slot->freq0 (offset 4 bytes)
+    freq0Local = (T)((SseCounter*)slot)->freq0;
   }
 }
 
@@ -3329,7 +3329,7 @@ template<typename T>
 inline void MaybeRescale2_(void* slot, T& freq0Local) {
   if ((uint)freq0Local > 0x8000u) {
     SseScale2((sqword)slot);
-    freq0Local = (T)*((word*)slot + 2);     // slot->freq0 (offset 4 bytes)
+    freq0Local = (T)((SseCounter*)slot)->freq0;
   }
 }
 
