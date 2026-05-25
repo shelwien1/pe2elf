@@ -532,9 +532,8 @@ inline PPM_CONTEXT* AllocContext_() {
     ::HiUnit -= UNIT_SIZE;
     return (PPM_CONTEXT*)::HiUnit;
   }
-  MEM_BLK* queue = (MEM_BLK*)::BList;
-  if (queue->avail()) {
-    return (PPM_CONTEXT*)queue->unlinkPrev();
+  if (BListPtr->avail()) {
+    return (PPM_CONTEXT*)BListPtr->unlinkPrev();
   }
   return (PPM_CONTEXT*)AllocUnitsRare(0);
 }
@@ -543,7 +542,7 @@ inline PPM_CONTEXT* AllocContext_() {
 // size-class queue if non-empty; else bump LoUnit toward HiUnit; if that
 // would collide, fall back to AllocUnitsRare. Returns 0 on out-of-memory.
 inline sqword AllocUnits_(uint sizeClass) {
-  MEM_BLK* queue = &((MEM_BLK*)::BList)[sizeClass];
+  MEM_BLK* queue = &BListPtr[sizeClass];
   if (queue->avail()) {
     return (sqword)queue->unlinkNext();
   }
@@ -1429,9 +1428,8 @@ sqword AllocUnitsRare(uint unitsIdx) {
   sqword sentinelField1;
   uint reqSizeIdx = unitsIdx;
   uint reqUnits = Indx2Units[unitsIdx];
-  MEM_BLK* bList = (MEM_BLK*)BList;
   while (++unitsIdx != N_INDEXES) {
-    MEM_BLK* freeQueue = &bList[unitsIdx];
+    MEM_BLK* freeQueue = &BListPtr[unitsIdx];
     if (freeQueue->avail()) {
       // Pop the queue's head block and return the leftover via FreeUnitsRare.
       sqword result = (sqword)freeQueue->unlinkNext();
@@ -1460,7 +1458,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
     sentinelField2 = sentinel->Prev;
     sentinelField1 = *(qword*)sentinel;
     for (uint queueIdxOuter = 0; queueIdxOuter < N_INDEXES; ++queueIdxOuter) {
-      MEM_BLK* queue = &bList[queueIdxOuter];
+      MEM_BLK* queue = &BListPtr[queueIdxOuter];
       // Push sentinel at the head; pop the (original) tail as our starting
       // walk position.
       queue->linkNext(sentinel, 1, /*Stamp=*/(byte)-2);
@@ -1494,14 +1492,13 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   sqword biggerSizeClass;
   sqword biggerUnits;
   int deltaUnits;
-  MEM_BLK* bList = (MEM_BLK*)BList;
   // Coalesce: walk trailing blocks whose Stamp is 0xFF, unlinking each from
   // its size-class queue and absorbing its units into our running size.
   while (true) {
     MEM_BLK* probe = (MEM_BLK*)(blockAddr + (sqword)UNIT_SIZE*sizeClass);
     if (probe->Stamp != (byte)-1) break;
     probe->unlink();
-    --bList[Units2Indx[probe->NU + 3]].QueueSize;
+    --BListPtr[Units2Indx[probe->NU + 3]].QueueSize;
     sizeClass += probe->NU;
   }
   // Chunks-over-128: when sizeClass exceeds 128 units (one 1536-byte block),
@@ -1511,7 +1508,7 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   if (sizeClass > 0x80) {
     uint chunksOver128 = (sizeClass - 1) >> 7;   // == ceil(sizeClass/128) - 1
     for (uint k = 0; k < chunksOver128; ++k) {
-      bList[37].linkNext((MEM_BLK*)blockAddr, 0x80);
+      BListPtr[37].linkNext((MEM_BLK*)blockAddr, 0x80);
       blockAddr += 1536;
     }
     sizeClass -= 128 * chunksOver128;
@@ -1525,9 +1522,9 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
     --biggerSizeClass;
     biggerUnits = Indx2Units[biggerSizeClass];
     deltaUnits = sizeClass - biggerUnits;
-    bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + UNIT_SIZE*biggerUnits), deltaUnits);
+    BListPtr[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + UNIT_SIZE*biggerUnits), deltaUnits);
   }
-  bList[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
+  BListPtr[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
 }
 //--- #return
 //--- #include "subs_startmodel1.inc"
@@ -1569,18 +1566,17 @@ sqword StartModelRare(int mode) {
     
     // Initialize all 38 allocation queues to point to themselves symmetrically
     // (each queue starts empty: Next == Prev == Ptr2Indx(queue), QueueSize == 0).
-    MEM_BLK* bList = (MEM_BLK*)heapBlocks;
     for (uint i = 0; i < N_INDEXES; ++i) {
-      bList[i].QueueSize = 0;
-      bList[i].Next = bList[i].Prev = UNIT_SIZE * i + 1;
+      BListPtr[i].QueueSize = 0;
+      BListPtr[i].Next = BListPtr[i].Prev = UNIT_SIZE * i + 1;
     }
 
     sqword allocatedContextAddr;
     if (heapEnd == unitsSegment) {
-      if (!bList[0].avail()) {
+      if (!BListPtr[0].avail()) {
         allocatedContextAddr = AllocUnitsRare(0);
       } else {
-        allocatedContextAddr = (sqword)bList[0].unlinkPrev();
+        allocatedContextAddr = (sqword)BListPtr[0].unlinkPrev();
       }
     } else {
       heapEnd = (byte*)heapBlocks + allocatorSize - UNIT_SIZE;
@@ -3155,10 +3151,9 @@ LABEL_165:
 sqword PPMIIGetCurrentModelSize() {
   if (!SubAllocatorSize) return 0;
   sqword result = pText - UnitsStart + LoUnit + SubAllocatorSize - HiUnit;
-  MEM_BLK* bList = (MEM_BLK*)BList;
   for (uint i = 0; i < N_INDEXES; ++i) {
     // Each entry: QueueSize * UNIT_SIZE bytes/unit * Indx2Units[i] units/block
-    int bytesUsed = bList[i].QueueSize * UNIT_SIZE * Indx2Units[i];
+    int bytesUsed = BListPtr[i].QueueSize * UNIT_SIZE * Indx2Units[i];
     result = (uint)(result - bytesUsed);
   }
   return result;
