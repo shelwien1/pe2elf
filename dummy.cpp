@@ -1246,8 +1246,7 @@ struct SseCounter {     // matches the 8-byte (sum, freq0, freq1) layout
 
 } // namespace
 
-sqword SseScale1(sqword slotAddr) {
-  SseCounter*  cnt    = (SseCounter*)slotAddr;
+sqword SseScale1(SseCounter* cnt) {
   PPM_CONTEXT* topCtx = (PPM_CONTEXT*)MaxContext0;
 
   // ---- step 1: compose the weight (and clamp the low 16 bits to 2048) -----
@@ -3319,7 +3318,7 @@ namespace {
 template<typename T>
 inline void MaybeRescale1_(void* slot, T& freq0Local, uint weight) {
   if ((uint)freq0Local > 0x8000u || weight > 0x80000u) {
-    SseScale1((sqword)slot);
+    SseScale1((SseCounter*)slot);
     freq0Local = (T)((SseCounter*)slot)->freq0;
   }
 }
