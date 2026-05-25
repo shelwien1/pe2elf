@@ -2410,7 +2410,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   uint* wQ23;     // pair    += sse2NumDelta / -= sse2DenDelta
   int*  wpQ24;    // pred-pair (overflow halving)
   int*  wpQ25;    // pred-pair (overflow halving)
-  int   scale;    // sseCum (decay for the pred-pair updates)
 
   // ---- per-step state ------------------------------------------------------
   STATE* foundState;       // == FoundState (alias of q9)
@@ -2550,12 +2549,11 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   *wQ19       += sseMatchNumDelta;  wQ19[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
-  scale       = sseCum;
   sseSlot     = (char*)&Sse2State[(symEpoch & 0x1FFFF) + 133144];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
-  UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * scale);
-  UpdateWeightPair_(wpQ25, predWeightDelta,           scale);
+  UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * sseCum);
+  UpdateWeightPair_(wpQ25, predWeightDelta,                       sseCum);
 
   foundState = (STATE*)q9;
   SparseBitmapA[SparseIdxA] |= SparseBit;
