@@ -37,12 +37,16 @@ the model-state globals (`MaxContext`, `OrderFall`, `OrderFall0`,
 `SymMask[]`, `CutOff`, `Interrupted`), and the API entry points
 (`PPMIICreateModel`, `PPMIIEncode`, `PPMIIDecode`, `PPMIIDeleteModel`,
 `PPMIIGetCurrentModelSize`). What `dummy.cpp` lacks — and what the
-remaining refactoring should add — is `ppmd.cpp`'s **method-per-arm
-decomposition** of `PPM_CONTEXT`: `encode0`/`decode0`,
-`encodeLES1`/`decodeLES1`, `encode1`/`decode1`, `encode2`/`decode2`,
-`update1`/`update2`, `makeEsc1Freq`/`makeEsc2Freq`, `auxFindAndUpdate`,
-`rescale`, `cutOff`. The full ppmd.cpp ↔ dummy.cpp mapping table is in
-appendix §A.8.
+remaining refactoring should add — is `ppmd.cpp`'s **per-arm
+decomposition** of `PPM_CONTEXT`: the binary / LES1 / multi-state /
+escape arms (in ppmd: paired `encode*` + `decode*` methods; in
+dummy: extract each pair as **one templated arm function** under the
+existing `<f_DEC>` template — see Section K and the Non-goals).
+Plus the small direction-independent helpers (`update1`, `update2`,
+`makeEsc1Freq`, `makeEsc2Freq`, `PrepareNextStep`) and the already-
+factored `auxFindAndUpdate`/`rescale`/`cutOff` equivalents
+(`BinEscFreq`, `RescaleCtx`, `UpdateModel`). The full ppmd.cpp ↔
+dummy.cpp mapping table is in appendix §A.8.
 
 ## What's still wrong
 
@@ -397,81 +401,123 @@ The truly bad ones are the `_A` / `_B` / `_C` / `_E` / `_F` / `_M`
 suffixes inside `RealProcess`, which exist only because every local
 shares one function scope.
 
-### K. `ppmd.cpp`'s `PPM_CONTEXT` methods are missing
+### K. The textbook PPM-arm decomposition is missing
 
-The biggest single readability win available is to extract the
-textbook `PPM_CONTEXT` methods from `RealProcess`. `ppmd.cpp`
-(Shkarin's reference) implements the core algorithm in **~50 lines**
-of `RealEncode`/`RealDecode` plus eight short methods on the
-`PPM_CONTEXT` struct. The PE variant inlines all eight into one ~950
-line function. The methods (with their dummy.cpp current
-counterparts):
+`ppmd.cpp` (Shkarin's reference) implements the core algorithm in
+**~50 lines** of `RealEncode`/`RealDecode` plus eight short methods
+on `PPM_CONTEXT`: paired `encode0`/`decode0`, `encodeLES1`/`decodeLES1`,
+`encode1`/`decode1`, `encode2`/`decode2`. Each pair is two copies of
+the same arm — same SEE-index build, same probability math, with
+only the range-coder operation differing (`rcEncodeSymbol` vs
+`rcRemoveSubrange`). The PE variant has already collapsed this
+pair-wise duplication: `RealProcess<int f_DEC>` is one templated
+function that handles both directions, with `if (f_DEC) ...` /
+`if (!f_DEC) ...` arms at the few points where encoder and decoder
+diverge. **Keep that template.** A literal port to `encode0` +
+`decode0` separate methods would *re-introduce* the duplication
+that the template eliminates.
 
-| ppmd.cpp method                       | dummy.cpp location                                    |
-|---------------------------------------|-------------------------------------------------------|
-| `PPM_CONTEXT::encode0(int)`           | RealProcess single-state branch, ~3762–3924 (region B) |
-| `PPM_CONTEXT::decode0()`              | the `f_DEC ? ...` branches inside region B            |
-| `PPM_CONTEXT::encodeLES1(int)`        | RealProcess multi-state first arm, ~3568–3603         |
-| `PPM_CONTEXT::decodeLES1()`           | matching decoder branch                               |
-| `PPM_CONTEXT::encode1(int)`           | RealProcess multi-state state-search, ~3604–3760 (region A) |
-| `PPM_CONTEXT::decode1()`              | matching decoder branch                               |
-| `PPM_CONTEXT::encode2(int)`           | RealProcess LABEL_59 per-candidate, ~4154–4427 (region F) |
-| `PPM_CONTEXT::decode2()`              | matching decoder branch                               |
-| `PPM_CONTEXT::update1(STATE*)`        | LABEL_250 + bubble-up at ~4365–4385                   |
-| `PPM_CONTEXT::update2(STATE*)`        | escape-tail freq bump at ~4400–4425                   |
-| `PPM_CONTEXT::makeEsc1Freq()`         | SEE-index build inside region A's `LABEL_18` body     |
-| `PPM_CONTEXT::makeEsc2Freq()`         | SEE-index build inside region F                       |
-| `PPM_CONTEXT::auxFindAndUpdate(b,a)`  | `BinEscFreq(pc)` already factored (different signature!) |
-| `PPM_CONTEXT::rescale(STATE*)`        | `RescaleCtx(pc)` already factored                     |
-| `PPM_CONTEXT::cutOff(uint)`           | `UpdateModel(pc, order)` already factored             |
-| free `RestoreModelRare(pc)`           | inlined in `ReduceOrder` LABEL_73 path                |
-| free `FinishCutOff()`                 | inlined in `ReduceOrder`'s glue cleanup               |
-| free `PrepareNextStep`                | RealProcess LABEL_250 tail                            |
+What's missing is the **per-arm extraction** itself. The eight
+`encode*`/`decode*` pairs collapse to **four arms** under the
+template:
 
-Three of the eight methods (`encode2`, `update2`, `makeEsc2Freq`) are
-the escape-recoding paths. ppmd.cpp's `encode2` is ~30 lines; dummy's
-LABEL_59 candidate dispatch is ~270 lines because it inlines the full
-SSE cascade per candidate.
+| Algorithm arm (templated)                  | dummy.cpp location (current)                          |
+|--------------------------------------------|-------------------------------------------------------|
+| `processBinary<f_DEC>(MinContext, c)`      | RealProcess single-state branch, ~3762–3924 (region B); matches ppmd `encode0`/`decode0` |
+| `processLES1<f_DEC>(MinContext, c)`        | RealProcess multi-state first arm, ~3568–3603; matches `encodeLES1`/`decodeLES1` |
+| `processMulti<f_DEC>(MinContext, c)`       | RealProcess multi-state state-search, ~3604–3760 (region A); matches `encode1`/`decode1` |
+| `processEscape<f_DEC>(MinContext, c)`      | RealProcess LABEL_59 per-candidate dispatch, ~4154–4427 (region F); matches `encode2`/`decode2` |
+| `update1(STATE*)`                          | LABEL_250 + bubble-up at ~4365–4385 (no encode/decode split) |
+| `update2(STATE*)`                          | escape-tail freq bump at ~4400–4425 (ditto)           |
+| `makeEsc1Freq()` / `makeEsc2Freq()`        | SEE-index build inside regions A and F                |
+| `PrepareNextStep(MinContext, FoundState)`  | RealProcess LABEL_250 tail (still inlined)            |
 
-Goal: **extract these eight methods**, even with their PE-extended
-bodies. `RealProcess` would then look like ppmd.cpp's `RealEncode`
-with a templated `<f_DEC>` flag — ~80 lines of dispatch plus calls,
-mirroring:
+Already factored (and the names match ppmd's free-function
+equivalents):
+
+| ppmd.cpp                              | dummy.cpp                            |
+|---------------------------------------|--------------------------------------|
+| `PPM_CONTEXT::auxFindAndUpdate(s, a)` | `BinEscFreq(pc)`                     |
+| `PPM_CONTEXT::rescale(STATE*)`        | `RescaleCtx(pc)`                     |
+| `PPM_CONTEXT::cutOff(uint)`           | `UpdateModel(pc, order)`             |
+| free `RestoreModelRare(pc)`           | inlined in `ReduceOrder` LABEL_73 path |
+| free `FinishCutOff()`                 | inlined in `ReduceOrder`'s glue cleanup |
+
+Of the four arms still to extract, `processEscape` (region F) is the
+big one: ppmd.cpp's `encode2` is ~30 lines; dummy's LABEL_59 candidate
+dispatch is ~270 lines because it inlines the full SSE cascade per
+candidate.
+
+Goal: **extract these four `process*<f_DEC>` arms** (each templated,
+each containing whatever PE-specific SSE/SEE machinery the arm
+actually needs) plus the small unchanged helpers (`update1`,
+`update2`, `PrepareNextStep`, `makeEsc1Freq`, `makeEsc2Freq`).
+`RealProcess<f_DEC>` would then look like ppmd.cpp's `RealEncode`
+under a template — ~50 lines of dispatch + four arm calls, mirroring:
 
 ```cpp
-do {
-  PPM_CONTEXT* MinContext = MaxContext;
-  if (!f_DEC) inputByte = getc(inFile);
-  if (MinContext->NStates) {
-    FoundState = f_DEC ? MinContext->decodeLES1()
-                       : MinContext->encodeLES1(inputByte);
-    if (FoundState) goto SYMBOL_FOUND;
-    rc.normalize<f_DEC>(...);
-    FoundState = f_DEC ? MinContext->decode1()
-                       : MinContext->encode1(inputByte);
-    if (!f_DEC) rc.encodeSymbol(...);
-  } else
-    FoundState = f_DEC ? MinContext->decode0()
-                       : MinContext->encode0(inputByte);
-  while (!FoundState) {
-    rc.normalize<f_DEC>(...);
-    /* descend suffix chain ... */
-    FoundState = f_DEC ? MinContext->decode2()
-                       : MinContext->encode2(inputByte);
-    if (!f_DEC) rc.encodeSymbol(...);
-  }
+template <int f_DEC>
+int RealProcess(FILE* outFile, FILE* inFile) {
+  do {
+    PPM_CONTEXT* MinContext = MaxContext;
+    int c = f_DEC ? 0 : getc(inFile);
+    STATE* FoundState;
+    if (MinContext->NStates) {
+      FoundState = processLES1<f_DEC>(MinContext, c);
+      if (FoundState) goto SYMBOL_FOUND;
+      rc.Normalize<f_DEC>(file);
+      FoundState = processMulti<f_DEC>(MinContext, c);
+      rc.commitOrEncode<f_DEC>();
+    } else
+      FoundState = processBinary<f_DEC>(MinContext, c);
+    while (!FoundState) {
+      rc.Normalize<f_DEC>(file);
+      /* descend suffix chain ... */
+      FoundState = processEscape<f_DEC>(MinContext, c);
+      rc.commitOrEncode<f_DEC>();
+    }
 SYMBOL_FOUND:
-  PrepareNextStep(MinContext, FoundState);
-  if (f_DEC) putc(FoundState->Symbol, outFile);
-  rc.commitRange();
-  rc.normalize<f_DEC>(...);
-} while (--SymCount);
+    PrepareNextStep(MinContext, FoundState);
+    if (f_DEC) putc(FoundState->Symbol, outFile);
+    rc.commitRange();
+    rc.Normalize<f_DEC>(file);
+  } while (--SymCount);
+}
 ```
 
-This is the **shape** the file should have. Achieving it requires
-threading the PE variant's larger SSE state (cascade slot pointers,
-the q##-published intermediates) through method parameters instead of
-file-scope q-globals — Section E.
+Even at the granularity of an `if (f_DEC)` inside an arm, the symmetry
+is worth preserving. Encoder and decoder diverge only at a handful of
+points (range-coder operation, where the input byte comes from, where
+the output byte goes), and forcing them to live in *the same function
+body* makes drift impossible — change the probability math in one
+place and both directions update together.
+
+Achieving this requires threading the PE variant's larger SSE state
+(cascade slot pointers, the q##-published intermediates) through arm
+parameters instead of file-scope q-globals — Section E.
+
+#### Sub-arm factorings worth pulling out
+
+Independently of the arm extraction, several blocks **inside the
+arms** still appear three times across regions A / C / F and would
+collapse to one helper if the surrounding locals were lifted:
+
+- **The Sse1 → SseMatch → Sse2 → Sse3 cascade** appears in region A
+  (~3680–3860), region C (~4040–4130), and region F (~4200–4290).
+  The per-stage helpers (`Sse1Step_`, `SseMatchStep_`, `Sse2Step_`,
+  `Sse3Step_`) exist; what's still duplicated is the slot-pointer
+  computation, the SSE-index build, and the q##-publish boilerplate
+  surrounding each stage. (Section C.)
+- **The SEE-index bitfield build** for `makeEsc1Freq` (region A) and
+  `makeEsc2Freq` (region F) — both are 8–10-term SseIdx{} compositions,
+  most terms shared.
+- **The state-bubble-up after a frequency increment** appears at
+  LABEL_250 (~4365–4385) and inside `BinEscFreq` (lines ~1061–1078).
+  Both bubble one state up while `Freq > previous` — different
+  termination conditions, but the inner SWAP is the same.
+
+These don't require breaking the `<f_DEC>` template — they're
+sub-bodies inside one direction.
 
 ### L. Constants and names ppmd.cpp standardises
 
@@ -631,9 +677,29 @@ block.
   caller's `param1/2/3` → `memoryMB` / `modelOrder` / `resetMethod`.
 
 (Remaining work is enumerated in "What's still wrong", sections
-A–J above.)
+A–L above.)
 
 ## Non-goals
+
+### Splitting the `<f_DEC>` template into separate encode/decode pairs
+
+`ppmd.cpp` has eight `PPM_CONTEXT::encode*`/`decode*` methods —
+four arm pairs, each pair structurally identical except for which
+range-coder call it makes. `dummy.cpp` already collapses the pair
+into one templated `RealProcess<f_DEC>` with `if (f_DEC)` branches
+at the divergence points. **Keep this template.** When extracting
+the per-arm functions (`processBinary<f_DEC>`, `processLES1<f_DEC>`,
+`processMulti<f_DEC>`, `processEscape<f_DEC>` — see Section K) keep
+each as one templated function with `if (f_DEC)` inside, not as two
+separate `encode*` / `decode*` methods. Encoder and decoder
+diverge only at a handful of operations (range-coder call, where
+the byte comes from / goes to), and forcing them to live in the
+same function body makes drift impossible.
+
+Factoring out repeated *direction-independent* sub-bodies inside an
+arm (the SSE cascade staging, the SEE-index bitfield build, the
+state bubble-up, etc.) is still a goal — those don't require
+breaking the template.
 
 ### Eliminating the gotos completely
 
@@ -1132,16 +1198,21 @@ sparse submodels of §A.6. Mapping the named entry points:
 | `ReduceOrder(p, pc, fs)`            | `ReduceOrder()` — covers both `ReduceOrder` and `RestoreModelRare` from ppmd |
 | `RestoreModelRare`                  | folded into dummy's `ReduceOrder` LABEL_73 path        |
 
-**PPM_CONTEXT methods (still to extract — see Section K above):**
+**PPM-arm methods (still to extract — see Section K above):**
 
-| ppmd.cpp method                      | dummy.cpp counterpart                                  |
+ppmd.cpp's `encode*`/`decode*` pairs collapse into single templated
+arms under dummy.cpp's existing `<f_DEC>` template. Keep the
+template; extract one arm function per pair, not eight separate
+methods.
+
+| ppmd.cpp pair                        | dummy.cpp templated arm (proposed)                     |
 |--------------------------------------|--------------------------------------------------------|
-| `encode0(c)` / `decode0()`           | RealProcess single-state branch (region B)             |
-| `encodeLES1(c)` / `decodeLES1()`     | RealProcess multi-state first arm                      |
-| `encode1(c)` / `decode1()`           | RealProcess multi-state state-search (region A)        |
-| `encode2(c)` / `decode2()`           | RealProcess LABEL_59 candidate dispatch (region F)     |
-| `update1(p)` / `update2(p)`          | RealProcess SYMBOL_FOUND tail and escape-tail bumps    |
-| `makeEsc1Freq()` / `makeEsc2Freq()`  | SEE-index build inside regions A and F                 |
+| `encode0(c)` / `decode0()`           | `processBinary<f_DEC>(...)` — single-state branch (region B) |
+| `encodeLES1(c)` / `decodeLES1()`     | `processLES1<f_DEC>(...)` — multi-state first arm     |
+| `encode1(c)` / `decode1()`           | `processMulti<f_DEC>(...)` — multi-state state-search (region A) |
+| `encode2(c)` / `decode2()`           | `processEscape<f_DEC>(...)` — LABEL_59 candidate dispatch (region F) |
+| `update1(p)` / `update2(p)`          | direction-independent post-symbol helpers (no f_DEC split) |
+| `makeEsc1Freq()` / `makeEsc2Freq()`  | direction-independent SEE-index builders               |
 | `auxFindAndUpdate(sym, add)`         | `BinEscFreq(pc)` already factored                      |
 | `rescale(STATE*)`                    | `RescaleCtx(pc)` already factored                      |
 | `cutOff(Order)`                      | `UpdateModel(pc, order)` already factored              |
