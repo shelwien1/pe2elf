@@ -4148,14 +4148,15 @@ LABEL_298:
           .field<6, 2> (minCtxFlagsC);                                 // Flags bits 6-7
         sseQTableIdxC = SSE0QTable[descendNStatesP1E-2];
         mixOffsetC = (sseQTableIdxC<<11)+8*mixIdxC;
-        mixSlotC = (char*)d29+mixOffsetC;
-        mixWeightC      = *(int*)((char*)d29+mixOffsetC);
-        mixFreqC        = *(word*)((char*)&w12+mixOffsetC);
-        q34             = (sqword)d29+mixOffsetC;
-        sseCum             = mixWeightC;
+        // mixSlotC and the matching freq slot (w12 is d29 offset by +4 bytes).
+        mixSlotC        = (char*)d29 + mixOffsetC;
+        mixWeightC      = *(int*) mixSlotC;
+        mixFreqC        = *(word*)((char*)&w12 + mixOffsetC);
+        q34             = (sqword)mixSlotC;
+        sseCum          = mixWeightC;
         mixFreqCacheC   = mixFreqC;
-        sseTot             = mixFreqC;
-        mixWeightDeltaC = RescaleAccum1_((void*)((sqword)d29+mixOffsetC), (uint)mixWeightC, 0);
+        sseTot          = mixFreqC;
+        mixWeightDeltaC = RescaleAccum1_(mixSlotC, (uint)mixWeightC, 0);
         if( mixWeightDeltaC>0x78 ) {
           // d29[]/MixWeight2[] index in 2-int-stride units.
           bigSlotC = &MixWeight2[2048 * sseQTableIdxC + 2 * (int)(SseIdx{}
