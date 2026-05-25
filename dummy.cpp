@@ -1611,10 +1611,13 @@ sqword StartModelRare(int mode) {
       FoundSymbol = -1;
       HashSeed1 = -1;
       HashSeed2 = -1;
+      // 0x55 fill (not 0x00) gives the SSE/match cells a flat-prior shape:
+      // most are subsequently read via small arithmetic that would produce
+      // useless 0-probabilities at 0; 0x55... seeds them at the middle of
+      // the dynamic range so the first Bayesian update is well-conditioned.
       memset(SseState2, 0x55u, 0x80000);
       memset(SseState3, 0x55u, 0x20000);
 
-      // Continuous initialization across secondary state arrays
       memset((byte*)SEE2_5 + 112, 0x55, 1008);
       SseCtx0[3] = 0x55555555;
 
