@@ -2667,9 +2667,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   sqword trailStatesIdx;
   byte   trailFlags;
   STATE* trailStates;
-
-
-
   int    trailBound;       // gating cutoff in trailing loop
 
   prevSymCount = SymCount;
