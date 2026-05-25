@@ -4010,8 +4010,15 @@ LABEL_58:
       MinContext = MaxContext;
       entryNStates = MinContext->NStates;
       MixCtx = 0;
-      result = (int)(16*(oneStateFreqCachedF*cumFreq+cumFreq-oneStateFreqCachedF*totFreq))
-             / (int)(totFreq + totFreq*oneStateFreqCachedF);
+      // Escape probability in PE's 16-scaled integer form. Factored:
+      //   result = 16 * (cumFreq*(f+1) - f*totFreq) / (totFreq*(f+1))
+      //          = 16 * (cumFreq/totFreq - f/(f+1))     where f = oneStateFreqCachedF.
+      // Block-scoped so the LABEL_128 goto doesn't bypass the initializer.
+      {
+        int oneStateFreqP1 = oneStateFreqCachedF + 1;
+        result = (int)(16 * (oneStateFreqP1*cumFreq - oneStateFreqCachedF*totFreq))
+               / (int)(totFreq * oneStateFreqP1);
+      }
       EscIndexSeed = result;
       // ---------------------------------------------------------------------
       //  Escape walk (~ ppmd RealEncode's "while (!FoundState)" loop): keep
