@@ -2688,7 +2688,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int      searchSym;      // foundState->Symbol (for FindAndBubble7_)
   uint     minISuffix;     // MinContext->iSuffix
   sqword*  chain;          // = &CtxChain[1], grows as we walk suffixes
-  int      maxOrd;         // MaxOrder
   qword    result;
 
   PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
@@ -3036,7 +3035,6 @@ LABEL_94:
         --depthLeft;
         walkCtx = (PPM_CONTEXT*)Indx2Ptr(fastSuffix);
       } while (walkCtx->NStates == 0);
-      maxOrd = MaxOrder;
       if (ofall < MaxOrder) {
         STATE* head0 = (STATE*)CtxChain[0];
         if (head0->Freq < 7u) {
@@ -3082,7 +3080,6 @@ LABEL_94:
       if (foundFreq > 130 || deepFound->Freq >= 0xE4u) {
         trailBound = ofallP1;
         ofall = ofallSaved;
-        maxOrd = MaxOrder;
         walkCtx = walkCtx->getSuffix();
         goto LABEL_201;
       }
@@ -3103,7 +3100,6 @@ LABEL_94:
     } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag2);
     trailBound = ofallP1;
     ofall = ofallSaved;
-    maxOrd = MaxOrder;
 LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = walkCtx->iStates;
@@ -3125,11 +3121,10 @@ LABEL_165:
     }
     CtxChainEnd = (sqword)chain;
   } else {
-    maxOrd = MaxOrder;
     CtxChainEnd = (sqword)&CtxChain_1;
   }
   result = HeapNull + foundState->iSuccessor;
-  if (ofall == maxOrd && result >= UnitsStart) {
+  if (ofall == MaxOrder && result >= UnitsStart) {
     RootContext = result;
     MaxContext0 = result;
   } else {
