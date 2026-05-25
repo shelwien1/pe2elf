@@ -1640,8 +1640,11 @@ sqword StartModelRare(int mode) {
 
       memset(MatchPosTable, 0x55u, 0x40000);
 
+      // BijectMap cells are 4 bytes each: (sym, prev1, prev2, count). Seed
+      // sym/prev1/prev2 to (byte)i so every cell starts as a self-trigram
+      // (the count, byte 3, stays at 0 from the global zero-init).
       for (int i = 0; i < 0x10000; ++i) {
-        BijectMap[4 * i] = i;
+        BijectMap[4 * i]     = i;
         BijectMap[4 * i + 1] = i;
         BijectMap[4 * i + 2] = i;
       }
