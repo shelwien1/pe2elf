@@ -2215,10 +2215,8 @@ LABEL_11:
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
     rootCtxSaveLab99 = rootCtxW;
-    if( EscIndexSeed+8>=14 )
-      escIdx = 14;
-    if( escIdx<0 )
-      escIdx = 0;
+    if (escIdx >= 14) escIdx = 14;
+    if (escIdx <  0) escIdx = 0;
     sse0BitSaved = sse0Bit;
     escIdxClipped = escIdx;
     succIdxSaved = newByteIdx;
