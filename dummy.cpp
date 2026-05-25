@@ -3579,7 +3579,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   char descendFlags, mixShiftA, mixShiftB, mixShiftC, predShiftIncC;
   sqword mixIdxA, mixIdxB, mixIdxC, sse2IdxA;
-  sqword mixOffsetC, priorFoundStateF, result;
+  sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
   int *mixSlotA;
   int *mixBaseB, *mixSlotB;
@@ -4361,7 +4361,7 @@ LABEL_59:
         totFreqC = sseTot;
         subRangeC = rc.getSubRange(cumFreqC, totFreqC);
         if( f_DEC ? !rc.IsDecodeMatched(subRangeC) : (inputByte != candSymbol) ) {
-          priorFoundStateF = q9;
+          sqword priorFoundStateF = q9;
           cumFreqAcc -= localFoundState->Freq;
           if( f_DEC ) rc.DecodeNotMatched(subRangeC); else rc.encodeEscape(subRangeC);
           SparseBitmapA[SparseIdxA] &= ~SparseBit;
