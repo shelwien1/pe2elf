@@ -2859,8 +2859,8 @@ LABEL_94:
     PPM_CONTEXT* walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
     int depthLeft = OrderFall;
     sqword trailStatesIdx;
-    byte   trailFlags;
     STATE* trailStates;
+    byte   trailFlags;
     int    trailBound;
     if (walkCtx->NStates == 0) {
       do {
