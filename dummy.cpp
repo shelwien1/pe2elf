@@ -2659,7 +2659,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     }
   }
   q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
-  recentForHi = SseCtx0_1[(int)matchHi];
+  recentForHi = SseCtx0_1[matchHi];
   if( sym==FoundSymbol&&MixScale<=256 ) {
     mixScaleCntr = 4*MixScale;
   } else if( mixScaleCntr>(uint)(3*MixScale)&&(prevSymCount==SymLastCtx[sym]||prevSymCount==SymLastCtx2[sym]||4*MixScale-9<(uint)mixScaleCntr) ) {
