@@ -2018,8 +2018,6 @@ sqword ReduceOrder() {
   sqword newStatesIdx2;
   qword newStateEnd;
   sqword allocedUnit;
-  int freqBoost;
-  int newStateFreq;
   char upperFlagBits;
   sqword statesBaseAddr;
   sqword stateByteOff;
@@ -2237,9 +2235,9 @@ LABEL_99:
         // oneState into allocedUnit (becomes STATE[0]), then bump its Freq.
         STATE* newStates = (STATE*)allocedUnit;
         *newStates = curCtxP->oneState();
-        freqBoost = b24[escIdxClipped];
+        int freqBoost = b24[escIdxClipped];
         curCtxP->iStates = Ptr2Indx(allocedUnit);
-        newStateFreq = 4 * (int)newStates->Freq + freqBoost;
+        int newStateFreq = 4 * (int)newStates->Freq + freqBoost;
         if (newStateFreq >= 238) newStateFreq = 238;
         if (newStateFreq <   2)  newStateFreq = 2;
         newStates->Freq = (byte)newStateFreq;
