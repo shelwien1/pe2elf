@@ -1524,7 +1524,6 @@ void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
 //--- #include "subs_startmodel1.inc"
 
 sqword StartModelRare(int mode) {
-  int suffixCount = 0;
   OrderFall = 0;
   OrderFall0 = 0;
 
@@ -1731,6 +1730,7 @@ sqword StartModelRare(int mode) {
   } else { // Traversal fallback configuration for persistent run instances [cite: 147]
     result = RootContext;
     PPM_CONTEXT* rootP = (PPM_CONTEXT*)RootContext;
+    int suffixCount = 0;
     if (rootP->iSuffix) {
       result = HeapNull;
       // Count the suffix chain depth (each ->getSuffix() step adds 1).
