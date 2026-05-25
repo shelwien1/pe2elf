@@ -2550,10 +2550,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // cross-region state: written in the inner-if rank-0 short-circuit and read
   // after LABEL_165; declared at function scope so the goto LABEL_165 doesn't
   // bypass the initializer.
-  byte   newFoundFreq, trailFlags;
-  sqword trailStatesIdx;
-  STATE* trailStates;
-  int    trailBound;
+  byte   newFoundFreq;
 
   int prevSymCount = SymCount;
   int sc           = SymCount - 1;
@@ -2861,6 +2858,10 @@ LABEL_94:
   if (minISuffix) {
     PPM_CONTEXT* walkCtx = (PPM_CONTEXT*)Indx2Ptr(minISuffix);
     int depthLeft = OrderFall;
+    sqword trailStatesIdx;
+    byte   trailFlags;
+    STATE* trailStates;
+    int    trailBound;
     if (walkCtx->NStates == 0) {
       do {
         if (chain > &CtxChain_2[1]) {
