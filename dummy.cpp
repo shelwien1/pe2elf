@@ -1414,7 +1414,6 @@ sqword SseScale2(sqword slotAddr) {
 sqword AllocUnitsRare(uint unitsIdx) {
   sqword result;
   sqword textBufBytes;
-  uint unitsInRun;
   int sentinelField2;
   sqword sentinelField1;
   uint reqSizeIdx = unitsIdx;
@@ -1462,8 +1461,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
         // Re-classify this block: free it via the shared coalesce/chunk/split
         // path. FreeUnitsRare will reinsert into whatever queue ends up right
         // (possibly different from the current size class after coalescing).
-        unitsInRun = Indx2Units[Units2Indx[blockWalker->NU + 3]];
-        FreeUnitsRare((sqword)blockWalker, unitsInRun);
+        FreeUnitsRare((sqword)blockWalker, Indx2Units[Units2Indx[blockWalker->NU + 3]]);
         // Walk to next entry (= the new tail of queue); manual inlined
         // unlinkPrev minus the QueueSize-- (the for-step does that).
         MEM_BLK* prevBlk = queue->prev();
