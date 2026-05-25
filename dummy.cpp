@@ -2666,7 +2666,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   qword  epochBit;
   int    savedD90Idx;      // d90[epochBit] before update
   sqword newD90Idx;        // new value committed to d90[epochBit]
-  bool   otherPar;         // !epochBit
   sqword savedD91;
   sqword newD91;
   int    b33Saved;          // captured b33[newD90Idx] before BijectPairUpdate_
@@ -2937,8 +2936,7 @@ LABEL_94:
   savedD90Idx = d90[epochBit];                                           // saved idx (current parity)
   newD90Idx = (word)(16*(word)d90[epochBit]+((sym>>2)&0xFFFC))&0xFFFC;
   d90[epochBit] = newD90Idx;
-  otherPar = !epochBit;
-  uint oldD90Idx = (uint)d90[otherPar];      // BijectPairUpdate_ doesn't touch d90, so this is reused below
+  uint oldD90Idx = (uint)d90[!epochBit];      // BijectPairUpdate_ doesn't touch d90, so this is reused below
   b33Saved = (byte)b33[newD90Idx];           // capture before BijectPairUpdate_ writes
   BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90Idx,    sym, sc);
   hintSymBiject = b33Saved;
