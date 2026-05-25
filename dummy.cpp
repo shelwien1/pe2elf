@@ -3662,7 +3662,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int cumWeightB, cumFreqB, escSymB;
   int sseSum2A;
   int sse2CumInA, totFreqA;
-  int cumFreq, oneStateFreqF;
+  int cumFreq;
   int sortPriorityC;
   int sxNStatesC;
   int oneStateFreqCachedF;
@@ -4553,7 +4553,6 @@ LABEL_59:
     }
     if( !f_DEC ) rc.encodeSymbol(subRange);
     localFoundState = &MinContext->oneState();
-    oneStateFreqF = localFoundState->Freq;
     q9 = (sqword)localFoundState;       // publish to global FoundState (alias of q9)
     MixCtx = 1;
     // PE's variant of ppmd's "Freq += (Freq < MAX_FREQ-3)" cap, plus an
@@ -4561,6 +4560,7 @@ LABEL_59:
     // well-predicted in context (totFreq < 4*cumFreq). Block-scoped so
     // the goto LABEL_250 elsewhere doesn't bypass the initializers.
     {
+      int oneStateFreqF = localFoundState->Freq;
       byte freqIncCap   = (oneStateFreqF < 127);
       byte firstHitBump = (oneStateFreqF == 1 && totFreq < 4u*(uint)cumFreq);
       localFoundState->Freq  = oneStateFreqF + freqIncCap + firstHitBump;
