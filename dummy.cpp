@@ -2035,7 +2035,6 @@ sqword ReduceOrder() {
   sqword maxCtxStart;
   sqword succIdx;
   sqword succAddr;
-  sqword ctxSuffixIdx;
   int escIdx;
   char sse0BitSaved;
   uint succIdxSaved;
@@ -2207,7 +2206,6 @@ LABEL_11:
   succAddr = heapNull + succIdx;
   {
     PPM_CONTEXT* succCtx = (PPM_CONTEXT*)succAddr;
-    ctxSuffixIdx = succCtx->iSuffix;
     OrderFall = orderFall + 1;
     if (OrderFall == maxOrder) {
       newByteIdx = succIdxW;
