@@ -3565,7 +3565,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword *chainEndE, *chainEndF;
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
-  uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
+  uint mixDeltaA, sumFreqF;
   uint totFreq, subRange;
   uint sumFreqLimit;
   uint maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
@@ -3660,6 +3660,8 @@ LABEL_18:
           int  sxSumFreqA0  = 0;
           int  sumFreqSaveA = 0;
           int  nStatesP1Save = nStates+1;
+          uint cumFreqMixA = 0;
+          uint cumFreqDivA = 0;
           RSContext = ((STATE*)CtxChain[0])->Symbol;
           SymLastCtx[(byte)b27[RSContext+(Order1Ctx<<8)]] = epoch;
           q29 = q30 = q31 = q32 = q33 = (sqword)d27;
