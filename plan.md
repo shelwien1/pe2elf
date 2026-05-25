@@ -157,31 +157,22 @@ inside MixUpdate (trail/deep find-and-bubble paths). LABEL_128
 Region A (multi-state) and region F (per-candidate escape) run the
 same `Sse1 → SseMatch → Sse2 → Sse3` cascade. Region C (escape
 mirror after LABEL_298) runs a parallel `PredWeight + d27`-based
-cascade. The per-stage helpers exist (`Sse1Step_`, `Sse2Step_`,
-`Sse3Step_`, `SseMatchStep_`), but each call-site builds the feature
-bitfield, publishes the slot pointer to one of the `q##` globals, and
-captures intermediates into a different `_A`/`_C`/`_F`-suffixed local:
+cascade. The per-stage step helpers (`Sse1Step_`, `Sse2Step_`,
+`Sse3Step_`, `SseMatchStep_`) are extracted, and the per-stage index
+constructions are now also extracted:
 
-```cpp
-// dummy.cpp:~3850 (region A)
-sse1SlotA      = &Sse1[2 * OrderCtxSeed];
-sse1Slot       = sse1SlotA;                   // publish to q23
-sse2CumInA     = sseCum;
-Sse1Step_(sse1SlotA, mixHitsA, cumWeightA, cumFreqA);
-```
-```cpp
-// dummy.cpp:~4220 (region F, per-candidate)
-sse1SlotF      = &Sse1[2 * orderCtxSeedSave];
-sse1Slot       = sse1SlotF;                   // publish to q23
-int sse1CumIn  = sseCum;
-Sse1Step_(sse1SlotF, hitsF, cumWeightF, cumFreqF);
-```
+- `SseMatchIdxBuild_(sym)` — shared by regions A and F
+- `Sse2IdxBuild_(sym, prevWeight, prevTot)` — shared by regions A and F
+- `Sse3IdxBuild_(sym, tagSymLast2, heapIdx, sseIdx, sse2Counter, histByte)` — shared by A and F
+- `OrderCtxSeedBuild_(sym, matchCtxHi, sparseFlag, carriedFrom, freq, hits)` — shared by B and F
 
-Same shape, three suffixed copies. The next step is to extract the
-**whole stage A→F mirror** as a single function — but that requires
-first promoting the surrounding locals from "_A/_F-suffixed
-function-scope" to "parameters of an extracted helper", which is
-section A above.
+Each call-site still publishes the slot pointer to one of the `q##`
+globals (now renamed: SseMatchSlotG, Sse{1,2,3}SlotG, BinSseCellG, etc.)
+and captures intermediates into `_A`/`_C`/`_F`-suffixed locals. The
+remaining duplication is the surrounding "set up neighbour cells →
+RescaleAccum1_ stack → predRescale + cumFreq math" between regions A
+and C, which use different mix tables (MixWeight2 vs d29/MixWeight2)
+and would need parameterisation over the array layout to merge.
 
 ### D. `MixUpdate` is one 635-line function with extractable sections
 
