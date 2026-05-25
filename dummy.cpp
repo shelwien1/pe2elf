@@ -671,7 +671,7 @@ constexpr int MAX_O = 128;
 // Alternatively, using a explicit C++ reference variable:
 PPM_CONTEXT*&MaxContext = *(PPM_CONTEXT**)&MaxContext0;
 
-sqword BinEscFreq(PPM_CONTEXT* pc);
+void BinEscFreq(PPM_CONTEXT* pc);
 
 // Walks the context suffix chain to update local frequency statistics, perform inertia
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
@@ -970,7 +970,7 @@ void InitTables() {
 //--- #return
 //--- #include "subs_binescfreq2.inc"
 
-sqword BinEscFreq(PPM_CONTEXT* pc) {
+void BinEscFreq(PPM_CONTEXT* pc) {
   int nStates = pc->NStates;
   int numStates = nStates + 1;
   
@@ -1074,9 +1074,6 @@ sqword BinEscFreq(PPM_CONTEXT* pc) {
   
   // Store the updated state index back into the context flags
   pc->Flags = currIdx | (pc->Flags & 0xF0);
-  
-  // Return equivalent to (byte_offset / 3) -> 2 * final_state_index
-  return 2 * currIdx;
 }
 //--- #return
 //--- #include "subs_rescalectx1.inc"
@@ -3947,8 +3944,10 @@ LABEL_128:
         MaxContext = MinContext;
         if( walkNStates ) {
           result = MinContext->Flags&0xF;
-          if( !MinContext->getStates()[result].Freq )
-          result = BinEscFreq(MinContext);
+          if (!MinContext->getStates()[result].Freq) {
+            BinEscFreq(MinContext);
+            result = 2 * (MinContext->Flags & 0xF);   // matches BinEscFreq's old return
+          }
         }
         walkDelta = walkNStates-entryNStates;
       } while( !walkDelta );
