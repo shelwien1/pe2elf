@@ -109,9 +109,15 @@ int SymLastCtx[1024];
 int* SymLastCtx2 = &SymLastCtx[256];
 int* MatchPosBySym = &SymLastCtx[512];
 char BijectMap[0x40000];
-int q26Anchor;
+// Discard sink for the BijectMap cell pointer when the MixScale predictor
+// path isn't active (mixScaleCntr==0). 4 bytes — bijectCellPtr is a byte*
+// that writes a 4-byte cell on every step.
+int bijectCellSink;
 char foundSymHist;
-sqword q26;
+// Pointer to a 4-byte BijectMap cell: byte[0]=sym, [1]=prev1, [2]=prev2,
+// [3]=count. Set per-step by MixUpdate; reads through this pointer happen
+// later in the same call.
+sqword bijectCellPtr;
 int MixScale;
 int hintSymRecent;
 int FoundSymbol;
@@ -2699,7 +2705,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       if( sym==(byte)sseSlot[-4*dt]||(rp2 = RecentPos[recentForHi&0xFFF], dt==recentForHi-rp2)&&dt==rp2-RecentPos[rp2&0xFFF]&&(uint)matchHi==(byte)sseSlot[-3*dt-1] ) {
         MixScale = dt;
         mixScaleCntr = dt;
-        q26 = (sqword)&q26Anchor;
+        bijectCellPtr = (sqword)&bijectCellSink;
       }
     }
   }
@@ -2780,8 +2786,7 @@ LABEL_94:
   oldD90IdxB = (uint)d90[otherPar];
   BijectPairUpdate_(b36, b37, /*read*/oldD90IdxB, /*write*/savedD90Idx, sym, sc);
   if (mixScaleCntr) {
-    // q26 is a 4-byte BijectMap cell: byte[0]=sym, [1]=prev1, [2]=prev2, [3]=count.
-    BijectCellInsert_((byte*)q26, sym);
+    BijectCellInsert_((byte*)bijectCellPtr, sym);
     bmPtr = sseSlot + 1;
     b1 = (byte)bmPtr[-MixScale];
     b2 = (byte)bmPtr[-2*MixScale];
@@ -2798,8 +2803,8 @@ LABEL_94:
       .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
       .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
       .bits <14, 3>(((bm1 + 32 - sym) >> 31) + ((bm1 - sym) >> 31) + ((int)sym >= bm1));
-    q26 = (sqword)&BijectMap[4*bmComposite + 4*b1];
-    byte* bmCell = (byte*)q26;       // 4-byte cell: sym/prev1/prev2/count
+    bijectCellPtr = (sqword)&BijectMap[4*bmComposite + 4*b1];
+    byte* bmCell = (byte*)bijectCellPtr;       // 4-byte cell: sym/prev1/prev2/count
     SymLastCtx[(byte)BijectMap[4*bmComposite + 2 + 4*b1]] = sc;
     SymLastCtx[bmCell[1]] = sc;
     bmByte = bmCell[0];
