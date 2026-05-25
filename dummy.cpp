@@ -4280,8 +4280,9 @@ LABEL_298:
           sseTot = mixFreqCacheC;
           wDelta33 = RescaleAccum1_(mixUpC, *(uint*)mixUpC, shiftSelC);
           wDelta32 = RescaleAccum1_(mixDnC, *(uint*)mixDnC, shiftSelC);
-          wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, *((word*)mixSlotC+3)<0x200u);
-          predShiftIncC = (*((word*)mixSlotC+3)<0x400u)+predLoBeyondC+1;
+          uint centerExpandC = *((word*)mixSlotC+3);    // central cell predExpand counter
+          wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, centerExpandC<0x200u);
+          predShiftIncC = (centerExpandC<0x400u)+predLoBeyondC+1;
           mixStrideC = &mixSlotC[-8*mixIdxC];
           sse3SlotC = (sqword)&mixStrideC[8*(int)(mixIdxC^2)];
           q31 = sse3SlotC;
