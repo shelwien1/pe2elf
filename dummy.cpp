@@ -2346,6 +2346,17 @@ inline void BijectPairUpdate_(byte* arrA, byte* arrB, uint readIdx, uint writeId
   arrB[writeIdx] = sym;
 }
 
+// helper 3a: when any Sse2State histogram cell hits the saturation
+// threshold (0xA7 = 167), halve every entry in the 512-byte block and
+// rebuild the counter at byte offset 512 as the sum of all halves.
+inline void HalveSse2Histogram_(byte* sse2Base, uint* counter) {
+  *counter = 0;
+  for (sqword j = 0; j < 512; ++j) {
+    int halved = sse2Base[j] >>= 1;
+    *counter += halved;
+  }
+}
+
 // helper 3b: walk MatchPosPrev chain backwards from (symEpoch-2), pulling
 // consensus hints out of MatchPosHash at fixed offsets. Up to three "ticks"
 // are read directly (h1, h2, h3); subsequent ticks are folded into the same
@@ -2648,13 +2659,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     sqword sseHistOff = ((word)sym - (word)RSContext) & 0x1FF;
     byte newHistCnt = sse2Base[sseHistOff] + 2;
     sse2Base[sseHistOff] = newHistCnt;
-    if (newHistCnt > 0xA7u) {
-      *counter = 0;
-      for (sqword j = 0; j < 512; ++j) {
-        int halved = sse2Base[j] >>= 1;
-        *counter += halved;
-      }
-    }
+    if (newHistCnt > 0xA7u)
+      HalveSse2Histogram_(sse2Base, counter);
     newQ12Sel = ++q12BaseSel;
     if( sym!=order1CtxSaved ) {
       b27[RSContext+(order1CtxSaved<<8)] = sym;
