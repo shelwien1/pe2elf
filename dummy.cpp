@@ -4229,7 +4229,10 @@ LABEL_298:
           int  walkFreqSumC   = 0;
           int  sumFreqC       = MinContext->SummFreq;
           int  mixFiveC       = 5*descendNStates+5;
-          uint mixWeightCfull = (5*((uint)(2*mixFiveC-sumFreqC)>>31)+8)*(suffixCtxC->NStates+1) + suffixCtxC->SummFreq;
+          // sumFreqC > 2*mixFiveC predicate weights at 5; constant 8 base.
+          // suffixCtxC's (NStates+1)*weight + SummFreq seeds mixWeightCfull.
+          uint mixWeightCfull = (5*(2*mixFiveC < sumFreqC) + 8)*(suffixCtxC->NStates+1)
+                              + suffixCtxC->SummFreq;
           int  sumFreqW0C     = (word)sumFreqC;
           do {
             STATE* st = (STATE*)*--chainEndE;
