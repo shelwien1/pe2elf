@@ -903,7 +903,7 @@ TARGET_SCALE_FALLBACK:
 //--- #include "subs_inittables.inc"
 
 // PPMII_STARTUP actually
-sqword InitTables() {
+void InitTables() {
   uint i,j,k;
 
   memset(SymFreqs,0,256);
@@ -966,8 +966,6 @@ sqword InitTables() {
   for( i=0,j=0; i < 0x100; i++) { SSE0QTable[i] = j+1;  if( i==SSE0QBounds[j] ) j++; }
   for( i=0,j=0; i < 0x80; i++)  { SSE1QTable[i] = j;    if( i==SSE1QBounds[j] ) j++; }
   for( i=0,j=0; i < 0x100; i++) { SEEQTable[i] = j;     if( i==SEEQBounds[j] ) j++; }
-
-  return 1;
 }
 //--- #return
 //--- #include "subs_binescfreq2.inc"
