@@ -3572,7 +3572,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   char descendFlags;
   sqword mixIdxA;
   sqword result;
-  sqword sseQTableIdxA, summFreqPtr;
+  sqword sseQTableIdxA;
   int *mixSlotA;
   short orderCtxSeedSave;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -3822,6 +3822,7 @@ LABEL_58:
     MixCtx3 = currentSymbol;
     uint seeIndex, suffixNStates;
     int mixCtx;
+    sqword summFreqPtr;
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
     sqword mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
     int* mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
