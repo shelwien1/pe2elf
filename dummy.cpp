@@ -2065,7 +2065,6 @@ sqword ReduceOrder() {
   sqword rootCtxSaveCS;
   sqword ctxSaved;
   sqword escIdxClipped;
-  sqword succAddrSaved;
   sqword rootCtxSaved;
   short foundSymFreq;
   rootCtxW = RootContext;
@@ -2215,7 +2214,6 @@ LABEL_11:
   }
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
-    succAddrSaved = heapNull+succIdx;
     rootCtxSaveLab99 = rootCtxW;
     if( EscIndexSeed+8>=14 )
       escIdx = 14;
@@ -2298,7 +2296,6 @@ LABEL_99:
       curCtxP->Flags = sse0BitSaved | (stateByteOff / 6) | upperFlagBits;
       ctxBW = curCtxP->getSuffix();
       if (ctxBW == (PPM_CONTEXT*)maxCtxStart) {
-        succAddr = succAddrSaved;
         break;
       }
     }
