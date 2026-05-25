@@ -998,14 +998,14 @@ void InitTables() {
 void BinEscFreq(PPM_CONTEXT* pc) {
   int nStates = pc->NStates;
   int numStates = nStates + 1;
-  
+
   // Locate the state corresponding to the index in the lower 4 bits of pc->Flags
   STATE* baseStates = pc->getStates();
   int currIdx = pc->Flags & 0x0F;
   STATE* currState = &baseStates[currIdx];
-  
+
   PPM_CONTEXT* suffix = pc->getSuffix();
-  
+
   // Climb the suffix chain until finding a valid state frequency or matching symbol
   while (true) {
     STATE* suffixMaxState = suffix->getStates() + suffix->NStates;
@@ -1014,13 +1014,13 @@ void BinEscFreq(PPM_CONTEXT* pc) {
     }
     suffix = suffix->getSuffix();
   }
-  
+
   // Recursively process the suffix context if its current state frequency is zero
   STATE* suffixCurrState = suffix->getStates() + (suffix->Flags & 0x0F);
   if (suffixCurrState->Freq == 0) {
     BinEscFreq(suffix);
   }
-  
+
   // Search for the state in the suffix context that matches the current symbol
   STATE* suffixStates = suffix->getStates();
   STATE* matchingSuffixState = nullptr;
@@ -1030,11 +1030,11 @@ void BinEscFreq(PPM_CONTEXT* pc) {
       break;
     }
   }
-  
+
   uint suffixFreq = matchingSuffixState->Freq;
   uint summFreq = pc->SummFreq;
   uint totalFreqBound = summFreq - suffixFreq + 2 * suffix->NStates + 2 + suffix->SummFreq;
-  
+
   // Rescale the suffix frequency multiplier
   uint freqMultiplier;
   if (suffixFreq >= 6) {
@@ -1044,7 +1044,7 @@ void BinEscFreq(PPM_CONTEXT* pc) {
   } else {
     freqMultiplier = 1;
   }
-  
+
   // Calculate context state difference metrics clamped to safe bounds
   int stateOffsetBase = 4 * nStates + 4;
   int clampedDiff = suffix->NStates + 1 - 4 * nStates;
@@ -1053,9 +1053,9 @@ void BinEscFreq(PPM_CONTEXT* pc) {
   } else if (clampedDiff > 16 * numStates) {
     clampedDiff = 16 * numStates;
   }
-  
+
   uint rescaleIndex = 3 * (clampedDiff + summFreq + stateOffsetBase) * freqMultiplier / totalFreqBound;
-  
+
   // Determine the baseline new frequency via the frequency rescaling table
   byte newFreq;
   if (rescaleIndex >= 36) {
@@ -1063,7 +1063,7 @@ void BinEscFreq(PPM_CONTEXT* pc) {
   } else {
     newFreq = FreqRescaleTab[rescaleIndex];
   }
-  
+
   // Conditional adaptation based on model density thresholds
   if (rescaleIndex <= 33 || summFreq >= 32 * numStates) {
     currState->Freq = newFreq;
@@ -1076,27 +1076,27 @@ void BinEscFreq(PPM_CONTEXT* pc) {
     newFreq += frequencyBonus;
     currState->Freq = newFreq;
   }
-  
+
   // Update the cumulative summary frequency of the context
   pc->SummFreq = currState->Freq + summFreq;
-  
+
   // Bubble sort insertion step to maintain states sorted by frequency descending
   while (currIdx > 0) {
     STATE* curr = &baseStates[currIdx];
     STATE* prev = &baseStates[currIdx - 1];
-    
+
     if (curr->Freq <= prev->Freq + 1) {
       break;
     }
-    
+
     // Swap the records
     STATE temp = *curr;
     *curr = *prev;
     *prev = temp;
-    
+
     currIdx--;
   }
-  
+
   // Store the updated state index back into the context flags
   pc->Flags = currIdx | (pc->Flags & 0xF0);
 }
@@ -1544,26 +1544,26 @@ sqword StartModelRare(int mode) {
   if (mode != 1 || RunLength == -100) {
     uint* heapBlocks = (uint*)HeapStart;
     sqword allocatorSize = SubAllocatorSize;
-    
+
     BList = (sqword)HeapStart;
     ++InitsCount;
-    
+
     // Context tracking begins immediately past the N_INDEXES allocator
     // free-list queues (N_INDEXES * UNIT_SIZE = 456 bytes).
     pText = (sqword)HeapStart + N_INDEXES*UNIT_SIZE;
     byte* heapEnd = (byte*)HeapStart + SubAllocatorSize;
     CutOffCount = 0;
     GlueCount = 0;
-    
+
     // Dedicate a specific segment for unit state storage based on allocator metrics
     byte* unitsSegment = (byte*)HeapStart + SubAllocatorSize
                        - UNIT_SIZE * (MEM_DIVISOR-1) * (int)(SubAllocatorSize / (UNIT_SIZE*MEM_DIVISOR));
     UnitsStart = (sqword)unitsSegment;
     LoUnit = (sqword)unitsSegment;
     *(uint*)unitsSegment = 0;
-    
+
     HeapNull = (sqword)heapBlocks - 1;
-    
+
     // Initialize all 38 allocation queues to point to themselves symmetrically
     // (each queue starts empty: Next == Prev == Ptr2Indx(queue), QueueSize == 0).
     for (uint i = 0; i < N_INDEXES; ++i) {
@@ -1607,7 +1607,7 @@ sqword StartModelRare(int mode) {
     MixCtx3 = 0;
     EscapeSymbol = 0;
     PrevSymbol = 0;
-    
+
     // Initialize state fields across all 256 unique symbols
     STATE* states = (STATE*)((byte*)heapBlocks + rootCtxP->iStates - 1);
     for (int i = 0; i < 256; ++i) {
