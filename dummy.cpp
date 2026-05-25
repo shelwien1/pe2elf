@@ -2387,7 +2387,7 @@ inline void BijectPairUpdate_(byte* arrA, byte* arrB, uint readIdx, uint writeId
 // shift prev1->prev2, sym->prev1, and write newSym to head with count=0.
 inline void BijectCellInsert_(byte* bm, byte newSym) {
   if (newSym == bm[0]) {
-    bm[3] += (bm[3] - 255 < 0);
+    bm[3] += (bm[3] < 255);   // saturating +1 on the count byte
   } else {
     bm[2] = bm[1];
     bm[1] = bm[0];
