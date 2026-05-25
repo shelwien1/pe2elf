@@ -2672,6 +2672,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    mixWeight;        // 2, halved each step
   uint   mixFlag1;         // computed from NStates / SummFreq
   uint   mixFlag2;         // copy of mixFlag1 (the loop guard)
+  byte   newFoundFreq;     // do-while loop output, read in loop guard
 
   // deep find-and-bubble path
   sqword deepStatesIdx;    // walkCtx->iStates
@@ -2684,7 +2685,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   STATE* trailStates;
 
 
-  byte   newFoundFreq;
 
   int    trailBound;       // gating cutoff in trailing loop
 
