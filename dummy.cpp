@@ -3774,9 +3774,10 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   // once per branch, then re-read by the deeper sub-stage to grab the weight.
   word*& binMixCenter = (word*&)BinMixCenterG;
   // BinSse cell and the PredWeight A/B cells. Each is a 2-uint cell; the
-  // commit-tail reads/writes them as `slot[0] += d##; slot[1] += d##;`.
-  // (BinSseCellG, PredWeightBG, PredWeightAG are only ever referenced from this file; they got hoisted
-  // to file scope by the decompiler but are really per-symbol scratch.)
+  // commit-tail reads/writes them as `slot[0] += d##; slot[1] += d##;`. The
+  // three globals BinSseCellG / PredWeightAG / PredWeightBG are only ever
+  // referenced from this file; they got hoisted to file scope by the
+  // decompiler but are really per-symbol scratch.
   uint*& binSseCell  = (uint*&)BinSseCellG;
   uint*& predWeightA = (uint*&)PredWeightAG;
   uint*& predWeightB = (uint*&)PredWeightBG;
