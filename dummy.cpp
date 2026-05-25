@@ -1134,12 +1134,9 @@ sqword RescaleCtx(byte* ctxBytes) {
     STATE* fp = (STATE*)q9;
     while (fp != states) {
       // SWAP(fp[0], fp[-1])
-      word tw  = *(word*)fp;
-      uint ts  = fp->iSuccessor;
-      *(word*)fp     = *(word*)(fp - 1);
-      fp->iSuccessor = (fp - 1)->iSuccessor;
-      *(word*)(fp - 1)     = tw;
-      (fp - 1)->iSuccessor = ts;
+      STATE tmp = *fp;
+      *fp = *(fp - 1);
+      *(fp - 1) = tmp;
       fp--;
     }
   }
