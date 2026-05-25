@@ -3633,7 +3633,7 @@ inline uint OrderCtxSeedBuild_(int sym, int matchCtxHi, int sparseFlag,
 //   sym         : escSymB (A) or candSymbol (F)
 //   tagSymLast2 : SymLastCtx2[sym]==SymCount  (A computes inline)
 //                 or pre-captured tagSymLastCtx2F (F)
-//   heapIdx     : context->iStates via summFreqPtr (A) or FoundState->iSuccessor (F)
+//   heapIdx     : context->iStates via summFreqPtr (A) or localFoundState->iSuccessor (F)
 //   sseIdx      : sse2IdxA (A) or sse2IdxF (F)
 //   sse2Counter : sse2Base[512] read (uint) at the call site
 //   histByte    : sse2Base[(sym-RSContext)&0x1FF] (passed in)
@@ -3721,7 +3721,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE  **chainPtr;
   sqword *chainEndE;
   sqword *chainEndF, *sortRangeE, *sortLimitC;
-  STATE *FoundState, *walkStateIterE, *firstStateE;
+  STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC, *preCommitMinCtx;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
   uint totFreqC, subRangeC;
@@ -4115,7 +4115,7 @@ LABEL_58:
       }
       EscIndexSeed = result;
       // ---------------------------------------------------------------------
-      //  Escape walk (~ ppmd RealEncode's "while (!FoundState)" loop): keep
+      //  Escape walk (~ ppmd RealEncode's "while (!localFoundState)" loop): keep
       //  walking the suffix chain until a context with NStates != entryNStates
       //  is reached, then drop into the multi-state escape body below.
       // ---------------------------------------------------------------------
@@ -4308,7 +4308,7 @@ LABEL_298:
       sumFreqLimit = (int)(sumFreqDivC+MinContext->SummFreq)>>1;
 LABEL_335:
       // Per-state walk through CtxChain[] inside the escape:  each iteration
-      // is the body of ppmd's "FoundState = MinContext->encode2(c)" search.
+      // is the body of ppmd's "localFoundState = MinContext->encode2(c)" search.
       cumFreqMixSave = sumFreqLimit;
       sumFreqF = freqSumE+sumFreqDivC;
       cumFreqAcc = sumFreqF;
@@ -4351,13 +4351,13 @@ LABEL_335:
         // -------------------------------------------------------------------
         if( f_DEC ) rc.DecodeNormalize(inFile); else rc.EncodeNormalize(outFile);
 LABEL_59:
-        FoundState = *chainPtr;
+        localFoundState = *chainPtr;
         preCommitMinCtx = MinContext;
         CtxChainEnd = (sqword)(chainPtr+1);
         PredBaseBG = PredBaseAG = BinMixLoG = BinMixHiG = (sqword)d27;
-        uint candSymbol = FoundState->Symbol;
-        sqword candProbBF = ((FoundState->Freq<<8)-predBinFlags)/sumFreqF;
-        SparseBit = 1<<FoundState->Symbol;
+        uint candSymbol = localFoundState->Symbol;
+        sqword candProbBF = ((localFoundState->Freq<<8)-predBinFlags)/sumFreqF;
+        SparseBit = 1<<localFoundState->Symbol;
         int sseEntryC2F = candProbBF;
         sqword mixSseSizeF = (uint)(byte)SymType[candProbBF]+1;
         SparseIdxA = ((candSymbol+SparseHashA)>>5)+0x2000;
@@ -4489,7 +4489,7 @@ LABEL_59:
         uint sse2Counter   = *(uint*)(sse2Base+512);
         predWeightDelta = sse2CumTotF;
         sse3SlotF = &Sse3[2 * (int)Sse3IdxBuild_(candSymbol, tagSymLastCtx2F,
-                                                  FoundState->iSuccessor,
+                                                  localFoundState->iSuccessor,
                                                   (uint)sse2IdxF, sse2Counter,
                                                   (uint)sse2HistByteF)];
         sse3Slot = sse3SlotF;
@@ -4499,7 +4499,7 @@ LABEL_59:
         subRangeC = rc.getSubRange(cumFreqC, totFreqC);
         if( f_DEC ? !rc.IsDecodeMatched(subRangeC) : (inputByte != candSymbol) ) {
           priorFoundStateF = q9;
-          cumFreqAcc -= FoundState->Freq;
+          cumFreqAcc -= localFoundState->Freq;
           if( f_DEC ) rc.DecodeNotMatched(subRangeC); else rc.encodeEscape(subRangeC);
           SparseBitmapA[SparseIdxA] &= ~SparseBit;
           SparseBitmapB[SparseIdxB] &= ~SparseBit;
@@ -4507,7 +4507,7 @@ LABEL_59:
             MinContext = MaxContext;
             q9 = 0;
             MixCtx = 0;
-          } else if( FoundState<=MinContext->getStates() ) {
+          } else if( localFoundState<=MinContext->getStates() ) {
             MinContext = MaxContext;
           } else {
             MinContext = MaxContext;
@@ -4525,32 +4525,32 @@ LABEL_59:
                       + ((flagsCtxFC&0x40)==0 || matchPosAge>0xE00) + 4;
           MinContext->Flags = flagsCtxFC&0xF0;
           MinContext->SummFreq += freqBoostFC;
-          FoundState->Freq += freqBoostFC;
+          localFoundState->Freq += freqBoostFC;
           STATE* statesBaseFC = MinContext->getStates();
-          if( FoundState==statesBaseFC ) {
+          if( localFoundState==statesBaseFC ) {
             MinContext = MaxContext;
             if( (sqword)MaxContext==RootContext )
               MixCtx = totFreqC<2*cumFreqC;
           } else {
             // Bubble the matched STATE up toward index 0 (cf. ppmd update1).
-            STATE saved = *FoundState;
+            STATE saved = *localFoundState;
             do {
-              *FoundState = *(FoundState-1);
-              FoundState -= 1;
-            } while( FoundState>statesBaseFC );
-            *FoundState = saved;
+              *localFoundState = *(localFoundState-1);
+              localFoundState -= 1;
+            } while( localFoundState>statesBaseFC );
+            *localFoundState = saved;
             MinContext = MaxContext;
           }
-          // FoundState (local) and q9 (global FoundState) are distinct here:
-          // RescaleCtx may move the global FoundState as it compacts the
-          // STATE[]; save into q9 first so the function sees us, then copy
-          // back into the local for the LABEL_250 read.
-          q9 = (sqword)FoundState;
-          if( FoundState->Freq > 244 ) {
+          // localFoundState (RealProcess local) and the global FoundState
+          // (q9) are distinct here: RescaleCtx mutates the global FoundState
+          // as it compacts the STATE[]. Save into q9 first so RescaleCtx
+          // sees us, then copy back into the local for the LABEL_250 read.
+          q9 = (sqword)localFoundState;
+          if( localFoundState->Freq > 244 ) {
             RescaleCtx(preCommitMinCtx);
-            FoundState = (STATE*)q9;
+            localFoundState = (STATE*)q9;
           }
-          if( FoundState )
+          if( localFoundState )
             goto LABEL_250;
         }
         if( !--remCandF ) {
@@ -4578,9 +4578,9 @@ LABEL_59:
       }
     }
     if( !f_DEC ) rc.encodeSymbol(subRange);
-    FoundState = &MinContext->oneState();
-    oneStateFreqF = FoundState->Freq;
-    q9 = (sqword)FoundState;       // publish local FoundState back to the global
+    localFoundState = &MinContext->oneState();
+    oneStateFreqF = localFoundState->Freq;
+    q9 = (sqword)localFoundState;       // publish to global FoundState (alias of q9)
     MixCtx = 1;
     // PE's variant of ppmd's "Freq += (Freq < MAX_FREQ-3)" cap, plus an
     // extra bump on the very first hit (Freq==1) when the candidate is
@@ -4589,7 +4589,7 @@ LABEL_59:
     {
       byte freqIncCap   = (oneStateFreqF < 127);
       byte firstHitBump = (oneStateFreqF == 1 && totFreq < 4u*(uint)cumFreq);
-      FoundState->Freq  = oneStateFreqF + freqIncCap + firstHitBump;
+      localFoundState->Freq  = oneStateFreqF + freqIncCap + firstHitBump;
     }
     // commit the per-step predictor deltas (no freq0 rewind in this path)
     binSseCell[0] += 1568;
@@ -4606,7 +4606,7 @@ LABEL_250:
     //  commit the range, run MixUpdate to advance the SSE / mixing state,
     //  and normalize the range coder for the next iteration.
     // -----------------------------------------------------------------------
-    if( f_DEC ) putc(FoundState->Symbol, outFile);
+    if( f_DEC ) putc(localFoundState->Symbol, outFile);
     rc.commitRange();
     result = MixUpdate(MinContext);
     if( f_DEC ) rc.DecodeNormalize(inFile); else rc.EncodeNormalize(outFile);
