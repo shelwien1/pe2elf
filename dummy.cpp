@@ -3583,6 +3583,13 @@ inline int Sse3Step_(int* slot, int sse2CumIn, int totFreqPreSse3) {
   return clamp;
 }
 
+// Combined "weighted-average cumulative frequency" helper shared by region A
+// (main mix block) and region C (escape mirror). Computes the running
+// cumulative-freq increment as (freq/2 + nStatesP1 * weight) / freq + 2.
+inline uint MixCumFreq_(uint mixFreq, uint mixWeight, uint nStatesP1) {
+  return ((mixFreq >> 1) + nStatesP1 * mixWeight) / mixFreq + 2;
+}
+
 // "Rewind" a predictor slot in the LABEL_128 escape path:
 //   freq0 (offset 4, word) -= delta
 //   sum   (offset 0, uint) += delta * mult
@@ -3925,7 +3932,7 @@ LABEL_18:
               wDelta29 = RescaleAccum1_(bigSlotA, (uint)*bigSlotA, mixShiftA+mixShiftLowA+1);
             }
             predRescaleDiv = MinContext->SummFreq;
-            cumFreqMixA = predRescaleDiv+((mixFreqA>>1)+nStatesPlus1*mixWeightA)/mixFreqA+2;
+            cumFreqMixA = predRescaleDiv + MixCumFreq_(mixFreqA, mixWeightA, nStatesPlus1);
             cumFreqAcc = cumFreqMixA;
             if( nStatesPlus1<24 ) {
               cumFreqMixSave = 0;
@@ -4292,7 +4299,7 @@ LABEL_298:
           q30 = sse4SlotC;
           wDelta30 = RescaleAccum1_((void*)sse4SlotC, *(uint*)sse4SlotC, predShiftIncC);
         }
-        sumFreqDivC = ((mixFreqCacheC>>1)+descendNStatesP1E*mixWeightC)/mixFreqCacheC+2;
+        sumFreqDivC = MixCumFreq_(mixFreqCacheC, mixWeightC, descendNStatesP1E);
         if( descendNStatesP1E<24 ) {
           sumFreqLimit = 0;
           goto LABEL_335;
