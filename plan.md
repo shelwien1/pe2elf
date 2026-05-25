@@ -308,32 +308,25 @@ in `dummy.cpp` or `ppmd.cpp`.
 
 ### H. Magic constants without explanation
 
-A handful of literals appear in arithmetic with no comment:
+A handful of literals still appear in arithmetic with no comment.
+Already named or commented: 133144 (rewritten as MatchPosHash upper-
+half offset), 0xA7 (helper docstring), the 0x55 fill of the SSE
+tables (4-line comment in StartModelRare).
+
+Still bare:
 
 ```cpp
-// dummy.cpp:2533 — magic 133144 inside sseSlot positioning
-sseSlot = (char*)&Sse2State[(symEpoch & 0x1FFFF) + 133144];
-
-// dummy.cpp:2646 — magic 0xA7 (167) histogram-halving trigger
-if (newHistCnt > 0xA7u) { *counter = 0; ... }
-
-// dummy.cpp:2718 — magic 6144 bias step inside m2-chain consensus
+// magic 6144 bias step inside m2-chain consensus (WalkM2Consensus_)
 m2_bias += 6144;
 
-// dummy.cpp:3925 — magic 0x2C00 inside SSE3 bitfield .bit<11>
+// magic 0x2C00 inside SSE3 bitfield .bit<11>  (now in Sse3IdxBuild_)
 .bit  <11>   ((uint)matchPosAge < 0x2C00)
-
-// dummy.cpp:1599-1606 — fill the SSE/match tables with 0x55 (not 0x00)
-memset(SseState2,  0x55u, 0x80000);
-memset(SseState3,  0x55u, 0x20000);
-memset(MatchPosTable, 0x55u, 0x40000);
 ```
 
-The `0x55` fill is intentional: most cells are then read via small
-arithmetic that would produce useless probabilities at 0; 0x55…
-gives a flat prior. But that's not stated anywhere. `0x1FFFF` (the
-17-bit mask) and `0x40000` (the SSE-clamp ceiling) likewise appear
-dozens of times without a named constant.
+`0x1FFFF` (the 17-bit MatchPosHash/SseState3 mask) and `0x40000` (the
+SSE-clamp ceiling) likewise appear dozens of times without a named
+constant. ppmd.cpp's H_BITS/H_SHIFT would conflict (15-bit vs 17-bit),
+so they shouldn't be propagated.
 
 ### I. Scattered decompiler-shaped expressions
 
