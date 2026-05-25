@@ -3714,7 +3714,7 @@ LABEL_18:
             EscapeSymbol = -1;
             cumFreqMixA = predRescaleDiv+1;
             cumFreqAcc = cumFreqMixA;
-        } else {
+          } else {
             sx_p = MinContext->getSuffix();
             sxNStates = sx_p->NStates;
             minSumFreqA = MinContext->SummFreq;
