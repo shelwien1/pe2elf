@@ -3827,7 +3827,7 @@ LABEL_18:
           int nStatesCnt = nStates+1;
           // These are written only in the else branch but read inside the
           // if(nStatesPlus1<24) ... LABEL_58 path; declare at this scope so
-          // the goto LABEL_58 from line ~549 doesn't bypass init.
+          // the goto LABEL_58 below doesn't bypass init.
           int  sxNStates    = 0;
           int  minSumFreqA  = 0;
           int  sxSumFreqA0  = 0;
