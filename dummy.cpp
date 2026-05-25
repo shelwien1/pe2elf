@@ -2418,7 +2418,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    prevSymCount;     // SymCount before --
   int    symEpoch;         // current SymEpoch (epoch counter)
   int    symEpochN;        // = symEpoch + 1 (next epoch)
-  short  symEpochS;        // (short)symEpoch (used for &0xFFF index)
   sqword sseRowOff;        // symEpoch & 0x1FFFF (Sse2State row offset)
   char*  sseSlot;          // &Sse2State[ sseRowOff + 133144 ]  (recent-history byte buffer)
 
@@ -2552,7 +2551,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   *wQ19       += sseMatchNumDelta;  wQ19[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
-  symEpochS   = (short)symEpoch;
   sseRowOff   = symEpoch & 0x1FFFF;
   scale       = sseCum;
   sseSlot     = (char*)&Sse2State[sseRowOff + 133144];
@@ -2584,7 +2582,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   recentEpoch = SseCtx0_1[sym];
   mixCtx2New = MixCtx2+MixCtx2+(sse0sym>>7);
   MixCtx2 = mixCtx2New;
-  RecentPos[symEpochS&0xFFF] = recentEpoch;
+  RecentPos[symEpoch & 0xFFF] = recentEpoch;
   SseCtx0_1[sym] = symEpoch;
   dt = symEpoch-recentEpoch;
   if ((uint)dt >= 0x104) {
