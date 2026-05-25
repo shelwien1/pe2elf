@@ -3602,6 +3602,34 @@ inline uint OrderCtxSeedBuild_(int sym, int matchCtxHi, int sparseFlag,
     .val;
 }
 
+// Build the sse3 cascade index used in both region A (binary coder) and
+// region F (per-candidate loop). Inputs that vary:
+//   sym         : escSymB (A) or candSymbol (F)
+//   tagSymLast2 : SymLastCtx2[sym]==SymCount  (A computes inline)
+//                 or pre-captured tagSymLastCtx2F (F)
+//   heapIdx     : context->iStates via summFreqPtr (A) or FoundState->iSuccessor (F)
+//   sseIdx      : sse2IdxA (A) or sse2IdxF (F)
+//   sse2Counter : sse2Base[512] read (uint) at the call site
+//   histByte    : sse2Base[(sym-RSContext)&0x1FF] (passed in)
+// Reads globals: sseState3Hash, SseState3, HeapNull, pText, matchPosAge,
+// MixCtxExtra.
+inline uint Sse3IdxBuild_(int sym, bool tagSymLast2, uint heapIdx,
+                          uint sseIdx, uint sse2Counter, uint histByte) {
+  // The bit<2> predicate tests "heapIdx lands in the last 736 bytes
+  // before pText" (i.e., HeapNull + heapIdx - pText in [-736, 0)).
+  return SseIdx{}
+    .bit  <0>    (tagSymLast2)
+    .bit  <1>    (sym == (byte)SseState3[sseState3Hash])
+    .bit  <2>    ((uint)(HeapNull + heapIdx - pText + 736) < 0x2E0)
+    .bits <3, 2> ((sse2Counter < 384*histByte)
+                + (sse2Counter <  58*histByte)
+                + (sse2Counter <  22*histByte))         // 0..3 at bits 3-4
+    .field<8, 3> (sseIdx)                               // carried bits 8-10
+    .bit  <11>   ((uint)matchPosAge < 0x2C00)
+    .raw         (MixCtxExtra)                          // pre-positioned multi-bit accumulator
+    .val;
+}
+
 // Build the sseMatch cascade index used in both region A (binary coder) and
 // region F (per-candidate loop). The only varying input is the symbol; the
 // remaining inputs (recentSym, MixCtx, matchPosAge, FoundSymbol, MixScale,
@@ -4019,16 +4047,11 @@ LABEL_58:
       // "jump bypasses initialization".
       int  sse2HistByte = sse2Base[((word)escSymB-(word)RSContext)&0x1FF];
       uint sse2CounterA = *(uint*)(sse2Base+512);
-      sse3SlotA = &Sse3[2 * (int)(SseIdx{}
-        .bit  <0>    (SymLastCtx2[escSymB]==SymCount)
-        .bit  <1>    (escSymB == (byte)SseState3[sseState3Hash])
-        .bit  <2>    ((uint)(HeapNull + *(uint*)(summFreqPtr+2) - pText) >= 0xFFFFFD20)
-        .bits <3, 2> ((sse2CounterA < 384*sse2HistByte)
-                    + (sse2CounterA <  58*sse2HistByte)
-                    + (sse2CounterA <  22*sse2HistByte))    // 0..3 at bits 3-4 (mirrors region F)
-        .field<8, 3> (sse2IdxA)                             // carried bits 8-10 of sse2IdxA
-        .bit  <11>   ((uint)matchPosAge < 0x2C00)
-        .raw         (MixCtxExtra))];                       // pre-positioned multi-bit accumulator
+      sse3SlotA = &Sse3[2 * (int)Sse3IdxBuild_(escSymB,
+                                                SymLastCtx2[escSymB]==SymCount,
+                                                *(uint*)(summFreqPtr+2),
+                                                (uint)sse2IdxA, sse2CounterA,
+                                                (uint)sse2HistByte)];
     }
     sse3Slot = sse3SlotA;
     cumFreq = sseCum;
@@ -4432,16 +4455,10 @@ LABEL_59:
         int  sse2HistByteF = sse2Base[((word)candSymbol-(word)RSContext)&0x1FF];
         uint sse2Counter   = *(uint*)(sse2Base+512);
         predWeightDelta = sse2CumTotF;
-        sse3SlotF = &Sse3[2 * (int)(SseIdx{}
-          .bit  <0>    (tagSymLastCtx2F)
-          .bit  <1>    (candSymbol == (byte)SseState3[sseState3Hash])
-          .bit  <2>    ((uint)(HeapNull + FoundState->iSuccessor - pText + 736) < 0x2E0)
-          .bits <3, 2> ((sse2Counter < 384*sse2HistByteF)
-                      + (sse2Counter <  58*sse2HistByteF)
-                      + (sse2Counter <  22*sse2HistByteF))     // 0..3 at bits 3-4
-          .field<8, 3> (sse2IdxF)                              // carried bits 8-10 of sse2IdxF
-          .bit  <11>   ((uint)matchPosAge < 0x2C00)
-          .raw         (MixCtxExtra))];                        // pre-positioned multi-bit accumulator
+        sse3SlotF = &Sse3[2 * (int)Sse3IdxBuild_(candSymbol, tagSymLastCtx2F,
+                                                  FoundState->iSuccessor,
+                                                  (uint)sse2IdxF, sse2Counter,
+                                                  (uint)sse2HistByteF)];
         sse3Slot = sse3SlotF;
         cumFreqC = sseCum;
         Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
