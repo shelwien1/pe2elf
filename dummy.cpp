@@ -3860,7 +3860,11 @@ LABEL_18:
               int  mixConstM  = 11*(nStates+1);
               int  sumFreqM   = minSumFreqA;          // mutated by FreqMixStep_ via reference
               int  sumFreqWM  = sumFreqM;             // ditto
-              int  mixWeightM = nStatesP1Save*(((uint)(mixConstM-sumFreqM)>>28)|7)+sxSumFreqA0;
+              // (mixConstM-sumFreqM)>>28 | 7  -- sign-bit-extract idiom:
+              // produces 15 if sumFreqM > mixConstM, else 7. So the weight
+              // scale is 15 when SummFreq exceeds 11*(NStates+1), else 7.
+              int  mixWeightScale = (sumFreqM > mixConstM) ? 15 : 7;
+              int  mixWeightM = nStatesP1Save*mixWeightScale + sxSumFreqA0;
               do {
                 stateBackM -= 1;
                 FreqMixStep_(stateBackM, SymFreqs[stateBackM->Symbol], mixWeightM,
