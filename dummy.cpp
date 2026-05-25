@@ -3099,8 +3099,11 @@ LABEL_165:
       ((PPM_CONTEXT*)walkCtx)->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
       trailFound = FindAndBubble7_((byte*)trailStatesPtr, searchSym, &walkCtx[1], 1);
-      trailState0Freq = *(byte*)(trailStatesIdx + heap + 1);
-      trailState1Freq = *(byte*)(trailStatesIdx + heap + 7);
+      {
+        STATE* trailStates = (STATE*)(heap + trailStatesIdx);
+        trailState0Freq = trailStates[0].Freq;
+        trailState1Freq = trailStates[1].Freq;
+      }
       *chain++ = (sqword)trailFound;
       if ((uint)(trailState1Freq + trailState0Freq) > 0x5F)
         break;
