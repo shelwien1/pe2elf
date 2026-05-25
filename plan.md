@@ -349,6 +349,15 @@ helpers:
 - AllocUnitsRare bootstrap unlink folded into `bList[0].unlinkPrev()`;
   `(uint)(uintptr_t)x - heapNull` patterns folded into `Ptr2Indx(x)`.
 - FreeUnitsRare made `void` (no caller consumed its char* return).
+- RescaleCtx / SseScale1 / SseScale2 / InitTables / BinEscFreq all
+  made `void` (return values were discarded by every caller).
+- `b39` renamed to `SymFreqs` (per-symbol frequency cache populated by
+  `FillFreqMap_`).
+- RealProcess's per-candidate `chainPtr` retyped from `sqword*` to
+  `STATE**` so the LABEL_59 entry `FoundState = (STATE*)*chainPtr;`
+  reduces to `FoundState = *chainPtr;`. ReduceOrder's `chainPtrW` /
+  `chainPtrSave` likewise retyped (drops 3 inline casts plus the
+  `(STATE**)(chainPtrSave-1)` cast at the CreateSuccessors call).
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
