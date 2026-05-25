@@ -275,7 +275,7 @@ int hintSymM2;
 int hintSymB29;
 int hintSymBiject;
 int hintSymMatch3;
-int hintSymQ26;
+int hintSymBmCell;
 int sse2DenDelta;
 int sse2NumDelta;
 int sseMatchDenDelta;
@@ -906,7 +906,7 @@ void InitTables() {
   //memset(ddd,0,4*31);
   sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
   q32=q31=q30=q29=q34=q35=q21=q22=q18=q23=q20=q17=q36=q19=q24=q25=q9=q33=CtxChainEnd=0;
-  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymQ26=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
+  hintSymB31=hintSymM2=hintSymB29=hintSymBiject=hintSymMatch3=hintSymBmCell=sse2DenDelta=sse2NumDelta=sseMatchDenDelta=sseMatchNumDelta=predSseTotDelta=predWeightDelta=MatchCtxHi=recentSym=mixScaleCntr=symHalfHistory=SparseHashA=SparseIdxA=SparseHashB=SparseIdxB=SparseBit=0;
   memset( SseState3, 0, 0x20000 );
   //memset( b27, 0, 0x10000 );
   //memset( MatchPosHash, 0, 0x40000 );
@@ -2756,7 +2756,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   hintSymM2 = -1;
   hintSymB29 = -1;
   hintSymMatch3 = -1;
-  hintSymQ26 = -1;
+  hintSymBmCell = -1;
   HashSeed1 = -1;
   bdiff = (byte)(sym-matchHi);
   HashSeed2 = -1;
@@ -2850,7 +2850,7 @@ LABEL_94:
     SymLastCtx[(byte)bmCell[2]] = sc;
     SymLastCtx[bmCell[1]] = sc;
     bmByte = bmCell[0];
-    hintSymQ26 = bmCell[0];
+    hintSymBmCell = bmCell[0];
     SymLastCtx[bmByte] = sc;
     if (bmCell[3]) {
       if (bmCell[3] > 1u || hintSymRecent <= 0)
@@ -3917,7 +3917,7 @@ LABEL_58:
     sse2IdxA = SseIdx{}
       .bit  <0>    (escSymB == hintSymM2)
       .bit  <1>    (escSymB == hintSymMatch3)                              // overlaid with SSE0 byte below
-      .bit  <2>    (escSymB == hintSymQ26)
+      .bit  <2>    (escSymB == hintSymBmCell)
       .bit  <3>    (escSymB == FoundSymbol)
       .bit  <4>    (escSymB == PrevSymbol)
       .bits <5, 2> (((uint)matchPosAge < 0xA800)
@@ -4342,7 +4342,7 @@ LABEL_59:
         sqword sse2IdxF = SseIdx{}
           .bit  <0>    (candSymbol == hintSymM2)
           .bit  <1>    (candSymbol == hintSymMatch3)                          // overlaid with SSE0 byte below
-          .bit  <2>    (candSymbol == hintSymQ26)
+          .bit  <2>    (candSymbol == hintSymBmCell)
           .bit  <3>    (candSymbol == FoundSymbol)
           .bit  <4>    (candSymbol == PrevSymbol)
           .bits <5, 2> (((uint)matchPosAge < 0xA800)
