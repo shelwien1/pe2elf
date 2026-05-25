@@ -3826,6 +3826,7 @@ LABEL_58:
     //  short SSE chain, optionally takes a deeper BinSse-based sub-stage,
     //  then dispatches to the range coder's binary match/escape decision.
     // -----------------------------------------------------------------------
+    {
     currentSymbol = MinContext->oneState().Symbol;
     MixCtx3 = currentSymbol;
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
@@ -3938,6 +3939,7 @@ LABEL_58:
     cumFreq = sseCum;
     Sse3Step_(sse3SlotA, sse2CumInA, totFreqA);
     totFreq = sseTot;
+    }
 
     subRange = rc.getSubRange(cumFreq, totFreq);
     if( f_DEC ? !rc.IsDecodeMatched(subRange) : (inputByte != MinContext->oneState().Symbol) ) {
