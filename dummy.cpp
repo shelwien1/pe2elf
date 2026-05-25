@@ -2905,15 +2905,16 @@ LABEL_94:
     int  b3 = (byte)bmPtr[-3*MixScale];
     if( --mixScaleCntr>(uint)MixScale )
       recentSym = b1;
-    char* b1Ptr = &bmPtr[-MixScale];
+    char* b1Ptr = &bmPtr[-MixScale];     // history at -1 stride
+    char* b2Ptr = &bmPtr[-2*MixScale];   // history at -2 strides
     int   bm1 = (byte)*(b1Ptr-1);
     // bmComposite indexes the 4-uint BijectMap row; the bitfield mixes:
     //   bits  8-13 : raw   (b2 & 0x2E) plus a same-direction prediction bit
     //   bit  12    : history-match flag (same 3rd byte at the two offsets)
     //   bits 14-16 : 3-bit count of "sym near bm1" comparisons
     sqword bmComposite = SseIdx{}
-      .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
-      .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
+      .bits <8, 6>((b2 & 0x2E) + ((byte)b2Ptr[1] < (uint)(byte)b1Ptr[1]))
+      .bit  <12>  (b1Ptr[2] == b2Ptr[2])
       // 0..3 score by sym's position relative to bm1: 0 (sym<bm1),
       // 1 (sym==bm1), 2 (bm1<sym≤bm1+32), 3 (sym>bm1+32).
       .bits <14, 3>((sym > (uint)(bm1 + 32)) + (sym > (uint)bm1) + ((int)sym >= bm1));
