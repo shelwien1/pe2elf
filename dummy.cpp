@@ -3561,13 +3561,13 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int cumWeightB, cumFreqB, escSymB;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
-  int sortPriorityC, sxNStatesC, sumFreqCacheC;
+  int sxNStatesC, sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
   byte flagsSaveA;
   STATE  **chainPtr;
-  sqword *chainEndE, *chainEndF, *sortRangeE, *sortLimitC;
+  sqword *chainEndE, *chainEndF;
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
@@ -4019,7 +4019,9 @@ LABEL_128:
       }
       walkStateIterE = MinContext->getStates() - 1;
       if( remStatesE ) {
-        sortRangeE = chainEndE;
+        sqword* sortRangeE = chainEndE;
+        sqword* sortLimitC;
+        int     sortPriorityC;
         walkFreqSumE = freqSumE;
         while( 1 ) {
           do {
