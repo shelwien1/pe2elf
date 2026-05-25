@@ -4514,9 +4514,15 @@ LABEL_59:
     oneStateFreqF = FoundState->Freq;
     q9 = (sqword)FoundState;       // publish local FoundState back to the global
     MixCtx = 1;
-    FoundState->Freq = (oneStateFreqF-127<0)
-                     + oneStateFreqF
-                     + (oneStateFreqF==1 && totFreq < 4*cumFreq);
+    // PE's variant of ppmd's "Freq += (Freq < MAX_FREQ-3)" cap, plus an
+    // extra bump on the very first hit (Freq==1) when the candidate is
+    // well-predicted in context (totFreq < 4*cumFreq). Block-scoped so
+    // the goto from line ~4486 doesn't bypass the initializers.
+    {
+      byte freqIncCap   = (oneStateFreqF < 127);
+      byte firstHitBump = (oneStateFreqF == 1 && totFreq < 4u*(uint)cumFreq);
+      FoundState->Freq  = oneStateFreqF + freqIncCap + firstHitBump;
+    }
     // commit the per-step predictor deltas (no freq0 rewind in this path)
     binSseCell[0] += 1568;
     *(uint*)q32 += wDelta32;
