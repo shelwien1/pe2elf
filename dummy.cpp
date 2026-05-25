@@ -3958,6 +3958,11 @@ LABEL_58:
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
     mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
     mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
+    // 6 neighbour-cell pointers along disjoint XOR dimensions of mixIdxB
+    // (each dim flips a different feature bit; the slot is the cell at the
+    // flipped index). q34/q35 are the "next" dimensions; q29..q32 are the
+    // "current" dimensions. Used by the per-step RescaleAccum2_ stack and
+    // the commit-tail `*(uint*)q## += wDelta##` writes.
     q32 = (sqword)&mixBaseB[2*(mixIdxB^0x1000)];
     q31 = (sqword)&mixBaseB[2*(mixIdxB^1)];
     q30 = (sqword)&mixBaseB[2*(mixIdxB^0x2000)];
