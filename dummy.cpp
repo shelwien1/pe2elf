@@ -3807,10 +3807,9 @@ LABEL_58:
     {
     int currentSymbol = MinContext->oneState().Symbol;
     MixCtx3 = currentSymbol;
-    uint seeIndex, suffixNStates;
-    int mixCtx;
+    uint   seeIndex, suffixNStates;
+    int    mixCtx, sparseFlags;
     sqword summFreqPtr;
-    int sparseFlags;
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
     sqword mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
     int* mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
