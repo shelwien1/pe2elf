@@ -3556,7 +3556,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int nStatesP1Save, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
-  int walkFreqSumE, walkSymE, currentSymbol, mixCtx, mixFreqB, mixHitsB;
+  int walkFreqSumE, walkSymE, mixFreqB, mixHitsB;
   int cumWeightB, cumFreqB, escSymB;
   int sse2CumInA, totFreqA;
   int cumFreq, oneStateFreqCachedF;
@@ -3570,17 +3570,16 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
-  uint seeIndex, suffixNStates;
   uint centerExpandB, binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC, sumFreqLimit;
   uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   char descendFlags, mixShiftB, mixShiftC, predShiftIncC;
-  sqword mixIdxA, mixIdxB, mixIdxC, sse2IdxA;
+  sqword mixIdxA, mixIdxC, sse2IdxA;
   sqword mixOffsetC, result;
   sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
   int *mixSlotA;
-  int *mixBaseB, *mixSlotB;
+  int *mixSlotB;
   int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short orderCtxSeedSave;
   char *mixSlotC;
@@ -3827,11 +3826,13 @@ LABEL_58:
     //  then dispatches to the range coder's binary match/escape decision.
     // -----------------------------------------------------------------------
     {
-    currentSymbol = MinContext->oneState().Symbol;
+    int currentSymbol = MinContext->oneState().Symbol;
     MixCtx3 = currentSymbol;
+    uint seeIndex, suffixNStates;
+    int mixCtx;
     PPMContextWalk(epoch, currentSymbol, &seeIndex, &suffixNStates, &mixCtx, &summFreqPtr, &sparseFlags);
-    mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
-    mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
+    sqword mixIdxB = mixCtx+(uint)SSE1[suffixNStates];
+    int* mixBaseB = &MixWeight1[0x8000*(qword)(byte)NextBinFreq[seeIndex]];
     // 6 neighbour-cell pointers along disjoint XOR dimensions of mixIdxB
     // (each dim flips a different feature bit; the slot is the cell at the
     // flipped index). q34/q35 are the "next" dimensions; q29..q32 are the
