@@ -1880,15 +1880,14 @@ LABEL_15:
 // =============================================================================
 //  UpdateModel == PPM_CONTEXT::cutOff(Order)  +  AuxCutOff inlined
 // =============================================================================
-sqword UpdateModel(byte* ctxBytes, uint order) {
-  PPM_CONTEXT* ctx   = (PPM_CONTEXT*)ctxBytes;
+sqword UpdateModel(PPM_CONTEXT* ctx, uint order) {
   uint         Order = order;
 
   // ---------------------------------------------------------------------------
   //  Single-state (NStates == 0) path
   // ---------------------------------------------------------------------------
   if (ctx->NStates == 0) {
-    byte* succPtr = (byte*)Indx2Ptr(ctx->oneState().iSuccessor);
+    PPM_CONTEXT* succPtr = (PPM_CONTEXT*)Indx2Ptr(ctx->oneState().iSuccessor);
     if ((sqword)succPtr >= UnitsStart) {                 // hasSuccessor
       if (Order < (uint)MaxOrder) {
         uint res = (uint)UpdateModel(succPtr, Order + 1);
@@ -1995,7 +1994,7 @@ sqword UpdateModel(byte* ctxBytes, uint order) {
     STATE* sLast = p0 + i;
     if (Order < (uint)MaxOrder) {
       do {
-        byte* succPtr = (byte*)Indx2Ptr(sLast->iSuccessor);
+        PPM_CONTEXT* succPtr = (PPM_CONTEXT*)Indx2Ptr(sLast->iSuccessor);
         sLast->iSuccessor = (uint)UpdateModel(succPtr, Order + 1);
         sLast--;
       } while (--i >= 0);
@@ -2196,7 +2195,7 @@ LABEL_73:
         RootContext = rootCtxW;
       }
     }
-    result = UpdateModel((byte*)rootCtxW, 0);
+    result = UpdateModel((PPM_CONTEXT*)rootCtxW, 0);
     ++GlueCount;
     CutOffCount = 0;
     pText = BList + 456;
