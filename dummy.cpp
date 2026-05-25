@@ -4442,8 +4442,8 @@ LABEL_59:
         sse1Slot = sse1SlotF;
         int mixCumWeightF, mixCumFreqF;
         Sse1Step_(sse1SlotF, hitsF, mixCumWeightF, mixCumFreqF);
-        uint centerWeightF = binMixCenter[3];
-        if( centerWeightF<=8 ) {
+        uint centerExpandF = binMixCenter[3];
+        if( centerExpandF<=8 ) {
           sseTot = mixCumWeightF;
           sseCum = mixCumFreqF;
         } else {
@@ -4453,7 +4453,7 @@ LABEL_59:
           predWeightA = (uint*)predWAF;
           predWBF = &predWBase[2*(((uint)seeIdxF>>4)&0x1F)+64];
           predWeightB = (uint*)predWBF;
-          char predBoostShiftF = centerWeightF<0x150;
+          char predBoostShiftF = centerExpandF<0x150;
           int  predWBVal = predWBF[1];
           uint predScaleAF = predWBVal+predWAVal;
           uint predScaledAF = (uint)(predWAVal*(sseEntryC2F+2))>>8;
@@ -4465,7 +4465,7 @@ LABEL_59:
           // predWPostF mixes both cells' num-slots (predWBF[0] + predWAF[0])
           // into the running mixCumFreqF accumulator.
           uint predWPostF = ((predConstAF*predTotEarlyF+predConstBF*(*predWBF+*predWAF))>>(predBoostShiftF+7))+mixCumFreqF;
-          char predShiftF = predBoostShiftF + (centerWeightF<0x48) + 3;
+          char predShiftF = predBoostShiftF + (centerExpandF<0x48) + 3;
           uint predDenIncF = ((uint)(192*(predConstAF+predConstBF))>>predBoostShiftF)+mixCumWeightF;
           predDeltaNum = 0x3000u>>predShiftF;
           char predDenShiftF = predBoostShiftF+4;
@@ -4490,11 +4490,12 @@ LABEL_59:
           sseCum = mixCumFreqF;
           sseTot = mixCumWeightF;
           {
-            char predDoExpandF = (centerWeightF<0x30)+1;
+            char predDoExpandF = (centerExpandF<0x30)+1;
             binMixDeltaHi = RescaleAccum2_(binUp8F, predDoExpandF);
             binMixDeltaLo = RescaleAccum2_(binDn8F, predDoExpandF);
           }
-          uint centerExpandF = binMixCenter[3];        // central cell predExpand counter
+          // (centerExpandF was read into the outer block; binMixCenter[3]
+          // hasn't been touched since, so re-use it here.)
           if( centerExpandF>0x48 ) {
             // Outer cells (binMixCenter ± 0x10000 words) accumulate the
             // expansion delta when the central freq's predExpand counter is
