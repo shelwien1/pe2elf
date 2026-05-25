@@ -98,14 +98,47 @@ extern "C" EXPORT HANDLE kernel32_GetModuleHandleW(LPCWSTR name) {
   return WIN_MODULE_HANDLE(wm);
 }
 
+// Flag bits documented for GetModuleHandleEx{W,A}.  We honor only
+// FROM_ADDRESS: PIN/UNCHANGED_REFCOUNT are no-ops because we don't
+// refcount module handles anyway.
+#define GET_MODULE_HANDLE_EX_FLAG_PIN                 0x1
+#define GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT  0x2
+#define GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS        0x4
+
 extern "C" EXPORT BOOL kernel32_GetModuleHandleExW(DWORD flags, LPCWSTR name, HANDLE* phModule) {
-  (void)flags;
+  if( phModule ) *phModule = NULL;
+  if( flags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS ) {
+    // FROM_ADDRESS: `name` is a code/data pointer inside a module, NOT a
+    // string.  Use dladdr to find the containing shared object, then
+    // dlopen(..., RTLD_NOLOAD) to get a handle without bumping the
+    // refcount.  If the address lies in the main PE image, hand back
+    // g_image_base directly.
+    if( !name ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+    Dl_info info;
+    if( !dladdr((const void*)name, &info) || !info.dli_fname ) {
+      SET_LAST_ERROR(ERROR_MOD_NOT_FOUND);
+      return FALSE;
+    }
+    if( info.dli_fbase == (void*)g_image_base ) {
+      if( phModule ) *phModule = (HANDLE)g_image_base;
+      return TRUE;
+    }
+    void* h = dlopen(info.dli_fname, RTLD_NOLOAD|RTLD_LAZY);
+    if( !h ) { SET_LAST_ERROR(ERROR_MOD_NOT_FOUND); return FALSE; }
+    if( phModule ) *phModule = h;
+    return TRUE;
+  }
   HANDLE h = kernel32_GetModuleHandleW(name);
   if( phModule )
     *phModule = h;
   return h ? TRUE : FALSE;
 }
 extern "C" EXPORT BOOL kernel32_GetModuleHandleExA(DWORD flags, LPCSTR name, HANDLE* phModule) {
+  // FROM_ADDRESS: `name` is a raw pointer, not a string — don't pass it
+  // through utf8_to_wchar.  Cast to LPCWSTR so the W variant's address
+  // path receives the original pointer.
+  if( flags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS )
+    return kernel32_GetModuleHandleExW(flags, (LPCWSTR)name, phModule);
   uint16_t wbuf[PATH_MAX];
   if( name ) utf8_to_wchar(name, wbuf, PATH_MAX);
   return kernel32_GetModuleHandleExW(flags, name ? wbuf : nullptr, phModule);
