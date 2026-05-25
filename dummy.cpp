@@ -2883,7 +2883,9 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     }
   } else {
     bdiffStickyCnt = 0;
-    bdiffSaved = bdiff-(bdiff==0);
+    // Save bdiff but turn 0 into -1 so the next "bdiff == bdiffSaved"
+    // comparison can never spuriously match a fresh zero start.
+    bdiffSaved = (bdiff == 0) ? -1 : bdiff;
   }
   ssem3  = (byte)*(sseSlot-3);
   ssem7  = (byte)*(sseSlot-7);
