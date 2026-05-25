@@ -3558,7 +3558,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE;
   int cumFreq, oneStateFreqCachedF;
-  int sxNStatesC, sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
@@ -3568,16 +3567,15 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
-  uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
-  uint sumFreqDivC, sumFreqLimit;
-  uint mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
+  uint totFreq, subRange;
+  uint sumFreqLimit;
+  uint maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   char descendFlags, predShiftIncC;
-  sqword mixIdxA, mixIdxC;
-  sqword mixOffsetC, result;
-  sqword sseQTableIdxA, sseQTableIdxC, summFreqPtr;
+  sqword mixIdxA;
+  sqword result;
+  sqword sseQTableIdxA, summFreqPtr;
   int *mixSlotA;
   short orderCtxSeedSave;
-  char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
   // Each SSE cascade stage publishes its slot pointer through one q-global so
@@ -4056,6 +4054,10 @@ LABEL_298:
       // ---------------------------------------------------------------------
       {
       q29 = q30 = q31 = q32 = q33 = (sqword)d27;
+      uint sumFreqDivC;
+      uint sumFreqCacheC = 0;
+      uint mixFreqCacheC = 0;
+      uint mixWeightC    = 0;
       if( descendNStates==255 ) {
         escCandidate = -1;
         EscapeSymbol = -1;
@@ -4090,12 +4092,12 @@ LABEL_298:
           CtxChainEnd = (sqword)chainEndE;
         }
         sx_p = MinContext->getSuffix();
-        sxNStatesC = sx_p->NStates;
+        int  sxNStatesC = sx_p->NStates;
         descendNStatesP1C = sxNStatesC+1;
         int maskFlagPrevC = epoch!=SymMask[PrevSymbol];
         // mixIdxC: composite index for the escape mirror's mix table.
         // Same shape as mixIdxA but with different inputs at each predicate.
-        mixIdxC = SseIdx{}
+        sqword mixIdxC = SseIdx{}
           .bits <0, 2> (MixCtx2)                                       // low 2 bits of mix counter
           .bit  <2>    (descendNStatesP1E*freqSumE > sumFreqCacheC*freqDeltaE) // freq-sum cross-product comparison
           .bit  <3>    (maskFlagPrevC                                  // either prev sym OR sx-rank-0 sym
@@ -4103,16 +4105,16 @@ LABEL_298:
           .bit  <4>    (freqDeltaE >= 2*sxNStatesC - 2*descendNStates) // did NStates shrink a lot?
           .bit  <5>    (sumFreqCacheC > 16*(uint)MinContext->NStates)  // was sign-trick: NStates vs SummFreq
           .field<6, 2> (minCtxFlagsC);                                 // Flags bits 6-7
-        sseQTableIdxC = SSE0QTable[descendNStatesP1E-2];
-        mixOffsetC = (sseQTableIdxC<<11)+8*mixIdxC;
+        sqword sseQTableIdxC = SSE0QTable[descendNStatesP1E-2];
+        sqword mixOffsetC = (sseQTableIdxC<<11)+8*mixIdxC;
         // mixSlotC and the matching freq slot (w12 is d29 offset by +4 bytes).
-        mixSlotC        = (char*)d29 + mixOffsetC;
+        char* mixSlotC  = (char*)d29 + mixOffsetC;
         mixWeightC      = *(int*) mixSlotC;
         mixFreqCacheC   = *(word*)((char*)&w12 + mixOffsetC);
         q34             = (sqword)mixSlotC;
         sseCum          = mixWeightC;
         sseTot          = mixFreqCacheC;
-        mixWeightDeltaC = RescaleAccum1_(mixSlotC, (uint)mixWeightC, 0);
+        uint mixWeightDeltaC = RescaleAccum1_(mixSlotC, (uint)mixWeightC, 0);
         if( mixWeightDeltaC>0x78 ) {
           // d29[]/MixWeight2[] index in 2-int-stride units.
           int* bigSlotC = &MixWeight2[2048 * sseQTableIdxC + 2 * (int)(SseIdx{}
