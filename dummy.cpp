@@ -2092,7 +2092,6 @@ sqword ReduceOrder() {
   sqword ctxSaved;
   int bListCountIdx;
   sqword escIdxClipped;
-  sqword bListSaved;
   sqword succAddrSaved;
   sqword rootCtxSaved;
   short foundSymFreq;
@@ -2258,7 +2257,6 @@ LABEL_11:
   (void)(result + heapNull); // prefetch hint removed
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
-    bListSaved = BList;
     succAddrSaved = heapNull+succIdx;
     rootCtxSaveLab99 = rootCtxW;
     if( EscIndexSeed+8>=14 )
