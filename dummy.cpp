@@ -337,9 +337,10 @@ byte SseState3[0x20000];
 //--- #include "context.h"
 
 enum {
-  UNIT_SIZE = 12,
-  N_INDEXES = 38,
-  MAX_O     = 16     // max PPM model order accepted by StartSubAllocator
+  UNIT_SIZE   = 12,
+  N_INDEXES   = 38,
+  MAX_O       = 16,  // max PPM model order accepted by StartSubAllocator
+  MEM_DIVISOR = 10   // suballocator: text/units split is (1/MEM_DIVISOR)/(rest)
 };
 
 // Reconstructs an absolute pointer from a 32-bit field like iStates of iSuffix or iSuccessor
@@ -1539,7 +1540,8 @@ sqword StartModelRare(int mode) {
     GlueCount = 0;
     
     // Dedicate a specific segment for unit state storage based on allocator metrics
-    byte* unitsSegment = (byte*)HeapStart + SubAllocatorSize - 108 * (int)(SubAllocatorSize / 120);
+    byte* unitsSegment = (byte*)HeapStart + SubAllocatorSize
+                       - UNIT_SIZE * (MEM_DIVISOR-1) * (int)(SubAllocatorSize / (UNIT_SIZE*MEM_DIVISOR));
     UnitsStart = (sqword)unitsSegment;
     LoUnit = (sqword)unitsSegment;
     *(uint*)unitsSegment = 0;
@@ -3149,14 +3151,15 @@ sqword PPMIIDeleteModel() {
 
   if( (InitsCount==1) && (CutOffCount+GlueCount==0) ) {
     qword textSize = ((char*)pText) - ((char*)HeapStart);
-    
-    qword scaledUnits = ((108 * (SubAllocatorSize / 120)) - (HiUnit-LoUnit)) / 9; // 108/120=0.9  /9=0.1?
-    
-    // Find the maximum of the two metrics
-    qword maxMetric = (scaledUnits > textSize) ? scaledUnits : textSize;
-    qword sizeLimit = (10 * maxMetric) + 12;
 
-    // Cap finalSize at the calculated limit
+    // Mirrors ppmd's GetSizeOfUnitsSection() = (size/(UNIT_SIZE*MEM_DIVISOR))
+    // * (MEM_DIVISOR-1) * UNIT_SIZE = (9/10)-ish of the heap, rounded.
+    qword USSize = UNIT_SIZE * (MEM_DIVISOR-1) * (SubAllocatorSize / (UNIT_SIZE*MEM_DIVISOR));
+    qword scaledUnits = (USSize - (HiUnit-LoUnit)) / (MEM_DIVISOR-1);
+
+    qword maxMetric = (scaledUnits > textSize) ? scaledUnits : textSize;
+    qword sizeLimit = MEM_DIVISOR * maxMetric + UNIT_SIZE;
+
     if( SubAllocatorSize > sizeLimit ) finalSize = sizeLimit;
   }
 
