@@ -2635,14 +2635,10 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- MatchPosTable update ------------------------------------------------
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
-  // ---- RSContext / Sse2State histogram rotation ---------------------------
-
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
   int    ssem3, ssem7;
   char   ssem11;
   byte   progResid1, progResid2;
-
-  // ---- three paired byte-hash predictors (b32/b33, b34/b35, b36/b37) ------
 
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
