@@ -26,148 +26,59 @@ on `book1` (via `make && sh t.sh`) must keep passing after every commit.
 
 ## What's still wrong
 
-Even after several cleanup passes the file still reads like decompiler
-output in many places. The following concrete examples — drawn mostly
-from `RealProcess` because it's where the work is currently focused —
-illustrate the categories of problem that remain throughout `dummy.cpp`.
+The file is now ~4800 lines. The helpers, allocator, range coder, and
+non-`RealProcess` model code (ReduceOrder, MixUpdate, CreateSuccessors,
+UpdateModel, BinEscFreq, RescaleCtx, StartModelRare, the SSE rescalers)
+all read like ordinary if-dense C++. What still **doesn't** read like
+idiomatic C++ is described below, in roughly decreasing order of impact.
 
-### A. The codec still depends on a sea of file-scope globals
+### A. `RealProcess` is still a 950-line decompilation
 
-The decompiler treated register spills and intermediate scratch as
-file-scope globals. Many turned out to be **per-symbol scratch**, but
-they still live as anonymous numeric globals:
+The body of `RealProcess<f_DEC>` runs from line ~3490 to ~4441. It has:
 
-```cpp
-// near the top of dummy.cpp
-sqword q9, q12, q17, q18, q19, q20, q21, q22, q23,
-       q24, q25, q26, q29, q30, q31, q32, q33, q34, q35,
-       q36, q37, q39;          // 22 "register" slots still here
-int    d27[0x70040], d29[0x2040], d90[4096];   // the surviving d-arrays
-```
+- **~75 local declarations** at the top, grouped by C type (one `int`
+  line per type per role-group), not by semantic role:
 
-Inside `RealProcess`, the q-slots get assigned in pairs alongside the
-real algorithm state, and the only way to follow the data flow is to
-grep for who reads each q:
+  ```cpp
+  // dummy.cpp:3517-3556 (excerpt, ~40 declaration lines total)
+  int sortPriorityC;
+  int sxNStatesC, mixFreqC;
+  int maskFlagPrevC, sumFreqCacheC;
+  int descendNStatesP1E, ofallSavedE;
+  int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
+  ...
+  sqword mixIdxA, sseSlot4A;
+  sqword sse2IdxA;
+  sqword mixIdxC, mixOffsetC, priorFoundStateF, sse3SlotC, sse4SlotC;
+  sqword sseSlot3A, sseQTableIdxC;
+  sqword sseQTableIdxA, summFreqPtr;
+  int *mixSlotA, *mixBaseAStride, *binMixSlotF, *sse1SlotF, *predWAF;
+  int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
+  int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA, *bigSlotC;
+  ```
 
-```cpp
-// in the multi-state SSE-mix block
-bigSlotA = &d29[512*sseQTableIdxA + 16*(maskFlagEsc|maskFlagPrev) + 2*((byte)mixIdxA & 0xF3)];
-q29 = (sqword)bigSlotA;
-q33 = (sqword)(mixSlotA + 2048);
-q32 = (sqword)(mixSlotA - 2048);
-```
+- **12 surviving gotos inside the body** (LABEL_14, _18, _58, _59,
+  _128, _165, _201, _250, _292, _296, _298, _335) — the structure of
+  the textbook PPMd outer loop is invisible.
 
-A reader can't tell which writes are "real outputs of this function"
-versus dead spills until they grep every other function for matching
-reads.
+- **~120 explicit `_A`/`_B`/`_C`/`_E`/`_F`/`_M` suffixed identifiers**
+  (`mixIdxA`, `seeIdxF`, `mixFreqC`, `freqSumE`, `sumFreqW0C`,
+  `mixWeightInitA`, `flagsSaveA`, …). The suffixes tag which
+  region/branch a local belongs to, because they all share function
+  scope.
 
-Goal: **classify each global** as either real persistent state (give
-it a semantic name; eventually move into a `Predictor`-like struct in a
-follow-up pass) or per-iteration scratch (make local, or drop entirely
-once proven dead).
+- **Inline copies of the Sse1 → SseMatch → Sse2 → Sse3 cascade** at
+  three sites: region A (lines ~3680–3860, multi-state path), region C
+  (lines ~4040–4130, the escape mirror), region F (lines ~4200–4290,
+  per-candidate). The per-stage helpers (`Sse1Step_` etc.) exist, but
+  the surrounding feature-index computation and the q##-slot
+  publishing are still spelled out three times.
 
-**Preferred technique now that the codebase is single-file:** rename the
-global *at its definition site* and update every reader in one commit.
-The cross-file ABI rationale that previously forced typed `int&` aliases
-is gone — `d51 → sseCum` can be a flat rename.
+`ReduceOrder`, `MixUpdate`, and `StartModelRare` once looked like
+this — they were unwound function-by-function. `RealProcess` is the
+last function still in its decompiled shape.
 
-A small carve-out remains: some d-globals are `int&` aliases into
-`d90[]` (e.g. `int& matchPosAge = d90[11];`). Leave that storage as an
-array element and rename only the reference identifier; turning a
-file-scope reference into a function-local one can perturb `-Ofast`
-register-allocation enough to change the encoded stream.
-
-Already done as direct renames at the definition site (file scope, no
-alias layer):
-
-```cpp
-int  sseCum, sseTot;           // d51, d97  — SSE cascade running pair
-int  predRescaleDiv;           // d95       — rewind-mult denominator
-int  cumFreqAcc;               // d96       — running cum-freq accumulator
-int  binMixDeltaHi, binMixDeltaLo, predBaseDeltaA, predBaseDeltaB;
-int  wDelta29..wDelta35;       // MixUpdate's predictor-delta stash
-int  predSseTotDelta, predWeightDelta;
-int  orderBumpVariance;        // d93 (PPMContextWalk variance tracker)
-char SymFreqs[256];            // b39        — per-symbol freq cache
-```
-
-Already done as `int&`/`sqword&` aliases at file scope (still needed:
-either they index into `d90[]` or the original `q##` storage is shared
-with other code paths):
-
-```cpp
-int&   q12BaseSel = d90[2];    // d90[2..14] are individually-named scratch slots
-int&   b31Key, Order1Ctx, b31KeyPrev, order1CtxSaved, matchHintByte;
-int&   bdiffSaved, bdiffStickyCnt, matchHashSy, matchPosAge, matchEpoch2;
-int&   matchDeltaSaved, sseState3Hash;
-sqword& CtxChainEnd = q14;
-sqword& q12 = (...overlay onto Sse2State at a specific byte offset...);
-```
-
-Inside `RealProcess`, the per-function `(int*&) q##` aliases survive:
-
-```cpp
-int*&  sse1Slot     = (int*&)q23;     // SSE cascade slot pointers,
-int*&  sseMatchSlot = (int*&)q19;     // each published into one q-global
-int*&  sse2Slot     = (int*&)q24;     // so MixUpdate can update the same
-int*&  sse3Slot     = (int*&)q25;     // cell on the way back out.
-word*& binMixCenter = (word*&)q21;
-uint*& binSseCell   = (uint*&)q36;
-uint*& predWeightA  = (uint*&)q39;
-uint*& predWeightB  = (uint*&)q37;
-byte*& sse2Base     = (byte*&)q12;
-```
-
-Plus `STATE*& FoundState = (STATE*&)q9;` used both in `ReduceOrder`
-and inlined into `RealProcess`.
-
-The remaining q-globals (q9, q17..q25, q29..q36, q37, q39) and the
-large arrays `d27` / `d29` are candidates for the same treatment as
-their semantics become clear.
-
-### B. The locals are still numerous and section-suffixed
-
-`RealProcess`'s declaration block holds ~140 locals organised by
-C type rather than by role:
-
-```cpp
-// top of RealProcess
-int inputByte, epoch, nStates, remStates, walkSym, sortPriority;
-int nStatesCnt, nStatesP1Save, sxNStates, minSumFreqA, sxSumFreqA0, sumFreqM;
-int mixConstM, sumFreqWM, mixWeightM;
-int escInitialSym, savedOrderFall, savedNMasked, mixWeightInitA;
-int mixFreqA3;
-/* ... ~60 more lines just like this, grouped by type ... */
-```
-
-Two things wrong here:
-
-1. **Every local has function scope** even though most are used in a
-   single ~20-line block. They have function scope because the goto
-   structure forces declarations to the top (a mid-function declaration
-   would be skipped by a goto into a later block).
-
-2. **Names still carry suffix tags** (`_A`, `_B`, `_C`, `_E`, `_F`,
-   `_M`) so the reader can tell which section of the function the
-   variable belongs to. That's a workaround for the goto structure:
-   when every block shares the same scope, you need section tags to
-   disambiguate. With structured code, `sumFreq` in two functions is
-   fine. Roughly 500 identifier occurrences in `RealProcess` still
-   carry one of these suffixes.
-
-`ReduceOrder` is no longer in this state — its ~70 `v##` decompiler
-locals have been renamed by role, and the function now reads
-comparably to `StartModelRare`. The same per-function cleanup has been
-applied to `MixUpdate`, `CreateSuccessors`, `UpdateModel`, `BinEscFreq`,
-`RescaleCtx`, and the SSE helpers; `RealProcess` is the last holdout.
-
-Goal: **let the goto-eliminated structure shrink the scopes**, then
-drop the suffix tags. Names like `mixWeightM`, `cumFreqMixA`,
-`sumFreqW0C` are tolerable in the current code but should be plain
-`mixWeight`, `cumFreq`, `sumFreqW` once they live in separate
-functions.
-
-### C. The labels make the textbook structure invisible
+### B. The labels make the textbook structure invisible
 
 The original ppmd.cpp `RealEncode` reads as:
 
@@ -191,110 +102,289 @@ SYMBOL_FOUND:
 ```
 
 The PE version implements the same algorithm but spreads it across
-seven jump targets:
+twelve jump targets:
 
-```cpp
-//  LABEL_14 / LABEL_18         ~  encode1 state-sort body
-//  LABEL_58 / LABEL_59         ~  shared mixing-loop entry
-//  LABEL_128                   ~  escape suffix descent
-//  LABEL_292 / 296 / 298       ~  encode2 candidate-set build
-//  LABEL_335                   ~  freq-bound clamp
-//  LABEL_250                   ~  SYMBOL_FOUND tail
+```
+LABEL_14 / LABEL_18      ~ encode1 state-sort body            (2 entries)
+LABEL_58 / LABEL_59      ~ shared mixing-loop entry
+LABEL_128                ~ escape suffix descent              (back-edge)
+LABEL_165 / LABEL_201    ~ trail / deep find-and-bubble paths (in MixUpdate)
+LABEL_250                ~ SYMBOL_FOUND tail
+LABEL_292 / 296 / 298    ~ encode2 candidate-set build
+LABEL_335                ~ freq-bound clamp
 ```
 
-with `goto LABEL_x` from multiple sources entering each. A first-time
-reader has no way to recognise that this is the textbook PPMd outer
-loop until they map every label by hand.
+with multiple `goto LABEL_x` edges entering each. A first-time reader
+has no way to recognise that this is the textbook PPMd outer loop until
+they map every label by hand.
 
 Goal: **structure the body so each ppmd primitive is a named function
-or a clearly-delimited block.** The labels can stay only where the
-underlying control flow really is irreducible; everywhere else, prefer
-a regular `if`/`else` and `while`.
+or a clearly-delimited block.** Labels can stay where the control flow
+really is irreducible; everywhere else, prefer `if`/`else`/`while`.
 
-### D. The Sse cascade is written out twice inside `RealProcess`
+Of the twelve labels, the ones that look genuinely irreducible are
+LABEL_14/18 (the encode1 sort loop with two re-entry edges), LABEL_58
+(shared mixing-loop entry from two predecessors), LABEL_292/296/298
+(the candidate-set sort with cross-block back edge), and LABEL_165/201
+inside MixUpdate (trail/deep find-and-bubble paths). LABEL_128
+(escape descent) and LABEL_250 (SYMBOL_FOUND tail) look structurable.
 
-The four-stage cascade `Sse1 → SseMatch → Sse2 → Sse3` runs in two
-places inside `RealProcess`: once in the single-state binary branch
-(`B`-suffix locals, running once per symbol) and once in the LABEL_59
-per-candidate loop (`F`-suffix locals, running once per candidate
-symbol during an escape). The body shape is identical aside from which
-locals it reads:
+### C. The Sse cascade is written out three times
+
+Region A (multi-state) and region F (per-candidate escape) run the
+same `Sse1 → SseMatch → Sse2 → Sse3` cascade. Region C (escape
+mirror after LABEL_298) runs a parallel `PredWeight + d27`-based
+cascade. The per-stage helpers exist (`Sse1Step_`, `Sse2Step_`,
+`Sse3Step_`, `SseMatchStep_`), but each call-site builds the feature
+bitfield, publishes the slot pointer to one of the `q##` globals, and
+captures intermediates into a different `_A`/`_C`/`_F`-suffixed local:
 
 ```cpp
-// LABEL_59 per-candidate, around line 993
-sse1SlotF      = &Sse1[2 * OrderCtxSeed];
-q23            = (sqword)sse1SlotF;
-sse1D51        = d51;
-sse1Clamp      = SseClampMean_(sse1SlotF, hitsF, 1 - d51, 0x40000);
-SseDeltaUpdate_(sse1SlotF, sse1D51, 0x40000, 4096, 2);
-mixCumWeightF  = sse1Clamp + d97;
-mixCumFreqF    = sse1Clamp + sse1D51;
+// dummy.cpp:~3850 (region A)
+sse1SlotA      = &Sse1[2 * OrderCtxSeed];
+sse1Slot       = sse1SlotA;                   // publish to q23
+sse2CumInA     = sseCum;
+Sse1Step_(sse1SlotA, mixHitsA, cumWeightA, cumFreqA);
+```
+```cpp
+// dummy.cpp:~4220 (region F, per-candidate)
+sse1SlotF      = &Sse1[2 * orderCtxSeedSave];
+sse1Slot       = sse1SlotF;                   // publish to q23
+int sse1CumIn  = sseCum;
+Sse1Step_(sse1SlotF, hitsF, cumWeightF, cumFreqF);
+```
+
+Same shape, three suffixed copies. The next step is to extract the
+**whole stage A→F mirror** as a single function — but that requires
+first promoting the surrounding locals from "_A/_F-suffixed
+function-scope" to "parameters of an extracted helper", which is
+section A above.
+
+### D. `MixUpdate` is logically sectioned but still one 635-line function
+
+`MixUpdate` (dummy.cpp:2382-3017) is clean per-section but each
+section is a 30-60 line stretch of dense arithmetic that would be
+clearer as a named helper. Major sections:
+
+```
+2508-2538   Section 1: weight-predictor commits (6× wQxx += δ)
+2539-2566   Section 2: SymCount-- / SseSlot positioning
+2576-2603   Section 3: per-symbol Sse2State/SseState3 updates + hash rotation
+2604-2611   Section 4: RecentPos / SseCtx0_1 epoch update
+2612-2640   Section 5: Sse2State histogram increment + halve-on-overflow
+2641-2680   Section 6: MixScale heuristic (sym==FoundSymbol / dt-based / sseSlot history)
+2681-2735   Section 7: m2_prev/m2_h cascade with consensus-arm loop
+2738-2756   Section 8: BijectPairUpdate cascade (b32/33, b34/35, b36/37)
+2757-2849   Section 9: BijectMap prediction branch (5-level nested if-else on b1/b2/b3)
+2855-3015   Section 10: OrderFall suffix walk (deep / trail find-and-bubble)
+```
+
+Sections 5, 7, and 9 are obvious extraction candidates:
+
+```cpp
+// dummy.cpp:2646-2652 — section 5, histogram halve-on-overflow
+if (newHistCnt > 0xA7u) {
+  *counter = 0;
+  for (sqword j = 0; j < 512; ++j) {
+    int halved = sse2Base[j] >>= 1;
+    *counter += halved;
+  }
+}
+```
+```cpp
+// dummy.cpp:2715-2725 — section 7, m2-chain consensus loop
+m2_bias = 0;
+do {
+  m2_bias += 6144;
+  m2_h3 = (byte)MatchPosHash[(m2_prev3+3)&0x1FFFF];
+  SymLastCtx2[m2_h3] = sc;
+  m2_h1 &= m2_h3;
+  m2_h2 = m2_h3 | m2_h2;
+  m2_prev3 = MatchPosPrev[m2_prev3&0x1FFFF];
+} while ((uint)(m2_bias+symEpochN-m2_prev3) < 0x20000);
+```
+
+Goal: **extract Section 5/7/9 as `HalveHistogram_`,
+`WalkM2Consensus_`, `BijectPrediction_` helpers**, taking the locals
+they need as parameters. Each is self-contained — Section 9 in
+particular is currently a 60-line block of nested `if/else if/else`
+on `(b1,b2,b3)` equality patterns that would read much better as a
+small predicate ladder.
+
+### E. The q-globals still don't have semantic names
+
+Twenty-two `sqword q##` globals (q9, q12, q14, q17..q25, q26, q29..q37,
+q39) survive. Inside each function they're aliased to a typed pointer
+with a semantic name, but **the underlying global is the channel
+between cascade stages and `MixUpdate`** — so the alias has to live
+at file scope or be re-established at every call site. Current state:
+
+```cpp
+// dummy.cpp:108-113, 247-264 — bare q-global declarations
+sqword q9, q12, q14, q17, q18, q19, q20, q21, q22, q23,
+       q24, q25, q26, q29, q30, q31, q32, q33, q34, q35,
+       q36, q37, q39;
+```
+
+| q##  | What it points to (semantic name where one exists)             |
+|------|----------------------------------------------------------------|
+| q9   | `FoundState` (STATE\*)                                          |
+| q12  | `sse2Base` (current Sse2State sub-block, byte\*) — overlay     |
+| q14  | `CtxChainEnd` (sqword) — already file-scope aliased            |
+| q17  | `wQ17` (predictor-pair int\*; binMixDeltaHi target)            |
+| q18  | `wQ18` (predictor int\*; predBaseDeltaB target)                |
+| q19  | `sseMatchSlot` (int\*; sseMatchNumDelta/sseMatchDenDelta pair) |
+| q20  | `wQ20` (predictor int\*; binMixDeltaLo target)                 |
+| q21  | `binMixCenter` (word\*; center of a 4-word binary-mix cell)    |
+| q22  | `wQ22` (predictor int\*; predBaseDeltaA target)                |
+| q23  | `sse1Slot` (int\*; sse2NumDelta/sse2DenDelta pair)             |
+| q24  | `sse2Slot` / `wpQ24` (predictor pair int\*)                    |
+| q25  | `sse3Slot` / `wpQ25` (predictor pair int\*)                    |
+| q26  | BijectMap cell (byte\*; sym/prev1/prev2/count quadruple)       |
+| q29..q36 | d27/d29-indexed mixing-table slots; reassigned per cascade |
+| q37, q39 | PredWeight A/B cells (uint\*)                              |
+
+A reader has to grep five other functions to learn which q## means
+what. Goal: rename each of these at the definition site, the same way
+`d51 → sseCum` was done.
+
+### F. The d-arrays still expose raw byte-offset arithmetic
+
+```cpp
+// dummy.cpp:89-92
+int d29[0x2040];      // 8 KB — escape-mirror mix table
+int d27[0x70040];     // ~448 KB — primary mix-model heap, keyed by SSE0QTable
+int d90[4096];        // 16 KB — predictor metadata + RecentPos ring
+```
+
+`d90[]` is well-named: each individual slot has a file-scope `int&`
+alias (`q12BaseSel`, `b31Key`, `Order1Ctx`, …), and `RecentPos =
+&d90[15]` covers the ring buffer.
+
+`d27` and `d29` are accessed via raw byte-offset arithmetic plus a
+small herd of overlay aliases (`MixBound1..6`, `MixFreq1_1`, `b16`,
+`b19`, `w11`, `w12`) declared at file scope. Example:
+
+```cpp
+// dummy.cpp:4061 — mixOffsetC indexes into d29 via byte arithmetic
+mixOffsetC = (sseQTableIdxC<<11)+8*mixIdxC;
+mixSlotC   = (char*)d29 + mixOffsetC;
+mixWeightC = *((word*)mixSlotC+3);          // word at offset +6
+mixFreqC   = *(word*)((char*)&w12+mixOffsetC);
+```
+
+There's no struct describing the per-row layout of d27/d29; the
+`<< 11` / `2048` / `+ 8` / `+2048` strides are scattered everywhere.
+
+### G. The b##-named hash tables are opaque
+
+Eight 64 KB byte arrays overlaid on `Sse2State`:
+
+```
+b27 — order-1 byte predictor (RSContext × prev-symbol → most-likely-sym)
+b28, b29, b30 — three byte-pair hash arms feeding HashArmUpdate_
+b31 — byte-pair hash with SymLastCtx routing
+b32/b33, b34/b35, b36/b37 — three paired byte-hash predictors (BijectPairUpdate_)
+```
+
+Plus `b16[0x20000]` overlaid by `MixBound1` and friends. Plus a
+small herd of tiny const tables `b11, b17, b18, b20, b21, b22, b23,
+b24` used by `PopCountWeighted_` and the prior init.
+
+Renaming these is low value until their roles are pinned down: each
+is a hash from some byte-pair feature to a byte symbol or epoch
+stamp, but the precise feature engineering isn't documented anywhere
+in `dummy.cpp` or `ppmd.cpp`.
+
+### H. Magic constants without explanation
+
+A handful of literals appear in arithmetic with no comment:
+
+```cpp
+// dummy.cpp:2533 — magic 133144 inside sseSlot positioning
+sseSlot = (char*)&Sse2State[(symEpoch & 0x1FFFF) + 133144];
+
+// dummy.cpp:2646 — magic 0xA7 (167) histogram-halving trigger
+if (newHistCnt > 0xA7u) { *counter = 0; ... }
+
+// dummy.cpp:2718 — magic 6144 bias step inside m2-chain consensus
+m2_bias += 6144;
+
+// dummy.cpp:3925 — magic 0x2C00 inside SSE3 bitfield .bit<11>
+.bit  <11>   ((uint)matchPosAge < 0x2C00)
+
+// dummy.cpp:1599-1606 — fill the SSE/match tables with 0x55 (not 0x00)
+memset(SseState2,  0x55u, 0x80000);
+memset(SseState3,  0x55u, 0x20000);
+memset(MatchPosTable, 0x55u, 0x40000);
+```
+
+The `0x55` fill is intentional: most cells are then read via small
+arithmetic that would produce useless probabilities at 0; 0x55…
+gives a flat prior. But that's not stated anywhere. `0x1FFFF` (the
+17-bit mask) and `0x40000` (the SSE-clamp ceiling) likewise appear
+dozens of times without a named constant.
+
+### I. Scattered decompiler-shaped expressions
+
+A few patterns remain that no human would write fresh:
+
+```cpp
+// dummy.cpp:2668 — comma operator + assign-in-condition for triple-byte history check
+if (ssem3==ssem7
+    || (ssem11 = *(sseSlot-11), (byte)(ssem11+(byte)ssem3-2*(byte)ssem7))
+    || (byte)(*(sseSlot-15)+(byte)ssem7-2*ssem11)) {
 ```
 
 ```cpp
-// Single-state binary branch, around line 528
-sse1SlotB      = &Sse1[2 * OrderCtxSeed];
-q23            = (sqword)sse1SlotB;
-sse1D51B       = d51;
-sse1ClampB     = SseClampMean_(sse1SlotB, mixHitsB, 1 - d51, 0x40000);
-SseDeltaUpdate_(sse1SlotB, sse1D51B, 0x40000, 4096, 2);
-cumWeightB     = sse1ClampB + d97;
-cumFreqB       = sse1ClampB + sse1D51B;
+// dummy.cpp:2614 — matchKey = sym + (matchHi << 8), wrapped in 3 nested casts
+matchKey = sym + (sqword)(int)((uint)matchHi<<8);
 ```
-
-The same parallel exists for the `SseMatch`, `Sse2`, and `Sse3`
-stages — eight near-identical blocks total. Today they are held in
-parallel only by the `_B` / `_F` suffix convention and a hope that
-they don't drift. The right form is a single `sseStage(...)` function
-called from both sites.
-
-Goal: **collapse the mirrored cascade** once the surrounding locals
-that feed each stage are passed by reference instead of read out of
-file scope.
-
-### E. The `sseCum = X; sseTot = Y` pattern still has redundant writes
-
-Each stage of the SSE cascade publishes its result to the
-`sseCum`/`sseTot` running pair (which the next stage reads). The
-locals that get copied to those names are usually throwaway, but the
-publish lines stay in the source because:
-
-  * `sseCum` aliases `d51`, which `MixUpdate` reads on the way out;
-  * the next stage reads `sseCum`/`sseTot` to start its own cell update.
 
 ```cpp
-// inside the if(mixDeltaA>0x80) block, after the neighbour-cell blend
-mixWeightA = ((mixWeightSavedA + *(mixSlotA-2048))       >> (mixShiftA+1)) + mixWeightA;
-mixFreqA   = ((uint)(*((word*)mixSlotA+4098)
-                   + *((word*)mixSlotA-4094))            >> (mixShiftA+1)) + mixFreqA;
-sseCum = mixWeightA;                    // alias of d51 — read by MixUpdate
-sseTot = mixFreqA;                      // alias of d97 — read by the next cascade stage
-d98    = RescaleAccum1_(mixSlotA + 2048, mixWeightSavedA, mixShiftA);
+// dummy.cpp:3919-3920 — escape probability, multi-line expression with no intermediates
+result = (int)(16*(oneStateFreqCachedF*cumFreq + cumFreq - oneStateFreqCachedF*totFreq))
+       / (int)(totFreq + totFreq*oneStateFreqCachedF);
 ```
 
-The reader still has to track that `sseCum`/`sseTot` are an in-band
-"probability accumulator" pair passed forward through the stages,
-both inside this function and into `MixUpdate` afterwards.
+```cpp
+// dummy.cpp:4423 — q34 slot read via word[3] in caller (no captured wDelta34 for this slot)
+RewindPredictor_(q34, ((word*)q34)[3], rewindMult);
+```
 
-Goal: **make the (cumFreq, totFreq) pair an explicit value** that
-flows through the helpers (a small `struct ProbEstimate { uint cum;
-uint tot; }` or two named locals), so the intra-cascade publishes can
-fall away — at minimum the ones that have no MixUpdate consumer.
-Done so far: the d51/d97 globals have been renamed to sseCum/sseTot
-via function-local references (Section A). Sse1Step_/Sse2Step_/
-Sse3Step_/SseMatchStep_ helpers now collapse the four cascade stages
-into one body each, used by both region A (single-state binary) and
-region F (per-candidate). The remaining `predSseTotDelta = sseTot;`
-and similar intra-cascade publishes inside the helpers preserve the
-ABI to MixUpdate; the next step is to prove which are dead and delete
-them.
+```cpp
+// dummy.cpp:2294 — promote NStates==0 → NStates==1, with foundSym packed into SummFreq
+newCtx->NStates  = 0;
+newCtx->Flags    = newFlags;
+newCtx->SummFreq = newSym;   // SummFreq word doubles as (sym, freq=0) when NStates==0
+```
 
-### F. The non-`RealProcess` functions
+These are technically correct and the surrounding helpers have been
+named, but the local expression still leaks the binary memory layout.
 
-Status: largely cleaned up. Every function outside `RealProcess` has
-had its `v##` locals renamed by role, its `a#` parameters renamed,
-its byte-offset arithmetic typified, its dead writes pruned, and its
-single-use locals folded into their callers. Summary by category:
+### J. Section-suffix names live on outside `RealProcess` too
+
+`RealProcess` is the worst offender, but the same suffix style appears
+inside `MixUpdate` (`m2_h1`, `m2_h2`, `m2_h3`, `m2_prev1..3`,
+`m2_bias`) and at file scope (`b31Key` / `b31KeyPrev`, `Order1Ctx` /
+`order1CtxSaved`). The `m2_*` cluster is benign — it tags one
+algorithm phase, the same way `MatchPos*` tags another. The
+`*Saved` / `*Prev` pairs reflect a real "snapshot before update"
+pattern. Goal: live with these; they're communicating something
+real.
+
+The truly bad ones are the `_A` / `_B` / `_C` / `_E` / `_F` / `_M`
+suffixes inside `RealProcess`, which exist only because every local
+shares one function scope.
+
+## What's already been cleaned up
+
+Reference list of what's *not* wrong any more, kept here so future
+passes don't try to redo work that's been done. Every function
+outside `RealProcess` has had its `v##` locals renamed by role, its
+`a#` parameters renamed, its byte-offset arithmetic typified, its
+dead writes pruned, and its single-use locals folded into their
+callers. Summary by category:
 
 **Helper functions factored out of inlined bodies:**
 - `FreeUnitsRare`, `AllocUnits_`, `AllocContext_`, `UnitsCpy_`,
@@ -398,27 +488,8 @@ block.
 - `StartSubAllocator`'s `a2_order` / `a3` params → `order` / `cutOff`;
   caller's `param1/2/3` → `memoryMB` / `modelOrder` / `resetMethod`.
 
-Remaining work in this category:
-- **`RealProcess` itself** — the only function still carrying the
-  decompiler-output shape (sections B, C, D, E above). Locals are
-  semantically named but section-suffixed (`_A`/`_B`/`_C`/`_E`/`_F`/`_M`);
-  control flow is still goto-driven.
-- **d27 / d29 arrays** — large mix-model heaps. Renaming the array
-  identifier is mechanical but each has 4-7 sibling `auto&` byte-offset
-  aliases (MixBound2..6, b19, w11, w12) that would need to update in
-  lockstep. Defer until a clear naming scheme emerges.
-- **b##-named hash tables** (b25, b27, b28, b29, b30, b31, b32..b37) —
-  hash-table views overlaid on `Sse2State` at specific byte offsets,
-  with semantic roles (SymLastCtx routing, byte-hash arm predictors,
-  paired byte-hash predictors). The bN names are short enough that
-  renaming is low value until their roles are fully understood.
-- **small const tables b11/b17/b18/b20/b21/b22/b23/b24** — init-time
-  constants used by `PopCountWeighted_` and the StartModelRare prior
-  computations. Renaming requires understanding what each table
-  represents.
-- **Region A/F SSE cascade unification** (section D below) — the
-  per-stage helpers exist but the surrounding locals are still
-  duplicated `_A` / `_F` pairs.
+(Remaining work is enumerated in "What's still wrong", sections
+A–J above.)
 
 ## Non-goals
 
