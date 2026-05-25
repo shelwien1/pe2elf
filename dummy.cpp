@@ -2640,16 +2640,15 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   newQ12Sel   = q12BaseSel;
   if (sym != RSContext) {
     sse2Base = (byte*)q12;
-    byte* histo = sse2Base;
     uint* counter = (uint*)(sse2Base + 512);
     *counter += 2;
     sseHistOff = ((word)sym - rsCtx) & 0x1FF;
-    newHistCnt = histo[sseHistOff] + 2;
-    histo[sseHistOff] = newHistCnt;
+    newHistCnt = sse2Base[sseHistOff] + 2;
+    sse2Base[sseHistOff] = newHistCnt;
     if (newHistCnt > 0xA7u) {
       *counter = 0;
       for (j = 0; j < 512; ++j) {
-        halved = histo[j] >>= 1;
+        halved = sse2Base[j] >>= 1;
         *counter += halved;
       }
     }
