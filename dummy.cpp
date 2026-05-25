@@ -3700,7 +3700,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int *mixSlotA;
   int *mixBaseB, *mixSlotB;
   int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
-  short matchCtxHiSave, orderCtxSeedSave;
+  short orderCtxSeedSave;
   char *mixSlotC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
   // because MixUpdate also reads sseCum on its way out.
@@ -4341,7 +4341,7 @@ LABEL_59:
           .bit<1>(SparseBit & SparseBitmapB[SparseIdxB]);
         predWeightB = (uint*)&predWeightSink2;      // dummy sink: PredWeight stage not taken
         predWeightA = (uint*)&predWeightSink2;
-        matchCtxHiSave = MatchCtxHi;
+        short matchCtxHiSave = MatchCtxHi;
         int matchTblHitF = MatchPosTable[256*MatchCtxHi+candSymbol];
         ComputeMatchHints_(matchTblHitF, candSymbol);
         // seeIdxF: composite index for the per-candidate mix table d27[].
