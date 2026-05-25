@@ -4477,8 +4477,8 @@ LABEL_59:
     }
     if( !f_DEC ) rc.encodeSymbol(subRange);
     FoundState = &MinContext->oneState();
-    oneStateFreqF = MinContext->oneState().Freq;
-    q9 = (sqword)&MinContext->oneState();
+    oneStateFreqF = FoundState->Freq;
+    q9 = (sqword)FoundState;
     MixCtx = 1;
     MinContext->oneState().Freq = (oneStateFreqF-127<0)
                                 + oneStateFreqF
