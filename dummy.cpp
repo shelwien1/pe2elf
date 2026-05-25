@@ -3742,7 +3742,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
   uint totFreqC, subRangeC;
   uint seeIndex, suffixNStates;
-  uint mixShiftSelB, binSseVal;
+  uint centerExpandB, binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
   uint sumFreqDivC;
   uint mixWeightSavedA, mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
@@ -4035,9 +4035,9 @@ LABEL_58:
     sse1SlotB = &Sse1[2*OrderCtxSeed];
     sse1Slot = sse1SlotB;
     Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
-    mixShiftSelB = binMixCenter[3];
+    centerExpandB = binMixCenter[3];
     escSymB = MixCtx3;                  // both arms below want this snapshot
-    if( mixShiftSelB<=0x20 ) {
+    if( centerExpandB<=0x20 ) {
       sseTot = cumWeightB;
       sseCum = cumFreqB;
       // Cheap-path: skip the deeper BinSse sub-stage. Reset all 10 SSE/mix
@@ -4058,12 +4058,12 @@ LABEL_58:
 
       binSseVal = *binSseSlotB;
       binSseCell = (uint*)binSseSlotB;
-      int mixSseMeanB = (binSseVal>>(mixShiftSelB<0x230))+cumFreqB;
-      int mixSseFreqB = (0x3100u>>(mixShiftSelB<0x230))+cumWeightB;
+      int mixSseMeanB = (binSseVal>>(centerExpandB<0x230))+cumFreqB;
+      int mixSseFreqB = (0x3100u>>(centerExpandB<0x230))+cumWeightB;
       sseCum = mixSseMeanB;
       sseTot = mixSseFreqB;
       *binSseSlotB = binSseVal-((binSseVal+2)>>3);
-      mixShiftB = mixShiftSelB<0x220;
+      mixShiftB = centerExpandB<0x220;
       predBaseDeltaA = RescaleAccum2_((void*)PredBaseAG, mixShiftB);
       predBaseDeltaB = RescaleAccum2_((void*)PredBaseBG, mixShiftB);
       // blend the two neighbour cells (binMixCenter ± 0x10000 words) into
