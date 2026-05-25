@@ -4494,8 +4494,8 @@ LABEL_59:
             binMixDeltaHi = RescaleAccum2_(binUp8F, predDoExpandF);
             binMixDeltaLo = RescaleAccum2_(binDn8F, predDoExpandF);
           }
-          uint predExpA = binMixCenter[3];
-          if( predExpA>0x48 ) {
+          uint centerExpandF = binMixCenter[3];        // central cell predExpand counter
+          if( centerExpandF>0x48 ) {
             // Outer cells (binMixCenter ± 0x10000 words) accumulate the
             // expansion delta when the central freq's predExpand counter is
             // beyond the threshold.
@@ -4503,7 +4503,7 @@ LABEL_59:
             word* binDn16F = binMixCenter - 0x10000;
             PredBaseAG = (sqword)binUp16F;
             PredBaseBG = (sqword)binDn16F;
-            char predExpShiftF = (predExpA<0x1E0)+(predExpA<0x3D0)+1;
+            char predExpShiftF = (centerExpandF<0x1E0)+(centerExpandF<0x3D0)+1;
             predBaseDeltaA = RescaleAccum2_(binUp16F, predExpShiftF);
             predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
           }
