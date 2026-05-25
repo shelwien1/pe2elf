@@ -2158,9 +2158,10 @@ LABEL_9:
 LABEL_73:
     if( !CutOff )
       return StartModelRare(2);
-    if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
+    PPM_CONTEXT* rootCtxP1 = (PPM_CONTEXT*)rootCtxW;
+    if (rootCtxP1->NStates == 1) {
       PPM_CONTEXT* parentCtx = ctxBW;
-      if (parentCtx->NStates == 0 && (PPM_CONTEXT*)rootCtxW != ctxBW) {
+      if (parentCtx->NStates == 0 && rootCtxP1 != ctxBW) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
         // each one's 2-STATE[] block down to a single oneState. The kept state
         // is the one whose Symbol matches the parent's oneState.Symbol -- if
