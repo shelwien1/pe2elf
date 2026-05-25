@@ -1936,12 +1936,9 @@ sqword UpdateModel(byte* ctxBytes, uint order) {
         --i;
       } else {
         if (p != p1) {                                   // SWAP(*p1, *p)
-          word tw = *(word*)p1;
-          uint ts = p1->iSuccessor;
-          *(word*)p1     = *(word*)p;
-          p1->iSuccessor = p->iSuccessor;
-          *(word*)p      = tw;
-          p->iSuccessor  = ts;
+          STATE tmp = *p1;
+          *p1 = *p;
+          *p  = tmp;
         }
         p1++;
       }
