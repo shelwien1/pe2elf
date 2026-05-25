@@ -1155,11 +1155,9 @@ sqword RescaleCtx(byte* ctxBytes) {
     if (endPtr[1]) {
       ctx->Flags |= SSE0[*endPtr];
     } else {
-      // shift states (k+1..N) down to (k..N-1); mark last as removed
-      for (byte* p = endPtr; p < lastSlot; p += 6) {
-        uint succ = *((uint*)p + 2);
-        *(word*)p       = *((word*)p + 3);
-        *(uint*)(p + 2) = succ;
+      // Shift STATEs (k+1..N) down to (k..N-1); mark last as removed.
+      for (STATE* p = (STATE*)endPtr; p < (STATE*)lastSlot; ++p) {
+        *p = p[1];
       }
       lastSlot[1] = 0;
     }
