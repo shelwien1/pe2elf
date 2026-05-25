@@ -1555,7 +1555,6 @@ sqword StartModelRare(int mode) {
     LoUnit = (sqword)unitsSegment;
     *(uint*)unitsSegment = 0;
     
-    byte* heapNullOffset = (byte*)heapBlocks - 1;
     HeapNull = (sqword)heapBlocks - 1;
     
     // Initialize all 38 allocation queues to point to themselves symmetrically
@@ -1597,7 +1596,7 @@ sqword StartModelRare(int mode) {
     sqword stateStorageAddr = AllocUnits_((uint)preferredIndex);
 
     q9 = stateStorageAddr;
-    rootCtxP->iStates = (uint)(stateStorageAddr - (uint)(uintptr_t)heapNullOffset);
+    rootCtxP->iStates = Ptr2Indx(stateStorageAddr);
     MixCtx = 0;
     MixCtx2 = 0;
     MixCtx3 = 0;
