@@ -1756,9 +1756,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   sqword heapNull;
   uint seedSuccIdx;
   STATE** chainPtr;
-  STATE* foundStateB;
-  uint suffixIdx0;
-  sqword ctxAddr;
   int stateSuccIdx;
   heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
@@ -1778,31 +1775,33 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     if ((qword)chainPtr >= CtxChainEnd) break;
     seedCtx = HeapNull + ctxSuffixIdx;
   }
-  foundStateB = FoundState;
-  suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
-  while (1) {
-    ctxAddr = heapNull + suffixIdx0;
-    // Find the STATE for sym=FoundState->Symbol in this suffix context.
-    PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
-    STATE* state;
-    if (pc->NStates) {
-      int sym = foundStateB->Symbol;
-      state = pc->getStates();
-      while (state->Symbol != sym) state++;
-    } else {
-      state = &pc->oneState();
+  {
+    STATE* foundStateB = FoundState;
+    uint suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
+    while (1) {
+      sqword ctxAddr = heapNull + suffixIdx0;
+      // Find the STATE for sym=FoundState->Symbol in this suffix context.
+      PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
+      STATE* state;
+      if (pc->NStates) {
+        int sym = foundStateB->Symbol;
+        state = pc->getStates();
+        while (state->Symbol != sym) state++;
+      } else {
+        state = &pc->oneState();
+      }
+      stateSuccIdx = state->iSuccessor;
+      if (stateSuccIdx != seedSuccIdx) break;
+      suffixIdx0 = pc->iSuffix;
+      *chainPtr = state;
+      ++chainPtr;
+      if (!suffixIdx0) {
+        seedCtx = ctxAddr;
+        goto LABEL_15;
+      }
     }
-    stateSuccIdx = state->iSuccessor;
-    if (stateSuccIdx != seedSuccIdx) break;
-    suffixIdx0 = pc->iSuffix;
-    *chainPtr = state;
-    ++chainPtr;
-    if (!suffixIdx0) {
-      seedCtx = ctxAddr;
-      goto LABEL_15;
-    }
+    seedCtx = heapNull+stateSuccIdx;
   }
-  seedCtx = heapNull+stateSuccIdx;
 LABEL_15:
   STATE** chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
