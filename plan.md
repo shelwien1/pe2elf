@@ -332,7 +332,23 @@ helpers:
   `succAddrSaved`/`succAddr=succAddrSaved`, two `newByteIdx =
   pTextEntry+1-heapNull` refreshes, `matchHi = (int)matchHi` self-assign,
   `ctxSuffixIdx` (only fed the removed prefetch hint), `deepStatesPtr`
-  (only assigned, never read).
+  (only assigned, never read), `predGuessSym = Order1Ctx` (both equal
+  the same value).
+- Single-use locals folded into their callers: `oldIStates`, `stateIdxU`,
+  `unitsStart`, `rsCtx`, `symEpochS`, `sseRowOff`, `scale`, `heapNullOffset`,
+  `runLengthVal`, `param1/2/3`, `maxOrderArg`, `memsize_b`. Counter locals
+  `j`/`halved` moved into their loop bodies; `sseHistOff`/`newHistCnt`
+  scoped to the owning if-block; `binMixCenter` ditto.
+- Repeated computations consolidated: `Order1Ctx = predGuessSym = ...`
+  and `FoundSymbol = predGuessSym = ...` chained; `pTextEntry+1`,
+  `descendNStates`/`walkNStates`, `matchDelta` reuse; `FoundSymbol=-1`
+  hoisted above its two-branch initialisation.
+- BinEscFreq / SseScale1 / SseScale2 / RescaleAccum1_/2_ /
+  MaybeRescale1_/2_ now use typed `SseCounter*` / `SseSlot*` member
+  access instead of `*((word*)slot + n)` offsets.
+- AllocUnitsRare bootstrap unlink folded into `bList[0].unlinkPrev()`;
+  `(uint)(uintptr_t)x - heapNull` patterns folded into `Ptr2Indx(x)`.
+- FreeUnitsRare made `void` (no caller consumed its char* return).
 
 Remaining work in this category:
 - **`RealProcess` itself** — the only function still carrying the
