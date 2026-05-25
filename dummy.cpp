@@ -2619,10 +2619,10 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   matchDeltaSaved = matchDelta;
   // 3-bit composite at bit 13: counts how many of these proximity tests pass.
   matchScore = SseIdx{}
-    .bits<13, 2>(((uint)(symEpoch-matchPrev) < 0xE800)
+    .bits<13, 2>((matchDelta < 0xE800)
                + (matchDelta < 0xF0)
                + (matchDelta < 7));
-  if( (uint)(symEpoch-matchPrev)>=0x1000 ) {
+  if( matchDelta>=0x1000 ) {
     Order1Ctx = 0;
     predGuessSym = 0;
     matchHintByte = -1;
