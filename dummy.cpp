@@ -2561,9 +2561,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
-  // ---- MatchPosTable update ------------------------------------------------
-  int    matchScore;       // 3-bit composite folded into OrderCtxSeed
-
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
   qword    result;
@@ -2657,7 +2654,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   MatchPosTable[matchKey] = symEpoch-1;
   uint   matchDelta = symEpoch-matchPrev;
   // 3-bit composite at bit 13: counts how many of these proximity tests pass.
-  matchScore = SseIdx{}
+  int matchScore = SseIdx{}
     .bits<13, 2>((matchDelta < 0xE800)
                + (matchDelta < 0xF0)
                + (matchDelta < 7));
