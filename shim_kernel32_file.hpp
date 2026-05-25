@@ -316,6 +316,11 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
     return NULL;
   }
   FindCtx* ctx = (FindCtx*)calloc(1, sizeof(FindCtx));
+  if( !ctx ) {
+    closedir(d);
+    SET_LAST_ERROR(ERROR_OUTOFMEMORY);
+    return NULL;
+  }
   ctx->dir = d;
   snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
   snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");

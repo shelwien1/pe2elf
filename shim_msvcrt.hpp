@@ -221,14 +221,18 @@ extern "C" EXPORT void*  msvcrt_localeconv(void)                          { retu
 // ms_abi handler directly with sigaction makes the kernel deliver the
 // signal number via the SysV register, so the handler reads garbage in
 // RCX.  Stash the ms_abi handler per signal and register a SysV
-// trampoline that bridges the ABI.
+// trampoline that bridges the ABI.  We also remember the *Windows*
+// signal number the caller registered with, so the handler sees the
+// number it expects (e.g. SIGABRT is 22 on Windows but 6 on Linux).
 typedef void (__attribute__((ms_abi)) *win_sighandler_t)(int);
 static win_sighandler_t g_msvcrt_sighandlers[64] = {};
+static int              g_msvcrt_winsig[64]      = {};
 
 static void msvcrt_signal_trampoline(int sig) {
   if( sig<0||sig>=64 ) return;
   win_sighandler_t h = g_msvcrt_sighandlers[sig];
-  if( h ) h(sig);  // typed call: compiler emits SysV→ms_abi conversion
+  int winsig = g_msvcrt_winsig[sig];
+  if( h ) h(winsig);  // typed call: compiler emits SysV→ms_abi conversion
 }
 
 extern "C" EXPORT void* msvcrt_signal(int sig, void* handler) {
@@ -240,11 +244,14 @@ extern "C" EXPORT void* msvcrt_signal(int sig, void* handler) {
   if( handler == (void*)0 ) {
     sa.sa_handler = SIG_DFL;
     g_msvcrt_sighandlers[lsig] = nullptr;
+    g_msvcrt_winsig[lsig] = 0;
   } else if( handler == (void*)1 ) {
     sa.sa_handler = SIG_IGN;
     g_msvcrt_sighandlers[lsig] = nullptr;
+    g_msvcrt_winsig[lsig] = 0;
   } else {
     g_msvcrt_sighandlers[lsig] = (win_sighandler_t)handler;
+    g_msvcrt_winsig[lsig] = sig;  // remember the caller's (Windows) sig number
     sa.sa_handler = msvcrt_signal_trampoline;
   }
   sigaction(lsig, &sa, &old);
