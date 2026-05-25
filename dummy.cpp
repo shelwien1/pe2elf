@@ -1567,11 +1567,10 @@ sqword StartModelRare(int mode) {
 
     sqword allocatedContextAddr;
     if (heapEnd == unitsSegment) {
-      MEM_BLK* queue0 = (MEM_BLK*)heapBlocks;
-      if (!queue0->avail()) {
+      if (!bList[0].avail()) {
         allocatedContextAddr = AllocUnitsRare(0);
       } else {
-        allocatedContextAddr = (sqword)queue0->unlinkPrev();
+        allocatedContextAddr = (sqword)bList[0].unlinkPrev();
       }
     } else {
       heapEnd = (byte*)heapBlocks + allocatorSize - 12;
