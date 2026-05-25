@@ -2559,7 +2559,6 @@ qword MixUpdate(byte* ctxBytes) {
   // deep find-and-bubble path
   sqword deepStatesIdx;    // walkCtx->iStates
   byte   deepFlags;        // walkCtx->Flags
-  qword  deepStatesPtr;    // heap + deepStatesIdx
   byte*  deepFound;        // result of FindAndBubble7_(states, sym, ...)
 
   // shallow (trailing) find-and-bubble path
@@ -3023,7 +3022,6 @@ LABEL_94:
         deepFlags = walkCtx->Flags;
       }
       walkCtx->Flags = deepFlags & 0xF0;
-      deepStatesPtr = heap + deepStatesIdx;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx->Flags, 13);
       foundFreq = foundState->Freq;
