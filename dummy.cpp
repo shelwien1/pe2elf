@@ -2581,11 +2581,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- MatchPosTable update ------------------------------------------------
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
-  // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
-  int    ssem3, ssem7;
-  char   ssem11;
-  byte   progResid1, progResid2;
-
   // ---- context-suffix walk -------------------------------------------------
   int      ofall;          // tracks OrderFall through the function
   int      ofallSaved;     // OrderFall captured at the start of the walk
@@ -2779,15 +2774,16 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     // comparison can never spuriously match a fresh zero start.
     bdiffSaved = (bdiff == 0) ? -1 : bdiff;
   }
-  ssem3  = (byte)*(sseSlot-3);
-  ssem7  = (byte)*(sseSlot-7);
-  ssem11 = *(sseSlot-11);
+  {
+  int  ssem3  = (byte)*(sseSlot-3);
+  int  ssem7  = (byte)*(sseSlot-7);
+  char ssem11 = *(sseSlot-11);
   // Run the hint cascade when the recent-symbol history fails the
   // "arithmetic progression" test: either the period-4 step matches
   // (ssem3==ssem7), or the period-4 differencing at offsets {-11,-7,-3}
   // or {-15,-11,-7} has a non-zero byte residue.
-  progResid1 = (byte)(ssem11 + ssem3 - 2*ssem7);
-  progResid2 = (byte)(*(sseSlot-15) + ssem7 - 2*ssem11);
+  byte progResid1 = (byte)(ssem11 + ssem3 - 2*ssem7);
+  byte progResid2 = (byte)(*(sseSlot-15) + ssem7 - 2*ssem11);
   if (ssem3==ssem7 || progResid1 || progResid2) {
     if( 4*MixScale-1>(uint)mixScaleCntr ) {
       // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
@@ -2823,6 +2819,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     }
   } else {
     FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
+  }
   }
 LABEL_94:
   WalkM2Consensus_(symEpoch, symEpochN, sc);
