@@ -2031,7 +2031,6 @@ sqword ReduceOrder() {
   uint sizeClassP;
   sqword sizeClass4P;
   uint* newStatesPtr;
-  uint newStatesIdx;
   sqword newStatesIdx2;
   qword newStateEnd;
   sqword allocedUnit;
@@ -2233,9 +2232,8 @@ LABEL_11:
             statesPtr = newStatesPtr;
           }
           if (!statesPtr) goto LABEL_99;
-          newStatesIdx = Ptr2Indx(statesPtr);
-          newStatesIdx2 = newStatesIdx;
-          curCtxP->iStates = newStatesIdx;
+          newStatesIdx2 = Ptr2Indx(statesPtr);
+          curCtxP->iStates = newStatesIdx2;
         }
         newStateEnd = newStatesIdx2 + heapNull + 6LL*nStatesP1;
         if (newStateEnd > heapNull + newStatesIdx2 + 42) {
