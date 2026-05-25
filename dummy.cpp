@@ -2192,17 +2192,18 @@ LABEL_73:
       return StartModelRare(2);
     if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
       bListSaved2 = BList;
-      if (((PPM_CONTEXT*)ctxBW)->NStates == 0 && (byte*)rootCtxW != ctxBW) {
+      PPM_CONTEXT* parentCtx = (PPM_CONTEXT*)ctxBW;
+      if (parentCtx->NStates == 0 && (byte*)rootCtxW != ctxBW) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
         // each one's 2-STATE[] block down to a single oneState. The kept state
-        // is the one whose Symbol matches ctxBW[2] (the parent ctx's Flags
-        // byte's secondary symbol byte) — if states[0] mismatches, take
-        // states[1] instead.
+        // is the one whose Symbol matches the parent's oneState.Symbol -- if
+        // states[0] mismatches, take states[1] instead.
         ctxSaved = rootCtxW;
+        byte parentSym = parentCtx->oneState().Symbol;
         PPM_CONTEXT* walker = (PPM_CONTEXT*)rootCtxSaved;
         do {
           STATE* states = walker->getStates();
-          STATE* kept   = &states[states[0].Symbol != ctxBW[2]];
+          STATE* kept   = &states[states[0].Symbol != parentSym];
           walker->Flags = SSE0[kept->Symbol];
           kept->Freq = (byte)(((uint)kept->Freq + 3) >> 2);
           walker->oneState().Symbol      = kept->Symbol;
