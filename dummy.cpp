@@ -2649,8 +2649,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     if (newHistCnt > 0xA7u) {
       *counter = 0;
       for (j = 0; j < 512; ++j) {
-        halved = histo[j] >> 1;
-        histo[j] >>= 1;
+        halved = histo[j] >>= 1;
         *counter += halved;
       }
     }
