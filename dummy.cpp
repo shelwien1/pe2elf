@@ -514,16 +514,16 @@ sqword AllocUnitsRare(uint unitsIdx);      // defined in subs_allocunitsrare.inc
 // Fast-path allocator for 1-context (12-byte) blocks. Mirrors textbook
 // ppmd.cpp PPM_CONTEXT::AllocContext: prefer the HiUnit downward bump, else
 // pop from the size-class-0 freelist, else fall back to AllocUnitsRare(0).
-inline sqword AllocContext_() {
+inline PPM_CONTEXT* AllocContext_() {
   if (::HiUnit != ::LoUnit) {
     ::HiUnit -= 12;
-    return (sqword)::HiUnit;
+    return (PPM_CONTEXT*)::HiUnit;
   }
   MEM_BLK* queue = (MEM_BLK*)::BList;
   if (queue->avail()) {
-    return (sqword)queue->unlinkPrev();
+    return (PPM_CONTEXT*)queue->unlinkPrev();
   }
-  return AllocUnitsRare(0);
+  return (PPM_CONTEXT*)AllocUnitsRare(0);
 }
 
 // Fast-path allocator counterpart of AllocUnitsRare: pop the head of the
@@ -1830,7 +1830,7 @@ LABEL_15:
   newCtxBytePos = (uint)(uintptr_t)baseCtxAddr-heapNull+1;
   chainPtrEnd = chainPtr;
   while (true) {
-    PPM_CONTEXT* newCtx = (PPM_CONTEXT*)AllocContext_();
+    PPM_CONTEXT* newCtx = AllocContext_();
     if (!newCtx) break;
     // Fresh binary context: NStates=0, SummFreq packs (Symbol=newSym, Freq=0).
     newCtx->NStates  = 0;
