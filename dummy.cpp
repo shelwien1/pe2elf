@@ -87,19 +87,22 @@ short& MixFreq1 = (short&)MixWeight1[2/2];
 auto& MixFreq1_1 = *(short(*)[0xF0000-3])(((char*)MixWeight1)+6);
 
 int d29[0x2040];
-short& w12 = *(short*)((char*)&d29 + (0x141128C24-0x141128C20));
-auto& w11 = (short(&)[0x407D])((char*)&d29)[0x141128C26-0x141128C20];
+short& w12 = *(short*)((char*)&d29 + 0x4);
+auto& w11 = (short(&)[0x407D])((char*)&d29)[0x6];
 
 int PredWeight[0xA1C];
 int* PredWeight_1 = &PredWeight[1];
 
 int d27[0x70040];
-auto& MixBound2 = (short(&)[0x70040*2-0x00002])((char*)&d27)[0x1405DFC24-0x1405DFC20];
-auto& MixBound3 = (short(&)[0x70040*2-0x00003])((char*)&d27)[0x1405DFC26-0x1405DFC20];
-auto& MixBound6 = (short(&)[0x70040*2-0x08003])((char*)&d27)[0x1405EFC26-0x1405DFC20];
-auto& b19       = (short(&)[0x70040*2-0xD0000])((char*)&d27)[0x14077FC20-0x1405DFC20];
-auto& MixBound5 = (short(&)[0x70040*2-0xD0003])((char*)&d27)[0x14077FC26-0x1405DFC20];
-auto& MixBound4 = (short(&)[0x70040*2-0xD8003])((char*)&d27)[0x14078FC26-0x1405DFC20];
+// Six short-typed overlays on d27 at fixed byte offsets:
+//   MixBound2 @ 0x00004, MixBound3 @ 0x00006, MixBound6 @ 0x10006,
+//   b19       @ 0x1A0000, MixBound5 @ 0x1A0006, MixBound4 @ 0x1B0006
+auto& MixBound2 = (short(&)[0x70040*2-0x00002])((char*)&d27)[0x00004];
+auto& MixBound3 = (short(&)[0x70040*2-0x00003])((char*)&d27)[0x00006];
+auto& MixBound6 = (short(&)[0x70040*2-0x08003])((char*)&d27)[0x10006];
+auto& b19       = (short(&)[0x70040*2-0xD0000])((char*)&d27)[0x1A0000];
+auto& MixBound5 = (short(&)[0x70040*2-0xD0003])((char*)&d27)[0x1A0006];
+auto& MixBound4 = (short(&)[0x70040*2-0xD8003])((char*)&d27)[0x1B0006];
 
 char SymType[256];
 
