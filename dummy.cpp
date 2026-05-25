@@ -3774,7 +3774,6 @@ LABEL_14:
 LABEL_18:
         // After scanning all states in MinContext: enter the SSE-mix block.
         if( !--remStates ) {
-          int nStatesCnt = nStates+1;
           // These are written only in the else branch but read inside the
           // if(nStatesPlus1<24) ... LABEL_58 path; declare at this scope so
           // the goto LABEL_58 below doesn't bypass init.
@@ -3806,6 +3805,7 @@ LABEL_18:
                && MinContext->getStates()[0].Freq < 0x6Au
                && (flagsSaveA & 0x40) == 0 ) {
               FillFreqMap_(sx_p);
+              int  nStatesCnt = nStates+1;
               STATE* stateBackM = &MinContext->getStates()[nStatesPlus1];
               int  mixConstM  = 11*(nStates+1);
               int  sumFreqM   = minSumFreqA;          // mutated by FreqMixStep_ via reference
