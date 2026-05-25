@@ -2004,7 +2004,6 @@ sqword ReduceOrder() {
   uint succIdxW;
   PPM_CONTEXT* ctxBW;
   char sse0Bit;
-  uint succCreatedTop;
   sqword result;
   sqword pTextEntry;
   sqword heapNull;
@@ -2053,7 +2052,7 @@ sqword ReduceOrder() {
   rootCtxSaved = RootContext;
   sse0Bit = SSE0[foundStateB->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
-    succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
+    uint succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
     foundStateB->iSuccessor = succCreatedTop;
     if( succCreatedTop ) {
       result = HeapNull+succCreatedTop;
