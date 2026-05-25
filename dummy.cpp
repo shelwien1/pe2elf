@@ -508,7 +508,7 @@ PPM_CONTEXT* GetSuffixPtr(uint iSuffix) {
 //  it is forward-declared here so the inline bodies can call it.
 // ===========================================================================
 
-char* FreeUnitsRare(sqword blockAddr, uint sizeClass);   // defined in subs_freeunitsrare1.inc
+void FreeUnitsRare(sqword blockAddr, uint sizeClass);   // defined in subs_freeunitsrare1.inc
 sqword AllocUnitsRare(uint unitsIdx);      // defined in subs_allocunitsrare.inc
 
 // Fast-path allocator for 1-context (12-byte) blocks. Mirrors textbook
@@ -1479,7 +1479,7 @@ sqword AllocUnitsRare(uint unitsIdx) {
 }
 //--- #return
 //--- #include "subs_freeunitsrare.inc"
-char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
+void FreeUnitsRare(sqword blockAddr, uint sizeClass) {
   sqword biggerSizeClass;
   sqword biggerUnits;
   int deltaUnits;
@@ -1517,7 +1517,6 @@ char* FreeUnitsRare(sqword blockAddr, uint sizeClass) {
     bList[deltaUnits - 1].linkNext((MEM_BLK*)(blockAddr + 12*biggerUnits), deltaUnits);
   }
   bList[biggerSizeClass].linkNext((MEM_BLK*)blockAddr, biggerUnits);
-  return (char*)&bList[biggerSizeClass] - HeapNull;
 }
 //--- #return
 //--- #include "subs_startmodel1.inc"
