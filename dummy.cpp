@@ -2427,11 +2427,11 @@ inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
   SymLastCtx2[m2_h1] = sc;
   int m2_prev2 = MatchPosPrev[m2_prev1 & 0x1FFFF];
   if ((uint)(symEpochN-m2_prev2) >= 0x20000) return;
-  sqword m2_h2 = (byte)MatchPosHash[(m2_prev2+3) & 0x1FFFF];
+  int m2_h2 = (byte)MatchPosHash[(m2_prev2+3) & 0x1FFFF];
   SymLastCtx2[m2_h2] = sc;
-  if (m2_h1 == (uint)m2_h2)
+  if (m2_h1 == m2_h2)
     MatchPosBySym[m2_h1] = sc;
-  sqword m2_h3 = -1;
+  int m2_h3 = -1;
   int    m2_prev3 = MatchPosPrev[m2_prev2 & 0x1FFFF];
   if ((uint)(symEpochN-m2_prev3) < 0x20000) {
     int m2_bias = 0;
@@ -2444,7 +2444,7 @@ inline void WalkM2Consensus_(int symEpoch, uint symEpochN, int sc) {
       m2_prev3 = MatchPosPrev[m2_prev3 & 0x1FFFF];
     } while ((uint)(m2_bias+symEpochN-m2_prev3) < 0x20000);
   }
-  if (m2_h1 == (uint)m2_h2 && (int)m2_h3 >= 0) {
+  if (m2_h1 == m2_h2 && m2_h3 >= 0) {
     if (HashSeed2 < 0)
       HashSeed2 = m2_h1;
     else if (HashSeed2 == m2_h1)
