@@ -3754,11 +3754,11 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint sumFreqLimit;
   char descendFlags, mixShiftB, mixShiftC, predShiftIncC, shiftSelC;
   char mixShiftBSel, mixShiftA;
-  sqword mixIdxA, sseSlot4A;
+  sqword mixIdxA;
   sqword result, mixIdxB;
   sqword sse2IdxA;
   sqword mixIdxC, mixOffsetC, priorFoundStateF, sse3SlotC, sse4SlotC;
-  sqword sseSlot3A, sseQTableIdxC;
+  sqword sseQTableIdxC;
   sqword sseQTableIdxA, summFreqPtr;
   int *mixSlotA, *mixBaseAStride, *binMixSlotF, *sse1SlotF, *predWAF;
   int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
@@ -3950,12 +3950,13 @@ LABEL_18:
               mixShiftLowA = centerExpandA<0x400u;
               mixShiftBSel = mixShiftA+mixShiftLowA;
               mixBaseAStride = &mixSlotA[-2*mixIdxA];
-              sseSlot3A = (sqword)&mixBaseAStride[2*(int)(mixIdxA^0x100)];
-              q31 = sseSlot3A;
-              wDelta31 = RescaleAccum1_((void*)sseSlot3A, *(uint*)sseSlot3A, mixShiftBSel);
-              sseSlot4A = (sqword)&mixBaseAStride[2*(int)(mixIdxA^0x200)];
-              q30 = sseSlot4A;
-              wDelta30 = RescaleAccum1_((void*)sseSlot4A, *(uint*)sseSlot4A, mixShiftBSel);
+              // Two more neighbour cells along XOR-stretch dimensions 0x100, 0x200
+              int* sseSlot3 = &mixBaseAStride[2*(int)(mixIdxA^0x100)];
+              int* sseSlot4 = &mixBaseAStride[2*(int)(mixIdxA^0x200)];
+              q31 = (sqword)sseSlot3;
+              q30 = (sqword)sseSlot4;
+              wDelta31 = RescaleAccum1_(sseSlot3, *(uint*)sseSlot3, mixShiftBSel);
+              wDelta30 = RescaleAccum1_(sseSlot4, *(uint*)sseSlot4, mixShiftBSel);
               wDelta29 = RescaleAccum1_(bigSlotA, (uint)*bigSlotA, mixShiftA+mixShiftLowA+1);
             }
             predRescaleDiv = MinContext->SummFreq;
