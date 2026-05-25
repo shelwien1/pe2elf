@@ -3827,7 +3827,8 @@ LABEL_14:
           }
           if( epoch==MatchPosBySym[walkSym]||epoch==SymLastCtx2[walkSym] ) {
             sortLimit = chainStart;
-            sortPriority = 11*(epoch==MatchPosBySym[walkSym])+7;
+            // priority 18 if MatchPosBySym hit (the stronger signal), else 7
+            sortPriority = (epoch==MatchPosBySym[walkSym]) ? 18 : 7;
             goto LABEL_14;
           }
         }
@@ -4203,7 +4204,8 @@ LABEL_128:
             break;
           if( epoch==MatchPosBySym[walkSymE]||epoch==SymLastCtx2[walkSymE] ) {
             sortLimitC = sortRangeE;
-            sortPriorityC = 4*(epoch==MatchPosBySym[walkSymE])+12;
+            // priority 16 if MatchPosBySym hit (stronger signal), else 12
+            sortPriorityC = (epoch==MatchPosBySym[walkSymE]) ? 16 : 12;
             goto LABEL_292;
           }
 LABEL_296:
