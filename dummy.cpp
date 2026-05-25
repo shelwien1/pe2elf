@@ -2293,7 +2293,7 @@ LABEL_99:
         curCtxP->iStates = (uint)((sqword)allocedUnit - heapNull);
         newStateFreq = 4 * (int)newStates->Freq + freqBoost;
         if (newStateFreq >= 238) newStateFreq = 238;
-        if (newStateFreq <   2)  LOBYTE(newStateFreq) = 2;
+        if (newStateFreq <   2)  newStateFreq = 2;
         newStates->Freq = (byte)newStateFreq;
         newStateEnd = allocedUnit + 6;
         curCtxP->SummFreq = (byte)newStateFreq;
