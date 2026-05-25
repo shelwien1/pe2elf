@@ -3734,8 +3734,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword mixIdxC, mixOffsetC, priorFoundStateF;
   sqword sseQTableIdxC;
   sqword sseQTableIdxA, summFreqPtr;
-  int *mixSlotA, *binMixSlotF, *sse1SlotF, *predWAF;
-  int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
+  int *mixSlotA, *binMixSlotF, *predWAF;
+  int *predWBF, *mixBaseB, *mixSlotB;
   int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC;
@@ -4416,7 +4416,7 @@ LABEL_59:
         OrderCtxSeed = OrderCtxSeedBuild_(candSymbol, matchCtxHiSave,
                                           sparseHitsF, orderCtxSeedSave,
                                           (uint)freq0F, (uint)hitsF);
-        sse1SlotF = &Sse1[2*OrderCtxSeed];
+        int* sse1SlotF = &Sse1[2*OrderCtxSeed];
         sse1Slot = sse1SlotF;
         int mixCumWeightF, mixCumFreqF;
         Sse1Step_(sse1SlotF, hitsF, mixCumWeightF, mixCumFreqF);
@@ -4490,12 +4490,12 @@ LABEL_59:
             predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
           }
         }
-        sseMatchSlotF = &SseMatch[SseMatchIdxBuild_(candSymbol)];
+        int* sseMatchSlotF = &SseMatch[SseMatchIdxBuild_(candSymbol)];
         sseMatchSlot = sseMatchSlotF;
         SseMatchStep_(sseMatchSlotF, (int)(60416LL*mixCumFreqF/mixCumWeightF));
         int cumWeightF = sseCum;
         sqword sse2IdxF = Sse2IdxBuild_(candSymbol, cumWeightF, (uint)sseTot);
-        sse2SlotF = &Sse2[2*sse2IdxF];
+        int* sse2SlotF = &Sse2[2*sse2IdxF];
         sse2Slot = sse2SlotF;
         int sse2CumInF  = cumWeightF;
         Sse2Step_(sse2SlotF);
@@ -4503,10 +4503,10 @@ LABEL_59:
         int  sse2HistByteF = sse2Base[((word)candSymbol-(word)RSContext)&0x1FF];
         uint sse2Counter   = *(uint*)(sse2Base+512);
         predWeightDelta = sse2CumTotF;
-        sse3SlotF = &Sse3[2 * (int)Sse3IdxBuild_(candSymbol, tagSymLastCtx2F,
-                                                  localFoundState->iSuccessor,
-                                                  (uint)sse2IdxF, sse2Counter,
-                                                  (uint)sse2HistByteF)];
+        int* sse3SlotF = &Sse3[2 * (int)Sse3IdxBuild_(candSymbol, tagSymLastCtx2F,
+                                                       localFoundState->iSuccessor,
+                                                       (uint)sse2IdxF, sse2Counter,
+                                                       (uint)sse2HistByteF)];
         sse3Slot = sse3SlotF;
         cumFreqC = sseCum;
         Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
