@@ -2683,8 +2683,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   byte   trailFlags;
   STATE* trailStates;
 
-  STATE* onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
-  sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
 
   short  mixBoostA, mixBoostB;
   byte   newFoundFreq;
@@ -3001,8 +2999,8 @@ LABEL_94:
           STATE* prevSt = (STATE*)*(chain - 2);
           prevSt->Freq += (prevSt->Freq < 2);   // +1 if Freq is 0 or 1
         }
-        onestatePtr = &walkCtx->oneState();
-        fastSuffix = walkCtx->iSuffix;
+        STATE* onestatePtr = &walkCtx->oneState();
+        sqword fastSuffix  = walkCtx->iSuffix;
         *chain++ = (sqword)onestatePtr;
         --depthLeft;
         walkCtx = (PPM_CONTEXT*)Indx2Ptr(fastSuffix);
