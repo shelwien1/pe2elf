@@ -1734,12 +1734,11 @@ sqword StartModelRare(int mode) {
     PPM_CONTEXT* rootP = (PPM_CONTEXT*)RootContext;
     if (rootP->iSuffix) {
       result = HeapNull;
-      PPM_CONTEXT* w = rootP->getSuffix();
-      do { // Loop to calculate suffix depth fallback heights [cite: 148]
+      // Count the suffix chain depth (each ->getSuffix() step adds 1).
+      for (PPM_CONTEXT* w = rootP->getSuffix(); ; w = w->getSuffix()) {
         ++suffixCount;
         if (!w->iSuffix) break;
-        w = w->getSuffix();
-      } while (true);
+      }
       OrderFall = suffixCount;
     }
     OrderFall0 = suffixCount;
