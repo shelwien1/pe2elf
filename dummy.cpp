@@ -2561,11 +2561,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
-  // ---- symbol-derived state -----------------------------------------------
-  int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
-  int    recentEpoch;      // SseCtx0_1[sym] before update
-  int    dt;               // symEpoch - recentEpoch
-
   // ---- MatchPosTable update ------------------------------------------------
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
@@ -2636,16 +2631,16 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // Both inputs are masked to ~7 (top 5 bits of each octet) and shifted into
   // disjoint windows: matchHi at bit 13 (= 10+3), sym at bit 5 (= 5+0).
   SparseHashA = ((matchHi & ~7u) << 10) + ((sym & ~7u) << 5);
-  mixCtxOld = MixCtx;
+  int mixCtxOld = MixCtx;
   uint sse0sym = SSE0[sym];
   RunLength += MixCtx;
   SparseHashB = (8*(sym+SparseHashB))&0xFFF00;
-  recentEpoch = SseCtx0_1[sym];
+  int recentEpoch = SseCtx0_1[sym];
   int mixCtx2New = MixCtx2+MixCtx2+(sse0sym>>7);
   MixCtx2 = mixCtx2New;
   RecentPos[symEpoch & 0xFFF] = recentEpoch;
   SseCtx0_1[sym] = symEpoch;
-  dt = symEpoch-recentEpoch;
+  int dt = symEpoch-recentEpoch;
   if ((uint)dt >= 0x104) {
     b31Key = 0;
     hintSymRecent = -1;
