@@ -2562,7 +2562,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
   // ---- context-suffix walk -------------------------------------------------
-  int      ofall;          // tracks OrderFall through the function
   qword    result;
 
   byte   newFoundFreq;     // do-while loop output, read in loop guard
@@ -2844,7 +2843,7 @@ LABEL_94:
     if( FoundSymbol<0 )
       FoundSymbol = HashSeed1;
   }
-  ofall = OrderFall;
+  int ofall = OrderFall;
   CtxChain[0] = (sqword)foundState;
   // OrderCtxSeed bitfield:
   //   bit  9     : recentSym's bit-7 (sym was in the >= 0x80 char class)
