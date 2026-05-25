@@ -2083,7 +2083,6 @@ sqword ReduceOrder() {
   sqword* chainPtrW;
   byte* stateBW;
   uint curCtxSuffix;
-  sqword bListSaved2;
   byte* chainStatePtr;
   sqword* chainPtrSave;
   byte* ctxBSaveCS;
@@ -2189,7 +2188,6 @@ LABEL_73:
     if( !CutOff )
       return StartModelRare(2);
     if (((PPM_CONTEXT*)rootCtxW)->NStates == 1) {
-      bListSaved2 = BList;
       PPM_CONTEXT* parentCtx = (PPM_CONTEXT*)ctxBW;
       if (parentCtx->NStates == 0 && (byte*)rootCtxW != ctxBW) {
         // Walk every PPM_CONTEXT from rootCtxSaved up to ctxBW, collapsing
@@ -2213,8 +2211,6 @@ LABEL_73:
         } while ((byte*)walker != ctxBW);
         rootCtxW = ctxSaved;
       }
-    } else {
-      bListSaved2 = BList;
     }
     // Walk the suffix chain down to the order-(-1) context (iSuffix == 0).
     {
@@ -2228,7 +2224,7 @@ LABEL_73:
     result = UpdateModel((byte*)rootCtxW, 0);
     ++GlueCount;
     CutOffCount = 0;
-    pText = bListSaved2+456;
+    pText = BList + 456;
     MaxContext0 = rootCtxW;
     OrderFall = 0;
     return result;
