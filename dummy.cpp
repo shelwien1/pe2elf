@@ -2585,7 +2585,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int      ofallSaved;     // OrderFall captured at the start of the walk
   int      ofallP1;        // OrderFall + 1
   int      ofallP3;        // OrderFall + 3
-  sqword*  chain;          // = &CtxChain[1], grows as we walk suffixes
   qword    result;
 
   PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
@@ -2901,7 +2900,7 @@ LABEL_94:
     .raw  ((uint)mixCtxOld << 14)
     .bit  <15>(OrderFall > 0)
     .bit  <15>(OrderFall > 2);
-  chain = &CtxChain_1;
+  sqword* chain = &CtxChain_1;
   // MixCtxExtra: constant bit 6, plus a 3-bit count of OrderFall thresholds
   // at bits 12-14.
   MixCtxExtra = SseIdx{}
