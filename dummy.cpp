@@ -2666,8 +2666,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   qword  epochBit;
   int    savedD90Idx;      // d90[epochBit] before update
   sqword newD90Idx;        // new value committed to d90[epochBit]
-  sqword savedD91;
-  sqword newD91;
   int    b33Saved;          // captured b33[newD90Idx] before BijectPairUpdate_
 
   // ---- MixScale BijectMap predictor ---------------------------------------
@@ -2938,10 +2936,12 @@ LABEL_94:
   BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90Idx,    sym, sc);
   hintSymBiject = b33Saved;
 
-  savedD91 = (uint)symHalfHistory;
-  newD91 = (word)(((sym>>4)&0xFFFE)+8*symHalfHistory)&0xFFFE;
-  BijectPairUpdate_(b35, b34, /*read*/newD91,    /*write*/savedD91,    sym, sc);
-  symHalfHistory = newD91;
+  {
+    uint   savedD91 = (uint)symHalfHistory;
+    sqword newD91   = (word)(((sym>>4)&0xFFFE)+8*symHalfHistory)&0xFFFE;
+    BijectPairUpdate_(b35, b34, /*read*/newD91, /*write*/savedD91, sym, sc);
+    symHalfHistory = newD91;
+  }
 
   BijectPairUpdate_(b36, b37, /*read*/oldD90Idx, /*write*/savedD90Idx, sym, sc);
   if (mixScaleCntr) {
