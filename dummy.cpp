@@ -2346,6 +2346,21 @@ inline void BijectPairUpdate_(byte* arrA, byte* arrB, uint readIdx, uint writeId
   arrB[writeIdx] = sym;
 }
 
+// helper 3aa: 4-byte BijectMap cell shift-insert.
+//   bm = { byte sym, byte prev1, byte prev2, byte count }
+// If newSym matches the head, bump count (saturating at 255). Otherwise
+// shift prev1->prev2, sym->prev1, and write newSym to head with count=0.
+inline void BijectCellInsert_(byte* bm, byte newSym) {
+  if (newSym == bm[0]) {
+    bm[3] += (bm[3] - 255 < 0);
+  } else {
+    bm[2] = bm[1];
+    bm[1] = bm[0];
+    bm[0] = newSym;
+    bm[3] = 0;
+  }
+}
+
 // helper 3a: when any Sse2State histogram cell hits the saturation
 // threshold (0xA7 = 167), halve every entry in the 512-byte block and
 // rebuild the counter at byte offset 512 as the sum of all halves.
@@ -2761,15 +2776,7 @@ LABEL_94:
   BijectPairUpdate_(b36, b37, /*read*/oldD90IdxB, /*write*/savedD90Idx, sym, sc);
   if (mixScaleCntr) {
     // q26 is a 4-byte BijectMap cell: byte[0]=sym, [1]=prev1, [2]=prev2, [3]=count.
-    byte* bm = (byte*)q26;
-    if (sym == bm[0]) {
-      bm[3] += (bm[3] - 255 < 0);
-    } else {
-      bm[2] = bm[1];
-      bm[1] = bm[0];
-      bm[0] = sym;
-      bm[3] = 0;
-    }
+    BijectCellInsert_((byte*)q26, sym);
     bmPtr = sseSlot + 1;
     b1 = (byte)bmPtr[-MixScale];
     b2 = (byte)bmPtr[-2*MixScale];
