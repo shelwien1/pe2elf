@@ -608,11 +608,11 @@ inline void* ShrinkUnits_(void* OldPtr, uint OldNU, uint NewNU) {
   return OldPtr;
 }
 
-inline void* MoveContext_(void* OldPtr) {
+inline PPM_CONTEXT* MoveContext_(PPM_CONTEXT* OldPtr) {
   MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   MEM_BLK* p = (MEM_BLK*)OldPtr;
   if (!p[1].canMerge() || !BList_[0].avail()) return OldPtr;
-  void* NewPtr = BList_[0].unlinkPrev();
+  PPM_CONTEXT* NewPtr = (PPM_CONTEXT*)BList_[0].unlinkPrev();
   UnitsCpy_(NewPtr, OldPtr, 1);
   FreeUnitsRare((sqword)p, 1);
   return NewPtr;
@@ -2012,7 +2012,7 @@ sqword UpdateModel(PPM_CONTEXT* ctx, uint order) {
   // ---------------------------------------------------------------------------
 at_return:
   if (Order == (uint)MaxOrder)
-    ctx = (PPM_CONTEXT*)MoveContext_(ctx);
+    ctx = MoveContext_(ctx);
   return (sqword)(uint)Ptr2Indx(ctx);
 }
 //--- #return
