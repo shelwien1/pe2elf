@@ -40,17 +40,9 @@ typedef __int128 shword;
 
 #define BYTEn(x, n)   (*((byte*)&(x)+n))
 #define WORDn(x, n)   (*((word*)&(x)+n))
-#define DWORDn(x, n)  (*((uint*)&(x)+n))
 
-#define LOBYTE(x)  BYTEn(x,LOW_IND(x,byte))
 #define LOWORD(x)  WORDn(x,LOW_IND(x,word))
-#define LODWORD(x) ((qword&)x)
 #define HIBYTE(x)  BYTEn(x,HIGH_IND(x,byte))
-#define HIWORD(x)  WORDn(x,HIGH_IND(x,word))
-#define BYTE1(x)   BYTEn(x,  1)         // byte 1 (counting from 0)
-#define BYTE2(x)   BYTEn(x,  2)
-#define BYTE4(x)   BYTEn(x,  4)
-#define WORD2(x)   WORDn(x,  2)         // third word of the object
 
 uint abs32( int x ) { return x >= 0 ? x : -x; }
 //--- #return
