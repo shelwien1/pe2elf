@@ -1607,15 +1607,8 @@ sqword StartModelRare(int mode) {
 
     // Mode 2 triggers contextual tables updates bypassing the secondary SSE table clears
     if (mode != 2 || RunLength == -100) {
-      int runLengthVal;
-      if (MaxOrder >= 11) {
-        runLengthInit = -11;
-        runLengthVal = -11;
-      } else {
-        runLengthVal = -MaxOrder;
-        runLengthInit = -MaxOrder;
-      }
-      RunLength = runLengthVal;
+      runLengthInit = (MaxOrder >= 11) ? -11 : -MaxOrder;
+      RunLength     = runLengthInit;
 
       memset(Sse2State, 0, sizeof(Sse2State));
 
