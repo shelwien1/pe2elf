@@ -2663,10 +2663,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   byte   progResid1, progResid2;
 
   // ---- three paired byte-hash predictors (b32/b33, b34/b35, b36/b37) ------
-  qword  epochBit;
-  int    savedD90Idx;      // d90[epochBit] before update
-  sqword newD90Idx;        // new value committed to d90[epochBit]
-  int    b33Saved;          // captured b33[newD90Idx] before BijectPairUpdate_
 
   // ---- MixScale BijectMap predictor ---------------------------------------
   char*  bmPtr;            // = sseSlot + 1
@@ -2927,14 +2923,13 @@ LABEL_94:
   WalkM2Consensus_(symEpoch, symEpochN, sc);
   // three paired byte-hash predictor updates (b32/b33, b34/b35, b36/b37).
   // Each reads at a "new" index and writes back at a different "old" index.
-  epochBit = (symEpochN&1)==0;
-  savedD90Idx = d90[epochBit];                                           // saved idx (current parity)
-  newD90Idx = (word)(16*(word)d90[epochBit]+((sym>>2)&0xFFFC))&0xFFFC;
+  qword  epochBit    = (symEpochN&1)==0;
+  int    savedD90Idx = d90[epochBit];                                       // saved idx (current parity)
+  sqword newD90Idx   = (word)(16*(word)d90[epochBit]+((sym>>2)&0xFFFC))&0xFFFC;
   d90[epochBit] = newD90Idx;
-  uint oldD90Idx = (uint)d90[!epochBit];      // BijectPairUpdate_ doesn't touch d90, so this is reused below
-  b33Saved = (byte)b33[newD90Idx];           // capture before BijectPairUpdate_ writes
-  BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90Idx,    sym, sc);
-  hintSymBiject = b33Saved;
+  uint oldD90Idx = (uint)d90[!epochBit];     // BijectPairUpdate_ doesn't touch d90, so this is reused below
+  hintSymBiject = (byte)b33[newD90Idx];      // capture before BijectPairUpdate_ writes
+  BijectPairUpdate_(b32, b33, /*read*/newD90Idx, /*write*/oldD90Idx, sym, sc);
 
   {
     uint   savedD91 = (uint)symHalfHistory;
