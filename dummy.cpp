@@ -2026,7 +2026,6 @@ sqword ReduceOrder() {
   char sse0BitSaved;
   uint succIdxSaved;
   uint nStatesP1;
-  sqword stateIdxU;
   uint* statesPtr;
   uint sizeClassP;
   sqword sizeClass4P;
@@ -2213,8 +2212,7 @@ LABEL_11:
         if ((nStatesP1 & 1) != 0) {
           newStatesIdx2 = curCtxP->iStates;
         } else {
-          stateIdxU = curCtxP->iStates;
-          statesPtr = (uint*)(heapNull + stateIdxU);
+          statesPtr = (uint*)(heapNull + curCtxP->iStates);
           uint halfNStatesP1 = nStatesP1 >> 1;
           sizeClassP = Units2Indx[halfNStatesP1 + 3];
           if (sizeClassP != Units2Indx4[halfNStatesP1]) {
@@ -2226,7 +2224,7 @@ LABEL_11:
             if (newStatesPtr) {
               // Copy nStatesP1/2 units (each = 2 STATEs) from the old block to
               // the new one, then free the old block.
-              UnitsCpy_(newStatesPtr, (uint*)(heapNull + stateIdxU), nStatesP1 >> 1);
+              UnitsCpy_(newStatesPtr, statesPtr, nStatesP1 >> 1);
               FreeUnitsRare((sqword)statesPtr, (uint)Indx2Units[sizeClassP]);
             }
             statesPtr = newStatesPtr;
