@@ -2563,6 +2563,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- sseSlot-relative history bytes used by MixScale heuristics ---------
   int    ssem3, ssem7;
   char   ssem11;
+  byte   progResid1, progResid2;
 
   // ---- three paired byte-hash predictors (b32/b33, b34/b35, b36/b37) ------
   qword  epochBit;
@@ -2772,9 +2773,16 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     bdiffStickyCnt = 0;
     bdiffSaved = bdiff-(bdiff==0);
   }
-  ssem3 = (byte)*(sseSlot-3);
-  ssem7 = (byte)*(sseSlot-7);
-  if( ssem3==ssem7||(ssem11 = *(sseSlot-11), (byte)(ssem11+(byte)ssem3-2*(byte)ssem7))||(byte)(*(sseSlot-15)+(byte)ssem7-2*ssem11) ) {
+  ssem3  = (byte)*(sseSlot-3);
+  ssem7  = (byte)*(sseSlot-7);
+  ssem11 = *(sseSlot-11);
+  // Run the hint cascade when the recent-symbol history fails the
+  // "arithmetic progression" test: either the period-4 step matches
+  // (ssem3==ssem7), or the period-4 differencing at offsets {-11,-7,-3}
+  // or {-15,-11,-7} has a non-zero byte residue.
+  progResid1 = (byte)(ssem11 + ssem3 - 2*ssem7);
+  progResid2 = (byte)(*(sseSlot-15) + ssem7 - 2*ssem11);
+  if (ssem3==ssem7 || progResid1 || progResid2) {
     if( 4*MixScale-1>(uint)mixScaleCntr ) {
       // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
       // window; 6,10 short window with compact second arm).
