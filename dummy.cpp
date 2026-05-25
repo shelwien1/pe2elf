@@ -2730,7 +2730,10 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     foundSymHist += foundSymHist+(sym==FoundSymbol);
   b31KeyPrev = b31Key;
   order1CtxSaved = Order1Ctx;
-  SparseHashA = ((matchHi&0xFFFFFFF8)<<10)+32*(sym&0xFFFFFFF8);
+  // SparseHashA folds (matchHi, sym) into a 14-bit hash for SparseBitmapA[].
+  // Both inputs are masked to ~7 (top 5 bits of each octet) and shifted into
+  // disjoint windows: matchHi at bit 13 (= 10+3), sym at bit 5 (= 5+0).
+  SparseHashA = ((matchHi & ~7u) << 10) + ((sym & ~7u) << 5);
   mixCtxOld = MixCtx;
   sse0sym = SSE0[sym];
   RunLength += MixCtx;
