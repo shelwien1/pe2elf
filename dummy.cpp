@@ -3734,8 +3734,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword mixIdxC, mixOffsetC, priorFoundStateF;
   sqword sseQTableIdxC;
   sqword sseQTableIdxA, summFreqPtr;
-  int *mixSlotA, *predWAF;
-  int *predWBF, *mixBaseB, *mixSlotB;
+  int *mixSlotA;
+  int *mixBaseB, *mixSlotB;
   int *sse1SlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC;
@@ -4426,10 +4426,10 @@ LABEL_59:
           sseCum = mixCumFreqF;
         } else {
           int* predWBase = &PredWeight[512*(qword)(byte)SEEQTable[candProbBF]+2*(uint)(sparseHitsF<<6)];
-          predWAF = &predWBase[2*(seeIdxF&0x1F)];
+          int* predWAF = &predWBase[2*(seeIdxF&0x1F)];
           int  predWAVal = predWAF[1];
           predWeightA = (uint*)predWAF;
-          predWBF = &predWBase[2*(((uint)seeIdxF>>4)&0x1F)+64];
+          int* predWBF = &predWBase[2*(((uint)seeIdxF>>4)&0x1F)+64];
           predWeightB = (uint*)predWBF;
           char predBoostShiftF = centerExpandF<0x150;
           int  predWBVal = predWBF[1];
