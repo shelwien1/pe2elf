@@ -38,6 +38,10 @@ extern "C" EXPORT LPVOID kernel32_VirtualAlloc(LPVOID addr, size_t size, DWORD t
     if( p==MAP_FAILED ) {
       flags = (flags&~MAP_FIXED_NOREPLACE)|MAP_FIXED;
       p = mmap(addr, size, prot, flags, -1, 0);
+      // Two distinct failures: mmap itself failed (MAP_FAILED — must not
+      // munmap that), or it succeeded at a different address than asked
+      // (MAP_FIXED makes that impossible in practice, but guard anyway).
+      if( p==MAP_FAILED ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
       if( p!=addr ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
     }
     if( !mmap_track_add(p, size) ) { munmap(p, size); SET_LAST_ERROR(ERROR_OUTOFMEMORY); return NULL; }
