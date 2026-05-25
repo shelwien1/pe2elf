@@ -2430,26 +2430,21 @@ inline byte HashArmUpdate_(byte* arr, uint readKey, uint writeKey,
 //   freq + `margin` <= prev.freq, stopping at/above rank 7. Record resulting
 //   rank in the low nibble of *flagsByte. Returns the byte* of the new slot.
 inline byte* FindAndBubble7_(byte* statesByte, byte sym, byte* flagsByte, int margin) {
-  byte* p = statesByte;
-  if (*p == sym) return p;
-  do { p += 6; } while (*p != sym);
-  word savedSF   = *(word*)p;
-  uint savedSucc = *(uint*)(p + 2);
-  byte* stopAt7  = statesByte + 42;     // 6 * 7
+  STATE* states = (STATE*)statesByte;
+  STATE* p = states;
+  if (p->Symbol == sym) return (byte*)p;
+  do { ++p; } while (p->Symbol != sym);
+  STATE saved = *p;
+  STATE* stopAt7 = states + 7;
   while (true) {
-    bool stable = ((sqword)p <= (sqword)statesByte) ||
-                  (HIBYTE(savedSF) + margin <= (int)*(p - 5));
-    if (stable && (sqword)p <= (sqword)stopAt7) {
-      *(word*)p          = savedSF;
-      *(uint*)(p + 2)    = savedSucc;
-      *flagsByte        |= (sqword)(p - statesByte) / 6;
-      return p;
+    bool stable = (p <= states) || ((int)saved.Freq + margin <= (int)(p - 1)->Freq);
+    if (stable && p <= stopAt7) {
+      *p = saved;
+      *flagsByte |= (byte)(p - states);
+      return (byte*)p;
     }
-    word w = *(word*)(p - 6);
-    uint s = *(uint*)(p - 4);
-    *(word*)p       = w;
-    *(uint*)(p + 2) = s;
-    p -= 6;
+    *p = *(p - 1);
+    --p;
   }
 }
 
