@@ -3015,15 +3015,18 @@ LABEL_94:
         walkCtx = (byte*)(heap + fastSuffix);
       } while (((PPM_CONTEXT*)walkCtx)->NStates == 0);
       maxOrd = MaxOrder;
-      if( ofall<MaxOrder ) {
+      if (ofall < MaxOrder) {
         chain0 = CtxChain[0];
-        if( *(byte*)(CtxChain[0]+1)<7u ) {
-          if( chain<=&CtxChain_2[1] ) {
-            ++*(byte*)(CtxChain_1+1);
+        STATE* head0 = (STATE*)CtxChain[0];
+        if (head0->Freq < 7u) {
+          if (chain <= &CtxChain_2[1]) {
+            ++((STATE*)CtxChain_1)->Freq;
           } else {
-            ++*(byte*)(CtxChain_2[0]+1);
-            if( chain>CtxChain_4 )
-              *(byte*)(chain0+1) += *(byte*)(chain0+1)-4<0;
+            ++((STATE*)CtxChain_2[0])->Freq;
+            if (chain > CtxChain_4) {
+              STATE* head = (STATE*)chain0;
+              head->Freq += (head->Freq - 4 < 0);
+            }
           }
         }
       }
