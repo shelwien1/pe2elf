@@ -571,7 +571,7 @@ inline void FreeUnits_(void* ptr, uint NU) {
     FreeUnitsRare((sqword)p, NU);
 }
 
-inline void FreeContext_(void* ptr) {
+inline void FreeContext_(PPM_CONTEXT* ptr) {
   MEM_BLK*& BList_ = (MEM_BLK*&)::BList;
   MEM_BLK* p = (MEM_BLK*)ptr;
   if (!p[1].canMerge())
