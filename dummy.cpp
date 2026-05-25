@@ -2922,12 +2922,15 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
       // b31 arm uses a different routing (no collision branch, SymLastCtx only)
       uint b31_ri = (uint)(Order1Ctx + (b31Key << 8));
       hintSymB31 = (byte)b31[b31_ri];
-      SymLastCtx[(byte)b31[b31_ri]] = sc;
+      SymLastCtx[hintSymB31] = sc;
       if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
 
-      // final independent hint from RecentPos chain
+      // final independent hint from RecentPos chain: stamp vh at sc in
+      // SymLastCtx, then (if it was already in SymLastCtx) escalate to
+      // SymLastCtx2 too.
       byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFF] + 2) & 0x1FFFF];
-      SymLastCtx[256 * (sc == SymLastCtx[vh]) + vh] = sc;
+      if (sc == SymLastCtx[vh]) SymLastCtx2[vh] = sc;
+      else                      SymLastCtx [vh] = sc;
     }
   } else {
     FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
