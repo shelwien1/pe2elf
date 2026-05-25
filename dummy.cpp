@@ -4461,7 +4461,10 @@ LABEL_59:
           uint predScaleAF = predWBVal+predWAVal;
           uint predScaledAF = (uint)(predWAVal*(sseEntryC2F+2))>>8;
           uint predScaledBF = (uint)(predWBVal*(sseEntryC2F+2))>>8;
-          sqword predBoostF = (predScaleAF >= 0xC000) ? 24 : ((predScaleAF >> 11) & 0xFFFFFFFE);
+          // predBoostF: even index 0..22 derived from predScaleAF's bits 12+,
+          // saturated to 24. Used to index a pair of bytes from b41[].
+          sqword predBoostF = (predScaleAF >= 0xC000) ? 24
+                            : ((predScaleAF >> 12) << 1);
           uint predTotEarlyF = (predScaledAF+predScaledBF >= 0x6000u) ? 24576u : (predScaledAF+predScaledBF);
           int predConstAF = (byte)b41[predBoostF];
           int predConstBF = (byte)b41[predBoostF+1];
