@@ -3726,7 +3726,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   uint sumFreqDivC;
   uint mixWeightSavedA, mixFreqCacheC, maskFlagEsc, maskFlagPrev, mixFreqA, mixWeightA;
   uint sumFreqLimit;
-  char descendFlags, mixShiftB, mixShiftC, predShiftIncC, shiftSelC;
+  char descendFlags, mixShiftB, mixShiftC, predShiftIncC;
   char mixShiftBSel, mixShiftA;
   sqword mixIdxA;
   sqword result, mixIdxB;
@@ -3738,7 +3738,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int *predWBF, *sseMatchSlotF, *sse2SlotF, *sse3SlotF, *mixBaseB, *mixSlotB;
   int *sse1SlotB, *binSseSlotB, *sseMatchSlotA, *sse2SlotA, *sse3SlotA, *bigSlotC;
   int *bigSlotA;
-  bool predLoBeyondC, mixShiftLowA;
+  bool mixShiftLowA;
   short matchCtxHiSave, freqBoostFC, orderCtxSeedSave;
   char *mixSlotC, *mixStrideC;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
@@ -4279,8 +4279,8 @@ LABEL_298:
               .bit  <8>    (maskFlagPrevC)
               .bit  <9>    (epoch != SymMask[escCandidate]))];
           q29 = (sqword)bigSlotC;
-          predLoBeyondC = mixWeightDeltaC<0x100;
-          shiftSelC = predLoBeyondC+1;
+          bool predLoBeyondC = mixWeightDeltaC<0x100;
+          char shiftSelC = predLoBeyondC+1;
           // blend the two neighbour cells (mixSlotC ± 2048 bytes; cell layout:
           // uint weight at byte 0, word freq at byte 4) into (mixWeightC,
           // mixFreqCacheC). Same pattern as mixUpA/mixDnA above.
