@@ -2027,7 +2027,7 @@ STATE*& FoundState = (STATE*&)q9;
 
 sqword ReduceOrder() {
   sqword rootCtxW;
-  byte* foundStateB;
+  STATE* foundStateB;
   int orderFall;
   int maxOrder;
   uint succIdxW;
@@ -2078,17 +2078,17 @@ sqword ReduceOrder() {
   sqword rootCtxSaved;
   short foundSymFreq;
   rootCtxW = RootContext;
-  foundStateB = (byte*)q9;
+  foundStateB = (STATE*)q9;
   orderFall = OrderFall;
   maxOrder = MaxOrder;
-  succIdxW = ((STATE*)q9)->iSuccessor;
-  foundSymFreq = *(word*)q9;       // Symbol (low byte) + Freq (high byte)
+  succIdxW = foundStateB->iSuccessor;
+  foundSymFreq = *(word*)foundStateB;   // Symbol (low byte) + Freq (high byte)
   ctxBW = (byte*)RootContext;
   rootCtxSaved = RootContext;
-  sse0Bit = ((byte*)SSE0)[((STATE*)q9)->Symbol];
+  sse0Bit = ((byte*)SSE0)[foundStateB->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
     succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
-    ((STATE*)foundStateB)->iSuccessor = succCreatedTop;
+    foundStateB->iSuccessor = succCreatedTop;
     if( succCreatedTop ) {
       result = HeapNull+succCreatedTop;
       RootContext = result;
@@ -2099,7 +2099,7 @@ sqword ReduceOrder() {
   }
   pTextEntry = pText;
   heapNull = HeapNull;
-  *(byte*)pText = ((STATE*)q9)->Symbol;       // emit the symbol byte into the text buffer
+  *(byte*)pText = foundStateB->Symbol;        // emit the symbol byte into the text buffer
   unitsStart = UnitsStart;
   pTextNewSlot = pTextEntry+1;
   pText = pTextEntry+1;
@@ -2110,7 +2110,7 @@ sqword ReduceOrder() {
   if( !succIdxW ) {
     maxCtxStart = MaxContext0;
     ctxChainEndS = CtxChainEnd;
-    sym = *foundStateB;
+    sym = foundStateB->Symbol;
     rootCtxSaveCS = rootCtxW;
     curCtx = MaxContext0;
     chainPtrW = CtxChain;
@@ -2153,7 +2153,7 @@ sqword ReduceOrder() {
       ((STATE*)chainStatePtr)->iSuccessor = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
-      ((STATE*)foundStateB)->iSuccessor = succIdxW;
+      foundStateB->iSuccessor = succIdxW;
       succIdxW = ((STATE*)chainStatePtr)->iSuccessor;
       pTextNewSlot = pTextEntry;
       pText = pTextEntry;
