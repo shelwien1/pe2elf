@@ -3571,7 +3571,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   STATE *localFoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   uint mixDeltaA, cumFreqMixA, cumFreqDivA, sumFreqF;
-  uint totFreqC, subRangeC;
   uint seeIndex, suffixNStates;
   uint centerExpandB, binSseVal;
   uint totFreq, subRange, mixWeightC, mixWeightDeltaC;
@@ -4362,8 +4361,8 @@ LABEL_59:
         sse3Slot = sse3SlotF;
         cumFreqC = sseCum;
         Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
-        totFreqC = sseTot;
-        subRangeC = rc.getSubRange(cumFreqC, totFreqC);
+        uint totFreqC = sseTot;
+        uint subRangeC = rc.getSubRange(cumFreqC, totFreqC);
         if( f_DEC ? !rc.IsDecodeMatched(subRangeC) : (inputByte != candSymbol) ) {
           sqword priorFoundStateF = q9;
           cumFreqAcc -= localFoundState->Freq;
