@@ -3673,7 +3673,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int sortPriorityC;
   int sxNStatesC;
   int oneStateFreqCachedF;
-  int maskFlagPrevC, sumFreqCacheC;
+  int sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
@@ -4211,7 +4211,7 @@ LABEL_298:
         sx_p = MinContext->getSuffix();
         sxNStatesC = sx_p->NStates;
         descendNStatesP1C = sxNStatesC+1;
-        maskFlagPrevC = epoch!=SymMask[PrevSymbol];
+        int maskFlagPrevC = epoch!=SymMask[PrevSymbol];
         // mixIdxC: composite index for the escape mirror's mix table.
         // Same shape as mixIdxA but with different inputs at each predicate.
         mixIdxC = SseIdx{}
