@@ -2625,7 +2625,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   uint   sym;              // FoundState->Symbol
   sqword matchHi;          // MatchCtxHi (high-byte context)
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
-  uint   sse0sym;          // SSE0[sym]   (0 or 0x80 sym-type bit)
   int    mixCtx2New;       // new MixCtx2
   int    recentEpoch;      // SseCtx0_1[sym] before update
   int    recentForHi;      // SseCtx0_1[(int)matchHi]
@@ -2748,7 +2747,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // disjoint windows: matchHi at bit 13 (= 10+3), sym at bit 5 (= 5+0).
   SparseHashA = ((matchHi & ~7u) << 10) + ((sym & ~7u) << 5);
   mixCtxOld = MixCtx;
-  sse0sym = SSE0[sym];
+  uint sse0sym = SSE0[sym];
   RunLength += MixCtx;
   SparseHashB = (8*(sym+SparseHashB))&0xFFF00;
   recentEpoch = SseCtx0_1[sym];
