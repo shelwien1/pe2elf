@@ -476,7 +476,6 @@ static inline int ms_cmp_elems(ms_cmp_fn cmp, uint8_t* base, size_t i, size_t j,
 }
 
 extern "C" EXPORT void msvcrt_qsort(void* base0, size_t n, size_t sz, ms_cmp_fn cmp) {
-  log_always("[SHIM] qsort(base=%p, n=%zu, sz=%zu, cmp=%p)\n", base0, n, sz, (void*)(uintptr_t)cmp);
   if( n <= 1 || sz == 0 || !cmp ) return;
 
   enum { CUTOFF = 8, STKSIZ = 62 };

@@ -65,6 +65,15 @@ extern "C" EXPORT DWORD kernel32_FlsAlloc(void* callback) {
   return idx;
 }
 
+// LIMITATION: Windows FlsFree invokes the slot's destructor on every
+// thread that has a non-NULL value in that slot.  Doing that on Linux
+// would need (a) a per-(thread,slot) registry maintained from every
+// FlsSetValue call, and (b) some way to run the destructor in the owning
+// thread's context — typically a signal + cooperative dispatcher.
+// Neither matches a single-threaded compression CLI's needs, so we
+// invoke the callback only for the calling thread.  Other threads'
+// slots are still released via shim_thread_exit when those threads
+// terminate (the slots array is a pthread_key with a destructor).
 extern "C" EXPORT BOOL kernel32_FlsFree(DWORD idx) {
   log_always("[SHIM] FlsFree(idx=%u) [caller=%p]\n", idx, __builtin_return_address(0));
   if( idx >= FLS_MAX_SLOTS ) {
