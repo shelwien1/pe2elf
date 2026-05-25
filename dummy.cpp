@@ -2896,16 +2896,17 @@ LABEL_94:
       .bits <8, 6>((b2 & 0x2E) + ((byte)bmPtr[-2*MixScale+1] < (uint)(byte)b1Ptr[1]))
       .bit  <12>  (b1Ptr[2] == bmPtr[-2*MixScale+2])
       .bits <14, 3>(((bm1 + 32 - sym) >> 31) + ((bm1 - sym) >> 31) + ((int)sym >= bm1));
-    q26 = (sqword)&BijectMap[4*bmComposite+4*b1];
-    SymLastCtx[(byte)BijectMap[4*bmComposite+2+4*b1]] = sc;
-    SymLastCtx[*(byte*)(q26+1)] = sc;
-    bmByte = *(byte*)q26;
-    hintSymQ26 = *(byte*)q26;
+    q26 = (sqword)&BijectMap[4*bmComposite + 4*b1];
+    byte* bmCell = (byte*)q26;       // 4-byte cell: sym/prev1/prev2/count
+    SymLastCtx[(byte)BijectMap[4*bmComposite + 2 + 4*b1]] = sc;
+    SymLastCtx[bmCell[1]] = sc;
+    bmByte = bmCell[0];
+    hintSymQ26 = bmCell[0];
     SymLastCtx[bmByte] = sc;
-    if( *(byte*)(q26+3) ) {
-      if( *(byte*)(q26+3)>1u||hintSymRecent<=0 )
-        hintSymRecent = *(byte*)q26;
-      MatchPosBySym[*(byte*)q26] = sc;
+    if (bmCell[3]) {
+      if (bmCell[3] > 1u || hintSymRecent <= 0)
+        hintSymRecent = bmCell[0];
+      MatchPosBySym[bmCell[0]] = sc;
     }
     if( b1==b2&&b2==b3 ) {
       PrevSymbol = predGuessSym;
