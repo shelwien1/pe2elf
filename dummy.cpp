@@ -1112,8 +1112,7 @@ sqword BinEscFreq(PPM_CONTEXT* pc) {
 //     * SSE0[] replaces SymType[] (0 / 0x80 vs textbook 0 / 4).
 // =============================================================================
 
-sqword RescaleCtx(byte* ctxBytes) {
-  PPM_CONTEXT* ctx        = (PPM_CONTEXT*)ctxBytes;
+sqword RescaleCtx(PPM_CONTEXT* ctx) {
   int          NStates0   = ctx->NStates;             // original NStates (= last index)
   int          totalCount = NStates0 + 1;             // # states to iterate (incl. found)
   uint         oldIStates = ctx->iStates;
@@ -4460,7 +4459,7 @@ LABEL_59:
           }
           q9 = (sqword)FoundState;
           if( FoundState->Freq > 244 ) {
-            RescaleCtx((byte*)preCommitMinCtx);
+            RescaleCtx(preCommitMinCtx);
             FoundState = (STATE*)q9;
           }
           if( FoundState )
