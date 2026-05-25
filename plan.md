@@ -202,18 +202,19 @@ not to need further factoring (6 lines).
 
 ### E. The q-globals don't have semantic names
 
-Renamed at file scope so far: q26 → `bijectCellPtr`, q36 →
-`BinSseCellG`, q37 → `PredWeightBG`, q39 → `PredWeightAG`. q9 retains
-its name because it has a typed file-scope alias `FoundState` AND a
-shadowing local `FoundState` inside `RealProcess` that must keep using
-`q9 = ...` / `... = q9` to publish between local and global storage.
+Renamed at file scope: q19/q21/q23/q24/q25 → `SseMatchSlotG`/
+`BinMixCenterG`/`Sse{1,2,3}SlotG`; q17/q18/q20/q22 →
+`BinMix{Hi,Lo}G`/`PredBase{A,B}G`; q26 → `bijectCellPtr`; q36/q37/q39
+→ `BinSseCellG`/`PredWeightBG`/`PredWeightAG`. q9 keeps its name (it
+has a typed file-scope alias `FoundState`). The matching
+`RealProcess` local was renamed `FoundState` → `localFoundState`
+to disambiguate the shadowing.
 
-Still bare `sqword q##` at file scope: q12, q17, q18, q19, q20, q21,
-q22, q23, q24, q25, q29..q35. Each is aliased inside `RealProcess` /
-`MixUpdate` to a typed pointer with a semantic name, but the
-underlying global is the channel between cascade stages and
-`MixUpdate` — so the alias has to live at file scope or be
-re-established at every call site.
+Still bare `sqword q##` at file scope: q12 (Sse2State sub-block
+overlay) and q29..q35 (mix-table slot cluster — polymorphic across
+cascade arms, no single semantic role). These are tied to fixed
+storage locations (q12 is a Sse2State overlay; q29..q35 are
+reassigned per cascade), so a rename would not reduce confusion.
 
 | q##  | What it points to (semantic name where one exists)             |
 |------|----------------------------------------------------------------|
