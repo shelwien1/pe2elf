@@ -3826,7 +3826,8 @@ LABEL_18:
                              mixConstM, sumFreqM, sumFreqWM, MinContext);
               } while( --nStatesCnt );
               sumFreqSaveA = sumFreqWM;
-              flagsSaveA   = MinContext->Flags;
+              // (flagsSaveA stays as-set at the if-entry; FreqMixStep_
+              //  doesn't mutate MinContext->Flags.)
             }
             {
               // maskFlagEsc captures the suffix context's rank-0 symbol;
