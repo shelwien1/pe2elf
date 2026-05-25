@@ -1316,9 +1316,6 @@ void SseScale1(SseCounter* cnt) {
 //         weight is small (<= 2) do an aggressive 2/3 decay; otherwise a
 //         gentler half decay.
 //
-//  Return value is the intermediate "gain"; every caller discards it. It is
-//  preserved verbatim only so the function signature stays the same.
-//
 //  PE-specific quirks preserved verbatim:
 //      * The "(c - x) >> 31" unsigned-wrap trick used to encode "1 if x > c
 //        else 0" without a branch.
