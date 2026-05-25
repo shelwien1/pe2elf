@@ -1756,7 +1756,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   sqword heapNull;
   uint seedSuccIdx;
   STATE** chainPtr;
-  int stateSuccIdx;
   heapNull = HeapNull;
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
   // first entry whose state->iSuccessor differs from the head's, or the end of
@@ -1790,8 +1789,8 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
       } else {
         state = &pc->oneState();
       }
-      stateSuccIdx = state->iSuccessor;
-      if (stateSuccIdx != seedSuccIdx) break;
+      int stateSuccIdx = state->iSuccessor;
+      if (stateSuccIdx != seedSuccIdx) { seedCtx = heapNull+stateSuccIdx; goto LABEL_15; }
       suffixIdx0 = pc->iSuffix;
       *chainPtr = state;
       ++chainPtr;
@@ -1800,7 +1799,6 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
         goto LABEL_15;
       }
     }
-    seedCtx = heapNull+stateSuccIdx;
   }
 LABEL_15:
   STATE** chainEnd = chainStart + depth;
