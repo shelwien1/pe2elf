@@ -3105,19 +3105,13 @@ LABEL_165:
 //--- #include "subs_block.inc"
 
 sqword PPMIIGetCurrentModelSize() {
+  if (!SubAllocatorSize) return 0;
   sqword result;
-  sqword entryIdx;
-  uint i;
-  int bytesUsed;
-  if( !SubAllocatorSize )
-    return 0;
-  entryIdx = 0;
   LODWORD(result) = pText - UnitsStart + LoUnit + SubAllocatorSize - HiUnit;
   MEM_BLK* bList = (MEM_BLK*)BList;
-  for (i = 0; i < 0x26; ++i) {
-    // Each entry: QueueSize * 12 bytes/block * Indx2Units[entryIdx] units/block
-    bytesUsed = bList[entryIdx].QueueSize * 12 * Indx2Units[entryIdx];
-    entryIdx = i + 1;
+  for (uint i = 0; i < 0x26; ++i) {
+    // Each entry: QueueSize * 12 bytes/block * Indx2Units[i] units/block
+    int bytesUsed = bList[i].QueueSize * 12 * Indx2Units[i];
     result = (uint)(result - bytesUsed);
   }
   return result;
