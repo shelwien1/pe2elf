@@ -3662,10 +3662,9 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int cumWeightB, cumFreqB, escSymB;
   int sseSum2A;
   int sse2CumInA, totFreqA;
-  int cumFreq;
+  int cumFreq, oneStateFreqCachedF;
   int sortPriorityC;
   int sxNStatesC;
-  int oneStateFreqCachedF;
   int sumFreqCacheC;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
