@@ -772,9 +772,11 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
           if( found_state->Freq>228 )
             goto TARGET_SCALE_FALLBACK;
           word delta_freq = summ_freq-found_state->Freq;
-          uint adjusted_freq = ((tunedSumm-found_state->Freq)*(suffix_found_freq+3*found_state->Freq)+3*(tunedSumm-found_state->Freq)+tunedSuffix-suffix_found_freq-4)/(3*(tunedSumm-found_state->Freq)+tunedSuffix-suffix_found_freq);
-          if( adjusted_freq>found_state->Freq+11 ) {
-            adjusted_freq = found_state->Freq+11;
+          uint deltaSum  = tunedSumm - found_state->Freq;
+          uint denomAdj  = 3*deltaSum + tunedSuffix - suffix_found_freq;
+          uint adjusted_freq = (deltaSum*(suffix_found_freq + 3*found_state->Freq) + denomAdj - 4) / denomAdj;
+          if (adjusted_freq > found_state->Freq + 11) {
+            adjusted_freq = found_state->Freq + 11;
           }
 
           summ_freq = adjusted_freq+delta_freq;
