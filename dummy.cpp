@@ -3045,7 +3045,7 @@ LABEL_94:
     do {
       deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
       deepFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
-      if (!*(byte*)(heap + deepStatesIdx + 6LL*(deepFlags & 0xF) + 1)) {
+      if (((STATE*)(heap + deepStatesIdx))[deepFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
@@ -3085,11 +3085,11 @@ LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
       trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
-      if (*(byte*)(heap + trailStatesIdx + 6LL*(trailFlags & 0xF)) == searchSym)
+      if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Symbol == (byte)searchSym)
         break;
 LABEL_165:
       trailStatesPtr = heap + trailStatesIdx;
-      if (!*(byte*)(heap + trailStatesIdx + 6LL*(trailFlags & 0xF) + 1)) {
+      if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
         BinEscFreq(walkCtx);
         trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
