@@ -2634,9 +2634,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int    predGuessSym;          // running guess for FoundSymbol
 
   // ---- MatchPosTable update ------------------------------------------------
-  sqword matchKey;
-  int    matchPrev;
-  uint   matchDelta;
   int    matchScore;       // 3-bit composite folded into OrderCtxSeed
 
   // ---- RSContext / Sse2State histogram rotation ---------------------------
@@ -2770,11 +2767,11 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     b31Key = hashByte;
     WalkRecentPosChain_(recentEpoch, symEpoch, sc);
   }
-  matchKey = sym + (matchHi << 8);
-  matchPrev = MatchPosTable[matchKey];
+  sqword matchKey = sym + (matchHi << 8);
+  int    matchPrev = MatchPosTable[matchKey];
   MatchPosPrev[(symEpoch-1)&0x1FFFF] = matchPrev;
   MatchPosTable[matchKey] = symEpoch-1;
-  matchDelta = symEpoch-matchPrev;
+  uint   matchDelta = symEpoch-matchPrev;
   // 3-bit composite at bit 13: counts how many of these proximity tests pass.
   matchScore = SseIdx{}
     .bits<13, 2>((matchDelta < 0xE800)
