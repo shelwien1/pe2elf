@@ -463,16 +463,16 @@ spells as magic numbers or local renames. The mapping:
 
 | ppmd.cpp                          | dummy.cpp form                                       |
 |-----------------------------------|------------------------------------------------------|
-| `MAX_O = 16`                      | dynamic `MaxOrder` global                            |
-| `UNIT_SIZE = 12`                  | bare `12` inline                                     |
-| `N_INDEXES = 38`                  | bare `38` / `0x26` inline                            |
-| `INT_BITS = 6, PERIOD_BITS = 7`   | not named — implicit in SSE cell math                |
-| `TOT_BITS = 13, BIN_SCALE = 8192` | implicit                                             |
-| `H_BITS=15, H_SHIFT=5, H_MASK=0x7FFF` | bare `0x1FFFF`/`0xFFF`/`<<6` for sseState3Hash etc. |
-| `ROUND0 = 31, ROUND1 = 53`        | bare `0x1F` / `0x35` literals if present             |
+| `MAX_O = 16`                      | named constant `MAX_O` (in enum)                    |
+| `UNIT_SIZE = 12`                  | named constant `UNIT_SIZE` (in enum)                |
+| `N_INDEXES = 38`                  | named constant `N_INDEXES` (in enum)                |
+| `MEM_DIVISOR = 10`                | named constant `MEM_DIVISOR` (in enum)              |
 | `MAX_FREQ = 123`                  | matches: `PPM_CONTEXT::MAX_FREQ` enum                |
 | `O_BOUND = 9`                     | matches: `PPM_CONTEXT::O_BOUND` enum                 |
-| `MEM_DIVISOR = 10`                | bare `120` / `108 / 9` arithmetic                    |
+| `INT_BITS = 6, PERIOD_BITS = 7`   | not named — implicit in SSE cell math                |
+| `TOT_BITS = 13, BIN_SCALE = 8192` | implicit                                             |
+| `H_BITS=15, H_SHIFT=5, H_MASK=0x7FFF` | bare `0x1FFFF`/`0xFFF`/`<<6` for sseState3Hash etc.; PE uses 17-bit hash so values aren't interchangeable |
+| `ROUND0 = 31, ROUND1 = 53`        | not present — PE goes through SseScale1/SseScale2 helpers instead |
 | `RLSM[2][12]` (RunLength state machine) | inlined in update1/update2 sites              |
 | `RLQTable`, `SSE0QTable`, `SSE1QTable`, `SEEQTable` | same names, larger sizes (PE variant) |
 | `RLQBounds`, `SSE0QBounds`, `SSE1QBounds`, `SEEQBounds` | same names (compatible)             |
