@@ -3553,7 +3553,7 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int nStatesP1Save, entryNStates;
+  int entryNStates;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
   int walkFreqSumE, walkSymE;
@@ -3662,7 +3662,7 @@ LABEL_18:
           int  minSumFreqA  = 0;
           int  sxSumFreqA0  = 0;
           int  sumFreqSaveA = 0;
-          nStatesP1Save = nStates+1;
+          int  nStatesP1Save = nStates+1;
           RSContext = ((STATE*)CtxChain[0])->Symbol;
           SymLastCtx[(byte)b27[RSContext+(Order1Ctx<<8)]] = epoch;
           q29 = q30 = q31 = q32 = q33 = (sqword)d27;
