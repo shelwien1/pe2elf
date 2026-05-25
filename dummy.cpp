@@ -2548,7 +2548,7 @@ qword MixUpdate(byte* ctxBytes) {
   qword    result;
 
   sqword heap;             // HeapNull
-  byte*  walkCtx;          // current PPM_CONTEXT (as byte*) being walked
+  PPM_CONTEXT* walkCtx;    // current PPM_CONTEXT being walked
   int    depthLeft;        // counts down from OrderFall
   int    depth5;           // 5*OrderFall counter (decreasing)
   int    depth3;           // 3*OrderFall counter (decreasing)
@@ -2568,7 +2568,7 @@ qword MixUpdate(byte* ctxBytes) {
   qword  trailStatesPtr;
   byte*  trailFound;
 
-  byte*  onestatePtr;      // walkCtx + 2 (oneState when NStates == 0)
+  byte*  onestatePtr;      // &walkCtx->oneState() (NStates == 0 fast-path)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
 
   int    foundFreq;        // foundState->Freq
@@ -2970,21 +2970,21 @@ LABEL_94:
                 + (OrderFall>3)  + (OrderFall>2) + (OrderFall>1));
   if (minISuffix) {
     heap = HeapNull;
-    walkCtx = (byte*)(HeapNull + minISuffix);
+    walkCtx = (PPM_CONTEXT*)(HeapNull + minISuffix);
     depthLeft = OrderFall;
     depth5 = 5 * OrderFall;
-    if (((PPM_CONTEXT*)walkCtx)->NStates == 0) {
+    if (walkCtx->NStates == 0) {
       do {
         if (chain > &CtxChain_2[1]) {
           STATE* prevSt = (STATE*)*(chain - 2);
           prevSt->Freq += (prevSt->Freq - 2 < 0);
         }
-        onestatePtr = walkCtx + 2;
-        fastSuffix = ((PPM_CONTEXT*)walkCtx)->iSuffix;
+        onestatePtr = (byte*)&walkCtx->oneState();
+        fastSuffix = walkCtx->iSuffix;
         *chain++ = (sqword)onestatePtr;
         --depthLeft;
-        walkCtx = (byte*)(heap + fastSuffix);
-      } while (((PPM_CONTEXT*)walkCtx)->NStates == 0);
+        walkCtx = (PPM_CONTEXT*)(heap + fastSuffix);
+      } while (walkCtx->NStates == 0);
       maxOrd = MaxOrder;
       if (ofall < MaxOrder) {
         STATE* head0 = (STATE*)CtxChain[0];
@@ -2999,8 +2999,8 @@ LABEL_94:
           }
         }
       }
-      trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
-      trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+      trailStatesIdx = walkCtx->iStates;
+      trailFlags = walkCtx->Flags;
       goto LABEL_165;
     }
     mixWeight = 2;
@@ -3014,18 +3014,18 @@ LABEL_94:
     ofallP1 = OrderFall+1;
     depth3 = 3*OrderFall;
     do {
-      deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
-      deepFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+      deepStatesIdx = walkCtx->iStates;
+      deepFlags = walkCtx->Flags;
       if (((STATE*)(heap + deepStatesIdx))[deepFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
-        BinEscFreq(walkCtx);
-        deepStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
-        deepFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+        BinEscFreq((byte*)walkCtx);
+        deepStatesIdx = walkCtx->iStates;
+        deepFlags = walkCtx->Flags;
       }
-      ((PPM_CONTEXT*)walkCtx)->Flags = deepFlags & 0xF0;
+      walkCtx->Flags = deepFlags & 0xF0;
       deepStatesPtr = heap + deepStatesIdx;
       // deep find-and-bubble (freq margin 13)
-      deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx[1], 13);
+      deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx->Flags, 13);
       foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
@@ -3035,41 +3035,41 @@ LABEL_94:
         trailBound = ofallP1;
         ofall = ofallSaved;
         maxOrd = MaxOrder;
-        walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
+        walkCtx = walkCtx->getSuffix();
         goto LABEL_201;
       }
-      deepSumFreq = ((PPM_CONTEXT*)walkCtx)->SummFreq;
+      deepSumFreq = walkCtx->SummFreq;
       mixBoostA = mixWeight + (depth5 > ofallP3);
       mixWeight >>= 1;
-      mixBoostB = (7*deepSumFreq < 4*deepFound[1] * ((PPM_CONTEXT*)walkCtx)->NStates
+      mixBoostB = (7*deepSumFreq < 4*deepFound[1] * walkCtx->NStates
                                  + 4*(uint)deepFound[1])
                 + (2*depthLeft > ofallP1) + mixBoostA;
-      ((PPM_CONTEXT*)walkCtx)->SummFreq = (word)(mixBoostB + deepSumFreq);
+      walkCtx->SummFreq = (word)(mixBoostB + deepSumFreq);
       newFoundFreq = mixBoostB + deepFound[1];
       deepFound[1] = newFoundFreq;
-      walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
+      walkCtx = walkCtx->getSuffix();
     } while (newFoundFreq < 0x45u && depth3 > ofallP3 && mixFlag2);
     trailBound = ofallP1;
     ofall = ofallSaved;
     maxOrd = MaxOrder;
 LABEL_201:
     while (trailBound < 4*depthLeft) {
-      trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
-      trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+      trailStatesIdx = walkCtx->iStates;
+      trailFlags = walkCtx->Flags;
       if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Symbol == (byte)searchSym)
         break;
 LABEL_165:
       trailStatesPtr = heap + trailStatesIdx;
       if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
-        BinEscFreq(walkCtx);
-        trailStatesIdx = ((PPM_CONTEXT*)walkCtx)->iStates;
-        trailFlags = ((PPM_CONTEXT*)walkCtx)->Flags;
+        BinEscFreq((byte*)walkCtx);
+        trailStatesIdx = walkCtx->iStates;
+        trailFlags = walkCtx->Flags;
         trailStatesPtr = heap + trailStatesIdx;
       }
-      ((PPM_CONTEXT*)walkCtx)->Flags = trailFlags & 0xF0;
+      walkCtx->Flags = trailFlags & 0xF0;
       // shallow find-and-bubble (freq margin 1 == strict less)
-      trailFound = FindAndBubble7_((byte*)trailStatesPtr, searchSym, &walkCtx[1], 1);
+      trailFound = FindAndBubble7_((byte*)trailStatesPtr, searchSym, &walkCtx->Flags, 1);
       {
         STATE* trailStates = (STATE*)(heap + trailStatesIdx);
         trailState0Freq = trailStates[0].Freq;
@@ -3078,7 +3078,7 @@ LABEL_165:
       *chain++ = (sqword)trailFound;
       if ((uint)(trailState1Freq + trailState0Freq) > 0x5F)
         break;
-      walkCtx = (byte*)((PPM_CONTEXT*)walkCtx)->getSuffix();
+      walkCtx = walkCtx->getSuffix();
       --depthLeft;
       trailBound = ofall + 1;
     }
