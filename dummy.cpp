@@ -2605,7 +2605,6 @@ qword MixUpdate(byte* ctxBytes) {
 
   byte*  onestatePtr;      // walkCtx + 2 (oneState when NStates == 0)
   sqword fastSuffix;       // walkCtx->iSuffix in NStates==0 fast-path
-  sqword chain0;           // CtxChain[0]
 
   int    foundFreq;        // foundState->Freq
   int    deepSumFreq;      // walkCtx->SummFreq
@@ -3017,7 +3016,6 @@ LABEL_94:
       } while (((PPM_CONTEXT*)walkCtx)->NStates == 0);
       maxOrd = MaxOrder;
       if (ofall < MaxOrder) {
-        chain0 = CtxChain[0];
         STATE* head0 = (STATE*)CtxChain[0];
         if (head0->Freq < 7u) {
           if (chain <= &CtxChain_2[1]) {
@@ -3025,8 +3023,7 @@ LABEL_94:
           } else {
             ++((STATE*)CtxChain_2[0])->Freq;
             if (chain > CtxChain_4) {
-              STATE* head = (STATE*)chain0;
-              head->Freq += (head->Freq - 4 < 0);
+              head0->Freq += (head0->Freq - 4 < 0);
             }
           }
         }
