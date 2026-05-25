@@ -3548,22 +3548,16 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int entryNStates;
-  int predShiftFlags, predBinFlags;
+  int entryNStates, predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
-  int cumFreq, oneStateFreqCachedF;
-  int descendNStatesP1E, ofallSavedE;
-  int descendNStatesP1C, remCandF, escSymbol;
-  int escCandidate, seeIdxBase;
+  int cumFreq, oneStateFreqCachedF, descendNStatesP1E, ofallSavedE;
+  int descendNStatesP1C, remCandF, escSymbol, escCandidate, seeIdxBase;
   byte flagsSaveA;
-  STATE  **chainPtr;
-  sqword *chainEndE, *chainEndF;
-  STATE *localFoundState, *walkStateIterE, *firstStateE;
-  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
-  uint sumFreqF;
-  uint totFreq, subRange;
-  uint sumFreqLimit;
   char descendFlags;
+  uint sumFreqF, totFreq, subRange, sumFreqLimit;
+  STATE **chainPtr, *localFoundState, *walkStateIterE, *firstStateE;
+  sqword *chainEndE, *chainEndF;
+  PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
   sqword result;
   short orderCtxSeedSave;
   // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
