@@ -1801,7 +1801,6 @@ LABEL_15:
   STATE** chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
     return (uint)(seedCtx-heapNull);
-  STATE** chainEndSaved = chainEnd;
   int newCtxAddr = seedCtx;
   byte* baseCtxAddr = (byte*)(heapNull+seedSuccIdx);
   byte newSym   = *baseCtxAddr;
@@ -1823,7 +1822,7 @@ LABEL_15:
     // Hook the new context into the chain entry above us: that entry's
     // STATE.iSuccessor now points at the freshly allocated context.
     (*chainPtrEnd)->iSuccessor = result;
-    if (chainPtrEnd == chainEndSaved) return result;
+    if (chainPtrEnd == chainEnd) return result;
   }
   return 0;
 }
