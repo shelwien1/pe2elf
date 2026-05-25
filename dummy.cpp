@@ -1759,10 +1759,10 @@ sqword StartModelRare(int mode) {
 }
 //--- #return
 //--- #include "subs_createsuccessors.inc"
-sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
+sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   sqword heapNull;
   uint seedSuccIdx;
-  qword chainPtr;
+  STATE** chainPtr;
   int curSuccIdx;
   uint ctxSuffixIdx;
   byte* foundStateB;
@@ -1771,11 +1771,11 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   int sym;
   byte* i;
   int stateSuccIdx;
-  qword chainEnd;
-  qword chainEndSaved;
+  STATE** chainEnd;
+  STATE** chainEndSaved;
   int newCtxAddr;
   byte* baseCtxAddr;
-  qword chainPtrEnd;
+  STATE** chainPtrEnd;
   sqword result;
   int newCtxPacked;
   int newCtxBytePos;
@@ -1783,18 +1783,18 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   // Walk the CtxChain[] entries; each entry is a STATE*. We're looking for the
   // first entry whose state->iSuccessor differs from the head's, or the end of
   // the chain (suffix == 0).
-  seedSuccIdx = ((STATE*)*(sqword*)chainStart)->iSuccessor;
+  seedSuccIdx = (*chainStart)->iSuccessor;
   chainPtr = chainStart;
   while (1) {
-    curSuccIdx = ((STATE*)*(sqword*)chainPtr)->iSuccessor;
+    curSuccIdx = (*chainPtr)->iSuccessor;
     if (curSuccIdx != seedSuccIdx) {
       LODWORD(seedCtx) = HeapNull + curSuccIdx;
       goto LABEL_15;
     }
     ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
-    chainPtr += 8LL;
+    ++chainPtr;
     if (!ctxSuffixIdx) goto LABEL_15;
-    if (chainPtr >= CtxChainEnd) break;
+    if ((qword)chainPtr >= CtxChainEnd) break;
     seedCtx = HeapNull + ctxSuffixIdx;
   }
   foundStateB = (byte*)q9;
@@ -1812,11 +1812,11 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
       state = &pc->oneState();
     }
     i = (byte*)state;
-    stateSuccIdx = ((STATE*)i)->iSuccessor;
+    stateSuccIdx = state->iSuccessor;
     if (stateSuccIdx != seedSuccIdx) break;
     suffixIdx0 = ((PPM_CONTEXT*)ctxAddr)->iSuffix;
-    *(qword*)chainPtr = (qword)(uintptr_t)i;
-    chainPtr += 8LL;
+    *chainPtr = state;
+    ++chainPtr;
     if (!suffixIdx0) {
       LODWORD(seedCtx) = ctxAddr;
       goto LABEL_15;
@@ -1824,7 +1824,7 @@ sqword CreateSuccessors(int depth, qword chainStart, sqword seedCtx) {
   }
   LODWORD(seedCtx) = heapNull+stateSuccIdx;
 LABEL_15:
-  chainEnd = chainStart+8LL*depth;
+  chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
     return (uint)(seedCtx-heapNull);
   chainEndSaved = chainEnd;
@@ -1844,10 +1844,10 @@ LABEL_15:
     newCtx->iSuffix = newCtxAddr - heapNull;
     newCtxAddr = (int)(uintptr_t)newCtx;
     result = (uint)((uint)(uintptr_t)newCtx - heapNull);
-    chainPtrEnd -= 8LL;
+    --chainPtrEnd;
     // Hook the new context into the chain entry above us: that entry's
     // STATE.iSuccessor now points at the freshly allocated context.
-    ((STATE*)*(sqword*)chainPtrEnd)->iSuccessor = result;
+    (*chainPtrEnd)->iSuccessor = result;
     if (chainPtrEnd == chainEndSaved) return result;
   }
   return 0;
@@ -2087,7 +2087,7 @@ sqword ReduceOrder() {
   rootCtxSaved = RootContext;
   sse0Bit = ((byte*)SSE0)[((STATE*)q9)->Symbol];
   if( OrderFall==MaxOrder&&succIdxW ) {
-    succCreatedTop = CreateSuccessors(1, (qword)CtxChain, MaxContext0);
+    succCreatedTop = CreateSuccessors(1, (STATE**)CtxChain, MaxContext0);
     ((STATE*)foundStateB)->iSuccessor = succCreatedTop;
     if( succCreatedTop ) {
       result = HeapNull+succCreatedTop;
@@ -2149,7 +2149,7 @@ sqword ReduceOrder() {
       // newByteIdx assignment refreshes its successor-index value from the
       // local pTextEntry that was set at function entry.
       newByteIdx = pTextEntry + 1 - heapNull;
-      succIdxW = CreateSuccessors(0, (qword)(chainPtrSave-1), curCtx);
+      succIdxW = CreateSuccessors(0, (STATE**)(chainPtrSave-1), curCtx);
       ((STATE*)chainStatePtr)->iSuccessor = succIdxW;
     }
     if( orderFall==maxOrder-1&&maxCtxStart==rootCtxSaveCS ) {
@@ -2212,7 +2212,7 @@ LABEL_73:
   succIdx = succIdxW;
   if( unitsStart>heapNull+(qword)succIdxW ) {
     newByteIdx = pTextEntry + 1 - heapNull;
-    succIdxW = CreateSuccessors(0, (qword)CtxChain, MaxContext0);
+    succIdxW = CreateSuccessors(0, (STATE**)CtxChain, MaxContext0);
     goto LABEL_9;
   }
 LABEL_11:
