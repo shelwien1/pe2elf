@@ -1765,7 +1765,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   STATE** chainPtr;
   int curSuccIdx;
   uint ctxSuffixIdx;
-  byte* foundStateB;
+  STATE* foundStateB;
   uint suffixIdx0;
   sqword ctxAddr;
   int sym;
@@ -1796,7 +1796,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     if ((qword)chainPtr >= CtxChainEnd) break;
     seedCtx = HeapNull + ctxSuffixIdx;
   }
-  foundStateB = (byte*)q9;
+  foundStateB = (STATE*)q9;
   suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
   while (1) {
     ctxAddr = heapNull + suffixIdx0;
@@ -1804,7 +1804,7 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
     PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxAddr;
     STATE* state;
     if (pc->NStates) {
-      sym = *foundStateB;
+      sym = foundStateB->Symbol;
       state = pc->getStates();
       while (state->Symbol != sym) state++;
     } else {
