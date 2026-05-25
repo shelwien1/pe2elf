@@ -3675,7 +3675,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, seeIdxBase;
-  byte minCtxFlagsC, flagsSaveA;
+  byte flagsSaveA;
   STATE  **chainPtr;
   sqword *chainEndE;
   sqword *chainEndF, *sortRangeE, *sortLimitC;
@@ -4181,7 +4181,8 @@ LABEL_298:
       } else {
         suffixCtxC = MinContext->getSuffix();
         suffixCtxC = WalkEscapeChain_(suffixCtxC, MinContext, escSymbol, escCandidate);
-        minCtxFlagsC = MinContext->Flags;
+        // FreqMixStep_ doesn't touch MinContext->Flags, so one read suffices.
+        byte minCtxFlagsC = MinContext->Flags;
         if( 16*freqDeltaE<=freqSumE||(MinContext->Flags&0x40)!=0 ) {
           CtxChainEnd = (sqword)chainEndF;
           sumFreqCacheC = MinContext->SummFreq;
@@ -4202,7 +4203,6 @@ LABEL_298:
             walkFreqSumC += st->Freq;
           } while( chainEndE!=CtxChain );
           freqSumE = walkFreqSumC;
-          minCtxFlagsC = MinContext->Flags;
           sumFreqCacheC = sumFreqW0C;
           CtxChainEnd = (sqword)chainEndE;
         }
