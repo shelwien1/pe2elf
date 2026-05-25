@@ -37,10 +37,12 @@ PE2ELF_FLAGS = -O2 -std=c++17 -Wall -Wextra -Wno-unused-parameter -static
 
 all: $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT)
 
-$(SHIM_OUT): $(SHIM_SRCS) shim_types.h shim.map
+SHIM_HEADERS = $(wildcard shim_*.hpp)
+
+$(SHIM_OUT): $(SHIM_SRCS) $(SHIM_HEADERS) shim_types.h shim.map
 	$(CC) $(SHIM_FLAGS) -o $@ $(SHIM_SRCS) $(SHIM_LDFLAGS)
 
-$(SHIM_DBG_OUT): $(SHIM_SRCS) shim_types.h shim.map
+$(SHIM_DBG_OUT): $(SHIM_SRCS) $(SHIM_HEADERS) shim_types.h shim.map
 	$(CC) $(SHIM_DBG_FLAGS) -DWINAPI_LOG_ENABLED -o $@ $(SHIM_SRCS) $(SHIM_DBG_LDFLAGS)
 
 $(DUMMY_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h

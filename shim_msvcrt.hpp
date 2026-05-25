@@ -216,14 +216,48 @@ extern "C" EXPORT int    msvcrt_atexit(void (*fn)(void))                  { retu
 extern "C" EXPORT void   msvcrt_exit(int code)                            { exit(code); }
 extern "C" EXPORT void*  msvcrt_localeconv(void)                          { return (void*)localeconv(); }
 
+// Windows CRT signal handlers are ms_abi (signal number in RCX); Linux
+// signal handlers are SysV (signal number in EDI).  Registering an
+// ms_abi handler directly with sigaction makes the kernel deliver the
+// signal number via the SysV register, so the handler reads garbage in
+// RCX.  Stash the ms_abi handler per signal and register a SysV
+// trampoline that bridges the ABI.  We also remember the *Windows*
+// signal number the caller registered with, so the handler sees the
+// number it expects (e.g. SIGABRT is 22 on Windows but 6 on Linux).
+typedef void (__attribute__((ms_abi)) *win_sighandler_t)(int);
+static win_sighandler_t g_msvcrt_sighandlers[64] = {};
+static int              g_msvcrt_winsig[64]      = {};
+
+static void msvcrt_signal_trampoline(int sig) {
+  if( sig<0||sig>=64 ) return;
+  win_sighandler_t h = g_msvcrt_sighandlers[sig];
+  int winsig = g_msvcrt_winsig[sig];
+  if( h ) h(winsig);  // typed call: compiler emits SysV→ms_abi conversion
+}
+
 extern "C" EXPORT void* msvcrt_signal(int sig, void* handler) {
   // Map Windows SIGABRT (22) to Linux SIGABRT (6)
   int lsig = (sig == 22) ? SIGABRT : sig;
+  if( lsig<0||lsig>=64 ) return (void*)-1;  // SIG_ERR
   struct sigaction sa = {}, old = {};
-  if( handler == (void*)0 )      sa.sa_handler = SIG_DFL;
-  else if( handler == (void*)1 ) sa.sa_handler = SIG_IGN;
-  else                            sa.sa_handler = (void(*)(int))handler;
+  win_sighandler_t prev = g_msvcrt_sighandlers[lsig];
+  if( handler == (void*)0 ) {
+    sa.sa_handler = SIG_DFL;
+    g_msvcrt_sighandlers[lsig] = nullptr;
+    g_msvcrt_winsig[lsig] = 0;
+  } else if( handler == (void*)1 ) {
+    sa.sa_handler = SIG_IGN;
+    g_msvcrt_sighandlers[lsig] = nullptr;
+    g_msvcrt_winsig[lsig] = 0;
+  } else {
+    g_msvcrt_sighandlers[lsig] = (win_sighandler_t)handler;
+    g_msvcrt_winsig[lsig] = sig;  // remember the caller's (Windows) sig number
+    sa.sa_handler = msvcrt_signal_trampoline;
+  }
   sigaction(lsig, &sa, &old);
+  // Hand back the previously-installed Windows handler if any; otherwise
+  // whatever was registered out-of-band (SIG_DFL/SIG_IGN/raw sigaction).
+  if( prev ) return (void*)prev;
   return (void*)old.sa_handler;
 }
 
@@ -304,12 +338,12 @@ extern "C" EXPORT int64_t msvcrt__time64(int64_t* t) {
 }
 extern "C" EXPORT struct tm* msvcrt__gmtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  static __thread struct tm buf;
+  static __thread struct tm buf __attribute__((tls_model("initial-exec")));
   return gmtime_r(&tt, &buf);
 }
 extern "C" EXPORT struct tm* msvcrt__localtime64(const int64_t* t) {
   time_t tt = t ? (time_t)*t : (time_t)time(nullptr);
-  static __thread struct tm buf;
+  static __thread struct tm buf __attribute__((tls_model("initial-exec")));
   return localtime_r(&tt, &buf);
 }
 extern "C" EXPORT int64_t msvcrt__mktime64(struct tm* tm_val) {
@@ -449,7 +483,6 @@ static inline int ms_cmp_elems(ms_cmp_fn cmp, uint8_t* base, size_t i, size_t j,
 }
 
 extern "C" EXPORT void msvcrt_qsort(void* base0, size_t n, size_t sz, ms_cmp_fn cmp) {
-  log_always("[SHIM] qsort(base=%p, n=%zu, sz=%zu, cmp=%p)\n", base0, n, sz, (void*)(uintptr_t)cmp);
   if( n <= 1 || sz == 0 || !cmp ) return;
 
   enum { CUTOFF = 8, STKSIZ = 62 };

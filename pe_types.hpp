@@ -90,6 +90,21 @@ struct pe_import {
   uint32_t NameRVA;
   uint32_t ImportAddressTableRVA;
 };
+// IMAGE_EXPORT_DIRECTORY — used to resolve ordinal imports against a side
+// copy of the matching DLL kept under dll/<name>.dll.
+struct pe_export {
+  uint32_t Characteristics;
+  uint32_t TimeDateStamp;
+  uint16_t MajorVersion;
+  uint16_t MinorVersion;
+  uint32_t NameRVA;
+  uint32_t OrdinalBase;
+  uint32_t NumberOfFunctions;
+  uint32_t NumberOfNames;
+  uint32_t FunctionsRVA;        // array of NumberOfFunctions function RVAs
+  uint32_t NamesRVA;            // array of NumberOfNames name string RVAs
+  uint32_t NameOrdinalsRVA;     // array of NumberOfNames WORD indexes into FunctionsRVA
+};
 #pragma pack(pop)
 
 // PE section characteristics
@@ -98,6 +113,7 @@ static const uint32_t PE_SCN_MEM_READ    = 0x40000000;
 static const uint32_t PE_SCN_MEM_WRITE   = 0x80000000;
 
 // Data directory indices
+static const uint32_t PE_DD_EXPORT    = 0;
 static const uint32_t PE_DD_IMPORT    = 1;
 static const uint32_t PE_DD_BASERELOC = 5;
 static const uint32_t PE_DD_TLS       = 9;

@@ -134,6 +134,8 @@ struct CPINFO { UINT MaxCharSize; BYTE DefaultChar[2]; BYTE LeadByte[12]; };
 #define ERROR_OUTOFMEMORY        8
 #define ERROR_INVALID_PARAMETER  87
 #define ERROR_CALL_NOT_IMPLEMENTED 120
+#define ERROR_MOD_NOT_FOUND      126
+#define ERROR_PROC_NOT_FOUND     127
 #define ERROR_INVALID_FLAGS      1004
 #define ERROR_NO_MORE_FILES      18
 

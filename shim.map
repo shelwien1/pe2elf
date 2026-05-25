@@ -363,6 +363,15 @@ WINAPI_SHIM_1.0 {
     msvcrt__endthreadex;
     msvcrt__setjmp;
     msvcrt_longjmp;
+
+    ole32_CoCreateInstance;
+    ole32_CoSetProxyBlanket;
+
+    oleaut32_SysAllocString;
+    oleaut32_SysFreeString;
+    oleaut32_VariantClear;
+
+    powrprof_SetSuspendState;
   local:
     *;
 };
