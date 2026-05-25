@@ -2592,7 +2592,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   RecentPos[symEpochS&0xFFF] = recentEpoch;
   SseCtx0_1[sym] = symEpoch;
   dt = symEpoch-recentEpoch;
-  if( (uint)(symEpoch-recentEpoch)>=0x104 ) {
+  if ((uint)dt >= 0x104) {
     b31Key = 0;
     hintSymRecent = -1;
   } else {
