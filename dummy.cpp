@@ -3516,7 +3516,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
   int escCandidate, d106Cache;
   byte flagsCtxFC, minCtxFlagsC, flagsSaveA;
-  sqword *chainPtr, *chainEndE;
+  STATE  **chainPtr;
+  sqword *chainEndE;
   sqword *chainEndF, *sortRangeE, *sortLimitC;
   STATE *FoundState, *walkStateIterE, *firstStateE;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC, *preCommitMinCtx;
@@ -3743,7 +3744,7 @@ LABEL_58:
                 .bits <5, 2> (MixCtx2 & 3);
               d106Cache = sseIdxStorage;
               remCandF = nStates+1;
-              chainPtr = CtxChain;
+              chainPtr = (STATE**)CtxChain;
               // MixCtxExtra accumulator update: a few bits at fixed positions
               // plus a "sliding edge": bits 13-14 are always set when this
               // branch fires, and a single 1-bit edge moves from bit 12 to
@@ -4124,7 +4125,7 @@ LABEL_335:
       RunLength = runLengthInit;
       predRescaleDiv = freqSumE+descendNStates+1;
       predBinFlags = 0;
-      chainPtr = CtxChain;
+      chainPtr = (STATE**)CtxChain;
       wDelta35 = 0;
       CtxChainEnd = (sqword)CtxChain;
       {
@@ -4160,7 +4161,7 @@ LABEL_335:
         // -------------------------------------------------------------------
         if( f_DEC ) rc.DecodeNormalize(inFile); else rc.EncodeNormalize(outFile);
 LABEL_59:
-        FoundState = (STATE*)*chainPtr;
+        FoundState = *chainPtr;
         preCommitMinCtx = MinContext;
         CtxChainEnd = (sqword)(chainPtr+1);
         q18 = q22 = q20 = q17 = (sqword)d27;
@@ -4409,7 +4410,7 @@ LABEL_59:
         escSymbol = MixCtx3;
         epoch = SymCount;
         escCandidate = EscapeSymbol;
-        chainPtr = (sqword*)CtxChainEnd;
+        chainPtr = (STATE**)CtxChainEnd;
         orderCtxSeedSave = OrderCtxSeed;
         sumFreqF = cumFreqAcc;
         d103Cache = cumFreqMixSave;
