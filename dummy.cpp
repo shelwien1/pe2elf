@@ -2870,7 +2870,7 @@ LABEL_94:
           }
         } else {
           FoundSymbol = (byte)(2*b1-b2);
-          PrevSymbol = (byte)(2*b1-b2);
+          PrevSymbol  = FoundSymbol;
           SymLastCtx[(byte)(FoundSymbol+1)] = sc;
           SymLastCtx[(byte)(FoundSymbol-1)] = sc;
           SymLastCtx[(byte)(FoundSymbol+2)] = sc;
