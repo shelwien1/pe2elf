@@ -2458,7 +2458,7 @@ qword MixUpdate(byte* ctxBytes) {
   int   scale;    // sseCum (decay for the pred-pair updates)
 
   // ---- per-step state ------------------------------------------------------
-  byte*  foundState;       // == FoundState (alias of q9)
+  STATE* foundState;       // == FoundState (alias of q9)
   int    sc;               // = SymCount - 1, the new SymCount
   int    prevSymCount;     // SymCount before --
   int    symEpoch;         // current SymEpoch (epoch counter)
@@ -2610,10 +2610,10 @@ qword MixUpdate(byte* ctxBytes) {
   UpdateWeightPair_(wpQ24, predWeightDelta + predSseTotDelta, 2 * scale);
   UpdateWeightPair_(wpQ25, predWeightDelta,           scale);
 
-  foundState = (byte*)q9;
+  foundState = (STATE*)q9;
   SparseBitmapA[SparseIdxA] |= SparseBit;
   SparseBitmapB[SparseIdxB] |= SparseBit;
-  sym = *foundState;
+  sym = foundState->Symbol;
   LODWORD(matchHi) = MatchCtxHi;
   SseState3[sseState3Hash] = sym;
   *(sseSlot-0x20000) = sym;
@@ -2947,7 +2947,7 @@ LABEL_94:
     .bit  <15>(OrderFall > 0);
   minNStates = ((PPM_CONTEXT*)ctxBytes)->NStates;
   NMasked = minNStates;
-  searchSym = *foundState;
+  searchSym = foundState->Symbol;
   minISuffix = ((PPM_CONTEXT*)ctxBytes)->iSuffix;
   // SseSeed bitfield:
   //   raw   : BinMapTable[mixCtx2New & 0xF]  (low-order bits feed the binary
@@ -3025,7 +3025,7 @@ LABEL_94:
       deepStatesPtr = heap + deepStatesIdx;
       // deep find-and-bubble (freq margin 13)
       deepFound = FindAndBubble7_((byte*)(heap+deepStatesIdx), searchSym, &walkCtx[1], 13);
-      foundFreq = ((STATE*)foundState)->Freq;
+      foundFreq = foundState->Freq;
       *chain++ = (sqword)deepFound;
       depth5 -= 5;
       depth3 -= 3;
@@ -3087,7 +3087,7 @@ LABEL_165:
     CtxChainEnd = (sqword)&CtxChain_1;
   }
   if (ofall == maxOrd
-      && (result = HeapNull + ((STATE*)foundState)->iSuccessor,
+      && (result = HeapNull + foundState->iSuccessor,
           result >= UnitsStart)) {
     RootContext = result;
     MaxContext0 = result;
