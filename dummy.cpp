@@ -671,7 +671,7 @@ constexpr int MAX_O = 128;
 // Alternatively, using a explicit C++ reference variable:
 PPM_CONTEXT*&MaxContext = *(PPM_CONTEXT**)&MaxContext0;
 
-sqword BinEscFreq(byte* ctxBytes);
+sqword BinEscFreq(PPM_CONTEXT* pc);
 
 // Walks the context suffix chain to update local frequency statistics, perform inertia
 // scaling adjustments, and calculate state metrics for context-mixing/predictive modeling.
@@ -715,7 +715,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
 
   // Step 3: Check escape condition and handle low-frequency model rescaling
   if( ctx->getStates()[ctx->Flags&0x0F].Freq==0 ) {
-    BinEscFreq((byte*)ctx);
+    BinEscFreq(ctx);
   }
 
   // FIX BUG 1: Track the updated primary escape symbol back out to global context state
@@ -741,7 +741,7 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
       // Uses pre-rescale context state metrics (verification_nstates + 1)
       if( summ_freq+summ_freq*suffix_nstates<(verification_nstates+1)*(suffix_summ_freq+15) ) {
         if( suffix_ctx->getStates()[suffix_ctx->Flags&0x0F].Freq==0 ) {
-          BinEscFreq((byte*)suffix_ctx);
+          BinEscFreq(suffix_ctx);
           suffix_summ_freq = suffix_ctx->SummFreq;
           summ_freq = ctx->SummFreq; // Synchronize just in case
         }
@@ -974,8 +974,7 @@ sqword InitTables() {
 //--- #return
 //--- #include "subs_binescfreq2.inc"
 
-sqword BinEscFreq(byte* ctxBytes) {
-  PPM_CONTEXT* pc = (PPM_CONTEXT*)ctxBytes;
+sqword BinEscFreq(PPM_CONTEXT* pc) {
   int nStates = pc->NStates;
   int numStates = nStates + 1;
   
@@ -998,7 +997,7 @@ sqword BinEscFreq(byte* ctxBytes) {
   // Recursively process the suffix context if its current state frequency is zero
   STATE* suffixCurrState = suffix->getStates() + (suffix->Flags & 0x0F);
   if (suffixCurrState->Freq == 0) {
-    BinEscFreq((byte*)suffix);
+    BinEscFreq(suffix);
   }
   
   // Search for the state in the suffix context that matches the current symbol
@@ -3019,7 +3018,7 @@ LABEL_94:
       deepFlags = walkCtx->Flags;
       if (((STATE*)(heap + deepStatesIdx))[deepFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
-        BinEscFreq((byte*)walkCtx);
+        BinEscFreq(walkCtx);
         deepStatesIdx = walkCtx->iStates;
         deepFlags = walkCtx->Flags;
       }
@@ -3062,7 +3061,7 @@ LABEL_165:
       trailStatesPtr = heap + trailStatesIdx;
       if (((STATE*)(heap + trailStatesIdx))[trailFlags & 0xF].Freq == 0) {
         CtxChainEnd = (sqword)chain;
-        BinEscFreq((byte*)walkCtx);
+        BinEscFreq(walkCtx);
         trailStatesIdx = walkCtx->iStates;
         trailFlags = walkCtx->Flags;
         trailStatesPtr = heap + trailStatesIdx;
@@ -3657,7 +3656,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
       int  nStates = MinContext->NStates;
       byte ctxFlags = MinContext->Flags;
       if( !MinContext->getStates()[ctxFlags&0xF].Freq ) {
-        BinEscFreq((byte*)MinContext);
+        BinEscFreq(MinContext);
         nStates = MinContext->NStates;
         ctxFlags = MinContext->Flags;
       }
@@ -4022,7 +4021,7 @@ LABEL_128:
         if( walkNStates ) {
           result = MinContext->Flags&0xF;
           if( !MinContext->getStates()[result].Freq )
-          result = BinEscFreq((byte*)MinContext);
+          result = BinEscFreq(MinContext);
         }
         walkDelta = walkNStates-entryNStates;
       } while( !walkDelta );
