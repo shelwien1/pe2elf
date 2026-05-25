@@ -4022,6 +4022,9 @@ LABEL_58:
     if( mixShiftSelB<=0x20 ) {
       sseTot = cumWeightB;
       sseCum = cumFreqB;
+      // Cheap-path: skip the deeper BinSse sub-stage. Reset all 10 SSE/mix
+      // slot pointers to (sqword)d27 (dummy sink) so the commit-tail's
+      // '*(uint*)slot += wDelta##' writes have no effect.
       q35 = q34 = q29 = q30 = q31 = q32 = PredBaseBG = PredBaseAG = BinMixLoG = BinMixHiG = (sqword)d27;
       binSseCell = (uint*)&predWeightSink;        // dummy sink: deeper sub-stage not taken
     } else {
