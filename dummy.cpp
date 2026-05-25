@@ -4619,7 +4619,7 @@ LABEL_59:
     // PE's variant of ppmd's "Freq += (Freq < MAX_FREQ-3)" cap, plus an
     // extra bump on the very first hit (Freq==1) when the candidate is
     // well-predicted in context (totFreq < 4*cumFreq). Block-scoped so
-    // the goto from line ~4486 doesn't bypass the initializers.
+    // the goto LABEL_250 elsewhere doesn't bypass the initializers.
     {
       byte freqIncCap   = (oneStateFreqF < 127);
       byte firstHitBump = (oneStateFreqF == 1 && totFreq < 4u*(uint)cumFreq);
