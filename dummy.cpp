@@ -3554,7 +3554,7 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
-  int inputByte, epoch;
+  int inputByte;
   int nStatesP1Save, cumFreqC, entryNStates, sseSum2A;
   int predShiftFlags, predBinFlags;
   int walkNStates, walkDelta, descendNStates, freqDeltaE, remStatesE, freqSumE;
@@ -3609,7 +3609,7 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   // Sse2BaseG holds the base of the current Sse2State sub-block (a 516-byte chunk;
   // the histogram occupies bytes 0..511, the running counter sits at +512).
   byte*& sse2Base = (byte*&)Sse2BaseG;
-  epoch = SymCount;
+  int epoch = SymCount;
   do {
     // -----------------------------------------------------------------------
     //  Per-symbol outer loop: read input byte (encode), pick context, dispatch
