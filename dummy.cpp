@@ -2209,14 +2209,12 @@ LABEL_11:
     PPM_CONTEXT* succCtx = (PPM_CONTEXT*)succAddr;
     ctxSuffixIdx = succCtx->iSuffix;
     OrderFall = orderFall + 1;
-    (void)(ctxSuffixIdx + heapNull); // prefetch hint removed
     if (OrderFall == maxOrder) {
       newByteIdx = succIdxW;
       pText = pTextNewSlot - (rootCtxW != maxCtxStart);
     }
     result = succCtx->iStates;
   }
-  (void)(result + heapNull); // prefetch hint removed
   if( rootCtxW!=maxCtxStart ) {
     escIdx = EscIndexSeed+8;
     succAddrSaved = heapNull+succIdx;
