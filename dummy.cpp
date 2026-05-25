@@ -4176,17 +4176,20 @@ LABEL_298:
           q29 = (sqword)bigSlotC;
           predLoBeyondC = mixWeightDeltaC<0x100;
           shiftSelC = predLoBeyondC+1;
-          q33 = (sqword)(mixSlotC+2048);
-          q32 = (sqword)(mixSlotC-2048);
-          // blend the two neighbour cells (mixSlotC ± 2048) into the running
-          // (mixWeightC, mixFreqCacheC) accumulators.
-          mixWeightC    += (*((uint*)mixSlotC+512) + *((uint*)mixSlotC-512))   >> shiftSelC;
-          mixFreqCacheC += (uint)(*((word*)mixSlotC+1026)
-                                + *((word*)mixSlotC-1022))                    >> shiftSelC;
+          // blend the two neighbour cells (mixSlotC ± 2048 bytes; cell layout:
+          // uint weight at byte 0, word freq at byte 4) into (mixWeightC,
+          // mixFreqCacheC). Same pattern as mixUpA/mixDnA above.
+          char* mixUpC = mixSlotC + 2048;
+          char* mixDnC = mixSlotC - 2048;
+          q33 = (sqword)mixUpC;
+          q32 = (sqword)mixDnC;
+          mixWeightC    += (*(uint*)mixUpC + *(uint*)mixDnC)            >> shiftSelC;
+          mixFreqCacheC += (uint)(((word*)mixUpC)[2]
+                                + ((word*)mixDnC)[2])                   >> shiftSelC;
           sseCum = mixWeightC;
           sseTot = mixFreqCacheC;
-          wDelta33 = RescaleAccum1_((void*)(mixSlotC+2048), *((uint*)mixSlotC+512), shiftSelC);
-          wDelta32 = RescaleAccum1_((void*)(mixSlotC-2048), *((uint*)mixSlotC-512), shiftSelC);
+          wDelta33 = RescaleAccum1_(mixUpC, *(uint*)mixUpC, shiftSelC);
+          wDelta32 = RescaleAccum1_(mixDnC, *(uint*)mixDnC, shiftSelC);
           wDelta29 = RescaleAccum1_(bigSlotC, (uint)*bigSlotC, *((word*)mixSlotC+3)<0x200u);
           predShiftIncC = (*((word*)mixSlotC+3)<0x400u)+predLoBeyondC+1;
           mixStrideC = &mixSlotC[-8*mixIdxC];
