@@ -2792,11 +2792,14 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   }
   q12 = (sqword)&Sse2State[516*(newQ12Sel&3)];
   recentForHi = SseCtx0_1[matchHi];
-  if( sym==FoundSymbol&&MixScale<=256 ) {
-    mixScaleCntr = 4*MixScale;
-  } else if( mixScaleCntr>(uint)(3*MixScale)&&(prevSymCount==SymLastCtx[sym]||prevSymCount==SymLastCtx2[sym]||4*MixScale-9<(uint)mixScaleCntr) ) {
-    mixScaleCntr -= MixScale>13;
-  } else if( dt>1 ) {
+  if (sym == FoundSymbol && MixScale <= 256) {
+    mixScaleCntr = 4 * MixScale;
+  } else if (mixScaleCntr > (uint)(3 * MixScale)
+          && (prevSymCount == SymLastCtx[sym]
+           || prevSymCount == SymLastCtx2[sym]
+           || (uint)mixScaleCntr > 4 * MixScale - 9)) {
+    mixScaleCntr -= MixScale > 13;
+  } else if (dt > 1) {
     rp1 = RecentPos[recentEpoch&0xFFF];
     // First test: does RecentPos[sym] form a dt-stride progression, with dt small?
     if (dt == recentEpoch - rp1 && dt == rp1 - RecentPos[rp1&0xFFF] && dt <= 256) {
