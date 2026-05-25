@@ -2290,9 +2290,8 @@ LABEL_99:
         // Promote NStates==0 binary context to NStates==1: copy the existing
         // oneState into allocedUnit (becomes STATE[0]), then bump its Freq.
         STATE* newStates = (STATE*)allocedUnit;
-        *(word*)newStates = (word)curCtxP->SummFreq;            // = oneState.Symbol+Freq
+        *newStates = curCtxP->oneState();
         freqBoost = b24[escIdxClipped];
-        newStates->iSuccessor = curCtxP->iStates;               // = oneState.iSuccessor
         curCtxP->iStates = (uint)((sqword)allocedUnit - heapNull);
         newStateFreq = 4 * (int)newStates->Freq + freqBoost;
         if (newStateFreq >= 238) newStateFreq = 238;
