@@ -3556,7 +3556,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   int entryNStates;
   int predShiftFlags, predBinFlags;
   int descendNStates, freqDeltaE, remStatesE, freqSumE;
-  int walkFreqSumE, walkSymE;
   int cumFreq, oneStateFreqCachedF;
   int descendNStatesP1E, ofallSavedE;
   int descendNStatesP1C, sparseFlags, remCandF, escSymbol;
@@ -4015,7 +4014,8 @@ LABEL_128:
         sqword* sortRangeE = chainEndE;
         sqword* sortLimitC;
         int     sortPriorityC;
-        walkFreqSumE = freqSumE;
+        int     walkFreqSumE = freqSumE;
+        int     walkSymE;
         while( 1 ) {
           do {
             walkStateIterE += 1;
