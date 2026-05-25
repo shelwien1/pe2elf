@@ -2107,9 +2107,9 @@ sqword ReduceOrder() {
     curCtx = MaxContext0;
     chainPtrW = CtxChain;
     while( 1 ) {
+      PPM_CONTEXT* pc = (PPM_CONTEXT*)curCtx;
       if( (qword)chainPtrW>=ctxChainEndS ) {
         // Find the STATE for sym in curCtx (or take its oneState if NStates==0).
-        PPM_CONTEXT* pc = (PPM_CONTEXT*)curCtx;
         STATE* state;
         if (pc->NStates) {
           state = pc->getStates();
@@ -2126,7 +2126,7 @@ sqword ReduceOrder() {
       if( succIdxW )
         break;
       stateBW->iSuccessor = newByteIdx;
-      curCtxSuffix = ((PPM_CONTEXT*)curCtx)->iSuffix;
+      curCtxSuffix = pc->iSuffix;
       OrderFall = --orderFall;
       if (!curCtxSuffix) {
         succIdxW = curCtx - heapNull;
