@@ -236,22 +236,21 @@ small predicate ladder.
 
 ### E. The q-globals don't have semantic names
 
-Twenty-two `sqword q##` globals (q9, q12, q14, q17..q25, q26, q29..q37,
-q39) survive. Inside each function they're aliased to a typed pointer
-with a semantic name, but **the underlying global is the channel
-between cascade stages and `MixUpdate`** — so the alias has to live
-at file scope or be re-established at every call site. Current state:
+Renamed at file scope so far: q26 → `bijectCellPtr`, q36 →
+`BinSseCellG`, q37 → `PredWeightBG`, q39 → `PredWeightAG`. q9 retains
+its name because it has a typed file-scope alias `FoundState` AND a
+shadowing local `FoundState` inside `RealProcess` that must keep using
+`q9 = ...` / `... = q9` to publish between local and global storage.
 
-```cpp
-// dummy.cpp:108-113, 247-264 — bare q-global declarations
-sqword q9, q12, q14, q17, q18, q19, q20, q21, q22, q23,
-       q24, q25, q26, q29, q30, q31, q32, q33, q34, q35,
-       q36, q37, q39;
-```
+Still bare `sqword q##` at file scope: q12, q17, q18, q19, q20, q21,
+q22, q23, q24, q25, q29..q35. Each is aliased inside `RealProcess` /
+`MixUpdate` to a typed pointer with a semantic name, but the
+underlying global is the channel between cascade stages and
+`MixUpdate` — so the alias has to live at file scope or be
+re-established at every call site.
 
 | q##  | What it points to (semantic name where one exists)             |
 |------|----------------------------------------------------------------|
-| q9   | `FoundState` (STATE\*)                                          |
 | q12  | `sse2Base` (current Sse2State sub-block, byte\*) — overlay     |
 | q14  | `CtxChainEnd` (sqword) — already file-scope aliased            |
 | q17  | `wQ17` (predictor-pair int\*; binMixDeltaHi target)            |
@@ -263,12 +262,9 @@ sqword q9, q12, q14, q17, q18, q19, q20, q21, q22, q23,
 | q23  | `sse1Slot` (int\*; sse2NumDelta/sse2DenDelta pair)             |
 | q24  | `sse2Slot` / `wpQ24` (predictor pair int\*)                    |
 | q25  | `sse3Slot` / `wpQ25` (predictor pair int\*)                    |
-| q26  | BijectMap cell (byte\*; sym/prev1/prev2/count quadruple)       |
-| q29..q36 | d27/d29-indexed mixing-table slots; reassigned per cascade |
-| q37, q39 | PredWeight A/B cells (uint\*)                              |
+| q29..q35 | d27/d29-indexed mixing-table slots; reassigned per cascade |
 
-A reader has to grep five other functions to learn which q## means
-what. Goal: rename each of these at the definition site, the same way
+Goal: rename each of these at the definition site, the same way
 `d51 → sseCum` was done.
 
 ### F. The d-arrays expose raw byte-offset arithmetic
