@@ -2612,16 +2612,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 }
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
-  // ---- mixing-predictor weight pointers (BinMix{Hi,Lo}G + PredBase{A,B}G + Sse{1,2,3}SlotG + SseMatchSlotG hold heap addresses) -----
-  uint* wBinMixHi;     // single  += binMixDeltaHi
-  uint* wPredBaseB;     // single  += predBaseDeltaB
-  uint* wSseMatch;     // pair    += sseMatchNumDelta / -= sseMatchDenDelta
-  uint* wBinMixLo;     // single  += binMixDeltaLo
-  uint* wPredBaseA;     // single  += predBaseDeltaA
-  uint* wSse1;     // pair    += sse2NumDelta / -= sse2DenDelta
-  int*  wpSse2;    // pred-pair (overflow halving)
-  int*  wpSse3;    // pred-pair (overflow halving)
-
   // ---- per-step state ------------------------------------------------------
   STATE* foundState;       // captured FoundState at function entry
   int    sc;               // = SymCount - 1, the new SymCount
@@ -2709,15 +2699,6 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
 
   int    trailBound;       // gating cutoff in trailing loop
 
-  // ---- Section 1: simple additive predictor-weight updates ----------------
-  wBinMixHi = (uint*)BinMixHiG;
-  wPredBaseB = (uint*)PredBaseBG;
-  wSseMatch = (uint*)SseMatchSlotG;
-  wBinMixLo = (uint*)BinMixLoG;
-  wPredBaseA = (uint*)PredBaseAG;
-  wSse1 = (uint*)Sse1SlotG;
-  wpSse2 = (int*)Sse2SlotG;
-  wpSse3 = (int*)Sse3SlotG;
   prevSymCount = SymCount;
   sc           = SymCount - 1;
   SymCount     = sc;
@@ -2726,20 +2707,29 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     word* binMixCenter = (word*)BinMixCenterG;
     *(uint*)binMixCenter += binMixCenter[3];
   }
-  *wBinMixHi       += binMixDeltaHi;
-  *wBinMixLo       += binMixDeltaLo;
-  *wPredBaseA       += predBaseDeltaA;
-  *wPredBaseB       += predBaseDeltaB;
-  *wSse1       += sse2NumDelta;  wSse1[1] -= sse2DenDelta;
-  *wSseMatch       += sseMatchNumDelta;  wSseMatch[1] -= sseMatchDenDelta;
+  // ---- Section 1: simple additive predictor-weight updates -----------------
+  // Each pair-target gets a numerator/denominator pair-update; the singles
+  // get a single += of the captured per-step delta.
+  uint* wBinMixHi  = (uint*)BinMixHiG;
+  uint* wBinMixLo  = (uint*)BinMixLoG;
+  uint* wPredBaseA = (uint*)PredBaseAG;
+  uint* wPredBaseB = (uint*)PredBaseBG;
+  uint* wSseMatch  = (uint*)SseMatchSlotG;
+  uint* wSse1      = (uint*)Sse1SlotG;
+  *wBinMixHi  += binMixDeltaHi;
+  *wBinMixLo  += binMixDeltaLo;
+  *wPredBaseA += predBaseDeltaA;
+  *wPredBaseB += predBaseDeltaB;
+  *wSse1      += sse2NumDelta;       wSse1[1]     -= sse2DenDelta;
+  *wSseMatch  += sseMatchNumDelta;   wSseMatch[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
   // 0x20000 + (symEpoch & 0x1FFFF) selects a byte in MatchPosHash's upper half.
   sseSlot     = (char*)&MatchPosHash[0x20000 + (symEpoch & 0x1FFFF)];
 
   // ---- Section 2: weight-pair updates with overflow-driven halving --------
-  UpdateWeightPair_(wpSse2, predWeightDelta + predSseTotDelta, 2 * sseCum);
-  UpdateWeightPair_(wpSse3, predWeightDelta,                       sseCum);
+  UpdateWeightPair_((int*)Sse2SlotG, predWeightDelta + predSseTotDelta, 2 * sseCum);
+  UpdateWeightPair_((int*)Sse3SlotG, predWeightDelta,                   sseCum);
 
   foundState = FoundState;
   SparseBitmapA[SparseIdxA] |= SparseBit;
