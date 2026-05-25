@@ -910,8 +910,19 @@ void InitTables() {
   memset(SymFreqs,0,256);
   //memset(b19,0,0x20100);
   //memset(ddd,0,4*31);
-  sseTot=sseCum=orderBumpVariance=predWeightSink=predBaseDeltaA=predBaseDeltaB=binMixDeltaHi=binMixDeltaLo=wDelta32=wDelta31=wDelta30=wDelta29=wDelta34=wDelta35=predRescaleDiv=cumFreqAcc=wDelta33=cumFreqMixSave=sseIdxStorage=0;
-  q32=q31=q30=q29=q34=q35=BinMixCenterG=PredBaseAG=PredBaseBG=Sse1SlotG=BinMixLoG=BinMixHiG=BinSseCellG=SseMatchSlotG=Sse2SlotG=Sse3SlotG=q9=q33=CtxChainEnd=0;
+  // SSE/mix accumulators and per-step deltas
+  sseTot = sseCum = orderBumpVariance = 0;
+  predWeightSink = predBaseDeltaA = predBaseDeltaB = 0;
+  binMixDeltaHi = binMixDeltaLo = 0;
+  wDelta29 = wDelta30 = wDelta31 = wDelta32 = wDelta33 = wDelta34 = wDelta35 = 0;
+  predRescaleDiv = cumFreqAcc = cumFreqMixSave = sseIdxStorage = 0;
+
+  // SSE/predictor slot pointers (typed aliases of q-globals)
+  q29 = q30 = q31 = q32 = q33 = q34 = q35 = 0;          // mix-table slot cluster
+  q9 = CtxChainEnd = 0;                                  // FoundState global + chain-end
+  BinMixCenterG = BinMixHiG = BinMixLoG = 0;            // binMix neighbour pair
+  PredBaseAG = PredBaseBG = 0;                          // predBase expansion pair
+  Sse1SlotG = Sse2SlotG = Sse3SlotG = SseMatchSlotG = BinSseCellG = 0; // SSE/BinSse slots
   // Zero-init grouped by role.
   hintSymB31    = hintSymM2  = hintSymB29 = hintSymBiject =
     hintSymMatch3 = hintSymBmCell = 0;                              // per-step hint chains
