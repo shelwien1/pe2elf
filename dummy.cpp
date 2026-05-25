@@ -2726,8 +2726,11 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   sym = foundState->Symbol;
   matchHi = (qword)MatchCtxHi;
   SseState3[sseState3Hash] = sym;
-  *(sseSlot-0x20000) = sym;
-  *sseSlot = sym;
+  // Write sym at both halves of MatchPosHash. sseSlot points to the upper
+  // half at (0x20000 + (symEpoch & 0x1FFFF)); -0x20000 wraps to the lower
+  // half at the same modular offset.
+  MatchPosHash[symEpoch & 0x1FFFF] = sym;        // lower half (= sseSlot-0x20000)
+  *sseSlot                         = sym;        // upper half
   recentSym = sym;
   MatchCtxHi = sym;
   sseState3Hash = (sym+(sseState3Hash<<6))&0x1FFFF;
