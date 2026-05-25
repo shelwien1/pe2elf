@@ -2561,9 +2561,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- per-step state ------------------------------------------------------
-  int    symEpochN;        // = symEpoch + 1 (next epoch)
-                           // (upper half of MatchPosHash, used as a history byte ring)
-
   // ---- symbol-derived state -----------------------------------------------
   int    mixCtxOld;        // MixCtx (saved before being used in SseSeed)
   int    recentEpoch;      // SseCtx0_1[sym] before update
@@ -2736,8 +2733,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   HashSeed1 = -1;
   int bdiff = (byte)(sym-matchHi);
   HashSeed2 = -1;
-  symEpochN = symEpoch + 1;
-  SymEpoch  = symEpochN;
+  int symEpochN = symEpoch + 1;
+  SymEpoch      = symEpochN;
   FoundSymbol = -1;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
