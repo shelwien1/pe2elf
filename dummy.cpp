@@ -2564,8 +2564,8 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   *wQ19       += sseMatchNumDelta;  wQ19[1] -= sseMatchDenDelta;
 
   symEpoch    = SymEpoch;
-  symEpochS   = (short)SymEpoch;
-  sseRowOff   = SymEpoch & 0x1FFFF;
+  symEpochS   = (short)symEpoch;
+  sseRowOff   = symEpoch & 0x1FFFF;
   scale       = sseCum;
   sseSlot     = (char*)&Sse2State[sseRowOff + 133144];
 
