@@ -3981,26 +3981,23 @@ LABEL_128:
           *chainEndE++ = (sqword)walkStateIterE;
           chainEndF = chainEndE;
           walkFreqSumE += walkStateIterE->Freq;
-          if( walkSymE==FoundSymbol )
-            break;
-          if( epoch==MatchPosBySym[walkSymE]||epoch==SymLastCtx2[walkSymE] ) {
+          if( walkSymE==FoundSymbol ) {
+            sortPriorityC = 22;
+            sortLimitC = &CtxChain[(byte)descendFlags&((foundSymHist&7)==0)];
+            BubbleSortChain_(chainEndE, sortLimitC, sortPriorityC);
+            ++sortRangeE;
+          } else if( epoch==MatchPosBySym[walkSymE]||epoch==SymLastCtx2[walkSymE] ) {
             sortLimitC = sortRangeE;
             // priority 16 if MatchPosBySym hit (stronger signal), else 12
             sortPriorityC = (epoch==MatchPosBySym[walkSymE]) ? 16 : 12;
-            goto LABEL_292;
+            BubbleSortChain_(chainEndE, sortLimitC, sortPriorityC);
+            ++sortRangeE;
           }
-LABEL_296:
           if( !--remStatesE ) {
             freqSumE = walkFreqSumE;
             goto LABEL_298;
           }
         }
-        sortPriorityC = 22;
-        sortLimitC = &CtxChain[(byte)descendFlags&((foundSymHist&7)==0)];
-LABEL_292:
-        BubbleSortChain_(chainEndE, sortLimitC, sortPriorityC);
-        ++sortRangeE;
-        goto LABEL_296;
       }
 LABEL_298:
       // ---------------------------------------------------------------------
