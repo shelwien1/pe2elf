@@ -50,9 +50,6 @@ namespace {
 
 //--- #include "defs3g.h"
 
-//constexpr uint blob1_len = 0x141137200-0x1400227B0;
-//byte blob1[blob1_len];
-
 char b24[16] = {-3,-2,-1,-1,-1,0,0,0,0,0,0,0,2,3,4,0};
 char FreqRescaleTab[36] = {2,3,3,3,4,4,4,5,5,6,6,6,7,7,7,7,8,8,8,8,8,9,9,9,9,9,9,10,10,10,10,10,10,10,10,10};
 char b17[16] = {10,-19,-24,17,34,27,2,5,2,31,20,-16,17,30,0,0};
@@ -369,8 +366,6 @@ struct MEM_BLK {
 
 };
 #pragma pack()
-
-//MEM_BLK* BList;
 
 // Typed alias of BList: the suballocator's free-list array, indexed by
 // size-class. Used by FreeUnits_/FreeContext_/MoveUnits_/ShrinkUnits_/
@@ -2890,22 +2885,6 @@ sqword PPMIIDeleteModel() {
   // Return the calculated size rounded UP to the nearest Megabyte (2^20 bytes)
   return (finalSize + 0xFFFFF) >> 20;
 }
-
-#if 0
-//MEM_DIVISOR=10;
-UINT PPMIIDeleteModel() {
-  if( !SubAllocatorSize ) return 0;
-  size_t MemTouched = SubAllocatorSize;
-  if( InitsCount==1&&CutOffCount+GlueCount==0 ) {
-    size_t USSize = GetSizeOfUnitsSection(SubAllocatorSize);
-    MemTouched = MEM_DIVISOR*MAX(size_t(pText-HeapStart), (USSize-(HiUnit-LoUnit))/(MEM_DIVISOR-1));
-    MemTouched = MIN(MemTouched+UNIT_SIZE, SubAllocatorSize);
-  }
-  SubAllocatorSize = 0;
-  free(HeapStart);
-  return (MemTouched+(1<<20)-1)>>20;
-}
-#endif
 //--- #return
 
 //--- #include "rc.inc"
