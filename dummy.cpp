@@ -3367,10 +3367,9 @@ inline void RunSse1_(uint hits, int& cumWeight, int& cumFreq) {
   Sse1Step_(slot, hits, cumWeight, cumFreq);
 }
 
-// Binary mix slot rescale + commit, shared by region B (single-state cascade)
-// and region F (per-candidate cascade). `freq` is read in, possibly rescaled
-// down by MaybeRescale2_, and the updated value is written back. Publishes
-// hits/freq into sseCum/sseTot/sse2DenDelta/sse2NumDelta.
+// Binary mix slot rescale + commit, shared by regions B and F. `freq` is
+// possibly rescaled by MaybeRescale2_; publishes the (hits, freq) pair into
+// sseCum/sseTot/sse2DenDelta/sse2NumDelta.
 inline void BinSlotRescaleCommit_(int* slot, int& freq, int& hits) {
   MaybeRescale2_(slot, freq);
   hits = *(word*)slot;
