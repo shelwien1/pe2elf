@@ -165,11 +165,6 @@ int& sseState3Hash = d90[14];
 int* RecentPos = &d90[15];
 
 shword SEE2_5[70];
-shword* SEE2_4 = &SEE2_5[1];
-shword* SEE2_3 = &SEE2_5[2];
-shword* SEE2_2 = &SEE2_5[3];
-shword* SEE2_1 = &SEE2_5[4];
-shword* SEE2 = &SEE2_5[5];
 int* SseCtx0 = (int*)&SEE2_5[6];
 int* SseCtx0_1 = &SseCtx0[3];
 
