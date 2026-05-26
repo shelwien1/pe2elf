@@ -386,18 +386,6 @@ inline int ClampMixWeight_(int w) {
 }
 
 #pragma pack(1)
-struct SEE_CONTEXT {
-  enum { MAX_SHIFT = 8 };
-
-  word Summ;
-  byte Shift, Count;
-
-  void init(uint InitVal) {
-    Summ = InitVal<<(Shift = 3);
-    Count = 14;
-  }
-};
-
 struct STATE {
   byte Symbol, Freq;
   uint iSuccessor;
