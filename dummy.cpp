@@ -1597,19 +1597,21 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
   // the chain (suffix == 0).
   uint seedSuccIdx = (*chainStart)->iSuccessor;
   STATE** chainPtr = chainStart;
+  bool skipSuffixLoop = false;
   while (1) {
     int curSuccIdx = (*chainPtr)->iSuccessor;
     if (curSuccIdx != seedSuccIdx) {
       seedCtx = HeapNull + curSuccIdx;
-      goto LABEL_15;
+      skipSuffixLoop = true;
+      break;
     }
     uint ctxSuffixIdx = ((PPM_CONTEXT*)seedCtx)->iSuffix;
     ++chainPtr;
-    if (!ctxSuffixIdx) goto LABEL_15;
+    if (!ctxSuffixIdx) { skipSuffixLoop = true; break; }
     if ((qword)chainPtr >= CtxChainEnd) break;
     seedCtx = HeapNull + ctxSuffixIdx;
   }
-  {
+  if (!skipSuffixLoop) {
     STATE* foundStateB = FoundState;
     uint suffixIdx0 = ((PPM_CONTEXT*)seedCtx)->iSuffix;
     while (1) {
@@ -1625,17 +1627,16 @@ sqword CreateSuccessors(int depth, STATE** chainStart, sqword seedCtx) {
         state = &pc->oneState();
       }
       int stateSuccIdx = state->iSuccessor;
-      if (stateSuccIdx != seedSuccIdx) { seedCtx = heapNull+stateSuccIdx; goto LABEL_15; }
+      if (stateSuccIdx != seedSuccIdx) { seedCtx = heapNull+stateSuccIdx; break; }
       suffixIdx0 = pc->iSuffix;
       *chainPtr = state;
       ++chainPtr;
       if (!suffixIdx0) {
         seedCtx = ctxAddr;
-        goto LABEL_15;
+        break;
       }
     }
   }
-LABEL_15:
   STATE** chainEnd = chainStart + depth;
   if( chainPtr==chainEnd )
     return (uint)(seedCtx-heapNull);
