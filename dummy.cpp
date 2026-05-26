@@ -488,14 +488,6 @@ struct MEM_BLK {
 // MoveContext_ to walk the doubly-linked free queues.
 MEM_BLK*& BListPtr = (MEM_BLK*&)BList;
 
-STATE* GetStatesPtr(uint iStates) {
-  return (STATE*)Indx2Ptr(iStates);
-}
-
-PPM_CONTEXT* GetSuffixPtr(uint iSuffix) {
-  return (PPM_CONTEXT*)Indx2Ptr(iSuffix);
-}
-
 // ===========================================================================
 //  Sub-allocator inline helpers, modelled on the textbook ppmd.cpp
 //  primitives. Multiple subs_*.inc files inline these manually; using these
