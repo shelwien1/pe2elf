@@ -90,7 +90,6 @@ short& w12 = *(short*)((char*)&d29 + 0x4);
 auto& w11 = (short(&)[0x407D])((char*)&d29)[0x6];
 
 int PredWeight[0xA1C];
-int* PredWeight_1 = &PredWeight[1];
 
 int d27[0x70040];
 // Six short-typed overlays on d27 at fixed byte offsets:
