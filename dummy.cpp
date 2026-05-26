@@ -87,7 +87,6 @@ auto& MixFreq1_1 = *(short(*)[0xF0000-3])(((char*)MixWeight1)+6);
 
 int d29[0x2040];
 short& w12 = *(short*)((char*)&d29 + 0x4);
-auto& w11 = (short(&)[0x407D])((char*)&d29)[0x6];
 
 int PredWeight[0xA1C];
 
