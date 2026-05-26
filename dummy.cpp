@@ -3543,6 +3543,31 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
     .val;
 }
 
+// Shared tail of region A (single-state cascade) and region F (per-candidate
+// cascade): SseMatch -> Sse2 -> Sse3 step trio with associated index builds
+// and G-slot publishing. Inputs vary per region; outputs sseCum/sseTot
+// implicitly through the global step helpers.
+inline void RunMatchSse2Sse3_(int sym, int cumFreq, int cumWeight,
+                              bool tagSymLastCtx2, uint heapIdx) {
+  int* matchSlot = &SseMatch[SseMatchIdxBuild_(sym)];
+  SseMatchSlotG = (sqword)matchSlot;
+  SseMatchStep_(matchSlot, (int)(60416LL*cumFreq/cumWeight));
+  int sse2In = sseCum;
+  sqword sse2Idx = Sse2IdxBuild_(sym, sse2In, (uint)sseTot);
+  int* slotSse2 = &Sse2[2*sse2Idx];
+  Sse2SlotG = (sqword)slotSse2;
+  Sse2Step_(slotSse2);
+  int sse2CumTot = sseTot;
+  predWeightDelta = sse2CumTot;
+  int sse2HistByte = ((byte*)Sse2BaseG)[((word)sym-(word)RSContext)&0x1FF];
+  uint sse2Counter = *(uint*)((byte*)Sse2BaseG+512);
+  int* slotSse3 = &Sse3[2 * (int)Sse3IdxBuild_(sym, tagSymLastCtx2, heapIdx,
+                                                (uint)sse2Idx, sse2Counter,
+                                                (uint)sse2HistByte)];
+  Sse3SlotG = (sqword)slotSse3;
+  Sse3Step_(slotSse3, sse2In, sse2CumTot);
+}
+
 } // namespace
 
 template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
@@ -3890,27 +3915,10 @@ LABEL_58:
       wDelta34 = RescaleAccum2_((void*)q34, mixShiftC);
       wDelta35 = RescaleAccum2_((void*)q35, mixShiftC);
     }
-    int* sseMatchSlotA = &SseMatch[SseMatchIdxBuild_(escSymB)];
-    sseMatchSlot = sseMatchSlotA;
-    SseMatchStep_(sseMatchSlotA, (int)(60416LL*cumFreqB/cumWeightB));
-    int    sseSum2A   = sseCum;
-    sqword sse2IdxA   = Sse2IdxBuild_(escSymB, sseSum2A, (uint)sseTot);
-    int*   sse2SlotA  = &Sse2[2*sse2IdxA];
-    sse2Slot = sse2SlotA;
-    int sse2CumInA = sseSum2A;
-    Sse2Step_(sse2SlotA);
-    int totFreqA = sseTot;
-    predWeightDelta = totFreqA;
-    int sse2HistByte = sse2Base[((word)escSymB-(word)RSContext)&0x1FF];
-    uint sse2CounterA = *(uint*)(sse2Base+512);
-    int* sse3SlotA = &Sse3[2 * (int)Sse3IdxBuild_(escSymB,
-                                                  SymLastCtx2[escSymB]==SymCount,
-                                                  *(uint*)(summFreqPtr+2),
-                                                  (uint)sse2IdxA, sse2CounterA,
-                                                  (uint)sse2HistByte)];
-    sse3Slot = sse3SlotA;
+    RunMatchSse2Sse3_(escSymB, cumFreqB, cumWeightB,
+                      SymLastCtx2[escSymB]==SymCount,
+                      *(uint*)(summFreqPtr+2));
     cumFreq = sseCum;
-    Sse3Step_(sse3SlotA, sse2CumInA, totFreqA);
     totFreq = sseTot;
     }
 
@@ -4321,26 +4329,9 @@ LABEL_59:
             predBaseDeltaB = RescaleAccum2_(binDn16F, predExpShiftF);
           }
         }
-        int* sseMatchSlotF = &SseMatch[SseMatchIdxBuild_(candSymbol)];
-        sseMatchSlot = sseMatchSlotF;
-        SseMatchStep_(sseMatchSlotF, (int)(60416LL*mixCumFreqF/mixCumWeightF));
-        int cumWeightF = sseCum;
-        sqword sse2IdxF = Sse2IdxBuild_(candSymbol, cumWeightF, (uint)sseTot);
-        int* sse2SlotF = &Sse2[2*sse2IdxF];
-        sse2Slot = sse2SlotF;
-        int sse2CumInF  = cumWeightF;
-        Sse2Step_(sse2SlotF);
-        int sse2CumTotF = sseTot;
-        int  sse2HistByteF = sse2Base[((word)candSymbol-(word)RSContext)&0x1FF];
-        uint sse2Counter   = *(uint*)(sse2Base+512);
-        predWeightDelta = sse2CumTotF;
-        int* sse3SlotF = &Sse3[2 * (int)Sse3IdxBuild_(candSymbol, tagSymLastCtx2F,
-                                                       localFoundState->iSuccessor,
-                                                       (uint)sse2IdxF, sse2Counter,
-                                                       (uint)sse2HistByteF)];
-        sse3Slot = sse3SlotF;
+        RunMatchSse2Sse3_(candSymbol, mixCumFreqF, mixCumWeightF,
+                          tagSymLastCtx2F, localFoundState->iSuccessor);
         int cumFreqC = sseCum;
-        Sse3Step_(sse3SlotF, sse2CumInF, sse2CumTotF);
         uint totFreqC = sseTot;
         uint subRangeC = rc.getSubRange(cumFreqC, totFreqC);
         if( f_DEC ? !rc.IsDecodeMatched(subRangeC) : (inputByte != candSymbol) ) {
