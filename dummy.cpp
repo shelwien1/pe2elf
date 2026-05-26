@@ -2435,18 +2435,12 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   // ---- Section 1: simple additive predictor-weight updates -----------------
   // Each pair-target gets a numerator/denominator pair-update; the singles
   // get a single += of the captured per-step delta.
-  uint* wBinMixHi  = (uint*)BinMixHiG;
-  uint* wBinMixLo  = (uint*)BinMixLoG;
-  uint* wPredBaseA = (uint*)PredBaseAG;
-  uint* wPredBaseB = (uint*)PredBaseBG;
-  uint* wSseMatch  = (uint*)SseMatchSlotG;
-  uint* wSse1      = (uint*)Sse1SlotG;
-  *wBinMixHi  += binMixDeltaHi;
-  *wBinMixLo  += binMixDeltaLo;
-  *wPredBaseA += predBaseDeltaA;
-  *wPredBaseB += predBaseDeltaB;
-  *wSse1      += sse2NumDelta;       wSse1[1]     -= sse2DenDelta;
-  *wSseMatch  += sseMatchNumDelta;   wSseMatch[1] -= sseMatchDenDelta;
+  *(uint*)BinMixHiG    += binMixDeltaHi;
+  *(uint*)BinMixLoG    += binMixDeltaLo;
+  *(uint*)PredBaseAG   += predBaseDeltaA;
+  *(uint*)PredBaseBG   += predBaseDeltaB;
+  ((uint*)Sse1SlotG)[0]     += sse2NumDelta;      ((uint*)Sse1SlotG)[1]     -= sse2DenDelta;
+  ((uint*)SseMatchSlotG)[0] += sseMatchNumDelta;  ((uint*)SseMatchSlotG)[1] -= sseMatchDenDelta;
 
   int   symEpoch = SymEpoch;
   // 0x20000 + (symEpoch & 0x1FFFF) selects a byte in MatchPosHash's upper half.
