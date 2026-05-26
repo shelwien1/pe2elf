@@ -209,10 +209,6 @@ byte* b33 = &b36[2];
 byte* b32 = &b36[3];
 typedef byte t_byte_1400DA158[0x10000]; t_byte_1400DA158& b27          = *(t_byte_1400DA158*)((byte*)&Sse2State + 0xB0818);
 
-
-// Sse2State ends at 14025F210
-// cur size = 0xC0008
-
 byte SseState3[0x20000];
 
 //--- #return
