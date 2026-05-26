@@ -129,7 +129,6 @@ char SymFreqs[256];
 int MixWeight2[0x8040];
 auto& MixFreq2_1 = (short(&)[0x803F*2])MixWeight2[1];
 
-
 int d90[4096];
 int& q12BaseSel = d90[2];
 int& b31Key = d90[3];
@@ -3071,7 +3070,6 @@ inline int RescaleAccum2_(void* slot, int shift) {
   return delta;
 }
 
-
 // Bayesian-style SSE pair (num, den) update with overflow halving on both
 // the pre-update absolute-value test and the post-update sum test.
 //   p[0] -= delta;   p[1] += delta + adder;   halve both if either overflows.
@@ -4333,7 +4331,6 @@ sqword PPMIIDecode(FILE* inFile, FILE* outFile, sqword (*statsCB)(FILE*, FILE*, 
 
   return 1;
 }
-
 
 //--- #return
 //--- #include "main2.inc"
