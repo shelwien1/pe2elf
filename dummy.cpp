@@ -3590,14 +3590,6 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
   sqword result, *chainEndE, *chainEndF;
   STATE **chainPtr, *localFoundState;
   PPM_CONTEXT *MinContext, *sx_p, *suffixCtxC;
-  // sseCum/sseTot are the per-cascade-stage accumulator pair, file-scope
-  // because MixUpdate also reads sseCum on its way out.
-  // Each SSE cascade stage publishes its slot pointer through one q-global so
-  // MixUpdate can update that same cell on the way back out.
-  int*& sse1Slot     = (int*&)Sse1SlotG;
-  int*& sseMatchSlot = (int*&)SseMatchSlotG;
-  int*& sse2Slot     = (int*&)Sse2SlotG;
-  int*& sse3Slot     = (int*&)Sse3SlotG;
   // The center pointer of the current binary-mix cell (4-word layout). Set
   // once per branch, then re-read by the deeper sub-stage to grab the weight.
   word*& binMixCenter = (word*&)BinMixCenterG;
