@@ -173,59 +173,24 @@ int SparseBitmapA[0x4000];
 int SparseBitmapB[0x10000];
 
 byte Indx2Units[48];
-sqword HiUnit;
-sqword LoUnit;
-sqword pText;
-sqword UnitsStart;
-sqword BList;
-sqword MaxContext0;
-sqword HeapNull;
-
-sqword PredWeightBG;             // predWeightB storage (aliased in RealProcess)
-sqword PredWeightAG;             // predWeightA storage (aliased in RealProcess)
+sqword HiUnit, LoUnit, pText, UnitsStart, BList, MaxContext0, HeapNull;
+sqword PredWeightAG, PredWeightBG;             // predWeight{A,B} storage (aliased in RealProcess)
 sqword RootContext;
 
-int InitsCount;
-int GlueCount;
-int CutOffCount;
-int MaxOrder;
-int CutOff;
-int Interrupted;
-int RunLength;
-int SymCount;
-int MixCtx3;
-int EscapeSymbol;
-int SymEpoch;
-int MixCtxExtra;
-int OrderFall;
-int MixCtx;
-int MixCtx2;
-int PrevSymbol;
-int OrderCtxSeed;
-int SseSeed;
-int EscIndexSeed;
-int NMasked;
+int InitsCount, GlueCount, CutOffCount, MaxOrder, CutOff, Interrupted, RunLength, SymCount;
+int MixCtx3, EscapeSymbol, SymEpoch, MixCtxExtra, OrderFall, MixCtx, MixCtx2;
+int PrevSymbol, OrderCtxSeed, SseSeed, EscIndexSeed, NMasked;
 
 sqword predWeightSink2;
-int predDeltaNum;
-int predDeltaDen;
-int runLengthInit;
-int OrderFall0;
+int predDeltaNum, predDeltaDen, runLengthInit, OrderFall0;
 byte freqmap[0x100];
 void* FileName = 0;
 void* HeapStart = 0;
 sqword SubAllocatorSize = 0;
-int f_ENC = 0;
-int f_LOG = 0;
+int f_ENC = 0, f_LOG = 0;
 
-int sseTot;
-int sseCum;
-int orderBumpVariance;
-int predWeightSink;
-int predBaseDeltaA;
-int predBaseDeltaB;
-int binMixDeltaHi;
-int binMixDeltaLo;
+int sseTot, sseCum, orderBumpVariance, predWeightSink;
+int predBaseDeltaA, predBaseDeltaB, binMixDeltaHi, binMixDeltaLo;
 int wDelta29, wDelta30, wDelta31, wDelta32, wDelta33, wDelta34, wDelta35;
 int predRescaleDiv, cumFreqAcc, cumFreqMixSave, sseIdxStorage;
 
