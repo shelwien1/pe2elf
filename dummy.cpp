@@ -2667,10 +2667,11 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
   int symEpochN = symEpoch + 1;
   SymEpoch      = symEpochN;
   FoundSymbol = -1;
+  bool bdiffShortCut = false;
   if( bdiff==bdiffSaved ) {
     if( (uint)++ bdiffStickyCnt>1 ) {
       FoundSymbol = predGuessSym = (byte)(2*sym-matchHi);
-      goto LABEL_94;
+      bdiffShortCut = true;
     }
   } else {
     bdiffStickyCnt = 0;
@@ -2678,54 +2679,53 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     // comparison can never spuriously match a fresh zero start.
     bdiffSaved = (bdiff == 0) ? -1 : bdiff;
   }
-  {
-  int  ssem3  = (byte)*(sseSlot-3);
-  int  ssem7  = (byte)*(sseSlot-7);
-  char ssem11 = *(sseSlot-11);
-  // Run the hint cascade when the recent-symbol history fails the
-  // "arithmetic progression" test: either the period-4 step matches
-  // (ssem3==ssem7), or the period-4 differencing at offsets {-11,-7,-3}
-  // or {-15,-11,-7} has a non-zero byte residue.
-  byte progResid1 = (byte)(ssem11 + ssem3 - 2*ssem7);
-  byte progResid2 = (byte)(*(sseSlot-15) + ssem7 - 2*ssem11);
-  if (ssem3==ssem7 || progResid1 || progResid2) {
-    if( 4*MixScale-1>(uint)mixScaleCntr ) {
-      // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
-      // window; 6,10 short window with compact second arm).
-      hintSymMatch3 = MatchPosHint_  (3, symEpoch, symEpochN, sc);
-            MatchPosHint_  (4, symEpoch, symEpochN, sc);
-            MatchPosHint_  (5, symEpoch, symEpochN, sc);
-            MatchPosHint_  (8, symEpoch, symEpochN, sc);
-            MatchPosHint16_(6, symEpoch, symEpochN, sc);
-            MatchPosHint16_(10, symEpoch, symEpochN, sc);
-      // four byte-pair-hash arms, all with the same arm-update pattern.
-      byte sm0 = (byte)*sseSlot,    sm1 = (byte)*(sseSlot-1);
-      byte sm2 = (byte)*(sseSlot-2), sm3 = (byte)*(sseSlot-3);
-      byte sm4 = (byte)*(sseSlot-4), sm6 = (byte)*(sseSlot-6);
-      byte sm7 = (byte)*(sseSlot-7), sm8 = (byte)*(sseSlot-8);
-      HashArmUpdate_(SseState2, 256*sm1 + sm3, 256*sm2 + sm4, sym, sc);
-      HashArmUpdate_(b28,       256*sm2 + sm6, 256*sm3 + sm7, sym, sc);
-      hintSymB29 = HashArmUpdate_(b29, 256*sm0 + sm7, 256*sm1 + sm8, sym, sc);
-      HashArmUpdate_(b30,       256*sm1 + sm7, 256*sm2 + sm8, sym, sc);
+  if (!bdiffShortCut) {
+    int  ssem3  = (byte)*(sseSlot-3);
+    int  ssem7  = (byte)*(sseSlot-7);
+    char ssem11 = *(sseSlot-11);
+    // Run the hint cascade when the recent-symbol history fails the
+    // "arithmetic progression" test: either the period-4 step matches
+    // (ssem3==ssem7), or the period-4 differencing at offsets {-11,-7,-3}
+    // or {-15,-11,-7} has a non-zero byte residue.
+    byte progResid1 = (byte)(ssem11 + ssem3 - 2*ssem7);
+    byte progResid2 = (byte)(*(sseSlot-15) + ssem7 - 2*ssem11);
+    if (ssem3==ssem7 || progResid1 || progResid2) {
+      if( 4*MixScale-1>(uint)mixScaleCntr ) {
+        // SIX MatchPosPrev hash-chain hint computations (offsets 3,4,5,8 wide
+        // window; 6,10 short window with compact second arm).
+        hintSymMatch3 = MatchPosHint_  (3, symEpoch, symEpochN, sc);
+              MatchPosHint_  (4, symEpoch, symEpochN, sc);
+              MatchPosHint_  (5, symEpoch, symEpochN, sc);
+              MatchPosHint_  (8, symEpoch, symEpochN, sc);
+              MatchPosHint16_(6, symEpoch, symEpochN, sc);
+              MatchPosHint16_(10, symEpoch, symEpochN, sc);
+        // four byte-pair-hash arms, all with the same arm-update pattern.
+        byte sm0 = (byte)*sseSlot,    sm1 = (byte)*(sseSlot-1);
+        byte sm2 = (byte)*(sseSlot-2), sm3 = (byte)*(sseSlot-3);
+        byte sm4 = (byte)*(sseSlot-4), sm6 = (byte)*(sseSlot-6);
+        byte sm7 = (byte)*(sseSlot-7), sm8 = (byte)*(sseSlot-8);
+        HashArmUpdate_(SseState2, 256*sm1 + sm3, 256*sm2 + sm4, sym, sc);
+        HashArmUpdate_(b28,       256*sm2 + sm6, 256*sm3 + sm7, sym, sc);
+        hintSymB29 = HashArmUpdate_(b29, 256*sm0 + sm7, 256*sm1 + sm8, sym, sc);
+        HashArmUpdate_(b30,       256*sm1 + sm7, 256*sm2 + sm8, sym, sc);
 
-      // b31 arm uses a different routing (no collision branch, SymLastCtx only)
-      uint b31_ri = (uint)(Order1Ctx + (b31Key << 8));
-      hintSymB31 = (byte)b31[b31_ri];
-      SymLastCtx[hintSymB31] = sc;
-      if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
+        // b31 arm uses a different routing (no collision branch, SymLastCtx only)
+        uint b31_ri = (uint)(Order1Ctx + (b31Key << 8));
+        hintSymB31 = (byte)b31[b31_ri];
+        SymLastCtx[hintSymB31] = sc;
+        if (sym != b31KeyPrev && sym != order1CtxSaved) b31[order1CtxSaved + (b31KeyPrev << 8)] = sym;
 
-      // final independent hint from RecentPos chain: stamp vh at sc in
-      // SymLastCtx, then (if it was already in SymLastCtx) escalate to
-      // SymLastCtx2 too.
-      byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFF] + 2) & 0x1FFFF];
-      if (sc == SymLastCtx[vh]) SymLastCtx2[vh] = sc;
-      else                      SymLastCtx [vh] = sc;
+        // final independent hint from RecentPos chain: stamp vh at sc in
+        // SymLastCtx, then (if it was already in SymLastCtx) escalate to
+        // SymLastCtx2 too.
+        byte vh = MatchPosHash[(RecentPos[SseCtx0_1[matchHi] & 0xFFF] + 2) & 0x1FFFF];
+        if (sc == SymLastCtx[vh]) SymLastCtx2[vh] = sc;
+        else                      SymLastCtx [vh] = sc;
+      }
+    } else {
+      FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
     }
-  } else {
-    FoundSymbol = predGuessSym = (byte)(2*ssem3-ssem7);
   }
-  }
-LABEL_94:
   WalkM2Consensus_(symEpoch, symEpochN, sc);
   // three paired byte-hash predictor updates (b32/b33, b34/b35, b36/b37).
   // Each reads at a "new" index and writes back at a different "old" index.
