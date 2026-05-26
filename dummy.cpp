@@ -4463,9 +4463,6 @@ int __main(int argc, const char** argv) {
   int mb = atoi(&argv[1][1]);
   if( mb>0 ) memoryMB=mb;
 
-//  char (**streamBlock)[4096] = GetStreamBuf();
-//  FILE* internalStream = (FILE*)(streamBlock+6);
-
   if( !f_ENC ) {
     // --- DECOMPRESSION MODE ---
     const char* archiveName = argv[2];
