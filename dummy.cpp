@@ -2392,11 +2392,6 @@ inline void RefreshIfRank0Empty_(PPM_CONTEXT* ctx, sqword& idx, byte& flags,
 }
 
 qword MixUpdate(PPM_CONTEXT* minCtx) {
-  // cross-region state: written in the inner-if rank-0 short-circuit and read
-  // after LABEL_165; declared at function scope so the goto LABEL_165 doesn't
-  // bypass the initializer.
-  byte   newFoundFreq;
-
   int prevSymCount = SymCount;
   int sc           = SymCount - 1;
   SymCount         = sc;
@@ -2734,6 +2729,7 @@ qword MixUpdate(PPM_CONTEXT* minCtx) {
     {
     int mixWeight = 2;
     int depth5 = 5 * OrderFall;
+    byte newFoundFreq;
     uint mixFlag;
     if( minNStates )
       // sign-bit-extract idiom: 1 if SummFreq < 45*minNStates, else 0.
