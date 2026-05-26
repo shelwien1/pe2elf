@@ -2839,9 +2839,7 @@ sqword StartSubAllocator(uint memsize_mb, int order, int cutOff) {
   if( order>MAX_O ) return 0;
   if( SubAllocatorSize ) return 0;
   size_t memsize_b = memsize_mb<<20;
-  HeapStart = new char[memsize_b]; // malloc(memsize_b);
-  //  HeapStart = VAlloc<char>(memsize_b);
-  // printf( "!p=%I64X size=%I64X!\n", memsize_b, qword(memsize_b) );
+  HeapStart = new char[memsize_b];
   if( !HeapStart ) return 0;
   RunLength = -100;
   SubAllocatorSize = memsize_b;
