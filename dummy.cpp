@@ -770,8 +770,6 @@ TARGET_SCALE_FALLBACK:
 // PPMII_STARTUP actually
 void InitTables() {
   memset(SymFreqs,0,256);
-  //memset(b19,0,0x20100);
-  //memset(ddd,0,4*31);
   // SSE/mix accumulators and per-step deltas
   sseTot = sseCum = orderBumpVariance = 0;
   predWeightSink = predBaseDeltaA = predBaseDeltaB = 0;
@@ -793,9 +791,6 @@ void InitTables() {
   MatchCtxHi  = recentSym = mixScaleCntr = symHalfHistory = 0;      // per-symbol carry state
   SparseHashA = SparseIdxA = SparseHashB = SparseIdxB = SparseBit = 0; // sparse bitmap state
   memset( SseState3, 0, 0x20000 );
-  //memset( b27, 0, 0x10000 );
-  //memset( MatchPosHash, 0, 0x40000 );
-  //memset( SseState2, 0, 0x80000 );
   memset( b28, 0, 0x10000 );
 
   byte freqtmp[] = {0,0,0,1,1,2,3,3,4,0,0,0};
