@@ -135,7 +135,6 @@ char b16[0x20000];
 short* const MixBound1 = (short*)&b16[6];
 
 int Sse1[0x60040];
-int* Sse1_1 = &Sse1[1];
 
 int Sse2[0x30040];
 int* Sse2_1 = &Sse2[1];
