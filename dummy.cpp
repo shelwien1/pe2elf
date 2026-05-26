@@ -218,12 +218,6 @@ typedef byte t_byte_1400DA158[0x10000]; t_byte_1400DA158& b27          = *(t_byt
 
 byte SseState3[0x20000];
 
-//byte MatchPosHash[0x40000];
-
-//byte SseState2[0x80000];
-
-//byte b28[0x10000];
-
 //--- #return
 //--- #include "context.h"
 
