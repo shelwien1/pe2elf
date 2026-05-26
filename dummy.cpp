@@ -620,9 +620,8 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
         // 2*base_weight (the "high-density" indicator).
         int suffixScale = (2*base_weight < summ_freq) ? 7 : 5;
         int tunedSuffix = suffixScale*(suffix_nstates+1)+suffix_summ_freq;
-        if( tunedSuffix*found_state->Freq<(int)(tunedSumm*suffix_found_freq) ) {
-          if( found_state->Freq>228 )
-            goto TARGET_SCALE_FALLBACK;
+        if( tunedSuffix*found_state->Freq < (int)(tunedSumm*suffix_found_freq)
+            && found_state->Freq <= 228 ) {
           word delta_freq = summ_freq-found_state->Freq;
           uint deltaSum  = tunedSumm - found_state->Freq;
           uint denomAdj  = 3*deltaSum + tunedSuffix - suffix_found_freq;
@@ -639,7 +638,6 @@ static void PPMContextWalk(int epoch, int sym, uint* outSeeIndex, uint* outSuffi
     }
   }
 
-TARGET_SCALE_FALLBACK:
   // Step 6: Quantize frequency threshold mappings
   uint freq_bound;
   if( found_state->Freq<=9 ) {
