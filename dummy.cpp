@@ -1836,13 +1836,13 @@ at_return:
 
 sqword ReduceOrder() {
   sqword result, pTextEntry, heapNull, pTextNewSlot, maxCtxStart;
-  sqword succIdx, succAddr, newStatesIdx2, allocedUnit, curCtx;
+  sqword succIdx, succAddr, curCtx;
   sqword rootCtxSaveLab99, rootCtxSaveCS;
   uint newByteIdx, curCtxSuffix;
   int sym;
   STATE *stateBW, *chainStatePtr;
   STATE **chainPtrW, **chainPtrSave;
-  qword newStateEnd, ctxChainEndS;
+  qword ctxChainEndS;
   sqword rootCtxW = RootContext;
   STATE* foundStateB = FoundState;
   int orderFall = OrderFall;
@@ -1998,7 +1998,9 @@ LABEL_11:
     while( 1 ) {
       PPM_CONTEXT* curCtxP = ctxBW;
       uint nStatesP1 = curCtxP->NStates + 1;
+      qword newStateEnd;
       if (curCtxP->NStates) {
+        sqword newStatesIdx2;
         if ((nStatesP1 & 1) != 0) {
           newStatesIdx2 = curCtxP->iStates;
         } else {
@@ -2034,7 +2036,7 @@ LABEL_11:
           newStateEnd = (qword)dst;
         }
       } else {
-        allocedUnit = AllocUnits_(Units2Indx4[0]);
+        sqword allocedUnit = AllocUnits_(Units2Indx4[0]);
         if( !allocedUnit ) { rootCtxW = rootCtxSaveLab99; goto LABEL_73; }
         // Promote NStates==0 binary context to NStates==1: copy the existing
         // oneState into allocedUnit (becomes STATE[0]), then bump its Freq.
