@@ -2098,8 +2098,8 @@ LABEL_11:
 //      (weight updates, sym-derived state, MatchPosTable, RSContext / SSE2
 //      histogram, MixScale tracking, hint chains, BijectMap predictor, and
 //      finally the context-suffix walk that builds CtxChain[]).
-//    * irreducible goto layout (LABEL_94 / LABEL_165 / LABEL_201) is left
-//      intact since rewriting it carries a high risk of behaviour drift.
+//    * LABEL_94 and LABEL_201 gotos eliminated via early-exit flags and break;
+//      LABEL_165 (trail-walk merge point with deep-walk entry) is left intact.
 // =============================================================================
 
 // helper 1: pred-pair update with overflow-driven halving
