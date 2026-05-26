@@ -2998,7 +2998,7 @@ Rangecoder rc;
 //      block under the "else" of NStates check          ~  decode0 / encode0
 //      block from LABEL_59 (the escape walk)            ~  decode2 / encode2 escape
 //      LABEL_128 / LABEL_250                            ~  SYMBOL_FOUND + PrepareNextStep
-//      LABEL_335 / LABEL_298 / LABEL_296 / LABEL_292    ~  inner SSE-mix sub-steps
+//      escape-mirror inner sort + cascade               ~  inner SSE-mix sub-steps
 //
 //  Naming conventions for locals (suffix tags the section):
 //      _A   multi-state initial mix block (NStates > 0)
