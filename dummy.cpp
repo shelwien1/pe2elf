@@ -4107,13 +4107,10 @@ LABEL_298:
           wDelta30 = RescaleAccum1_(sse4Nbr, *(uint*)sse4Nbr, predShiftIncC);
         }
         sumFreqDivC = MixCumFreq_(mixFreqCacheC, mixWeightC, descendNStatesP1E);
-        if( descendNStatesP1E<24 ) {
-          sumFreqLimit = 0;
-          goto LABEL_335;
-        }
       }
-      sumFreqLimit = (int)(sumFreqDivC+MinContext->SummFreq)>>1;
-LABEL_335:
+      sumFreqLimit = (descendNStatesP1E < 24)
+                       ? 0
+                       : (int)(sumFreqDivC + MinContext->SummFreq) >> 1;
       // Per-state walk through CtxChain[] inside the escape:  each iteration
       // is the body of ppmd's "FoundState = MinContext->encode2(c)" search.
       cumFreqMixSave = sumFreqLimit;
