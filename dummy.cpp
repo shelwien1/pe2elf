@@ -3600,27 +3600,27 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
       while( 1 ) {
         stateIter += 1;
         int walkSym = stateIter->Symbol;
-        int sortPriority;
-        sqword* sortLimit;
+        int sortPriority = 0;
+        sqword* sortLimit = nullptr;
+        bool needsSort = false;
         if( escSymbol!=walkSym ) {
           SymMask[stateIter->Symbol] = epoch;
           *chainEnd++ = (sqword)stateIter;
           if( walkSym==FoundSymbol ) {
             sortPriority = 22;
             sortLimit = &CtxChain[(foundSymHist&7)==0];
-LABEL_14:
-            BubbleSortChain_(chainEnd, sortLimit, sortPriority);
-            ++chainStart;
-            goto LABEL_18;
-          }
-          if( epoch==MatchPosBySym[walkSym]||epoch==SymLastCtx2[walkSym] ) {
+            needsSort = true;
+          } else if( epoch==MatchPosBySym[walkSym]||epoch==SymLastCtx2[walkSym] ) {
             sortLimit = chainStart;
             // priority 18 if MatchPosBySym hit (the stronger signal), else 7
             sortPriority = (epoch==MatchPosBySym[walkSym]) ? 18 : 7;
-            goto LABEL_14;
+            needsSort = true;
           }
         }
-LABEL_18:
+        if (needsSort) {
+          BubbleSortChain_(chainEnd, sortLimit, sortPriority);
+          ++chainStart;
+        }
         // After scanning all states in MinContext: enter the SSE-mix block.
         if( !--remStates ) {
           // These are written in either the if/else below but read inside the
