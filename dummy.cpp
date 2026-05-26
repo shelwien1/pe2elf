@@ -3367,6 +3367,20 @@ inline void RunSse1_(uint hits, int& cumWeight, int& cumFreq) {
   Sse1Step_(slot, hits, cumWeight, cumFreq);
 }
 
+// Binary mix slot rescale + commit, shared by region B (single-state cascade)
+// and region F (per-candidate cascade). `freq` is read in, possibly rescaled
+// down by MaybeRescale2_, and the updated value is written back. Publishes
+// hits/freq into sseCum/sseTot/sse2DenDelta/sse2NumDelta.
+inline void BinSlotRescaleCommit_(int* slot, int& freq, int& hits) {
+  MaybeRescale2_(slot, freq);
+  hits = *(word*)slot;
+  sseCum = hits;
+  *((word*)slot+2) = freq + *((word*)slot+3);
+  sseTot = freq;
+  sse2DenDelta = hits;
+  sse2NumDelta = freq;
+}
+
 // Shared tail of region A (single-state cascade) and region F (per-candidate
 // cascade): SseMatch -> Sse2 -> Sse3 step trio with associated index builds
 // and G-slot publishing. Inputs vary per region; outputs sseCum/sseTot
@@ -3664,13 +3678,8 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
     binMixCenter = (word*)mixSlotB;
     PredBaseAG = (sqword)(mixSlotB-4);
     PredBaseBG = (sqword)(mixSlotB+4);
-    MaybeRescale2_(mixSlotB, mixFreqB);
-    int mixHitsB = *(word*)mixSlotB;
-    sseCum = mixHitsB;
-    *((word*)mixSlotB+2) = mixFreqB + *((word*)mixSlotB+3);
-    sseTot = mixFreqB;
-    sse2DenDelta = mixHitsB;
-    sse2NumDelta = mixFreqB;
+    int mixHitsB;
+    BinSlotRescaleCommit_(mixSlotB, mixFreqB, mixHitsB);
     OrderCtxSeed = OrderCtxSeedBuild_(currentSymbol, (int)MatchCtxHi,
                                       sparseFlags, OrderCtxSeed,
                                       (uint)mixFreqB, (uint)mixHitsB);
@@ -4050,13 +4059,8 @@ LABEL_59:
         // identical to the original (which reloaded matchCtxHiSave inside
         // the same branch that triggers MaybeRescale2_).
         if (freq0F > 0x8000) matchCtxHiSave = MatchCtxHi;
-        MaybeRescale2_(binMixSlotF, freq0F);
-        int hitsF = *(word*)binMixSlotF;
-        sseCum = hitsF;
-        *((word*)binMixSlotF+2) = freq0F + *((word*)binMixSlotF+3);
-        sseTot = freq0F;
-        sse2DenDelta = hitsF;
-        sse2NumDelta = freq0F;
+        int hitsF;
+        BinSlotRescaleCommit_(binMixSlotF, freq0F, hitsF);
         // OrderCtxSeed composite for the per-candidate Sse1 table lookup.
         OrderCtxSeed = OrderCtxSeedBuild_(candSymbol, matchCtxHiSave,
                                           sparseHitsF, orderCtxSeedSave,
