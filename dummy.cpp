@@ -118,12 +118,7 @@ char foundSymHist;
 // [3]=count. Set per-step by MixUpdate; reads through this pointer happen
 // later in the same call.
 sqword bijectCellPtr;
-int MixScale;
-int hintSymRecent;
-int FoundSymbol;
-int HashSeed2;
-int HashSeed1;
-int RSContext;
+int MixScale, hintSymRecent, FoundSymbol, HashSeed2, HashSeed1, RSContext;
 
 sqword CtxChain[0x100];
 sqword& CtxChain_1 = CtxChain[1];
@@ -134,9 +129,7 @@ char b16[0x20000];
 short* const MixBound1 = (short*)&b16[6];
 
 int Sse1[0x60040];
-
 int Sse2[0x30040];
-
 int Sse3[0x2A03E];
 
 char SymFreqs[256];
