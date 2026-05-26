@@ -3543,6 +3543,14 @@ inline uint Sse2IdxBuild_(int sym, uint prevWeight, uint prevTot) {
     .val;
 }
 
+// Shared Sse1 step + slot-publish: regions A and F both compute the Sse1 slot
+// from OrderCtxSeed and run Sse1Step_, publishing through Sse1SlotG.
+inline void RunSse1_(uint hits, int& cumWeight, int& cumFreq) {
+  int* slot = &Sse1[2*OrderCtxSeed];
+  Sse1SlotG = (sqword)slot;
+  Sse1Step_(slot, hits, cumWeight, cumFreq);
+}
+
 // Shared tail of region A (single-state cascade) and region F (per-candidate
 // cascade): SseMatch -> Sse2 -> Sse3 step trio with associated index builds
 // and G-slot publishing. Inputs vary per region; outputs sseCum/sseTot
@@ -3859,10 +3867,8 @@ LABEL_58:
     OrderCtxSeed = OrderCtxSeedBuild_(currentSymbol, (int)MatchCtxHi,
                                       sparseFlags, OrderCtxSeed,
                                       (uint)mixFreqB, (uint)mixHitsB);
-    int* sse1SlotB = &Sse1[2*OrderCtxSeed];
-    sse1Slot = sse1SlotB;
     int cumWeightB, cumFreqB;
-    Sse1Step_(sse1SlotB, mixHitsB, cumWeightB, cumFreqB);
+    RunSse1_(mixHitsB, cumWeightB, cumFreqB);
     uint centerExpandB = binMixCenter[3];
     int  escSymB       = MixCtx3;       // both arms below want this snapshot
     if( centerExpandB<=0x20 ) {
@@ -4255,10 +4261,8 @@ LABEL_59:
         OrderCtxSeed = OrderCtxSeedBuild_(candSymbol, matchCtxHiSave,
                                           sparseHitsF, orderCtxSeedSave,
                                           (uint)freq0F, (uint)hitsF);
-        int* sse1SlotF = &Sse1[2*OrderCtxSeed];
-        sse1Slot = sse1SlotF;
         int mixCumWeightF, mixCumFreqF;
-        Sse1Step_(sse1SlotF, hitsF, mixCumWeightF, mixCumFreqF);
+        RunSse1_(hitsF, mixCumWeightF, mixCumFreqF);
         uint centerExpandF = binMixCenter[3];
         if( centerExpandF<=8 ) {
           sseTot = mixCumWeightF;
