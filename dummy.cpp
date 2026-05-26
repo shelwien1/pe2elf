@@ -3133,7 +3133,7 @@ inline sqword SseClampMean_(int* slot, sqword scale, sqword lo, sqword hi) {
 // suffix-context's freq for this symbol (SymFreqs[sym]), the running (sumFreq,
 // sumFreqW) state and the constant term `constMix`, conditionally rescale
 // the state's freq and accumulate the new value back into the parent
-// context's SummFreq. Used 2x (initial mix loop + LABEL_298 mirror).
+// context's SummFreq. Used 2x (initial mix loop + escape mirror).
 inline void FreqMixStep_(STATE* st, byte sxFreq, uint mixWeight,
                          uint constMix, int& sumFreq, int& sumFreqW,
                          PPM_CONTEXT* ctx) {
@@ -3154,7 +3154,7 @@ inline void FreqMixStep_(STATE* st, byte sxFreq, uint mixWeight,
 // Bubble-sort-insert idiom for the CtxChain[] array. Walks from chainEnd-1
 // downward, swapping adjacent entries as long as the higher one's freq is
 // dominated by `sortPriority * lower.Freq`. Used 2x in mirrored state-search
-// loops (the original LABEL_14 and LABEL_292 sort entries by priority).
+// loops (initial multi-state walk + escape mirror).
 inline void BubbleSortChain_(sqword* chainEnd, sqword* sortLimit, int sortPriority) {
   for (sqword* p = chainEnd - 1; p > sortLimit; --p) {
     sqword tmp = *(p - 1);
@@ -3179,7 +3179,7 @@ inline void FillFreqMap_(PPM_CONTEXT* ctx) {
 // Walk the suffix chain from `startCtx`, while its rank-0 symbol equals
 // `escSym` AND its NStates matches `refCtx`. Returns the walked-to context;
 // writes the final symbol to `outFinalSym` and to the global EscapeSymbol.
-// Used 2x (initial section + LABEL_298 mirror).
+// Used 2x (initial section + escape mirror).
 inline PPM_CONTEXT* WalkEscapeChain_(PPM_CONTEXT* startCtx, PPM_CONTEXT* refCtx,
                                      int escSym, int& outFinalSym) {
   PPM_CONTEXT* w = startCtx;
