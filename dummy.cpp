@@ -3736,43 +3736,42 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
             predRescaleDiv = MinContext->SummFreq;
             cumFreqMixA = predRescaleDiv + MixCumFreq_(mixFreqA, mixWeightA, nStatesPlus1);
             cumFreqAcc = cumFreqMixA;
-            if( nStatesPlus1<24 ) {
-              cumFreqMixSave = 0;
-              cumFreqDivA = 0;
-LABEL_58:
-              // SSE-mix preamble: zero out the per-step predictor accumulators
-              // and seed the LABEL_59 escape walk.
-              wDelta35 = 171;
-              sumFreqLimit = cumFreqDivA;
-              predShiftFlags = 0;
-              wDelta34 = 0;
-              predBinFlags = 171;
-              sseIdxStorage = SseIdx{}
-                .bit  <1>    (OrderFall < 3)
-                .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
-                .bits <5, 2> (MixCtx2 & 3);
-              seeIdxBase = sseIdxStorage;
-              remCandF = nStates+1;
-              chainPtr = (STATE**)CtxChain;
-              // MixCtxExtra accumulator update: a few bits at fixed positions
-              // plus a "sliding edge": bits 13-14 are always set when this
-              // branch fires, and a single 1-bit edge moves from bit 12 to
-              // bit 15 depending on the (nStatesPlus1 > 40) predicate (the
-              // decompilation's +28672 / +28672*pred carry pair).
-              MixCtxExtra += SseIdx{}
-                .bit <5> (MinContext->NStates > NMasked)
-                .bit <7> (nStatesP1Save < nStatesPlus1 + 4)    // was >>24 sign trick
-                .bit <12>(!(nStatesPlus1 > 40))                // bit 12 only when predicate is false
-                .bits<13, 2>(3)                                // bits 13-14 always set
-                .bit <15>(nStatesPlus1 > 40);                  // bit 15 only when predicate is true
-              sumFreqF = cumFreqMixA;
-              orderCtxSeedSave = OrderCtxSeed;
-              goto LABEL_59;
-            }
           }
-          cumFreqDivA = cumFreqMixA>>1;
-          cumFreqMixSave = cumFreqMixA>>1;
-          goto LABEL_58;
+          if (nStatesPlus1 < 24 && nStatesPlus1 != 256) {
+            cumFreqMixSave = 0;
+            cumFreqDivA = 0;
+          } else {
+            cumFreqDivA = cumFreqMixA >> 1;
+            cumFreqMixSave = cumFreqMixA >> 1;
+          }
+          // SSE-mix preamble: zero out the per-step predictor accumulators
+          // and seed the LABEL_59 escape walk.
+          wDelta35 = 171;
+          sumFreqLimit = cumFreqDivA;
+          predShiftFlags = 0;
+          wDelta34 = 0;
+          predBinFlags = 171;
+          sseIdxStorage = SseIdx{}
+            .bit  <1>    (OrderFall < 3)
+            .raw         (1032u * (MinContext->iSuffix == 0))   // 1032 = bit 3 + bit 10, both set together
+            .bits <5, 2> (MixCtx2 & 3);
+          seeIdxBase = sseIdxStorage;
+          remCandF = nStates+1;
+          chainPtr = (STATE**)CtxChain;
+          // MixCtxExtra accumulator update: a few bits at fixed positions
+          // plus a "sliding edge": bits 13-14 are always set when this
+          // branch fires, and a single 1-bit edge moves from bit 12 to
+          // bit 15 depending on the (nStatesPlus1 > 40) predicate (the
+          // decompilation's +28672 / +28672*pred carry pair).
+          MixCtxExtra += SseIdx{}
+            .bit <5> (MinContext->NStates > NMasked)
+            .bit <7> (nStatesP1Save < nStatesPlus1 + 4)    // was >>24 sign trick
+            .bit <12>(!(nStatesPlus1 > 40))                // bit 12 only when predicate is false
+            .bits<13, 2>(3)                                // bits 13-14 always set
+            .bit <15>(nStatesPlus1 > 40);                  // bit 15 only when predicate is true
+          sumFreqF = cumFreqMixA;
+          orderCtxSeedSave = OrderCtxSeed;
+          goto LABEL_59;
         }
       }
     }
