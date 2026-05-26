@@ -3987,11 +3987,10 @@ LABEL_128:
           }
           if( !--remStatesE ) {
             freqSumE = walkFreqSumE;
-            goto LABEL_298;
+            break;
           }
         }
       }
-LABEL_298:
       // ---------------------------------------------------------------------
       //  Multi-state escape mirror: same shape as the initial multi-state
       //  block above, but uses CtxChain[] populated by the walk for which
