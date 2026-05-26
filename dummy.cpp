@@ -3527,9 +3527,9 @@ template< int f_DEC > int RealProcess(FILE* outFile, FILE* inFile) {
         }
         // After scanning all states in MinContext: enter the SSE-mix block.
         if( !--remStates ) {
-          // These are written in either the if/else below but read inside the
-          // if(nStatesPlus1<24) ... LABEL_58 path; declare here so the
-          // goto LABEL_58 below doesn't bypass init.
+          // These are written only in the else branch of the cascade below
+          // but read in the post-cascade SSE-mix preamble. Defensive init=0
+          // covers the if(nStatesPlus1==256) path.
           int  sxNStates = 0, minSumFreqA = 0, sxSumFreqA0 = 0, sumFreqSaveA = 0;
           int  nStatesP1Save = nStates+1;
           uint cumFreqMixA = 0, cumFreqDivA = 0, maskFlagPrev = 0, maskFlagEsc = 0;
