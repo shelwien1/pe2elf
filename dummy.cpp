@@ -536,9 +536,7 @@ struct SseIdx {
 // MaxOrder global instead.
 constexpr int PATH_BUF_MAX = 128;
 
-// 2. MaxContext definition implemented via an lvalue reference mapping to MaxContext0
-// #define MaxContext (*(PPM_CONTEXT**)&MaxContext0)
-// Alternatively, using a explicit C++ reference variable:
+// MaxContext is a typed alias of the sqword MaxContext0 global.
 PPM_CONTEXT*&MaxContext = *(PPM_CONTEXT**)&MaxContext0;
 
 void BinEscFreq(PPM_CONTEXT* pc);
