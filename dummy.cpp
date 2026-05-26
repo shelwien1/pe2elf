@@ -2880,10 +2880,8 @@ LABEL_94:
       depth3 -= 3;
       --depthLeft;
       if (foundFreq > 130 || deepFound->Freq >= 0xE4u) {
-        trailBound = ofallP1;
-        ofall = ofallSaved;
         walkCtx = walkCtx->getSuffix();
-        goto LABEL_201;
+        break;
       }
       int deepSumFreq = walkCtx->SummFreq;
       short mixBoostA = mixWeight + (depth5 > ofallP3);
@@ -2903,7 +2901,6 @@ LABEL_94:
     trailBound = ofallP1;
     ofall = ofallSaved;
     }
-LABEL_201:
     while (trailBound < 4*depthLeft) {
       trailStatesIdx = walkCtx->iStates;
       trailFlags = walkCtx->Flags;
