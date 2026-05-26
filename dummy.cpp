@@ -2136,7 +2136,7 @@ LABEL_11:
             }
             statesPtr = newStatesPtr;
           }
-          if (!statesPtr) goto LABEL_99;
+          if (!statesPtr) { rootCtxW = rootCtxSaveLab99; goto LABEL_73; }
           newStatesIdx2 = Ptr2Indx(statesPtr);
           curCtxP->iStates = newStatesIdx2;
         }
@@ -2152,11 +2152,7 @@ LABEL_11:
         }
       } else {
         allocedUnit = AllocUnits_(Units2Indx4[0]);
-        if( !allocedUnit ) {
-LABEL_99:
-          rootCtxW = rootCtxSaveLab99;
-          goto LABEL_73;
-        }
+        if( !allocedUnit ) { rootCtxW = rootCtxSaveLab99; goto LABEL_73; }
         // Promote NStates==0 binary context to NStates==1: copy the existing
         // oneState into allocedUnit (becomes STATE[0]), then bump its Freq.
         STATE* newStates = (STATE*)allocedUnit;
