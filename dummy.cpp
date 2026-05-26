@@ -235,28 +235,12 @@ sqword PredBaseAG, PredBaseBG;
 sqword Sse1SlotG, Sse2SlotG, Sse3SlotG, SseMatchSlotG, BinSseCellG;
 sqword CtxChainEnd;
 
-int hintSymB31, hintSymM2, hintSymB29, hintSymBiject;
-int hintSymMatch3;
-int hintSymBmCell;
-int sse2DenDelta;
-int sse2NumDelta;
-int sseMatchDenDelta;
-int sseMatchNumDelta;
-int predSseTotDelta;
-int predWeightDelta;
-int MatchCtxHi;
-int recentSym;
-int mixScaleCntr;
-int symHalfHistory;
-int SparseHashA;
-int SparseIdxA;
-int SparseHashB;
-int SparseIdxB;
-int SparseBit;
+int hintSymB31, hintSymM2, hintSymB29, hintSymBiject, hintSymMatch3, hintSymBmCell;
+int sse2DenDelta, sse2NumDelta, sseMatchDenDelta, sseMatchNumDelta;
+int predSseTotDelta, predWeightDelta;
+int MatchCtxHi, recentSym, mixScaleCntr, symHalfHistory;
+int SparseHashA, SparseIdxA, SparseHashB, SparseIdxB, SparseBit;
 
-
-//typedef byte t_byte_140029940[0x2358D0]; t_byte_140029940& Sse2State = *(t_byte_140029940*)(blob1+ 0x140029940 -0x1400227B0);
-//byte Sse2State[0x2358D0];
 byte Sse2State[0xC0818];
 // Overlays on Sse2State at fixed byte offsets (the decompiler emitted
 // the offsets as differences from the original module base address).
