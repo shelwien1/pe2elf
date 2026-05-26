@@ -136,16 +136,13 @@ short* const MixBound1 = (short*)&b16[6];
 int Sse1[0x60040];
 
 int Sse2[0x30040];
-int* Sse2_1 = &Sse2[1];
 
 int Sse3[0x2A03E];
-int* Sse3_1 = &Sse3[1];
 
 char SymFreqs[256];
 
 int MixWeight2[0x8040];
 auto& MixFreq2_1 = (short(&)[0x803F*2])MixWeight2[1];
-short* MixFreq2 = &MixFreq2_1[1];
 
 
 int d90[4096];
@@ -169,7 +166,6 @@ int* SseCtx0 = (int*)&SEE2_5[6];
 int* SseCtx0_1 = &SseCtx0[3];
 
 int SseMatch[0x200040];
-int* SseMatch_1 = &SseMatch[1];
 
 int MatchPosPrev[131072];
 int MatchPosTable[0x10000];
@@ -208,7 +204,6 @@ int PrevSymbol;
 int OrderCtxSeed;
 int SseSeed;
 int EscIndexSeed;
-int unusedD111;
 int NMasked;
 
 sqword predWeightSink2;
@@ -216,7 +211,6 @@ int predDeltaNum;
 int predDeltaDen;
 int runLengthInit;
 int OrderFall0;
-int SolidInterrupt = 0;
 byte freqmap[0x100];
 void* FileName = 0;
 void* HeapStart = 0;
