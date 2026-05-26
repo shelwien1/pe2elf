@@ -2994,18 +2994,17 @@ Rangecoder rc;
 //  1217-1313 there), folded into one template with f_DEC = 0 (encode) or 1
 //  (decode). Heavily SSE-augmented compared to textbook PPMd.
 //
-//  Mapping of PE goto labels to ppmd primitives:
-//      first block under "if (MinContext->NStates)"   ~  decodeLES1 / encodeLES1
-//      block from LABEL_18 onward                       ~  decode1 / encode1
-//      block under the "else" of NStates check          ~  decode0 / encode0
-//      block from LABEL_59 (the escape walk)            ~  decode2 / encode2 escape
-//      LABEL_128 / LABEL_250                            ~  SYMBOL_FOUND + PrepareNextStep
-//      escape-mirror inner sort + cascade               ~  inner SSE-mix sub-steps
+//  Mapping of PE blocks to ppmd primitives:
+//      multi-state branch (if NStates>0)  ~  decodeLES1/encodeLES1 + decode1/encode1
+//      single-state branch (NStates==0)   ~  decode0 / encode0
+//      LABEL_59 per-candidate loop        ~  decode2 / encode2 escape
+//      escape-mirror (after escape walk)  ~  inner SSE-mix sub-steps
+//      LABEL_128 / LABEL_250              ~  escape descent / PrepareNextStep
 //
 //  Naming conventions for locals (suffix tags the section):
 //      _A   multi-state initial mix block (NStates > 0)
 //      _B   single-state binary coder (NStates == 0)
-//      _C   LABEL_298 escape mirror (parallels _A)
+//      _C   escape mirror (parallels _A)
 //      _E   escape walk (LABEL_128 area)
 //      _F   LABEL_59 per-candidate loop
 //      _M   freq-mixing loop inside the initial multi-state block
