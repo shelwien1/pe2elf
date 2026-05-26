@@ -74,12 +74,8 @@ auto& Units2Indx4 = (byte(&)[128])Units2Indx[4];
 char& b11 = (char&)Units2Indx4[127];
 
 uint BinMapTable[16];
-char SSE1QTable[128];
-char SEEQTable[256];
-byte SSE0[256];
-byte SSE1[256];
-char NextBinFreq[128];
-byte SSE0QTable[256];
+char SSE1QTable[128], SEEQTable[256], NextBinFreq[128];
+byte SSE0[256], SSE1[256], SSE0QTable[256];
 int BinSse[0x280];
 
 int MixWeight1[0xF0000/2]; // memset(MixWeight1, 0, 0x20000);
@@ -89,7 +85,6 @@ int d29[0x2040];
 short& w12 = *(short*)((char*)&d29 + 0x4);
 
 int PredWeight[0xA1C];
-
 int d27[0x70040];
 // Six short-typed overlays on d27 at fixed byte offsets:
 //   MixBound2 @ 0x00004, MixBound3 @ 0x00006, MixBound6 @ 0x10006,
