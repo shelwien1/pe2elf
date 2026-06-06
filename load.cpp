@@ -36,6 +36,12 @@ int main(int argc, char** argv) {
     if( quote ) cmdline += '"';
   }
 
+  // Tell the shim to drop the loader's own argv[0] (./load) before
+  // exposing /proc/self/cmdline to the PE — so the PE sees argv starting
+  // at the .so path (its "program name") followed by the real args.
+  // Must be set BEFORE dlopen so the shim's constructor picks it up.
+  setenv("WINAPI_SHIM_ARGV_SKIP", "1", 1);
+
   void* handle = dlopen(so_path, RTLD_NOW);
   if( !handle ) {
     fprintf(stderr, "dlopen(%s) failed: %s\n", so_path, dlerror());

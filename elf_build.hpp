@@ -279,9 +279,12 @@ struct Builder {
   bool build_trampoline() {
     uint64_t pe_entry = image.image_base+image.ep_rva;
     // Layout:
-    //  +0  lea rdi,[rip+0x19] (7)  rip_after=+7,  tls_info at +32, disp=25
-    //  +7  call [rip+0x0b]    (6)  rip_after=+13, slot at +24, disp=11
-    //  +13 and rsp,-16        (4)  align to 16 bytes
+    //  +0  and rsp,-16        (4)  align rsp (works whether entered from the
+    //                              kernel ELF entry contract — rsp%16==0 — or
+    //                              from a CALL — rsp%16==8); a kernel-set rsp
+    //                              is already aligned so this is a no-op there
+    //  +4  lea rdi,[rip+0x15] (7)  rip_after=+11, tls_info at +32, disp=21
+    //  +11 call [rip+0x07]    (6)  rip_after=+17, slot at +24, disp=7
     //  +17 push rax           (1)  RSP % 16 → 8: simulates PE entry via CALL
     //  +18 jmp rel32          (5)  rip_after=+23
     //  +23 nop                (1)
@@ -297,9 +300,9 @@ struct Builder {
     }
     int32_t rel32 = (int32_t)d;
     trampoline_data = {
-      0x48, 0x8d, 0x3d, 0x19,0x00,0x00,0x00, // lea rdi,[rip+25] → tls_info@+32
-      0xff, 0x15, 0x0b,0x00,0x00,0x00,        // call [rip+11]    → slot@+24
-      0x48, 0x83, 0xe4, 0xf0,                 // and rsp,-16
+      0x48, 0x83, 0xe4, 0xf0,                 // and rsp,-16 (pre-align CALL)
+      0x48, 0x8d, 0x3d, 0x15,0x00,0x00,0x00, // lea rdi,[rip+21] → tls_info@+32
+      0xff, 0x15, 0x07,0x00,0x00,0x00,        // call [rip+7]     → slot@+24
       0x50,                                   // push rax (RSP % 16 → 8)
       0xe9,                                   // jmp rel32
         (uint8_t)(rel32),

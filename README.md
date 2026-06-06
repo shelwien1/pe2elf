@@ -114,9 +114,13 @@ cp winapi_shim.so /path/to/program/
 
 # Convert as a dlopen-able shared object, then run via the load helper:
 ./pe2elf program.exe program.so --so
-cp winapi_shim.so program.so /path/to/dir/
+cp winapi_shim.so program.so load /path/to/dir/
 cd /path/to/dir/
-./load ./program.so [args...]   # args are joined and passed as WinMain lpCmdLine
+./load ./program.so [args...]
+# load is linked DT_NEEDED against winapi_shim.so (so the shim's
+# initial-exec TLS gets its static block at startup, before the .so is
+# dlopen'd), and tells the shim via WINAPI_SHIM_ARGV_SKIP=1 to drop its
+# own argv[0] so the PE sees argv starting at the .so path.
 
 # Convert with debug logging
 ./pe2elf program.exe program.elf --dbg

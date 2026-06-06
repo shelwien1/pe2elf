@@ -741,6 +741,27 @@ static char* read_cmdline_raw(size_t* out_len) {
   return buf;
 }
 
+// WINAPI_SHIM_ARGV_SKIP lets a loader (e.g. ./load <pe.so> ...) tell the
+// shim to drop the first N argv entries from /proc/self/cmdline before
+// the PE sees them, so the PE's GetCommandLine / argv start at its own
+// program name rather than the loader's.
+static int shim_argv_skip(void) {
+  const char* s = getenv("WINAPI_SHIM_ARGV_SKIP");
+  if( !s || !*s ) return 0;
+  int n = atoi(s);
+  return n > 0 ? n : 0;
+}
+
+// Advance p past `skip` NUL-terminated argv entries (clamped to end).
+static const char* skip_argv_entries(const char* p, const char* end, int skip) {
+  while( skip > 0 && p < end ) {
+    while( p < end && *p ) ++p;
+    if( p < end ) ++p; // step over the NUL
+    --skip;
+  }
+  return p;
+}
+
 static void rebuild_cmdline(void) {
   size_t raw_len;
   char* raw = read_cmdline_raw(&raw_len);
@@ -749,6 +770,7 @@ static void rebuild_cmdline(void) {
   // Convert NUL-separated argv to space-separated cmdline with quoting
   size_t out = 0;
   const char* p = raw, *end = raw + raw_len;
+  p = skip_argv_entries(p, end, shim_argv_skip());
   int first = 1;
   while( p<end && out+4<sizeof(g_cmdline) ) {
     if( !first ) g_cmdline[out++] = ' ';
@@ -813,13 +835,17 @@ static void build_argv(void) {
   size_t n;
   char* raw = read_cmdline_raw(&n);
   if( !raw || n == 0 ) { free(raw); return; }
-  int argc = 0;
+  int total_argc = 0;
   for( size_t i = 0; i < n; i++ )
-    if( i==0 || (raw[i-1]=='\0' && raw[i]!='\0') ) argc++;
+    if( i==0 || (raw[i-1]=='\0' && raw[i]!='\0') ) total_argc++;
+  int skip = shim_argv_skip();
+  if( skip > total_argc ) skip = total_argc;
+  int argc = total_argc - skip;
   char** argv = (char**)malloc((size_t)(argc+1)*sizeof(char*));
   if( !argv ) { free(raw); return; }
-  int ai = 0;
   const char* p = raw, *end = raw+n;
+  p = skip_argv_entries(p, end, skip);
+  int ai = 0;
   while( p<end && ai<argc ) {
     argv[ai] = strdup(p);
     if( !argv[ai] ) {
