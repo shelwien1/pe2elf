@@ -2,6 +2,7 @@ WINAPI_SHIM_1.0 {
   global:
     pthread_create;
     shim_register_tls;
+    shim_reload_cmdline;
 
     kernel32_GetCurrentProcess;
     kernel32_GetCurrentProcessId;

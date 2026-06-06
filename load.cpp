@@ -18,6 +18,12 @@ typedef int (*winmain_t)(void* hInstance,
                          char* lpCmdLine,
                          int   nShowCmd) __attribute__((ms_abi));
 
+// Exported by winapi_shim.so. Forces it to re-read WINAPI_SHIM_CMDLINE
+// from the environment (the shim's normal init runs as a constructor,
+// before load's main(), so anything we put in the environment is too
+// late without this nudge).
+extern "C" void shim_reload_cmdline(void);
+
 int main(int argc, char** argv) {
   if( argc < 2 ) {
     fprintf(stderr, "Usage: %s <pe.so> [args...]\n", argv[0]);
@@ -36,11 +42,22 @@ int main(int argc, char** argv) {
     if( quote ) cmdline += '"';
   }
 
-  // Tell the shim to drop the loader's own argv[0] (./load) before
-  // exposing /proc/self/cmdline to the PE — so the PE sees argv starting
-  // at the .so path (its "program name") followed by the real args.
-  // Must be set BEFORE dlopen so the shim's constructor picks it up.
-  setenv("WINAPI_SHIM_ARGV_SKIP", "1", 1);
+  // Hand the shim the literal Windows-style command line we want the PE
+  // to see (instead of letting it derive one from /proc/self/cmdline,
+  // which would include ./load).  The PE's CRT treats the first
+  // whitespace-separated token as argv[0] (program name), so we
+  // prepend the .so path with quoting in case it contains spaces.
+  std::string shim_cmdline;
+  shim_cmdline.reserve(strlen(so_path) + cmdline.size() + 4);
+  shim_cmdline += '"';
+  shim_cmdline += so_path;
+  shim_cmdline += '"';
+  if( !cmdline.empty() ) {
+    shim_cmdline += ' ';
+    shim_cmdline += cmdline;
+  }
+  setenv("WINAPI_SHIM_CMDLINE", shim_cmdline.c_str(), 1);
+  shim_reload_cmdline();
 
   void* handle = dlopen(so_path, RTLD_NOW);
   if( !handle ) {

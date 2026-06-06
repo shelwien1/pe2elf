@@ -119,8 +119,10 @@ cd /path/to/dir/
 ./load ./program.so [args...]
 # load is linked DT_NEEDED against winapi_shim.so (so the shim's
 # initial-exec TLS gets its static block at startup, before the .so is
-# dlopen'd), and tells the shim via WINAPI_SHIM_ARGV_SKIP=1 to drop its
-# own argv[0] so the PE sees argv starting at the .so path.
+# dlopen'd), sets WINAPI_SHIM_CMDLINE to "<so-path> <joined-args>" so the
+# PE's GetCommandLine and argv start at its own program name, and calls
+# shim_reload_cmdline (exported by the shim) so the override takes
+# effect after the constructor has already run.
 
 # Convert with debug logging
 ./pe2elf program.exe program.elf --dbg
