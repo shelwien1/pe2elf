@@ -35,7 +35,12 @@ PE2ELF_OUT   = pe2elf
 PE2ELF_SRCS  = pe2elf.cpp
 PE2ELF_FLAGS = -O2 -std=c++17 -Wall -Wextra -Wno-unused-parameter -static
 
-all: $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT)
+LOAD_OUT     = load
+LOAD_SRCS    = load.cpp
+LOAD_FLAGS   = -O2 -std=c++17 -Wall -Wextra -Wno-unused-parameter
+LOAD_LDFLAGS = -ldl
+
+all: $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT) $(LOAD_OUT)
 
 SHIM_HEADERS = $(wildcard shim_*.hpp)
 
@@ -51,7 +56,10 @@ $(DUMMY_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h
 $(PE2ELF_OUT): $(PE2ELF_SRCS)
 	$(CC) $(PE2ELF_FLAGS) -o $@ $(PE2ELF_SRCS)
 
+$(LOAD_OUT): $(LOAD_SRCS)
+	$(CC) $(LOAD_FLAGS) -o $@ $(LOAD_SRCS) $(LOAD_LDFLAGS)
+
 clean:
-	rm -f $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT)
+	rm -f $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT) $(LOAD_OUT)
 
 .PHONY: all clean

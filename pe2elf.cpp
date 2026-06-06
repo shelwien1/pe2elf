@@ -21,11 +21,17 @@ struct Converter {
   bool keep_shdr = true;
   bool strip_pdata = false;
   bool pie = false;
+  bool so_mode = false;
   uint64_t rebase_to = 0; // 0 = no explicit rebase
 
   bool convert(const char* in_path, const char* out_path) {
     if( !image.parse(in_path) )
       return false;
+
+    // --so emits an ET_DYN shared object loadable via dlopen, so it needs
+    // R_X86_64_RELATIVE-style relocations like --pie.
+    if( so_mode )
+      pie = true;
 
     printf("PE32+ ImageBase=0x%llx EP_RVA=0x%x sections=%u\n",
            (unsigned long long)image.image_base, image.ep_rva,
@@ -46,6 +52,7 @@ struct Converter {
       return false;
 
     Builder build(image, plan, shim_name, interp, strip_pdata, inject_name);
+    build.so_mode          = so_mode;
     build.tls_template_va  = image.tls_template_va;
     build.tls_template_sz  = image.tls_template_sz;
     build.tls_zero_fill    = image.tls_zero_fill;
@@ -55,9 +62,20 @@ struct Converter {
     build.build_synthetic_sections();
     plan = compute_plan(image, build.interp_data.size(), build.dynsym_data.size(),
                         build.dynstr_data.size(), build.rela_data.size(),
-                        build.dt_entry_count());
+                        build.dt_entry_count(), build.hash_data.size());
     // Fix up RELA r_offset for shim_register_tls call slot (trampoline+24)
+    // and (for --so) the _entrypoint symbol value + TLS-VA reloc r_offsets.
     build.finalize_tls_call(plan.trampoline_va + 24);
+    if( so_mode ) {
+      build.safe_entry_va = build.find_safe_entry();
+      if( !build.safe_entry_va ) {
+        fprintf(stderr, "Error: --so: no 0xC3 (RET) byte found in any executable section\n");
+        return false;
+      }
+      printf("--so: _entrypoint=0x%llx safe e_entry=0x%llx\n",
+             (unsigned long long)plan.trampoline_va,
+             (unsigned long long)build.safe_entry_va);
+    }
     if( !build.build_trampoline() )
       return false;
     build.build_dynamic();
@@ -96,6 +114,8 @@ static void usage(const char* prog) {
           "  [--strip-pdata]         drop .pdata section\n"
           "  [--no-shdr]             omit section headers\n"
           "  [--pie]                 emit ET_DYN (PIE/ASLR) instead of ET_EXEC\n"
+          "  [--so]                  emit a dlopen-able .so with _entrypoint export\n"
+          "                          (implies --pie; e_entry points at a safe RET byte)\n"
           "  [--base=<addr>]         rebase to <addr> (patches relocs in-place;\n"
           "                          errors if original base differs and no relocs)\n",
           prog);
@@ -126,6 +146,8 @@ int main(int argc, char** argv) {
       conv.keep_shdr = false;
     } else if( !strcmp(argv[i], "--pie") ) {
       conv.pie = true;
+    } else if( !strcmp(argv[i], "--so") ) {
+      conv.so_mode = true;
     } else if( !strncmp(argv[i], "--base=", 7) ) {
       char* endp;
       conv.rebase_to = strtoull(argv[i]+7, &endp, 0);

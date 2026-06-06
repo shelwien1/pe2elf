@@ -78,6 +78,7 @@ Produces:
 | `winapi_shim.so` | WinAPI shim — production build, logging disabled by default |
 | `winapi_shim_dbg.so` | Same shim, built with `-DWINAPI_LOG_ENABLED -O0 -g`; logs to `/tmp/shimlog.txt` unconditionally |
 | `dummy.so` | Example injection library (prints `Hello, world!!!` at startup) |
+| `load` | Helper that dlopens a `pe2elf --so`-converted `.so` and invokes its `_entrypoint` symbol with the MSVC WinMain prototype (ms_abi). |
 
 `make pe2elf winapi_shim.so` skips the debug build and `dummy.so`.
 
@@ -96,6 +97,7 @@ pe2elf <input.exe> <output.elf> [options]
 | `--strip-pdata` | off | Drop the `.pdata` section (saves space; disables Windows-style SEH unwinding) |
 | `--no-shdr` | off | Omit section headers (slightly smaller output) |
 | `--pie` | off | Emit `ET_DYN` (PIE/ASLR-capable) instead of `ET_EXEC` |
+| `--so` | off | Emit a dlopen-able `.so`. Exports `_entrypoint` (the real startup trampoline) and points the ELF entry at a safe `RET` byte inside the PE code so accidental direct execution doesn't run the PE. Implies `--pie`. |
 | `--base=<addr>` | — | Rebase to `<addr>`, patching relocs in-place. Errors if the original base differs and no `.reloc` data is present. |
 
 The output ELF embeds `DT_RUNPATH=$ORIGIN`, so `ld.so` looks for the shim
@@ -109,6 +111,12 @@ in the same directory as the converted binary before running it.
 ./pe2elf program.exe program.elf
 cp winapi_shim.so /path/to/program/
 ./program.elf
+
+# Convert as a dlopen-able shared object, then run via the load helper:
+./pe2elf program.exe program.so --so
+cp winapi_shim.so program.so /path/to/dir/
+cd /path/to/dir/
+./load ./program.so [args...]   # args are joined and passed as WinMain lpCmdLine
 
 # Convert with debug logging
 ./pe2elf program.exe program.elf --dbg
