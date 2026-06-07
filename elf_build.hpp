@@ -22,6 +22,7 @@ struct Builder {
   std::vector<Elf64_Rela> rela_data;
   std::vector<Elf64_Dyn>  dynamic_data;
   std::vector<uint8_t>   trampoline_data;
+  std::vector<uint8_t>   hash_data; // only populated in --so mode
 
   // IAT section with slots zeroed
   std::vector<uint8_t> rdata_patched;
@@ -45,7 +46,58 @@ struct Builder {
   size_t shim_reg_tls_sym_idx  = 0; // dynsym index of shim_register_tls (UND)
   size_t shim_reg_tls_rela_idx = 0; // rela index for the call slot
 
-  size_t dt_entry_count() const { return 12 + (inject_name.empty() ? 0 : 1); }
+  // --so mode: emit a dlopen-able .so. We export `_entrypoint` (the
+  // startup trampoline) and point e_entry at a 0xC3 byte inside the PE
+  // code so anything that accidentally lands on it just RETs.
+  bool so_mode = false;
+  uint64_t safe_entry_va = 0;        // first 0xC3 in any X section; filled by find_safe_entry
+  size_t entrypoint_sym_idx = 0;     // dynsym index of `_entrypoint` (defined)
+  // RELA indices for the three VA fields of ShimTlsInfo in the trampoline
+  // (template, index, callbacks). SIZE_MAX = no reloc emitted for that field.
+  size_t tls_va_rela_idx[3] = {SIZE_MAX, SIZE_MAX, SIZE_MAX};
+
+  size_t dt_entry_count() const {
+    // base 12 + DT_NEEDED for inject + DT_HASH for --so mode
+    return 12 + (inject_name.empty() ? 0 : 1) + (so_mode ? 1 : 0);
+  }
+
+  // SysV ELF hash (used by DT_HASH).
+  static uint32_t elf_sysv_hash(const char* name) {
+    uint32_t h = 0, g;
+    while( *name ) {
+      h = (h<<4) + (unsigned char)*name++;
+      g = h & 0xf0000000u;
+      if( g ) h ^= g>>24;
+      h &= ~g;
+    }
+    return h;
+  }
+
+  // Build the DT_HASH table over dynsym_data. Required for dlsym lookups
+  // on the .so. Layout: nbucket | nchain | buckets[nbucket] | chain[nchain].
+  void build_hash() {
+    uint32_t nchain  = (uint32_t)dynsym_data.size();
+    uint32_t nbucket = nchain ? nchain : 1;
+    std::vector<uint32_t> buckets(nbucket, 0);
+    std::vector<uint32_t> chain(nchain, 0);
+    for( uint32_t i = 1; i<nchain; ++i ) {
+      uint32_t name_off = dynsym_data[i].st_name;
+      if( name_off>=dynstr_data.size() ) continue;
+      const char* name = (const char*)dynstr_data.data()+name_off;
+      uint32_t bucket = elf_sysv_hash(name) % nbucket;
+      chain[i] = buckets[bucket];
+      buckets[bucket] = i;
+    }
+    hash_data.clear();
+    auto push32 = [&](uint32_t v) {
+      for( int i = 0; i<4; ++i )
+        hash_data.push_back((uint8_t)(v>>(i*8)));
+    };
+    push32(nbucket);
+    push32(nchain);
+    for( uint32_t b : buckets ) push32(b);
+    for( uint32_t c : chain   ) push32(c);
+  }
 
   Builder(PeImage& img, const Plan& p,
           const std::string& shim, const std::string& itp, bool sp,
@@ -149,19 +201,90 @@ struct Builder {
       r.r_info = ELF64_R_INFO((uint32_t)shim_reg_tls_sym_idx, R_X86_64_64);
       rela_data.push_back(r);
     }
+
+    if( so_mode ) {
+      // Export `_entrypoint` so a loader can dlsym it and invoke the PE.
+      // st_value is patched by finalize_tls_call once trampoline_va is known.
+      entrypoint_sym_idx = dynsym_data.size();
+      uint32_t str_off = (uint32_t)dynstr_data.size();
+      const char* sym_name = "_entrypoint";
+      for( const char* p = sym_name; *p; ++p )
+        dynstr_data.push_back((uint8_t)*p);
+      dynstr_data.push_back(0);
+      Elf64_Sym sym{};
+      sym.st_name  = str_off;
+      sym.st_info  = (uint8_t)((STB_GLOBAL<<4)|STT_FUNC);
+      // Any non-UNDEF, non-ABS index works at dlsym time — ld.so just does
+      // l_addr + st_value. Use 1 (.dynsym) so a defined section index is set.
+      sym.st_shndx = 1;
+      sym.st_value = 0;
+      sym.st_size  = kTrampolineSize;
+      dynsym_data.push_back(sym);
+
+      // ShimTlsInfo lives inside the trampoline; its three VA fields must
+      // track the runtime load base, so emit R_X86_64_RELATIVE entries
+      // whose r_addend carries the preferred VA. r_offset is patched in
+      // finalize_tls_call once trampoline_va is known.
+      auto add_tls_va_reloc = [&](size_t which, uint64_t va) {
+        if( !va ) return;
+        tls_va_rela_idx[which] = rela_data.size();
+        Elf64_Rela r{};
+        r.r_info   = ELF64_R_INFO(0, R_X86_64_RELATIVE);
+        r.r_addend = (int64_t)va;
+        rela_data.push_back(r);
+      };
+      add_tls_va_reloc(0, tls_template_va);
+      add_tls_va_reloc(1, tls_index_va);
+      add_tls_va_reloc(2, tls_callbacks_va);
+
+      // Hash over the now-complete dynsym (must include _entrypoint).
+      build_hash();
+    }
   }
 
   void finalize_tls_call(uint64_t slot_va) {
     if( shim_reg_tls_rela_idx < rela_data.size() )
       rela_data[shim_reg_tls_rela_idx].r_offset = slot_va;
+    if( so_mode ) {
+      // slot is at trampoline+24; ShimTlsInfo starts at trampoline+32
+      uint64_t tramp_va = slot_va - 24;
+      if( entrypoint_sym_idx < dynsym_data.size() )
+        dynsym_data[entrypoint_sym_idx].st_value = tramp_va;
+      // Field offsets within ShimTlsInfo (6 × uint64): 0,8,16,24,32,40
+      if( tls_va_rela_idx[0] < rela_data.size() )
+        rela_data[tls_va_rela_idx[0]].r_offset = tramp_va + 32 + 0;  // tls_template_va
+      if( tls_va_rela_idx[1] < rela_data.size() )
+        rela_data[tls_va_rela_idx[1]].r_offset = tramp_va + 32 + 32; // tls_index_va
+      if( tls_va_rela_idx[2] < rela_data.size() )
+        rela_data[tls_va_rela_idx[2]].r_offset = tramp_va + 32 + 40; // tls_callbacks_va
+    }
+  }
+
+  // Locate the first 0xC3 (RET) byte inside any executable PE section,
+  // used as e_entry in --so mode so accidental execution just returns.
+  uint64_t find_safe_entry() const {
+    for( auto &sec : image.secmap.secs ) {
+      if( !(sec.characteristics & PE_SCN_MEM_EXECUTE) ) continue;
+      size_t avail = (sec.raw < image.buf.size())
+                     ? (image.buf.size() - sec.raw) : 0;
+      size_t scan  = std::min((size_t)sec.rawsz, avail);
+      for( size_t i = 0; i < scan; ++i ) {
+        if( image.buf.data[sec.raw + i] == 0xC3 )
+          return image.image_base + sec.va + i;
+      }
+    }
+    return 0;
   }
 
   bool build_trampoline() {
     uint64_t pe_entry = image.image_base+image.ep_rva;
     // Layout:
-    //  +0  lea rdi,[rip+0x19] (7)  rip_after=+7,  tls_info at +32, disp=25
-    //  +7  call [rip+0x0b]    (6)  rip_after=+13, slot at +24, disp=11
-    //  +13 and rsp,-16        (4)  align to 16 bytes
+    //  +0  and rsp,-16        (4)  align rsp (works whether entered from the
+    //                              kernel ELF entry contract — rsp%16==0 — or
+    //                              from a CALL — rsp%16==8); a kernel-set rsp
+    //                              is already aligned so this is a no-op there
+    //  +4  lea rdi,[rip+0x15] (7)  rip_after=+11, tls_info at +32, disp=21
+    //  +11 call [rip+0x07]    (6)  rip_after=+17, slot at +24, disp=7
     //  +17 push rax           (1)  RSP % 16 → 8: simulates PE entry via CALL
     //  +18 jmp rel32          (5)  rip_after=+23
     //  +23 nop                (1)
@@ -177,9 +300,9 @@ struct Builder {
     }
     int32_t rel32 = (int32_t)d;
     trampoline_data = {
-      0x48, 0x8d, 0x3d, 0x19,0x00,0x00,0x00, // lea rdi,[rip+25] → tls_info@+32
-      0xff, 0x15, 0x0b,0x00,0x00,0x00,        // call [rip+11]    → slot@+24
-      0x48, 0x83, 0xe4, 0xf0,                 // and rsp,-16
+      0x48, 0x83, 0xe4, 0xf0,                 // and rsp,-16 (pre-align CALL)
+      0x48, 0x8d, 0x3d, 0x15,0x00,0x00,0x00, // lea rdi,[rip+21] → tls_info@+32
+      0xff, 0x15, 0x07,0x00,0x00,0x00,        // call [rip+7]     → slot@+24
       0x50,                                   // push rax (RSP % 16 → 8)
       0xe9,                                   // jmp rel32
         (uint8_t)(rel32),
@@ -219,6 +342,8 @@ struct Builder {
     dyn(DT_STRSZ,   dynstr_data.size());
     dyn(DT_SYMTAB,  plan.dynsym_va);
     dyn(DT_SYMENT,  sizeof(Elf64_Sym));
+    if( so_mode )
+      dyn(DT_HASH,  plan.hash_va);
     dyn(DT_RELA,    plan.rela_va);
     dyn(DT_RELASZ,  rela_data.size()*sizeof(Elf64_Rela));
     dyn(DT_RELAENT, sizeof(Elf64_Rela));
@@ -417,6 +542,11 @@ struct Builder {
         plan.dynstr_va, plan.dynstr_foff, dynstr_data.size(),
         0, 0, 1, 0);
 
+    if( !hash_data.empty() ) {
+      add(".hash", SHT_HASH, SHF_ALLOC,
+          plan.hash_va, plan.hash_foff, hash_data.size(),
+          dynsym_shidx, 0, 8, 4);
+    }
 
     add(".rela.dyn", SHT_RELA, SHF_ALLOC,
         plan.rela_va, plan.rela_foff, rela_data.size()*sizeof(Elf64_Rela),

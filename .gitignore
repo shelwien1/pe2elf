@@ -2,10 +2,12 @@
 pe2elf
 test_find
 winapi_shim.so
+load
 
 # Build artifacts and backups
 *.bak
 *.elf
+*.so
 *.pmm
 *.pmx
 *.ppm

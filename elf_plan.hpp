@@ -16,6 +16,7 @@ struct Plan {
   uint64_t interp_foff = 0;
   uint64_t dynsym_foff = 0;
   uint64_t dynstr_foff = 0;
+  uint64_t hash_foff = 0;   // only used in --so mode (SysV DT_HASH)
   uint64_t rela_foff = 0;
   uint64_t dynamic_foff = 0;
   uint64_t trampoline_foff = 0;
@@ -24,6 +25,7 @@ struct Plan {
   uint64_t interp_va = 0;
   uint64_t dynsym_va = 0;
   uint64_t dynstr_va = 0;
+  uint64_t hash_va = 0;
   uint64_t rela_va = 0;
   uint64_t dynamic_va = 0;
   uint64_t trampoline_va = 0;
@@ -48,7 +50,8 @@ inline Plan compute_plan(PeImage& image,
                          size_t dynsym_count,
                          size_t dynstr_size,
                          size_t rela_count,
-                         size_t dt_entry_count)
+                         size_t dt_entry_count,
+                         size_t hash_size = 0)
 {
   Plan p;
 
@@ -56,6 +59,7 @@ inline Plan compute_plan(PeImage& image,
     align_up(interp_size, 8) +
     align_up(dynsym_count * sizeof(Elf64_Sym), 8) +
     align_up(dynstr_size, 8) +
+    align_up(hash_size, 8) +
     align_up(rela_count * sizeof(Elf64_Rela), 8) +
     align_up(dt_entry_count * sizeof(Elf64_Dyn), 8) +
     kTrampolineSize;
@@ -93,6 +97,11 @@ inline Plan compute_plan(PeImage& image,
   p.dynstr_foff = cur_foff;
   cur_va   += align_up(dynstr_size, 8);
   cur_foff += align_up(dynstr_size, 8);
+
+  p.hash_va   = cur_va;
+  p.hash_foff = cur_foff;
+  cur_va   += align_up(hash_size, 8);
+  cur_foff += align_up(hash_size, 8);
 
   p.rela_va   = cur_va;
   p.rela_foff = cur_foff;

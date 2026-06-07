@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -741,26 +742,42 @@ static char* read_cmdline_raw(size_t* out_len) {
   return buf;
 }
 
-static void rebuild_cmdline(void) {
-  size_t raw_len;
-  char* raw = read_cmdline_raw(&raw_len);
-  if( !raw || raw_len == 0 ) { g_cmdline[0] = '\0'; free(raw); return; }
+// WINAPI_SHIM_CMDLINE lets a loader (e.g. ./load <pe.so> ...) hand the
+// shim an explicit Windows-style command line, used verbatim as the
+// source for GetCommandLineA/W (and as the basis for argv via simple
+// quote-aware splitting).  When unset, /proc/self/cmdline is used.
+static const char* shim_cmdline_override(void) {
+  const char* s = getenv("WINAPI_SHIM_CMDLINE");
+  return (s && *s) ? s : nullptr;
+}
 
-  // Convert NUL-separated argv to space-separated cmdline with quoting
+static void rebuild_cmdline(void) {
   size_t out = 0;
-  const char* p = raw, *end = raw + raw_len;
-  int first = 1;
-  while( p<end && out+4<sizeof(g_cmdline) ) {
-    if( !first ) g_cmdline[out++] = ' ';
-    first = 0;
-    int needs_quote = (strchr(p, ' ')||strchr(p, '\t')||*p=='\0');
-    if( needs_quote ) g_cmdline[out++] = '"';
-    while( *p && p<end && out+2<sizeof(g_cmdline) ) g_cmdline[out++] = *p++;
-    if( needs_quote ) g_cmdline[out++] = '"';
-    p++;
+  if( const char* ovr = shim_cmdline_override() ) {
+    size_t lim = sizeof(g_cmdline) - 1;
+    size_t n   = strlen(ovr);
+    if( n > lim ) n = lim;
+    memcpy(g_cmdline, ovr, n);
+    out = n;
+  } else {
+    size_t raw_len;
+    char* raw = read_cmdline_raw(&raw_len);
+    if( !raw || raw_len == 0 ) { g_cmdline[0] = '\0'; free(raw); return; }
+    // Convert NUL-separated argv to space-separated cmdline with quoting
+    const char* p = raw, *end = raw + raw_len;
+    int first = 1;
+    while( p<end && out+4<sizeof(g_cmdline) ) {
+      if( !first ) g_cmdline[out++] = ' ';
+      first = 0;
+      int needs_quote = (strchr(p, ' ')||strchr(p, '\t')||*p=='\0');
+      if( needs_quote ) g_cmdline[out++] = '"';
+      while( *p && p<end && out+2<sizeof(g_cmdline) ) g_cmdline[out++] = *p++;
+      if( needs_quote ) g_cmdline[out++] = '"';
+      p++;
+    }
+    free(raw);
   }
   g_cmdline[out] = '\0';
-  free(raw);
   utf8_to_wchar(g_cmdline, (uint16_t*)g_cmdline_w, sizeof(g_cmdline_w)/2);
 }
 
@@ -809,7 +826,48 @@ static char** g_main_argv = nullptr;
 //   flag[4] file[4] charbuf[4] bufsiz[4] tmpfname[8]
 static uint8_t g_fake_iob[144];
 
+// Split a Windows-style command-line string into argv with simple
+// quote-aware tokenisation (whitespace separates, double-quotes group).
+// Returns malloc'd argv (NULL-terminated); each entry is strdup'd.
+static char** split_cmdline(const char* s, int* out_argc) {
+  size_t cap = 16;
+  char** out = (char**)malloc(cap * sizeof(char*));
+  if( !out ) { *out_argc = 0; return nullptr; }
+  int ac = 0;
+  std::string tok;
+  bool in_quote = false;
+  auto flush = [&]() {
+    if( tok.empty() && !in_quote ) return;
+    if( (size_t)ac+1 >= cap ) {
+      cap *= 2;
+      char** n = (char**)realloc(out, cap*sizeof(char*));
+      if( !n ) return;
+      out = n;
+    }
+    out[ac++] = strdup(tok.c_str());
+    tok.clear();
+  };
+  for( const char* p = s; *p; ++p ) {
+    char c = *p;
+    if( c == '"' ) { in_quote = !in_quote; continue; }
+    if( !in_quote && (c==' '||c=='\t') ) { flush(); continue; }
+    tok.push_back(c);
+  }
+  flush();
+  out[ac] = nullptr;
+  *out_argc = ac;
+  return out;
+}
+
 static void build_argv(void) {
+  if( const char* ovr = shim_cmdline_override() ) {
+    int argc = 0;
+    char** argv = split_cmdline(ovr, &argc);
+    if( !argv ) return;
+    g_main_argc = argc;
+    g_main_argv = argv;
+    return;
+  }
   size_t n;
   char* raw = read_cmdline_raw(&n);
   if( !raw || n == 0 ) { free(raw); return; }
@@ -832,6 +890,23 @@ static void build_argv(void) {
   free(raw);
   g_main_argc = argc;
   g_main_argv = argv;
+}
+
+// Loader entry point: re-derive g_cmdline / g_main_argv after the caller
+// has had a chance to set WINAPI_SHIM_CMDLINE.  Needed because the
+// shim's normal init runs as a constructor (before main of the loader
+// process), so anything main() puts in the environment is too late
+// otherwise.
+extern "C" __attribute__((visibility("default")))
+void shim_reload_cmdline(void) {
+  if( g_main_argv ) {
+    for( int i = 0; i < g_main_argc; i++ ) free(g_main_argv[i]);
+    free(g_main_argv);
+    g_main_argv = nullptr;
+    g_main_argc = 0;
+  }
+  rebuild_cmdline();
+  build_argv();
 }
 
 static void init_fake_iob(void) {
@@ -936,40 +1011,48 @@ static void install_signal_handlers(void) {
 // ---------------------------------------------------------------------------
 // Image base discovery (B13, R26)
 // ---------------------------------------------------------------------------
+// Walked once per phdr entry: tracks the lowest VA of the main executable
+// (empty dlpi_name) for g_image_base, and the lowest VA of *any* segment
+// whose first two bytes are "MZ" for g_pe_base.  In the ET_EXEC pe2elf
+// case both are the same converted PE; in the --so / load case the main
+// exe is `load` (no MZ) and the PE lives in a separately-mapped .so, so
+// the two have to be discovered independently.
 static int find_main_exe_base(struct dl_phdr_info* info, size_t /*sz*/, void* data) {
-  // Skip any entry that has a name — the main executable has an empty name.
-  if( info->dlpi_name&&info->dlpi_name[0] )
-    return 0;
-  // dlpi_addr is the load *bias* (0 for non-PIE binaries that load at their
-  // preferred address).  Walk PT_LOAD segments to find the lowest mapped VA,
-  // which gives the true image base regardless of PIE/non-PIE.
+  bool is_main = !(info->dlpi_name && info->dlpi_name[0]);
   uintptr_t lowest = (uintptr_t)-1;
   for( int i = 0; i<info->dlpi_phnum; ++i ) {
     if( info->dlpi_phdr[i].p_type==PT_LOAD ) {
       uintptr_t va = (uintptr_t)info->dlpi_addr + info->dlpi_phdr[i].p_vaddr;
       if( va<lowest ) lowest = va;
-      // Also look for the PE header (MZ signature) in any segment
       if( !g_pe_base && info->dlpi_phdr[i].p_filesz >= 64 ) {
         const uint8_t* seg = (const uint8_t*)va;
-        if( seg[0]=='M' && seg[1]=='Z' ) {
+        if( seg[0]=='M' && seg[1]=='Z' )
           g_pe_base = (void*)va;
-        }
       }
     }
   }
-  if( lowest!=(uintptr_t)-1 )
+  if( is_main && lowest!=(uintptr_t)-1 )
     *(void**)data = (void*)lowest;
-  return 1;
+  return 0; // keep iterating so non-main modules are scanned for MZ too
 }
 
 static void discover_image_base(void) {
   void* base = NULL;
   dl_iterate_phdr(find_main_exe_base, &base);
-  if( base ) {
+  // For --so loaders the main exe has no MZ; fall back to the PE base we
+  // found in some other loaded module so TLS callbacks and resource
+  // lookups get a real PE image rather than the loader's binary.
+  // If the main exe has an MZ at `base` we keep using that; otherwise
+  // (the --so loader case) prefer the PE-bearing module we discovered.
+  if( base && ((const uint8_t*)base)[0]=='M' && ((const uint8_t*)base)[1]=='Z' ) {
     g_image_base = base;
-    // Update PEB+0x10 ImageBaseAddress
-    *(void**)(fake_peb+0x10) = base;
+  } else if( g_pe_base ) {
+    g_image_base = g_pe_base;
+  } else if( base ) {
+    g_image_base = base;
   }
+  // Update PEB+0x10 ImageBaseAddress with whatever we settled on.
+  *(void**)(fake_peb+0x10) = g_image_base;
 }
 
 // ---------------------------------------------------------------------------
@@ -1002,6 +1085,13 @@ struct ShimTlsInfo {
 extern "C" __attribute__((visibility("default")))
 void shim_register_tls(const ShimTlsInfo* info) {
   if( !info ) return;
+  // When a loader (./load <pe.so>) is in play the PE wasn't yet mapped
+  // when the shim's constructor ran, so g_image_base was set to the
+  // loader's binary. Re-discover now that the PE is loaded, otherwise
+  // hInstance-driven lookups (LoadString from the PE's resource table,
+  // FindResource, …) all fall back to the wrong module.
+  if( !g_pe_base || g_image_base != g_pe_base )
+    discover_image_base();
   g_tls_template_va  = (uintptr_t)info->template_va;
   g_tls_template_sz  = (size_t)info->template_sz;
   g_tls_zero_fill    = (size_t)info->zero_fill;

@@ -28,10 +28,12 @@ struct Writer {
     ehdr.e_ident[5] = 1; // ELFDATA2LSB
     ehdr.e_ident[6] = 1; // EV_CURRENT
     ehdr.e_ident[7] = 0; // ELFOSABI_NONE
-    ehdr.e_type = pie ? ET_DYN : ET_EXEC;
+    ehdr.e_type = (pie || build.so_mode) ? ET_DYN : ET_EXEC;
     ehdr.e_machine = EM_X86_64;
     ehdr.e_version = 1;
-    ehdr.e_entry = plan.trampoline_va;
+    // --so puts a safe RET at e_entry (so accidental direct execution is
+    // harmless) and exports the real trampoline as `_entrypoint` instead.
+    ehdr.e_entry = build.so_mode ? build.safe_entry_va : plan.trampoline_va;
     ehdr.e_phoff = sizeof(Elf64_Ehdr);
     ehdr.e_shoff = keep_shdr ? shoff : 0;
     ehdr.e_flags = 0;
@@ -54,6 +56,10 @@ struct Writer {
     out.append(build.dynsym_data.data(), build.dynsym_data.size()*sizeof(Elf64_Sym));
     out.pad_to_size(plan.dynstr_foff);
     out.append(build.dynstr_data.data(), build.dynstr_data.size());
+    if( !build.hash_data.empty() ) {
+      out.pad_to_size(plan.hash_foff);
+      out.append(build.hash_data.data(), build.hash_data.size());
+    }
     out.pad_to_size(plan.rela_foff);
     out.append(build.rela_data.data(), build.rela_data.size()*sizeof(Elf64_Rela));
     out.pad_to_size(plan.dynamic_foff);

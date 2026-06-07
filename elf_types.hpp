@@ -90,6 +90,7 @@ static const uint32_t SHT_PROGBITS = 1;
 static const uint32_t SHT_SYMTAB   = 2;
 static const uint32_t SHT_STRTAB   = 3;
 static const uint32_t SHT_RELA     = 4;
+static const uint32_t SHT_HASH     = 5;
 static const uint32_t SHT_DYNAMIC  = 6;
 static const uint32_t SHT_NOBITS   = 8;
 static const uint32_t SHT_DYNSYM   = 11;
@@ -106,6 +107,7 @@ static const uint32_t R_X86_64_64       = 1;
 static const uint32_t R_X86_64_RELATIVE = 8;
 
 static const int64_t DT_NEEDED   = 1;
+static const int64_t DT_HASH     = 4;
 static const int64_t DT_STRTAB   = 5;
 static const int64_t DT_SYMTAB   = 6;
 static const int64_t DT_RELA     = 7;
