@@ -33,7 +33,7 @@ Only the width- and ABI-specific details change. In rough order of effort:
 | 4 | **Trampoline** | No RIP-relative addressing on i386. The startup thunk needs a get-PC (`call/pop`) construction for the PIE/`--so` path. |
 | 5 | **REL vs RELA** | i386 uses `Elf32_Rel` with **in-place addends**, not `Elf32_Rela`. Base relocs need no explicit addend and no zeroing. |
 | 6 | **Struct widths** | STARTUPINFO, `_iobuf` (32 not 48 bytes), EXCEPTION_RECORD, CONTEXT, `jmp_buf`, RTL_USER_PROCESS_PARAMETERS, PEB_LDR_DATA all re-laid-out. |
-| 7 | **Build** | `-m32` everywhere for the shim; `-latomic` for the 64-bit TLS bitmask; 32-bit side-DLLs for ordinal resolution. |
+| 7 | **Build** | `-m32` everywhere for the shim; `-D_FILE_OFFSET_BITS=64` becomes load-bearing (not cosmetic); 32-bit side-DLLs for ordinal resolution. |
 
 Two facts verified in this environment while writing this plan:
 
@@ -179,36 +179,49 @@ sizeof(Elf32_Rel) = 8`. Keep `DT_NEEDED`, `DT_RUNPATH=$ORIGIN`,
 64-bit `lea rdi,[rip+..]; call [rip+..]` construction is impossible. Two
 variants:
 
-* **`shim_register_tls32` should be `__stdcall`** (one pointer arg) so the
-  callee cleans the stack and the trampoline needs no `add esp,4`.
+* **Keep the exported name `shim_register_tls`** (no `32` suffix). The
+  32-bit shim is a separate `.so` with its own symbol namespace, so there
+  is no collision with the 64-bit build — only the *soname* differs. This
+  also keeps the converter's UND symbol name identical between the two
+  trees. Declare it **`__stdcall`** (one pointer arg) so the callee pops
+  the argument and the trampoline needs no `add esp,4`.
 
 * **ET_EXEC (default, non-PIE)** — addresses are fixed at link time, so
   use absolute forms:
 
   ```
-  and    esp, -16               ; normalize alignment
-  ...arrange esp so PE entry sees a post-CALL frame...
-  push   imm32   ; &ShimTlsInfo (absolute VA, known at build time)
-  call   [imm32] ; slot VA; slot filled by R_386_32 → shim_register_tls32
-  jmp    imm32   ; PE entry (or jmp rel32)
+        and  esp, -16     ; esp ≡ 0 (mod 16)
+        push imm32        ; &ShimTlsInfo (absolute VA, known at build time)
+        call [imm32]      ; [slot]; stdcall callee pops the arg → esp ≡ 0
+        push eax          ; dummy return address     → esp ≡ 12 (mod 16)
+        jmp  rel32        ; → PE entry, entered as if by CALL
+  slot: .long 0           ; R_386_32 → shim_register_tls
+  info: ShimTlsInfo       ; 6 × uint32 = 24 bytes
   ```
-  The `call [disp32]` (`FF 15 <abs32>`) reads the slot the loader
-  populated. No relocation needed on the immediates because ET_EXEC is
-  loaded at its link address.
+  `call [disp32]` (`FF 15 <abs32>`) reads the slot the loader populated.
+  The immediates need no relocation because ET_EXEC loads at its link
+  address.
 
 * **PIE / `--so`** — immediates would need runtime fixups, so use a
   get-PC thunk to anchor addressing on the real load address:
 
   ```
-       call   0f
-    0: pop    ecx              ; ecx = runtime VA of label 0
-       lea    eax, [ecx + (info - 0)]
-       push   eax              ; &ShimTlsInfo, load-relative
-       call   [ecx + (slot - 0)]  ; slot holds shim_register_tls32 (abs)
-       jmp    (pe_entry)       ; rel32, always in range on i386
-    slot:  .long 0             ; R_386_32 → shim_register_tls32
-    info:  ShimTlsInfo { ... } ; 6 × uint32
+        call 0f           ; pushes address of label 0
+    0:  pop  ecx          ; ecx = runtime VA of label 0
+        and  esp, -16     ; esp ≡ 0 (mod 16)
+        lea  eax, [ecx + (info-0b)]
+        push eax          ; &ShimTlsInfo, load-relative
+        call [ecx + (slot-0b)]  ; stdcall callee pops the arg → esp ≡ 0
+        push eax          ; dummy return address     → esp ≡ 12 (mod 16)
+        jmp  rel32        ; → PE entry
+  slot: .long 0           ; R_386_32 → shim_register_tls
+  info: ShimTlsInfo       ; 6 × uint32
   ```
+  The final `jmp rel32` needs **no relocation even under PIE**: the
+  trampoline and the PE code shift by the same load bias, so their
+  relative displacement is a link-time constant. (`ecx` and `eax` are
+  caller-saved under both stdcall and cdecl, so clobbering them is safe.)
+
   The slot is `R_386_32` (loader writes the absolute resolved address).
   The three **VA fields inside `ShimTlsInfo`** (`template_va`,
   `index_va`, `callbacks_va`) are absolute preferred VAs and must be
@@ -220,14 +233,25 @@ variants:
   **Note `ShimTlsInfo` is now 6 × `uint32` = 24 bytes** (not 48), and the
   field offsets the shim reads change accordingly (§2.4).
 
-**Stack alignment detail (flag for tuning).** The MSVC 32-bit CRT entry
-(`mainCRTStartup`) expects to look like it was entered via a `CALL` (a
-return address on top of an otherwise-16-aligned stack, i.e.
-`esp % 16 == 12` at entry, matching modern GCC's `-mpreferred-stack-
-boundary=4`). The trampoline should `and esp,-16` then leave `esp % 16 ==
-12` before the final `jmp`. Treat the exact sequence as an
-implementation-and-verify item; older CRTs don't care, newer ones with
-SSE prologues (`movaps`) do.
+**Stack alignment — what the `push eax` is for.** On Windows the PE entry
+point is reached via a `CALL` (from `BaseThreadInitThunk`), so it expects
+a return address on top of the stack. The dummy `push` reproduces that
+frame shape, and combined with the preceding `and esp,-16` it leaves
+`esp ≡ 12 (mod 16)` — exactly what a function entered by `CALL` from a
+16-byte-aligned call site sees. This mirrors the 64-bit trampoline's
+`push rax` (which lands on `rsp ≡ 8 (mod 16)`, the x64 equivalent).
+
+Note the alignment requirement is **weaker** on x86 than on x64: the
+Win32 ABI mandates only 4-byte stack alignment, and MSVC realigns its own
+frames (`and esp,-16` in the prologue) when a function needs SSE-aligned
+locals. So this is about matching the expected frame shape and being
+maximally compatible, not about satisfying a hard ABI rule. Verify the
+resulting alignment against a real CRT-linked binary rather than assuming.
+
+**Caveat (`--so`)**: `and esp,-16` discards the caller's stack frame, so
+`_entrypoint` can never return normally to `load32`. This is already true
+of the 64-bit `--so` path and is harmless in practice — the PE entry
+terminates via `ExitProcess` rather than returning.
 
 **`find_safe_entry` (`--so`)** — scan executable sections for a `0xC3`
 (RET) byte. Byte value is architecture-independent; reuse as-is.
@@ -253,9 +277,9 @@ names identical. Only the entry *sizes* change. `.rela.dyn` becomes
 * Default `--shim-soname` = **`winapi_shim32.so`**; `--dbg` →
   `winapi_shim32_dbg.so`.
 * CLI flags identical: `--interp --shim-soname --dbg --inject=
-  --strip-pdata --no-shdr --pie --so --base=`. (`--strip-pdata` is a
-  no-op-ish on x86 since x86 has no `.pdata`, but keep the flag for
-  parity; it can drop `.pdata` if a mixed binary somehow carries one.)
+  --strip-pdata --no-shdr --pie --so --base=`. Keep `--strip-pdata`
+  accepted for CLI parity, but expect it never to match: `.pdata` is an
+  x64/IA64/ARM unwind-table section that 32-bit x86 PEs do not carry.
 * Orchestration (`parse → collect_imports → collect_relocs → rebase? →
   collect_tls → build → plan → finalize → write`) is line-for-line the
   same call sequence.
@@ -297,10 +321,12 @@ Rules:
   on stack, callee cleans). The `g_imalloc_vtable` methods in
   `shim_shell32.hpp` (`imalloc_Alloc/Realloc/Free/...`) must be
   `thiscall`, and the vtable slot stride is **4 bytes** not 8.
-* **Symbol names are unaffected** (verified): stdcall/cdecl/thiscall all
-  emit undecorated ELF symbols on i386, so `kernel32_*`, `msvcrt_*`,
-  `user32_*` names — and thus the version script and the converter's
-  symbol mapping — are unchanged.
+* **Symbol names are unaffected.** Empirically checked for `stdcall` and
+  `cdecl` on this host (both emit bare `kernel32_GetLastError` /
+  `msvcrt_printf`); `thiscall` follows the same rule, since `@N`
+  decoration is a PE/COFF convention that i386 ELF never applies. So the
+  `kernel32_*` / `msvcrt_*` / `user32_*` names — and thus the version
+  script and the converter's symbol mapping — are unchanged.
 
 Because `EXPORT` (`shim.cpp:45`) is `visibility("default") + WINAPI`,
 flipping the one `WINAPI` macro re-colors the entire export surface at
@@ -416,9 +442,10 @@ tables. The rest of those functions (stdio handles, empty wide strings,
 **`tls_get_slots`** inline asm changes from `movq %%gs:0x58,%0` to
 `movl %%fs:0x2C,%0`.
 
-### 2.4 PE TLS directory — `shim_register_tls32`
+### 2.4 PE TLS directory — `shim_register_tls`
 
-* Declare it **`__stdcall`** (one arg) to match the trampoline (§1.5).
+* Declare it **`__stdcall`** (one arg) to match the trampoline, and keep
+  the name unsuffixed (§1.5).
 * `ShimTlsInfo` is **6 × `uint32`** (24 bytes). The field reads
   (`template_va`, `template_sz`, `zero_fill`, `align_chars`, `index_va`,
   `callbacks_va`) become 4-byte loads; `finalize_tls_call` uses offsets
@@ -427,9 +454,11 @@ tables. The rest of those functions (stdio handles, empty wide strings,
 * `tls_callback_fn` typedef becomes `__stdcall` (`void __stdcall(void*,
   uint32_t, void*)`).
 * The 64-slot allocator bitmask (`uint64_t g_tls_alloc_used`, `1ULL<<i`)
-  is fine on i386 but pulls in libgcc 64-bit atomics → link `-latomic`
-  (verified needed). Alternatively narrow to two `uint32_t` words; keep
-  the `uint64_t` + `-latomic` for minimal churn.
+  needs **no change**. It is read-modify-written with plain `|=`/`&=`
+  under `g_tls_alloc_mu` (`shim.cpp:1112-1120`,
+  `shim_kernel32_critsec.hpp:52-83`, `shim_kernel32_fls.hpp:52-90`), not
+  with atomics, so on i386 GCC simply emits two 32-bit operations. No
+  libatomic dependency (see §7).
 
 ### 2.5 SEH — the hard part (x86 FS:[0] chain dispatcher)
 
@@ -610,14 +639,26 @@ recompiling `-m32`, flipping `WINAPI`→stdcall, and fixing the handful of
 
 ## 3. `load32.cpp` (from `load.cpp`)
 
-The `--so` loader helper. Changes: the `winmain_t` typedef becomes
-`__stdcall` (or `__cdecl` — match how the PE's `WinMain`/`_entrypoint`
-trampoline is actually called; the converted `_entrypoint` runs the PE
-entry, which is `mainCRTStartup`-style, so the loader really just needs to
-call `_entrypoint()` — keep the same signature but stdcall). Build `-m32`,
-link `-l:winapi_shim32.so` for the initial-exec TLS reason (unchanged
-rationale). `shim_reload_cmdline` / `WINAPI_SHIM_CMDLINE` mechanism is
-width-independent.
+The `--so` loader helper. Build `-m32`; the `shim_reload_cmdline` /
+`WINAPI_SHIM_CMDLINE` mechanism is width-independent and carries over
+verbatim.
+
+**Declare `winmain_t` `__cdecl`.** The convention is very nearly
+irrelevant here — the generated `_entrypoint` trampoline ignores its
+arguments entirely and never returns (§1.5) — but `cdecl` is the correct
+choice because the *caller* then owns argument cleanup. A `stdcall`
+declaration would promise a `ret N` the trampoline does not perform.
+
+**Keep the `-l:winapi_shim32.so` DT_NEEDED link.** The reason is
+unchanged *in substance*: the shim's `initial-exec` `__thread` variables
+must be allocated from the static TLS block at program startup, which
+only happens if the shim is a load-time dependency rather than arriving
+via `dlopen`. Note, though, that the *other* justification in the 64-bit
+source (`shim.cpp:91-97` — avoiding `__tls_get_addr`, whose call sequence
+clobbers `RDI`, callee-saved under `ms_abi`) is **x86-64-specific** and
+does not carry over; on i386 the argument register is `EAX`, which is
+caller-saved under both stdcall and cdecl. Keep `initial-exec` for the
+load-order reason alone.
 
 ---
 
@@ -626,9 +667,9 @@ width-independent.
 Structurally identical to `shim.map` (a `global:`/`local:` list). The
 symbol **names are unchanged** (stdcall doesn't decorate on ELF), so the
 list can start as a copy of `shim.map` and be pruned/extended as the
-32-bit surface settles. Keep `pthread_create`, `shim_register_tls`
-(→ `shim_register_tls32` if renamed — keep the name stable to match the
-converter's UND symbol), `shim_reload_cmdline` exported.
+32-bit surface settles. Keep `pthread_create`, `shim_register_tls`, and
+`shim_reload_cmdline` exported. (Symbol names stay unsuffixed — see
+§1.5 — so only the soname distinguishes the two shims.)
 
 ---
 
@@ -672,7 +713,7 @@ PE2ELF32_FLAGS = -O2 -std=c++17 -Wall -Wextra -Wno-unused-parameter -static
 SHIM32_FLAGS = -O2 -fPIC -shared -m32 -std=c++17 -fvisibility=hidden \
                -Wall -Wextra -Wno-unused-parameter \
                -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -I.
-SHIM32_LDFLAGS = -lpthread -ldl -latomic \
+SHIM32_LDFLAGS = -lpthread -ldl \
                  -Wl,--version-script=shim32.map \
                  -Wl,-z,now -Wl,-soname,winapi_shim32.so
 # load32 also -m32, DT_NEEDED against the 32-bit shim.
@@ -680,10 +721,17 @@ SHIM32_LDFLAGS = -lpthread -ldl -latomic \
 
 Notes:
 
-* **`-latomic`** is required (verified): the 64-bit TLS-slot bitmask
-  needs libgcc's 64-bit atomic helpers, which aren't inlined on i386.
-* **`-D_FILE_OFFSET_BITS=64`** stays so `off_t`/`lseek` are 64-bit on the
-  32-bit build (avoids `lseek64` churn).
+* **No `-latomic` needed.** Audited: every `__atomic_*` in the shim
+  operates on a pointer or an `int` (`shim.cpp:320-323`,
+  `shim_kernel32_except.hpp:18,50`, `shim_kernel32_thread.hpp:36,59,62`) —
+  all 4 bytes on i386, all inlined. The only 64-bit word is the TLS
+  bitmask, which is mutex-protected rather than atomic (§2.4). Add
+  `-latomic` only if a future change introduces a genuine 64-bit atomic.
+* **`-D_FILE_OFFSET_BITS=64`** becomes **load-bearing** on this build. On
+  x86-64 it is a no-op (`off_t` is already 64-bit); on i386 it is what
+  makes `off_t` 64-bit and redirects `lseek`/`stat`/`open` to their
+  `*64` variants. Dropping it would silently cap file sizes at 2 GB —
+  fatal for an archiver test suite.
 * **Toolchain prerequisite (blocking):** this environment currently has
   32-bit *codegen* but **not** the 32-bit dev headers/libs — including
   `<pthread.h>` under `-m32` fails on a missing `bits/wordsize.h`. Install
@@ -744,7 +792,7 @@ Notes:
 | `shim_user32.hpp` | `shim32_user32.hpp` | cdecl `wsprintf*`; rest stdcall |
 | all other `shim_*.hpp` | `shim32_*.hpp` | recompile `-m32`, `WINAPI`→stdcall, fix `uint64_t`-as-pointer spots; logic preserved |
 | `load.cpp` | `load32.cpp` | `-m32`, stdcall entry typedef, `-l:winapi_shim32.so` |
-| `Makefile` | *extend* | `pe2elf32` (native), `winapi_shim32.so` (`-m32 -latomic`), `load32`, `dummy32.so` |
+| `Makefile` | *extend* | `pe2elf32` (native), `winapi_shim32.so` (`-m32`), `load32`, `dummy32.so` (`-Ttext-segment` lowered into the 3 GB user range) |
 | `t.sh`, `exe/`, `dll/` | `t32.sh`, `exe32/`, `dll32/` | 32-bit test binaries + side-DLLs |
 
 ---
