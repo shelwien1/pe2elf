@@ -1,81 +1,108 @@
-# PPMonstr Incremental Decompilation Protocol
+# BMF Incremental Decompilation Protocol
 
 ## 0. Goal
 
-Produce a working, standalone C++ source for `PPMonstr.exe` by **incrementally
-moving function bodies** out of the Hex-Rays output (`PPMonstr.cpp`) into a
-companion shared library (`dummy.so`), one function at a time.
+Produce a working, standalone C++ source for `BMF.exe` by **incrementally
+moving function bodies** out of the Hex-Rays output (`BMF.cpp`) into a
+companion shared library (`dummy32.so`), one function at a time.
 
 After each function is moved, the binary must still pass its functional test.
 Once every in-scope function has been moved and the test still passes, the
 collected `.inc` files form a complete, self-contained reimplementation of the
 original program.
 
+`BMF.exe` is a **32-bit PE (PE32 / `IMAGE_FILE_MACHINE_I386`)**, so this
+protocol runs on the `pe2elf32` / `winapi_shim32.so` pipeline. Almost
+everything below differs in detail from the x64 protocol this document was
+derived from — calling conventions, pointer widths, IAT slot size, the reach
+of a `jmp rel32` — and those differences are called out where they bite.
+
 ## 1. Scope (which functions to decompile)
 
 Decompile **only** the program's own functions:
 
-- `main`
-- `Alloc_PPMblock`
-- `PrintStats`
-- Every `sub_14*` listed in `PPMonstr.cpp`
+- `main` (at `0x00401000`, see §9.1)
+- Every `sub_4*` listed in `BMF.cpp` that is not part of the C runtime
 
-Everything else (C runtime, C++ runtime, Win32 API, `unknown_libname_*`,
-intrinsics, etc.) is a **library function**: do not rewrite it. Reference it
-from its known address (see §6.2) and leave the original code in place.
+Everything else (C runtime, Win32 API, `unknown_libname_*`, intrinsics, etc.)
+is a **library function**: do not rewrite it. Reference it from its known
+address (see §6.2) and leave the original code in place.
+
+**Telling application code from runtime code is harder here than in a
+dynamically-linked binary.** `BMF.exe` is statically linked against the MSVC
+CRT, so `printf`, `fopen`, `malloc` and friends live inside the image at
+ordinary `sub_4*`-style addresses rather than behind an import. The image
+layout is:
+
+| Section | VA range | Contents |
+|---|---|---|
+| `.text`   | `0x00401000`–`0x00437B59` | code (application **and** static CRT) |
+| `.rdata`  | `0x00438000`–`0x00440554` | IAT at `0x00438000`, read-only data |
+| `.data`   | `0x00441000`–`0x00447518` | writable data |
+| `.trace`  | `0x00448000`–`0x00448164` | |
+
+Working heuristic: application code sits low in `.text` (`main` is at the very
+start, `0x00401000`) and the CRT occupies the upper part — the entry point is
+`0x0042D53A`, and every function the startup path calls *other than `main`
+itself* lies above `0x0042D000`. Treat that as a hint, not a rule: confirm
+each candidate against `BMF.txt` / `BMF.asm` before deciding it is
+application code. A CRT function accidentally
+"decompiled" will usually still pass the test (the reimplementation is
+correct-by-construction from Hex-Rays output) but it wastes an iteration and
+inflates the completion criterion in §10.
 
 ## 2. Toolchain and artifacts
 
 | Artifact | Role |
 |---|---|
-| `PPMonstr.exe` | Original Windows PE binary, the source of truth. |
-| `PPMonstr.cpp` | Hex-Rays decompilation, used as the donor for function bodies. |
-| `PPMonstr.h`   | Hex-Rays type declarations included by `dummy.cpp`. |
-| `PPMonstr.txt` | Symbol-to-address table (`<8-hex VA>  <name>`, one per line). |
-| `PPMonstr.asm` | Full disassembly with symbols. Use this as a reference when the Hex-Rays output is ambiguous, when a decompiled function produces wrong output, or when `cmp` fails and the root cause is not obvious from the C pseudocode alone. Unlike raw `objdump` output, this listing retains named labels (function names, data symbols) which make it far easier to trace control flow and identify the intended operation. |
-| `pe2elf`       | Converter: `./pe2elf --inject=dummy.so PPMonstr.exe PPMonstr.elf` produces an ELF whose `DT_NEEDED` list contains `dummy.so`, so it is loaded at startup. |
-| `dummy.cpp`    | The growing shared library; built into `dummy.so` by `make`. |
-| `dummy_init()` | `__attribute__((constructor))` in `dummy.cpp`; runs once at process start, before `main`. This is where redirection patches are installed. |
-| `sub_XXXXXXXX.inc` | One file per moved function (see §4). |
+| `BMF.exe` | Original Windows PE32 binary, the source of truth. |
+| `BMF.cpp` | Hex-Rays decompilation, used as the donor for function bodies. |
+| `BMF.h`   | Hex-Rays type declarations included by `dummy32.cpp`. |
+| `BMF.txt` | Symbol-to-address table (`<8-hex VA>  <name>`, one per line). |
+| `BMF.asm` | Full disassembly with symbols. Use this as a reference when the Hex-Rays output is ambiguous, when a decompiled function produces wrong output, or when `cmp` fails and the root cause is not obvious from the C pseudocode alone. Unlike raw `objdump` output, this listing retains named labels (function names, data symbols) which make it far easier to trace control flow and identify the intended operation. |
+| `pe2elf32`     | Converter: `./pe2elf32 --inject=dummy32.so BMF.exe BMF.elf` produces an ELF whose `DT_NEEDED` list contains `dummy32.so`, so it is loaded at startup. |
+| `dummy32.cpp`  | The growing shared library; built into `dummy32.so` by `make`. |
+| `dummy_init()` | `__attribute__((constructor))` in `dummy32.cpp`; runs once at process start, before `main`. This is where redirection patches are installed. |
+| `sub_XXXXXX.inc` | One file per moved function (see §4). |
 
-`dummy.so` is built at a **fixed preferred base address** below 4 GB
-(`0xF0000000`), so it is always within ±2 GB of the PPMonstr image (which
-loads at `0x140000000`). That range is what an `E9 rel32` near-jump can
-reach, which is what makes the 5-byte patching in §5 possible.
+`dummy32.so` is built at a **fixed preferred base address** of `0x30000000`.
+Unlike the x64 case, this is *not* about reach — see §5, where a `jmp rel32`
+turns out to cover the entire i386 address space. It is about **predictable
+placement**: `0x30000000` is comfortably above the PE image
+(`0x00400000`–`0x00449000`) and comfortably below the region where
+`ld-linux.so.2`, `libc` and `winapi_shim32.so` land (around `0xF7xxxxxx`), so
+the request is honored and nothing collides. A 32-bit address space is packed
+enough that picking an address at random is a real risk.
 
-Required linker flags in the `dummy.so` rule of `Makefile`:
+Required linker flags in the `dummy32.so` rule of `Makefile`:
 
 ```
--Wl,-Ttext-segment=0xF0000000 -Wl,-z,max-page-size=0x1000
+-m32 -Wl,-Ttext-segment=0x30000000 -Wl,-z,max-page-size=0x1000
 ```
 
-This is a *preferred* base — glibc's `ld-linux` honors a non-zero
-`p_vaddr` on `ET_DYN` objects as long as the range is free and ASLR does
-not collide. The PPMonstr image occupies `0x140000000+`; nothing else in
-this project maps the `0xF0000000` window, so the request is honored in
-practice. `dummy_init()` must sanity-check the assumption at runtime by
-comparing the address of one of its own functions against the expected
-window and aborting with a clear message if the loader placed it elsewhere
-(then the build flag, not the protocol, is wrong).
+This is a *preferred* base — glibc's `ld-linux.so.2` honors a non-zero
+`p_vaddr` on `ET_DYN` objects as long as the range is free. `dummy_init()`
+should still print its own address at startup so a surprise placement is
+visible immediately rather than showing up as mysterious wrong behavior.
 
-Build / run loop after any change to `dummy.cpp` or its includes:
+Build / run loop after any change to `dummy32.cpp` or its includes:
 
 ```sh
-make dummy.so
-./pe2elf --inject=dummy.so PPMonstr.exe PPMonstr.elf
-cp winapi_shim.so dummy.so /path/to/run/
-./PPMonstr.elf <test inputs>     # verification: must succeed
+make dummy32.so
+./pe2elf32 --inject=dummy32.so BMF.exe BMF.elf
+cp winapi_shim32.so dummy32.so /path/to/run/
+./BMF.elf <test inputs>          # verification: must succeed
 ```
 
 ## 3. Per-function workflow
 
-For each function `sub_XXXXXXXX` (or `main` / `Alloc_PPMblock` / `PrintStats`),
-do the following in order. Do not batch multiple functions per iteration — the
-whole point of the protocol is that **every step ends with a green test**.
+For each function `sub_XXXXXX` (or `main`), do the following in order. Do not
+batch multiple functions per iteration — the whole point of the protocol is
+that **every step ends with a green test**.
 
 1. **Pick the next function.** Start with leaves (functions that only call
    library code) and work upward toward `main`. This keeps the dependency
-   chain inside `dummy.so` acyclic and easy to debug. Prefer functions that
+   chain inside `dummy32.so` acyclic and easy to debug. Prefer functions that
    are reachable on the hot path of the validation test (i.e., ones likely
    to have a non-zero probe count after a successful run); a function with
    probe count 0 passes the test trivially — the redirect may be wrong but
@@ -83,49 +110,51 @@ whole point of the protocol is that **every step ends with a green test**.
    probe count 0, treat it as unverified and immediately continue to the
    next candidate rather than stopping.
 
-2. **Locate the body** in `PPMonstr.cpp`. Grep for the definition
-   (`^<rettype> <name>\b` or `^void <name>\b`), not the forward declaration.
+2. **Locate the body** in `BMF.cpp`. Grep for the definition
+   (`^<rettype> __cdecl <name>\b`, `^<rettype> __stdcall <name>\b`, …), not
+   the forward declaration. **Note the calling convention Hex-Rays printed —
+   it is part of the signature and §4 depends on it.**
 
 3. **Look up the original VA** of the function:
-   - Preferred source: `PPMonstr.txt`. Each line has the form
-     `<8-hex VA>  <name>`, e.g. `014001A5C0  sub_14001A5C0`. The VA is the
-     full 64-bit image VA (Hex-Rays prints leading zeros).
+   - Preferred source: `BMF.txt`. Each line has the form
+     `<8-hex VA>  <name>`, e.g. `00401000  main`. The VA is the full 32-bit
+     image VA.
    - For names of the form `sub_<hex>` the hex digits after `sub_` are the
-     VA in lowercase nibbles (`sub_14001A5C0` ⇒ `0x000000014001A5C0`). Use
-     `PPMonstr.txt` as the authoritative source; the name is a fallback only.
+     VA in lowercase nibbles (`sub_4093A0` ⇒ `0x004093A0`). Use `BMF.txt` as
+     the authoritative source; the name is a fallback only.
 
-4. **Create `<name>.inc`** in the repo root (e.g. `sub_14001A5C0.inc`).
+4. **Create `<name>.inc`** in the repo root (e.g. `sub_4093A0.inc`).
    Two paths:
 
-   - **Recommended:** run `python3 extract_fn.py <name>` (§8.5). It writes
-     `<name>.inc` with every typed reference, `#define` mapping, probe
-     registration, and `ms_abi` already in place, plus a TODO block for
-     anything it could not resolve. Then read §8 and apply any rewrites
-     called out in the `WARNING` block.
+   - **Recommended (once the tool is retargeted — see §8.5):** run
+     `python3 extract_fn.py <name>`. It writes `<name>.inc` with every typed
+     reference, `#define` mapping, and probe registration already in place,
+     plus a TODO block for anything it could not resolve. Then read §8 and
+     apply any rewrites called out in the `WARNING` block.
    - By hand: copy the function body into it verbatim, then make two
      textual changes:
      - **Rename the function** by adding a double-underscore prefix
-       (`sub_14001A5C0` ⇒ `__sub_14001A5C0`). This avoids ODR / linker
+       (`sub_4093A0` ⇒ `__sub_4093A0`). This avoids ODR / linker
        collisions with the still-present original symbol inside
-       `PPMonstr.elf` and any not-yet-moved sibling declarations.
+       `BMF.elf` and any not-yet-moved sibling declarations.
      - **Resolve dependencies** as described in §6. Each external name
        the function references must appear in the `.inc` as a typed
        reference to its known address. Do **not** copy data definitions
        or unrelated function bodies into the `.inc`.
 
-5. **Wire it into `dummy.cpp`.** Add, after the standard-library / `defs.h` /
-   `PPMonstr.h` includes:
+5. **Wire it into `dummy32.cpp`.** Add, after the standard-library / `defs.h` /
+   `BMF.h` includes:
 
    ```cpp
-   #include "sub_14001A5C0.inc"
+   #include "sub_4093A0.inc"
    ```
 
    Order of `#include` lines must respect inter-`.inc` dependencies (if
    `__A` calls `__B`, include `B.inc` first).
 
 6. **Install the redirect** inside `dummy_init()` (see §5). After this step,
-   any call to the original VA in `PPMonstr.elf` jumps to the `__`-prefixed
-   reimplementation in `dummy.so`.
+   any call to the original VA in `BMF.elf` jumps to the `__`-prefixed
+   reimplementation in `dummy32.so`.
 
 6a. **Retroactive cleanup in existing `.inc` files.** Search every already-
     committed `.inc` for a typedef+ref pair targeting the same VA as the
@@ -136,10 +165,10 @@ whole point of the protocol is that **every step ends with a green test**.
     ```
 
     For each hit in an existing caller's `.inc`, delete the
-    `typedef … t_<name>_<caller>(…);` line and the
-    `static t_<name>_<caller>& __<name> = *(…*)0x<VA>;` line (see §6.3).
+    `typedef … t_<name>(…);` line and the
+    `static t_<name>& __<name> = *(…*)0x<VA>;` line (see §6.3).
     Ensure the newly created `<name>.inc` is `#include`d before the caller's
-    `.inc` in `dummy.cpp`. Failure to do this causes a "redeclared as
+    `.inc` in `dummy32.cpp`. Failure to do this causes a "redeclared as
     different kind of entity" compile error.
 
 7. **Rebuild and re-test** (§2). If the test fails, the bug is in this single
@@ -149,10 +178,10 @@ whole point of the protocol is that **every step ends with a green test**.
    sources from the backup (see step 7a) and start over.
 
 7a. **Backup on green.** Immediately after the test passes, snapshot
-    the current `dummy.cpp` and all `.inc` files:
+    the current `dummy32.cpp` and all `.inc` files:
 
     ```sh
-    tar Jcf backup dummy.cpp *.inc
+    tar Jcf backup dummy32.cpp *.inc
     ```
 
     This produces a single `backup` file (xz-compressed tar) that captures
@@ -164,14 +193,14 @@ whole point of the protocol is that **every step ends with a green test**.
     tar Jxf backup
     ```
 
-    This overwrites `dummy.cpp` and every `.inc` back to the last green
+    This overwrites `dummy32.cpp` and every `.inc` back to the last green
     snapshot. **Important:** `tar` preserves the original file timestamps,
-    so `make` may see `dummy.so` as newer than the restored sources and
+    so `make` may see `dummy32.so` as newer than the restored sources and
     skip the rebuild entirely, leaving the broken binary in place. Always
     force a rebuild immediately after restoring:
 
     ```sh
-    tar Jxf backup && touch dummy.cpp *.inc && make
+    tar Jxf backup && touch dummy32.cpp *.inc && make dummy32.so
     ```
 
     Re-test to confirm the restored state is still clean before
@@ -183,11 +212,12 @@ whole point of the protocol is that **every step ends with a green test**.
 9. **Update tracking files** (`list.txt` and `fail.txt`).
 
    - `list.txt` — generated by `python3 make_list.py`; lists every
-     non-library function definition found in `PPMonstr.cpp` (all
-     `sub_14*`, `main`, `Alloc_PPMblock`, `PrintStats`). Regenerate any
-     time `PPMonstr.cpp` changes. Some entries are thin library wrappers
-     (e.g. `sub_14001D730` = `memmove`, `sub_14001570C` = `EncodePointer`)
-     and may be skipped or left to the end of the iteration order.
+     non-library function definition found in the donor (all `sub_4*` plus
+     `main`). Regenerate any time `BMF.cpp` changes. Some entries are thin
+     library wrappers, and with a statically-linked CRT many entries are the
+     CRT itself (§1); those may be skipped or left to the end of the
+     iteration order. **The shipped script still scans `PPMonstr.cpp` for
+     `sub_14*` — see §8.5.**
    - `fail.txt` — maintained by hand; one line per function that was
      attempted and either caused a crash or produced wrong output but whose
      root cause is not yet identified. Format:
@@ -198,51 +228,81 @@ whole point of the protocol is that **every step ends with a green test**.
 ## 4. `.inc` file conventions
 
 - One function per file. Filename matches the **original** name without the
-  `__` prefix: `sub_14001A5C0.inc`.
-- The function inside is `__sub_14001A5C0` (double-underscore prefix).
+  `__` prefix: `sub_4093A0.inc`.
+- The function inside is `__sub_4093A0` (double-underscore prefix).
 - The `.inc` is a fragment, not a translation unit: no `#pragma once`, no
-  include guards, no `#include` lines (those belong in `dummy.cpp`). It is
-  textually inserted into `dummy.cpp` and compiled as part of it.
-- **The function definition must carry `__attribute__((ms_abi))`.** PPMonstr
-  is a Win64 binary and every call into a decompiled body — whether through
-  the patched JMP or through a moved-callee direct call — uses the
-  Microsoft x64 calling convention (RCX, RDX, R8, R9; 32-byte shadow space;
-  callee-saved RSI/RDI). `dummy.so` itself is built as SysV. Without
-  `ms_abi`, arguments are read from the wrong registers and the body silently
-  consumes garbage. **A no-argument or write-only-to-globals function may
-  appear to work without `ms_abi` — that is luck, not correctness.** Apply
-  the attribute unconditionally to every `__sub_*` (and to any function
-  pointer that will be installed in an IAT slot, see §7).
+  include guards, no `#include` lines (those belong in `dummy32.cpp`). It is
+  textually inserted into `dummy32.cpp` and compiled as part of it.
+- **The function definition must carry the same calling convention Hex-Rays
+  printed for it.** This is the single biggest difference from the x64
+  protocol, where one blanket `__attribute__((ms_abi))` was correct
+  everywhere. On i386 there are four conventions in play and the *default*
+  case needs no attribute at all:
+
+  | Hex-Rays signature | Attribute on `__sub_*` | Argument passing |
+  |---|---|---|
+  | `__cdecl` (or nothing) | **none** — gcc's i386 default is already cdecl | all on stack, caller pops |
+  | `__stdcall` | `__attribute__((stdcall))` | all on stack, callee pops (`ret N`) |
+  | `__fastcall` | `__attribute__((fastcall))` | ECX, EDX, rest on stack, callee pops |
+  | `__thiscall` | `__attribute__((thiscall))` | `this` in ECX, rest on stack, callee pops |
+
+  Getting this wrong is not subtle in one direction and silent in the other:
+  a stdcall/cdecl mismatch leaks or over-pops the stack on **every** call, so
+  the process usually dies quickly. A fastcall/cdecl mismatch reads arguments
+  from the wrong place and behaves like the x64 `ms_abi` bug — wrong output,
+  no crash. Mirror the donor signature exactly; do not apply an attribute
+  "just in case", because adding `stdcall` to a cdecl function is just as
+  wrong as omitting it from a stdcall one.
+
+  **`__usercall` / `__userpurge`.** Hex-Rays emits these when the optimizer
+  produced a function with a non-standard register/stack signature — common
+  in optimized 32-bit MSVC code, and something the x64 protocol rarely had to
+  face. There is no g++ attribute for them. Either leave such a function
+  alone (it stays library code), or write a small `naked` assembly thunk that
+  marshals the custom convention into a normal cdecl call. Record the choice
+  in `fail.txt` if you defer it.
+
 - Order inside the file:
   1. Typed references for data symbols this function reads/writes (§6.1).
   2. Typed references for functions this function calls — *only* for
-     functions not yet moved into `dummy.so` (§6.2). Once a callee has its
+     functions not yet moved into `dummy32.so` (§6.2). Once a callee has its
      own `.inc`, drop its reference here and rely on the `__`-prefixed C++
      symbol instead (and update call sites accordingly).
-  3. `PROBE_DECL(__sub_XXXXXXXX)` — registers a counter for this function
+  3. `PROBE_DECL(__sub_XXXXXX)` — registers a counter for this function
      in the global probe list. The `PROBE_DECL` / `PROBE_HIT` macros and
-     the `Probe` registry live in `dummy.cpp` (§7).
+     the `Probe` registry live in `dummy32.cpp` (§7).
   4. The function body, with signature changed only by adding the `__`
-     prefix and the `ms_abi` attribute; argument and return types stay
-     byte-identical to the `PPMonstr.cpp` declaration. The first statement
-     in the body is `PROBE_HIT(__sub_XXXXXXXX);`.
+     prefix and (where required) the convention attribute; argument and
+     return types stay byte-identical to the `BMF.cpp` declaration. The
+     first statement in the body is `PROBE_HIT(__sub_XXXXXX);`.
 
-Template for a freshly extracted function:
+Template for a freshly extracted function (a `__cdecl` one — the common case,
+note the absence of any attribute):
 
 ```cpp
 // data and function typedef-refs go here, then:
 
-PROBE_DECL(__sub_14001A5C0)
-__attribute__((ms_abi)) void __sub_14001A5C0() {
-  PROBE_HIT(__sub_14001A5C0);
+PROBE_DECL(__sub_4093A0)
+int __sub_4093A0(int a1, char *a2) {
+  PROBE_HIT(__sub_4093A0);
   // ... original body, with external names already rewritten ...
+}
+```
+
+and a `__stdcall` one:
+
+```cpp
+PROBE_DECL(__sub_40B120)
+__attribute__((stdcall)) int __sub_40B120(int a1) {
+  PROBE_HIT(__sub_40B120);
+  // ...
 }
 ```
 
 ## 5. Redirection: patching a JMP at the original VA
 
 `dummy_init()` runs in the ELF's process **after** the loader has mapped the
-original `PPMonstr.exe` code pages at their image VAs but **before** `main`.
+original `BMF.exe` code pages at their image VAs but **before** `main`.
 For each moved function, `dummy_init()` overwrites the first **5 bytes** of
 the original function with a near jump to the new implementation:
 
@@ -250,32 +310,32 @@ the original function with a near jump to the new implementation:
 E9 dd dd dd dd             jmp rel32     ; rel32 = target - (orig + 5)
 ```
 
-Five bytes is small enough to fit inside even short Hex-Rays stubs (e.g.
-`void sub_14001A5C0() { dword_141134C28 = 0; }`, ~11 bytes of code) without
-bleeding into the next function. A 14-byte absolute trampoline would not be
-safe here.
+Five bytes is small enough to fit inside even short Hex-Rays stubs without
+bleeding into the next function.
 
-This works only because `dummy.so` is pinned at `0xF0000000` (§2): the
-displacement between any byte of PPMonstr (`0x140000000`–`~0x14120????`)
-and any byte of `dummy.so` (`0xF0000000`–`0xF0??????`) is in the range
-roughly `-0x51200000`…`-0x4FFFF000`, well within signed 32-bit. If the
-preferred base is ever rejected by the loader, the rel32 may overflow and
-the patch will silently jump to nonsense — therefore each `patch_jmp` must
-compute the displacement, sign-check it against `INT32_MIN`/`INT32_MAX`,
-and abort the process on overflow rather than truncate.
+**Reach is a non-issue on i386, unlike x64.** The x64 protocol had to pin
+`dummy.so` within ±2 GB of the image and sign-check every displacement
+against `INT32_MIN`/`INT32_MAX`, because a 64-bit address space can easily
+put the two more than 2 GB apart. Here the entire address space *is* 32 bits
+and the CPU computes `EIP + rel32` modulo 2^32, so the displacement computed
+in 32-bit arithmetic is always exact and `E9 rel32` can reach any target from
+any origin. There is nothing to range-check — a check would be vacuous, and
+writing one that "fails" would mean the arithmetic was done in the wrong
+width. In practice the numbers are not even close to the edge: with the
+image at `0x00400000` and `dummy32.so` at `0x30000000` the displacement is
+about `+0x2FC00000`.
 
 Steps for each redirect (encapsulated in `patch_jmp(orig, repl)`, called
 from `dummy_init()`):
 
-1. `void *orig = (void*)0x<VA>;` — the address from `PPMonstr.txt`.
-2. `int64_t disp = (int64_t)repl - ((int64_t)orig + 5);`
-   `assert(disp >= INT32_MIN && disp <= INT32_MAX);`
+1. `void *orig = (void*)0x<VA>;` — the address from `BMF.txt`.
+2. `uint32_t disp = (uint32_t)((uintptr_t)repl - ((uintptr_t)orig + 5));`
 3. Make the page writable:
    `mprotect(page_align(orig), len, PROT_READ|PROT_WRITE|PROT_EXEC);`
    where `page_align` rounds down to the system page size and `len` covers
    the 5 bytes (handle the rare case where the patch straddles two pages
    by extending `len` accordingly).
-4. Write `E9` followed by `disp` as a little-endian `int32_t`.
+4. Write `E9` followed by `disp` as a little-endian `uint32_t`.
 5. Restore protection to `PROT_READ|PROT_EXEC` (optional but advised).
 6. Flush the instruction cache for the patched range
    (`__builtin___clear_cache(orig, (char*)orig + 5)`).
@@ -283,7 +343,7 @@ from `dummy_init()`):
 With the helper in place, each redirect is a one-liner:
 
 ```cpp
-patch_jmp((void*)0x14001A5C0, (void*)&__sub_14001A5C0);
+patch_jmp((void*)0x004093A0, (void*)&__sub_4093A0);
 ```
 
 `dummy_init()` is therefore a list of `patch_jmp(...)` calls — one per
@@ -291,8 +351,7 @@ moved function — in any order.
 
 **Edge case: function smaller than 5 bytes.** A function whose entire body
 is shorter than the 5-byte JMP cannot be patched in place without
-overwriting the next function's prologue. None of the in-scope PPMonstr
-functions are known to be that small, but if one is encountered, do not
+overwriting the next function's prologue. If one is encountered, do not
 patch it — leave the original in place and call the reimplementation
 explicitly from its (moved) callers instead. Document the exception in a
 comment in `dummy_init()`.
@@ -300,37 +359,37 @@ comment in `dummy_init()`.
 ## 6. Dependency cookbook
 
 A moved function must compile and link without dragging the rest of
-`PPMonstr.cpp` along. Replace every external name it touches with a **typed
+`BMF.cpp` along. Replace every external name it touches with a **typed
 reference at a fixed address**. Never copy global definitions across.
 
 ### 6.1 Data symbols
 
-Given a data definition in `PPMonstr.cpp`:
+Given a data definition in `BMF.cpp`:
 
 ```cpp
-int arch_hdr[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // weak
+int dword_441A20[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // weak
 ```
 
-and the matching line in `PPMonstr.txt`:
+and the matching line in `BMF.txt`:
 
 ```
-0140028E50  arch_hdr
+00441A20  dword_441A20
 ```
 
 emit in the `.inc`:
 
 ```cpp
-#ifndef __PE_DECL___arch_hdr
-#define __PE_DECL___arch_hdr
-typedef int t_arch_hdr[16];
-static t_arch_hdr& __arch_hdr = *(t_arch_hdr*)0x140028E50;
+#ifndef __PE_DECL___dword_441A20
+#define __PE_DECL___dword_441A20
+typedef int t_dword_441A20[16];
+static t_dword_441A20& __dword_441A20 = *(t_dword_441A20*)0x00441A20;
 #endif
-#define arch_hdr __arch_hdr
+#define dword_441A20 __dword_441A20
 ```
 
 The `#ifndef __PE_DECL___<sym>` / `#define __PE_DECL___<sym>` / `#endif`
 guard is mandatory. All `.inc` files are textually included into a single
-translation unit (`dummy.cpp`). If two functions reference the same PE
+translation unit (`dummy32.cpp`). If two functions reference the same PE
 global, the compiler sees two definitions of the same `static` variable and
 emits "redefinition of …" — even though `static` suppresses the linker-level
 ODR error, it does not suppress same-TU redefinition. The guard makes the
@@ -340,11 +399,15 @@ current `.inc`; the matching `#undef` at the bottom of the file closes it.
 
 Rules:
 - The `typedef` names the *array/object type*, not a pointer to it. For
-  scalars, no `typedef` is needed: `static int& __f_LOG = *(int*)0x140028E4C;`.
+  scalars, no `typedef` is needed: `static int& __f_LOG = *(int*)0x00441A1C;`.
 - The `__` prefix on the variable name follows the same convention as §6.5
   (avoid shadowing libc names at global scope).
-- The address is taken **verbatim** from `PPMonstr.txt`. Do not guess from
-  the name (`dword_140028E14` is not always at `0x140028E14` — confirm).
+- The address is taken **verbatim** from `BMF.txt`. Do not guess from
+  the name (`dword_441A20` is not always at `0x441A20` — confirm).
+- **Pointer-sized data is 4 bytes here.** A global that Hex-Rays typed as
+  `_QWORD` in an x64 body would be `_DWORD` in a 32-bit one; take the width
+  from `BMF.cpp`, and be suspicious of any `_QWORD` that is being used as a
+  pointer.
 
 ### 6.2 Function symbols (callees that stay in the original binary)
 
@@ -354,16 +417,16 @@ Given a call site in the donor body:
 v3 = unknown_libname_22(4, v20);
 ```
 
-Find the prototype in `PPMonstr.cpp`:
+Find the prototype in `BMF.cpp`:
 
 ```cpp
-// __int64 unknown_libname_22(_QWORD, _QWORD); weak
+// int __cdecl unknown_libname_22(int, int); weak
 ```
 
-and the address in `PPMonstr.txt`:
+and the address in `BMF.txt`:
 
 ```
-0140021696  unknown_libname_22
+0042A696  unknown_libname_22
 ```
 
 Emit in the `.inc`:
@@ -371,8 +434,8 @@ Emit in the `.inc`:
 ```cpp
 #ifndef __PE_DECL___unknown_libname_22
 #define __PE_DECL___unknown_libname_22
-typedef __attribute__((ms_abi)) __int64 t_unknown_libname_22(_QWORD, _QWORD);
-static t_unknown_libname_22& __unknown_libname_22 = *(t_unknown_libname_22*)0x140021696;
+typedef int t_unknown_libname_22(int, int);
+static t_unknown_libname_22& __unknown_libname_22 = *(t_unknown_libname_22*)0x0042A696;
 #endif
 #define unknown_libname_22 __unknown_libname_22
 ```
@@ -387,27 +450,26 @@ Rules:
 - `typedef` the **function type**, then bind a reference (not a pointer) to
   the address. Calling `unknown_libname_22(...)` then resolves to a direct
   call through the typed reference.
-- **The function-type `typedef` must carry `__attribute__((ms_abi))`** —
-  the target is Win64-ABI code inside `PPMonstr.exe`, so the call site
-  needs to marshal arguments into RCX/RDX/R8/R9 and reserve the 32-byte
-  shadow space. Without it, the call corrupts the stack and/or passes
-  arguments in the wrong registers. This applies even to "library"
-  callees like `unknown_libname_*` because they too live in the PE image.
-- Argument and return types must match the prototype in `PPMonstr.cpp` byte
-  for byte (widths, `_QWORD` vs `void*`, etc.).
+- **The function-type `typedef` must carry the callee's calling convention**
+  (§4) — `__attribute__((stdcall))`, `((fastcall))` or `((thiscall))` as
+  printed by Hex-Rays, and *nothing* for `__cdecl`. Since the whole static
+  CRT lives in the image, most of these callees are `__cdecl` and need no
+  attribute; the ones that do are usually Win32-facing helpers.
+- Argument and return types must match the prototype in `BMF.cpp` byte
+  for byte (widths, `_DWORD` vs `void*`, etc.).
 - Use the address of the **function entry**, not of any thunk or IAT slot.
-  `PPMonstr.txt` already lists entries.
+  `BMF.txt` already lists entries.
 
-### 6.3 Function symbols (callees already moved to `dummy.so`)
+### 6.3 Function symbols (callees already moved to `dummy32.so`)
 
 If the callee has its own `.inc` and is therefore present as
-`__sub_YYYYYYYY` in the same translation unit, **do not** add a typed
+`__sub_YYYYYY` in the same translation unit, **do not** add a typed
 reference for it. Instead, rewrite the call site in the current `.inc` to
-use `__sub_YYYYYYYY(...)` directly. This keeps the dependency graph among
+use `__sub_YYYYYY(...)` directly. This keeps the dependency graph among
 `.inc` files explicit and removes one round-trip through the patched JMP.
 
 Order `#include "<callee>.inc"` before `#include "<caller>.inc"` in
-`dummy.cpp` so the C++ name is in scope.
+`dummy32.cpp` so the C++ name is in scope.
 
 **Retroactive cleanup — when a callee is decompiled after its caller.**
 `extract_fn.py` writes a typedef + static ref for every callee it finds at
@@ -417,44 +479,65 @@ defines `__F` as an actual C++ function; the old typedef+ref in
 Fix: in `caller.inc`, delete the two lines:
 
 ```cpp
-typedef __attribute__((ms_abi)) <rettype> t_F_caller(<args>);
-static t_F_caller& __F = *(t_F_caller*)0x<VA>;
+typedef <rettype> t_F(<args>);
+static t_F& __F = *(t_F*)0x<VA>;
 ```
 
 Leave the `#define F __F` and `#undef F` lines in place — the body still
 refers to `F` by its original name, and those macros map it to the now-real
 `__F` symbol. Ensure `F.inc` is `#include`d before `caller.inc` in
-`dummy.cpp`.
+`dummy32.cpp`.
 
 **Call-site cast after cleanup.** After removing the typedef+static-ref, scan
 the caller body for C-style casts that pass a function pointer as this
-parameter. If the target parameter type carries `__attribute__((ms_abi))`,
-the cast expression must include it too, or g++ emits a `-fpermissive` warning
-about mismatched calling-convention attributes:
+parameter. If the target parameter type carries a calling-convention
+attribute, the cast expression must include it too, or g++ emits a
+`-fpermissive` warning about mismatched calling-convention attributes:
 
 ```cpp
-// wrong — strips ms_abi, triggers warning:
-sub_140003530(f, g, (__int64(*)(FILE*, FILE*, __int64))PrintStats, 0);
+// wrong — strips stdcall, triggers warning:
+sub_403530(f, g, (int(*)(FILE*, FILE*, int))PrintStats, 0);
 
 // correct:
-sub_140003530(f, g, (__attribute__((ms_abi)) __int64(*)(FILE*, FILE*, __int64))PrintStats, 0);
+sub_403530(f, g, (__attribute__((stdcall)) int(*)(FILE*, FILE*, int))PrintStats, 0);
 ```
+
+For plain `__cdecl` targets the cast needs no attribute — which is the
+common case here, and one fewer thing to get wrong than on x64.
 
 ### 6.4 WinAPI imports (via PE IAT slots)
 
-WinAPI functions are *not* present at their entry point inside `PPMonstr.exe`
-— what lives at the listed address is a one-qword **IAT slot** that the
-loader fills with a pointer to the shim's resolved function. Calls in the
-PE code go `call qword ptr [IAT_slot]`, i.e. one extra indirection.
+WinAPI functions are *not* present at their entry point inside `BMF.exe`
+— what lives at the listed address is a **4-byte IAT slot** (a dword, not the
+qword of a Win64 image) that the loader fills with a pointer to the shim's
+resolved function. Calls in the PE code go `call dword ptr [IAT_slot]`, i.e.
+one extra indirection.
 
-The Hex-Rays header marks these with `extern HANDLE (__stdcall *FindFirstFileA)(...)`
-commented-out lines; the address in `PPMonstr.txt` is the slot, not the
-function. Build the ref as a function-pointer reference (note the `*` and
-extra parens):
+`BMF.exe` imports 59 kernel32 functions; the IAT occupies
+`0x00438000`–`0x004380F0`. Useful slots:
+
+| Slot VA | Import |
+|---|---|
+| `0x0043800C` | `CreateFileA` |
+| `0x00438020` | `VirtualFree` |
+| `0x00438024` | `VirtualAlloc` |
+| `0x00438030` | `ExitProcess` |
+| `0x0043803C` | `GetCommandLineA` |
+| `0x00438058` | `ReadFile` |
+| `0x0043805C` | `HeapFree` |
+| `0x00438060` | `HeapAlloc` |
+| `0x00438064` | `WriteFile` |
+
+The Hex-Rays header marks these with commented-out
+`extern HANDLE (__stdcall *CreateFileA)(...)` lines; the address in `BMF.txt`
+is the slot, not the function. Build the ref as a function-pointer reference
+(note the `*` and extra parens). **Win32 API functions are `__stdcall`**, so
+unlike most in-image callees these do need the attribute:
 
 ```cpp
-typedef __attribute__((ms_abi)) HANDLE (*pfn_FindFirstFileA)(LPCSTR, LPWIN32_FIND_DATAA);
-static pfn_FindFirstFileA& FindFirstFileA = *(pfn_FindFirstFileA*)0x140022000;
+typedef __attribute__((stdcall)) HANDLE (*pfn_CreateFileA)(
+    LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
+static pfn_CreateFileA& CreateFileA = *(pfn_CreateFileA*)0x0043800C;
 ```
 
 By the time `dummy_init()` (and any patched body) runs, the loader has
@@ -462,7 +545,7 @@ populated the IAT, so dereferencing the slot at static-init or call time
 yields the live function pointer. No `#define` mapping is needed because
 the typed ref already uses the canonical name.
 
-A few Win pointer typedefs are not present in `PPMonstr.h` and must be
+A few Win pointer typedefs are not present in `BMF.h` and must be
 declared locally before any signature that mentions them:
 
 ```cpp
@@ -481,33 +564,40 @@ remain textually unchanged. Two reasons:
   *(...);` at namespace scope would shadow glibc's `printf` for the rest
   of the translation unit (including `dummy_init` and `my_ExitProcess`).
 - **Side-effect routing.** Any function with hidden state — `fopen`,
-  `printf`, `fread_nolock`, `clock`, `errno`, anything that touches the
-  MSVC CRT's `_iobuf` table, the heap, or the locale — *must* go through
-  the PE's implementation, because the PE-side state and glibc's state
-  are independent and incompatible. Even a single accidental
-  `fopen` against glibc would return a `glibc FILE *` that the PE's
-  `fread_nolock` then dereferences with the MSVC `_iobuf` layout. The
-  `__` prefix + `#define` makes routing the default; you have to go out
-  of your way to call glibc.
-- **Hex-Rays sometimes strips a leading underscore.** `PPMonstr.txt`
-  lists `_fread_nolock`, `_filbuf`, `__intel_new_proc_init`; the donor
-  source spells them `fread_nolock`, `filbuf`, `_intel_new_proc_init`.
-  The script (`extract_fn.py`, §8.4) handles this fallback automatically;
-  if writing by hand, look up *both* spellings in `PPMonstr.txt`.
+  `printf`, `fread`, `clock`, `errno`, anything that touches the MSVC CRT's
+  `_iobuf` table, the heap, or the locale — *must* go through the PE's
+  implementation, because the PE-side state and glibc's state are
+  independent and incompatible. This matters more here than in a
+  dynamically-linked target: `BMF.exe` carries its **entire CRT inside the
+  image**, so every `FILE*`, every heap block and every `errno` the program
+  touches belongs to that private runtime. A single accidental `fopen`
+  against glibc would return a `glibc FILE *` that the PE's `fread` then
+  dereferences with the MSVC `_iobuf` layout (§8.3). The `__` prefix +
+  `#define` makes routing the default; you have to go out of your way to
+  call glibc.
+- **Hex-Rays sometimes strips a leading underscore.** `BMF.txt` may list
+  `_fread`, `_filbuf`, `_ftol`; the donor source spells them `fread`,
+  `filbuf`, `ftol`. The script (`extract_fn.py`, §8.5) handles this fallback
+  automatically; if writing by hand, look up *both* spellings in `BMF.txt`.
 
 Pure utility functions with no hidden state (`strcpy`, `memcpy`, `memset`,
 `strlen`, `strcmp`) may fall through to glibc — they have identical
-semantics on both runtimes and are not always present in `PPMonstr.txt`
+semantics on both runtimes and are not always present in `BMF.txt`
 anyway. Document each glibc fall-through in a comment.
 
 End the `.inc` with one `#undef` per `#define`, so the macros do not
 leak into the next `#include`d body.
 
-## 7. `dummy.cpp` infrastructure (probe registry + ExitProcess hook)
+## 7. `dummy32.cpp` infrastructure (probe registry + ExitProcess hook)
 
-`dummy.cpp` provides three pieces of infrastructure that every `.inc` relies
+`dummy32.cpp` provides three pieces of infrastructure that every `.inc` relies
 on. None of this needs to be reinvented per function; the snippets below
-already live in the file.
+already live in the file. **The whole of §7 has been verified to work against
+`BMF.exe`** — see §9.1 for the transcript.
+
+Note that the stock `dummy32.so` in this repo is built from the shared
+one-line `dummy.cpp`; this protocol replaces that with its own
+`dummy32.cpp` (§7.4).
 
 ### 7.1 Probe registry
 
@@ -535,21 +625,26 @@ only built-in way to confirm that the rel32 redirect is actually being
 taken at runtime (a function that is never called cannot tell us if its
 patch is wrong).
 
+A 64-bit atomic on a 32-bit target needs the `cmpxchg8b` instruction (i586
+and later). The default `-march=i686` provides it and g++ inlines the
+increment with no library call, so no `-latomic` is required. If the build is
+ever retargeted to `-march=i386`/`i486`, either link `-latomic` or narrow the
+counter to `unsigned long` — call counts do not need 64 bits.
+
 ### 7.2 ExitProcess IAT hook
 
-`dummy.cpp` cannot rely on `__attribute__((destructor))` or `atexit()` to
+`dummy32.cpp` cannot rely on `__attribute__((destructor))` or `atexit()` to
 dump the counters. The shim's `kernel32_ExitProcess` calls `_exit()` (see
-`shim.cpp:1136`), which bypasses both DT_FINI and the atexit chain. The
-program's normal termination path goes
+`shim32_kernel32_proc.hpp`), which bypasses both DT_FINI and the atexit
+chain. The program's normal termination path goes
 `main → MS CRT → ExitProcess → _exit`, so by the time glibc's exit
 machinery would have run, the process is already gone.
 
-Workaround: overwrite the **IAT slot** for `ExitProcess` so PPMonstr calls
-our wrapper instead. The slot is at the address listed for `ExitProcess` in
-`PPMonstr.txt` (currently `0x140022068`):
+Workaround: overwrite the **IAT slot** for `ExitProcess` so BMF calls
+our wrapper instead. The slot is at `0x00438030` (§6.4):
 
 ```cpp
-static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
+static __attribute__((stdcall)) void my_ExitProcess(unsigned int code) {
   fprintf(stderr, "[probe] ExitProcess(%u), call counts:\n", code);
   for (Probe* p = g_probes; p; p = p->next)
     fprintf(stderr, "[probe]   %-32s %llu\n", p->name, p->count);
@@ -559,54 +654,66 @@ static __attribute__((ms_abi)) void my_ExitProcess(unsigned int code) {
 ```
 
 Notes:
-- The wrapper **must** be `ms_abi`. The call site uses Win64 (first arg in
-  RCX, not RDI). A SysV-ABI wrapper here will read garbage and `_exit`
-  with a nonsense code — the exact symptom that exposed why every
-  decompiled body also needs `ms_abi` (see §4).
+- The wrapper **must** be `stdcall` — every Win32 API entry point is, so the
+  callee is expected to pop its own argument. A cdecl wrapper here leaves the
+  4-byte argument on the stack on return; since the wrapper never returns it
+  happens not to matter in this one case, but the attribute costs nothing and
+  removes the exception.
 - Patching uses a separate helper `patch_iat_slot(slot, repl)` that just
-  `mprotect`s the page, writes a pointer, and restores. No rel32 reach
+  `mprotect`s the page, writes a **4-byte** pointer, and restores. No reach
   problem because we are writing data, not code.
 - Output goes to **stderr** so the file-comparison part of the test
-  (`cmp 1.pmm 1.ppm`) is unaffected.
+  (§9) is unaffected.
+- **Anything a decompiled body prints to glibc `stdout` must be flushed
+  explicitly.** `_exit()` in the wrapper skips glibc's stdio flush, so
+  buffered output is silently discarded — the message simply never appears,
+  with no error. This is the same class of hazard as §6.5 and it bites in
+  practice (see §9.1). Prefer `stderr`, or `fflush(stdout)` before returning.
 
 ### 7.3 `dummy_init()` checklist
 
 Order of operations in the constructor:
 
-1. Print `&dummy_init` and assert it falls inside `[0xF0000000,
-   0x100000000)` (see §2). Abort if not — every `patch_jmp` would
-   silently produce wrong displacements.
-2. One `patch_jmp((void*)0x<VA>, (void*)&__sub_XXXXXXXX);` per moved
-   function.
-3. `patch_iat_slot((void*)<ExitProcess slot VA>, (void*)&my_ExitProcess);`
+1. Print `&dummy_init` and confirm it falls inside the `0x30000000` window
+   (see §2). A surprise placement will not break the JMPs the way it would
+   on x64 (§5), but it means the loader ignored the preferred base, which is
+   worth knowing before debugging anything else.
+2. One `patch_jmp((void*)0x<VA>, (void*)&__sub_XXXXXX);` per moved function.
+3. `patch_iat_slot((void*)0x00438030, (void*)&my_ExitProcess);`
    exactly once. (Other IAT hooks may be added later in the same way.)
 
 ### 7.4 Makefile dependency on `.inc` files
 
-`dummy.so` is built from `dummy.cpp` alone, but it textually includes every
-`.inc`. The Makefile rule must list the `.inc` files (and the headers they
-depend on) as prerequisites; otherwise edits to a `.inc` silently fail to
+`dummy32.so` is built from `dummy32.cpp` alone, but it textually includes
+every `.inc`. The Makefile rule must list the `.inc` files (and the headers
+they depend on) as prerequisites; otherwise edits to a `.inc` silently fail to
 trigger a rebuild and the validation test runs against stale code (which
 typically still passes because the redirect was already installed from the
 previous build — a particularly nasty false positive):
 
 ```make
-$(DUMMY_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h
-        $(CC) $(DUMMY_FLAGS) -o $@ $(DUMMY_SRCS) $(DUMMY_LDFLAGS)
+DUMMY32_SRCS = dummy32.cpp
+
+$(DUMMY32_OUT): $(DUMMY32_SRCS) $(wildcard *.inc) $(wildcard *.h)
+        $(CC) $(DUMMY32_FLAGS) -o $@ $(DUMMY32_SRCS) $(DUMMY32_LDFLAGS)
 ```
+
+(The repo's stock rule builds `dummy32.so` from the shared `dummy.cpp` with
+no `.inc` prerequisites; point it at `dummy32.cpp` and add the wildcards
+before starting a decompilation run.)
 
 ## 8. Translating Hex-Rays output to g++
 
-`PPMonstr.cpp` is MSVC-flavored output from Hex-Rays. A handful of
-constructs do not compile under g++ as-is; the patterns and remedies are
-listed here so the same wheel is not reinvented per function.
+`BMF.cpp` is MSVC-flavored output from Hex-Rays. A handful of constructs do
+not compile under g++ as-is; the patterns and remedies are listed here so the
+same wheel is not reinvented per function.
 
 ### 8.1 Build flags
 
-Add to `DUMMY_FLAGS` in `Makefile`:
+Add to `DUMMY32_FLAGS` in `Makefile`:
 
 ```
--fpermissive -Wno-narrowing -Wno-write-strings
+-m32 -fpermissive -Wno-narrowing -Wno-write-strings
 ```
 
 Hex-Rays output relies on MSVC's lenient C-style casts between pointers
@@ -616,15 +723,19 @@ unless `-fpermissive` downgrades them to warnings. `-Wno-narrowing` and
 `-Wno-write-strings` silence the noise from struct-initializer narrowing
 and string-literal-to-`char*` conversions that appear throughout.
 
+`-m32` is not optional and not merely about pointer width: it also selects
+the i386 calling conventions §4 depends on, and makes `long`/`size_t`
+4 bytes so the donor body's implicit assumptions hold.
+
 ### 8.2 MSVC intrinsics
 
 | MSVC construct                              | g++ remedy                                                   |
 |---------------------------------------------|--------------------------------------------------------------|
 | `_BitScanForward(idx, mask)`                | Macro using `__builtin_ctz`; emit `_BitScanForward` itself.  |
-| `_mm_*` SSE intrinsics                      | `#include <x86intrin.h>` once in `dummy.cpp`.                |
+| `_mm_*` SSE intrinsics                      | `#include <x86intrin.h>` once in `dummy32.cpp`.              |
 | `(__m128i)0LL` (compound C-style cast)      | Rewrite as `_mm_setzero_si128()`.                            |
-| `(__m128i)(unsigned __int64)scalar`         | `_mm_cvtsi64_si128(scalar)` or `_mm_set_epi64x(0, scalar)`.  |
-| `__declspec(align(N))`                      | `#define __declspec(x) __attribute__((x))` + `#define align(n) aligned(n)` scoped around the `#include "PPMonstr.h"`. |
+| `(__m128i)(unsigned __int64)scalar`         | `_mm_set_epi64x(0, scalar)`. **Not** `_mm_cvtsi64_si128`, which is x86-64 only. |
+| `__declspec(align(N))`                      | `#define __declspec(x) __attribute__((x))` + `#define align(n) aligned(n)` scoped around the `#include "BMF.h"`. |
 | `__declspec(noreturn)`                      | Already handled by `defs.h` for GCC.                         |
 
 The `_BitScanForward` macro (place near the top of each body that uses it):
@@ -634,12 +745,32 @@ The `_BitScanForward` macro (place near the top of each body that uses it):
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
 ```
 
+**64-bit arithmetic helpers.** On i386 the MSVC compiler lowers `__int64`
+division, modulo, shifts and float conversions to CRT helper routines
+(`__alldiv`, `__aulldiv`, `__allshr`, `__ftol`, …). These appear in `BMF.txt`
+and may show up as call sites in the donor body. They are library functions —
+reference them per §6.2, do not reimplement them. g++ generates its own
+inline sequences or libgcc calls for the same expressions written in C, so a
+body that Hex-Rays rendered as plain `a / b` on `__int64` needs no special
+handling; only an *explicit* `__alldiv(...)` call site does.
+
 ### 8.3 MSVC `FILE` layout
 
 Hex-Rays bodies access MSVC `_iobuf` internals: `v17->_cnt`, `v17->_ptr`,
-`v17->_flag`. glibc's `FILE` has none of these fields. `PPMonstr.h`
-defines the MSVC `_iobuf` under the typedef name `FILE`, which `dummy.cpp`
+`v17->_flag`. glibc's `FILE` has none of these fields. `BMF.h`
+defines the MSVC `_iobuf` under the typedef name `FILE`, which `dummy32.cpp`
 renames to `FILE1` via `#define FILE FILE1` around the include.
+
+The Win32 `_iobuf` is **32 bytes**, half the size of the Win64 one, and every
+member is at a different offset:
+
+```
+_ptr @0x00   _cnt @0x04   _base @0x08   _flag @0x0C
+_file@0x10   _charbuf@0x14  _bufsiz@0x18  _tmpfname@0x1C
+```
+
+Any hand-written offset arithmetic against a `FILE*` — and any `_iobuf`
+table indexing, which strides by 32 here rather than 48 — must use these.
 
 Inside the `.inc`, re-enable the MSVC layout for the body:
 
@@ -649,29 +780,29 @@ Inside the `.inc`, re-enable the MSVC layout for the body:
 #undef FILE
 ```
 
-All typed refs that take `FILE *` (`fopen`, `fread_nolock`, `setvbuf`, …)
+All typed refs that take `FILE *` (`fopen`, `fread`, `setvbuf`, …)
 are inside this `#define` scope, so they typedef-resolve to `FILE1*` —
 matching what the PE's MSVC CRT actually expects.
 
 ### 8.4 Anti-patterns to recognize and rewrite
 
 Hex-Rays sometimes emits code that compiles but means something different
-under g++ than under MSVC. Two patterns to watch for:
+under g++ than under MSVC. Several patterns to watch for:
 
 **A. Inter-local pointer arithmetic (Hex-Rays expansion of memcpy).**
 
 ```cpp
 v26 = 320;
 do {
-  *(_QWORD *)&v130[v26 - 8] = *(HANDLE *)((char *)&hFindFile + v26);
-  *(__int64 *)((char *)&v128 + v26) = *(__int64 *)((char *)&v152 + v26);
+  *(_DWORD *)&v130[v26 - 4] = *(HANDLE *)((char *)&hFindFile + v26);
+  *(int *)((char *)&v128 + v26) = *(int *)((char *)&v152 + v26);
   ...
 } while(v26);
 ```
 
 These multi-stream loops are Hex-Rays' representation of a single block
-copy that the original asm did with `rep movsq`. They depend on the
-five named locals being laid out **contiguously in a specific order** in
+copy that the original asm did with `rep movsd`. They depend on the
+named locals being laid out **contiguously in a specific order** in
 the stack frame. g++ does not preserve that order — it lays out locals
 however it wants (often grouped by alignment class) — so the writes
 land on the wrong memory.
@@ -696,17 +827,17 @@ contiguous region. Hex-Rays lifts this as a loop over overlapping `__int128`
 
 ```cpp
 // Hex-Rays zeroing expansion — DO NOT use:
-xmmword_140029500[64] = 0;
-xmmword_140029510[63] = 0;
-xmmword_140029520[62] = 0;
-xmmword_140029530[61] = 0;
+xmmword_442500[64] = 0;
+xmmword_442510[63] = 0;
+xmmword_442520[62] = 0;
+xmmword_442530[61] = 0;
 ```
 
 Replace with a direct `memset` against the region's base address and byte
 count (both readable from the asm):
 
 ```cpp
-memset((void*)0x140029540, 0, 0x400);
+memset((void*)0x00442540, 0, 0x400);
 ```
 
 **B. `operator new`.**
@@ -721,35 +852,40 @@ with a plain identifier name (e.g. `__op_new`) and rewrite the call
 sites in the body:
 
 ```cpp
-typedef __attribute__((ms_abi)) void* t_op_new(size_t);
-static t_op_new& __op_new = *(t_op_new*)0x140012768;   // ??2@YAPEAX_K@Z
+typedef void* t_op_new(size_t);
+static t_op_new& __op_new = *(t_op_new*)0x<VA of ??2@YAPAXI@Z>;
 // in body:  v25 = (void **)__op_new(328u);
 ```
 
-**C. Missing `ms_abi` on callback / function-pointer parameters.**
+(Note the 32-bit MSVC mangling `??2@YAPAXI@Z`, not the x64 `??2@YAPEAX_K@Z`.)
+`BMF.exe` is a C program, so it may not have `operator new` at all — this
+pattern is listed for completeness.
 
-Hex-Rays represents callback parameters as plain C function pointers with no
-calling-convention attribute:
+**C. Missing calling-convention attribute on callback / function-pointer
+parameters.**
+
+Hex-Rays represents callback parameters as plain C function pointers,
+carrying the convention only in the comment or the `__stdcall` spelling:
 
 ```cpp
-__int64 sub_140003530(FILE *f, FILE *g, __int64 (*a3)(FILE *, FILE *, __int64), int a4)
+int sub_403530(FILE *f, FILE *g, int (__stdcall *a3)(FILE *, FILE *, int), int a4)
 ```
 
-If `a3` will be called with a Win64-ABI target (e.g. `PrintStats` inside
-`PPMonstr.exe`), the parameter type must carry `__attribute__((ms_abi))`:
+If the target is `__stdcall`, the parameter type must carry
+`__attribute__((stdcall))`:
 
 ```cpp
-__attribute__((ms_abi)) __int64 __sub_140003530(
+int __sub_403530(
     FILE *f, FILE *g,
-    __attribute__((ms_abi)) __int64 (*a3)(FILE *, FILE *, __int64),
+    __attribute__((stdcall)) int (*a3)(FILE *, FILE *, int),
     int a4)
 ```
 
-Without it, the generated call instruction passes arguments in RDI/RSI
-(SysV) instead of RCX/RDX (Win64). The callee silently reads garbage; the
-symptom is wrong output rather than a crash, making this easy to miss. Apply
-`ms_abi` to every function-pointer parameter whose target lives in the PE
-image. (See also §6.3 for the corresponding call-site cast rule.)
+Without it the caller pops arguments the callee already popped, and the stack
+unwinds by 4·N too much — usually a prompt crash rather than the silent
+garbage the x64 equivalent produced. For `__cdecl` callbacks (the majority
+here) no attribute is needed on either side. (See also §6.3 for the
+corresponding call-site cast rule.)
 
 **D. Vftable address syntax.**
 
@@ -757,27 +893,43 @@ Hex-Rays emits vftable addresses using MSVC decorated-name syntax that g++
 cannot parse:
 
 ```cpp
-qword_141133780 = &std::bad_alloc::`vftable';   // syntax error in g++
+dword_441780 = &std::bad_alloc::`vftable';   // syntax error in g++
 ```
 
-Look up the vftable address in `PPMonstr.txt` (the symbol will be listed
+Look up the vftable address in `BMF.txt` (the symbol will be listed
 under the mangled name, e.g. `??_7bad_alloc@std@@6B@`) and replace with a
 numeric cast:
 
 ```cpp
-qword_141133780 = (void*)0x140022990;   // &std::bad_alloc::`vftable'
+dword_441780 = (void*)0x00438990;   // &std::bad_alloc::`vftable'
 ```
 
 ### 8.5 `extract_fn.py` — automated `.inc` scaffolding
 
-The repo ships `extract_fn.py`, which automates the mechanical part of
-the per-function workflow. Usage:
+> **Status: not yet retargeted.** `extract_fn.py` and `make_list.py` were
+> written for the x64 PPMonstr target and still assume it in three places:
+> they read `PPMonstr.cpp` / `PPMonstr.txt` by hardcoded filename
+> (`extract_fn.py:38-39`, `make_list.py:8`); `make_list.py` matches
+> `sub_14[0-9A-Fa-f]+` plus the PPMonstr-specific names `Alloc_PPMblock`
+> and `PrintStats` (`make_list.py:5`), which will find nothing in a BMF
+> donor whose functions are `sub_4xxxxx`; and `extract_fn.py` emits
+> `__attribute__((ms_abi))` unconditionally on every typedef and definition
+> (`extract_fn.py:405,413,425,440`), which is wrong for **every** i386
+> convention including the common cdecl case (§4).
+>
+> Retargeting is three small edits (filenames, the name regex, and deriving
+> the convention from the donor signature instead of hardcoding one), but
+> until they are made, extract the first few functions **by hand** per §4
+> and §6 rather than trusting the scaffold. The rest of this section
+> describes the tool's behaviour as designed.
+
+Usage:
 
 ```sh
 python3 extract_fn.py <function_name> [--out path]
 ```
 
-It reads `PPMonstr.cpp` + `PPMonstr.txt`, locates the function, then for
+It reads the donor `.cpp` + `.txt`, locates the function, then for
 every external identifier the body touches it emits a typed reference at
 the looked-up address (with `__` prefix and `#define` mapping per §6.5).
 It distinguishes PE-internal functions, MSVC CRT entries, WinAPI IAT
@@ -792,10 +944,9 @@ What it does **not** do:
 - Translate the §8.2 / §8.4 anti-patterns. The tool *flags* them in a
   `// ---- WARNING: patterns that need manual rewrite ----` block at the
   top of the output; you still rewrite by hand.
-- Infer prototypes that aren't present in `PPMonstr.cpp` as forward
-  declarations (e.g. `_intel_new_proc_init`). The tool emits a TODO and
-  a placeholder `void(...)` typedef.
-- Generate the `patch_jmp` call in `dummy.cpp` — add that by hand.
+- Infer prototypes that aren't present in `BMF.cpp` as forward
+  declarations. The tool emits a TODO and a placeholder `void(...)` typedef.
+- Generate the `patch_jmp` call in `dummy32.cpp` — add that by hand.
 - Detect self-recursive functions. For a function that calls itself,
   the tool sees the recursive call as just another external callee and
   emits a typedef + static ref pointing at the function's own VA. That
@@ -805,53 +956,66 @@ What it does **not** do:
   keep only the `#define name __name` line — the recursive call resolves
   directly to the C++ symbol.
 
-The scaffold should be reviewed line-by-line before compiling: think of
-it as a first draft that already has the typed-ref boilerplate written
-out, not as a finished `.inc`.
+Until the retarget in the note above lands, every generated signature must be
+re-read against `BMF.cpp`: strip the emitted `ms_abi` and substitute the
+convention from §4 — most of the time that means removing the attribute
+entirely (cdecl), not replacing it.
 
 ## 9. Verification
 
 The "test" referenced throughout this document is a **fixed, reproducible
-end-to-end run** of `PPMonstr.elf`: compress a known input, then compare
-byte-for-byte against the reference output produced by the un-injected
-baseline.
+end-to-end run** of `BMF.elf`: compress a known image, decompress it again,
+and compare the result byte-for-byte against the original.
 
-Baseline (run once, captures `1.ppm` as the reference):
+BMF is a lossless compressor, so the round-trip is self-checking — no
+separate reference run against an un-injected baseline is needed for the
+image data itself. Compare the `.bmf` too, so a change that alters the
+compressed stream (but still decodes) is caught.
+
+Baseline (run once, captures the reference `.bmf`):
 
 ```sh
-make && ./pe2elf PPMonstr.exe PPMonstr.elf \
-  && rm -v 1.ppm \
-  && ./PPMonstr.elf e -o128 -m1 -r1 -f1.ppm rar550.exe
+make dummy32.so && ./pe2elf32 BMF.exe BMF.elf \
+  && rm -f test.bmf ref.bmf \
+  && ./BMF.elf test.bmp \
+  && mv test.bmf ref.bmf
 ```
 
 Validation (run after every `.inc` change):
 
 ```sh
-make && ./pe2elf --inject=dummy.so PPMonstr.exe PPMonstr.elf \
-  && rm -v 1.pmm \
-  && ./PPMonstr.elf e -o128 -m1 -r1 -f1.pmm rar550.exe \
-  && cmp 1.pmm 1.ppm
+make dummy32.so && ./pe2elf32 --inject=dummy32.so BMF.exe BMF.elf \
+  && rm -f test.bmf \
+  && ./BMF.elf test.bmp        `# compress: test.bmp -> test.bmf` \
+  && cmp test.bmf ref.bmf      `# encoder output unchanged` \
+  && mv test.bmp orig.bmp      `# BMF decompresses back onto test.bmp` \
+  && ./BMF.elf test.bmf        `# decompress: test.bmf -> test.bmp` \
+  && cmp orig.bmp test.bmp     `# round-trip lossless`
 ```
 
+`test.bmp` can be generated reproducibly with `python3 exe32/mkbmp32.py
+test.bmp 256 192`; `t32.sh` uses the same image for its BMF stage. A larger
+or more varied corpus exercises more of the encoder — extend it once the
+easy functions are done, since a function with probe count 0 is unverified
+(see below).
+
 The validation command is the sole gate for promoting an `.inc` from
-"drafted" to "accepted". Note the deliberate filename split: the baseline
-writes `1.ppm`, the injected build writes `1.pmm`, and `cmp` enforces
-equality. Re-run the baseline only when `PPMonstr.exe`, `rar550.exe`, the
-encoder flags, or `pe2elf` itself change.
+"drafted" to "accepted". Re-run the baseline only when `BMF.exe`, the test
+image, the encoder flags, or `pe2elf32` itself change.
 
 After a green run, the stderr line `[probe] ExitProcess(0), call counts:`
 plus the per-probe counts confirms which decompiled bodies were actually
 exercised by this corpus. The per-iteration rule is:
 
-- **Probe count > 0 and `cmp` clean:** the function is verified. Stop this
-  iteration and commit.
-- **Probe count = 0 and `cmp` clean:** the redirect is wired but never
+- **Probe count > 0 and both `cmp`s clean:** the function is verified. Stop
+  this iteration and commit.
+- **Probe count = 0 and `cmp`s clean:** the redirect is wired but never
   taken. The implementation is unverified — do not stop. Continue
   immediately to the next candidate function without committing a new
   iteration boundary (or commit with an explicit note that the function is
   unverified). Such a function is eventually verified when a richer corpus
   exercises it, or it stays in the "accepted gap" list in §10.
-- **`cmp` fails:** the function is broken. Revert and debug before
+- **Either `cmp` fails:** the function is broken. Revert and debug before
   proceeding.
 
 If the test ever fails:
@@ -862,25 +1026,79 @@ If the test ever fails:
    revert the git commit for that function instead of using the tar backup —
    both return you to the same known-good state.
 4. If the Hex-Rays pseudocode alone does not explain the discrepancy, consult
-   `PPMonstr.asm`. It contains the full disassembly with named symbols, which
+   `BMF.asm`. It contains the full disassembly with named symbols, which
    makes it straightforward to cross-check control flow, spot arithmetic the
    decompiler mis-typed, find byte-level constants, or verify which branch
    path is actually taken. `objdump` on the ELF lacks these symbol names and
    is a poor substitute.
+
+### 9.1 Worked example: the infrastructure, verified
+
+The §5/§7 machinery has been exercised against `BMF.exe` end to end, with
+`main` as the moved function. `main` is at **`0x00401000`** and the CRT calls
+it as `__cdecl`: the disassembly at the call site is
+
+```
+0042d5dc:  50                       push   eax                ; envp
+0042d5dd:  ff 35 54 59 44 00        push   ds:0x445954        ; argv
+0042d5e3:  ff 35 50 59 44 00        push   ds:0x445950        ; argc
+0042d5e9:  e8 12 3a fd ff           call   0x401000
+0042d5ee:  83 c4 0c                 add    esp,0xc            ; caller pops -> cdecl
+```
+
+so the reimplementation takes **no** convention attribute:
+
+```cpp
+PROBE_DECL(__main)
+static int __main(int argc, char** argv, char** envp) {
+  PROBE_HIT(__main);
+  printf("__main: argc=%d argv[0]=%s\n", argc, argc > 0 ? argv[0] : "(none)");
+  fflush(stdout);                 // see §7.2 — _exit() skips glibc's flush
+  (void)envp;
+  return 0;
+}
+
+__attribute__((constructor)) static void dummy_init() {
+  fprintf(stderr, "[incdec] dummy32.so loaded at %p\n", (void*)&dummy_init);
+  patch_jmp((void*)0x00401000, (void*)&__main);
+  patch_iat_slot((void*)0x00438030, (void*)&my_ExitProcess);
+}
+```
+
+Running `./BMF.elf somefile.bmp` produces:
+
+```
+[incdec] dummy32.so loaded at 0x30001140
+[incdec] patch_jmp 0x401000 -> 0x30001330 (rel32 2fc0032b)
+[incdec] patch_iat 0x438030 -> 0x300013b0
+__main: argc=2 argv[0]=./BMF.elf
+[probe] ExitProcess(0), call counts:
+[probe]   __main                           1
+```
+
+Every claim in §2, §5 and §7 is visible here: the library landed in the
+`0x30000000` window, the rel32 displacement is `+0x2FC0032B`, the argument
+marshalling is correct with no attribute, the probe counted the call, and the
+IAT hook dumped on exit with the right code.
+
+The `fflush(stdout)` is load-bearing. Without it, the first run of this
+example printed the two `[incdec]` lines and the probe dump but **not**
+`__main:` — glibc had buffered it and `_exit()` discarded the buffer. Nothing
+reported an error; the output simply was not there.
 
 ## 10. Completion criterion
 
 The decompilation is complete when:
 
 - Every function listed in §1 has its own `.inc` file.
-- `dummy.cpp` `#include`s all of them.
+- `dummy32.cpp` `#include`s all of them.
 - `dummy_init()` patches a redirect for each one.
 - The test passes.
 - Every probe in the ExitProcess dump reports a non-zero count, **or** the
   zero-count function is explicitly listed as not exercised by the chosen
   corpus (and a corpus extension is filed as future work).
 
-At that point the bodies in `PPMonstr.cpp` are dead code (every entry has
+At that point the bodies in `BMF.cpp` are dead code (every entry has
 been overwritten by a JMP at runtime), and the `.inc` set is a standalone
 reimplementation that can be compiled into a native binary without the
-`PPMonstr.exe` donor.
+`BMF.exe` donor.
