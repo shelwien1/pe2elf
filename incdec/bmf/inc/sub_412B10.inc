@@ -1,5 +1,5 @@
 // sub_412B10 @ 0x00412B10 — __thiscall
-// Extracted from BMF.c:16773-17062 by extract.py per incdec.md.
+// Extracted from BMF.c:16832-17120 by extract.py per incdec.md.
 
 typedef int t_sub_412B10_Buffer_0;
 static t_sub_412B10_Buffer_0& __sub_412B10_Buffer_0 = *(t_sub_412B10_Buffer_0*)0x00443378;
@@ -19,15 +19,15 @@ static t_sub_412B10_dword_4456E8& __sub_412B10_dword_4456E8 = *(t_sub_412B10_dwo
 typedef int t_sub_412B10_dword_4456EC;
 static t_sub_412B10_dword_4456EC& __sub_412B10_dword_4456EC = *(t_sub_412B10_dword_4456EC*)0x004456EC;
 #define dword_4456EC __sub_412B10_dword_4456EC
-typedef int t_sub_412B10_dword_4456F4;
-static t_sub_412B10_dword_4456F4& __sub_412B10_dword_4456F4 = *(t_sub_412B10_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_412B10_dword_4456F4
 typedef int t_sub_412B10_n0x2000;
 static t_sub_412B10_n0x2000& __sub_412B10_n0x2000 = *(t_sub_412B10_n0x2000*)0x004456FC;
 #define n0x2000 __sub_412B10_n0x2000
 typedef int t_sub_412B10_n0x2000_0;
 static t_sub_412B10_n0x2000_0& __sub_412B10_n0x2000_0 = *(t_sub_412B10_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_412B10_n0x2000_0
+typedef int t_sub_412B10_n0x2000_1;
+static t_sub_412B10_n0x2000_1& __sub_412B10_n0x2000_1 = *(t_sub_412B10_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_412B10_n0x2000_1
 typedef int t_sub_412B10_n0x7F800000;
 static t_sub_412B10_n0x7F800000& __sub_412B10_n0x7F800000 = *(t_sub_412B10_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_412B10_n0x7F800000
@@ -112,7 +112,7 @@ __attribute__((thiscall)) int __sub_412B10(unsigned int *_this, int a2)
     {
       if ( !v5 )
         return 0;
-      dword_4456F4 = v5;
+      n0x2000_1 = v5;
       n0x2000 = *(_this + 2) + v5;
       n0x2000_0 = n0x2000;
       do
@@ -127,7 +127,7 @@ __attribute__((thiscall)) int __sub_412B10(unsigned int *_this, int a2)
   }
   n0x2000_0 = v5;
   i_1 = v3 - 1;
-  dword_4456F4 = v5 - v7;
+  n0x2000_1 = v5 - v7;
   if ( i_1 )
   {
     this_1 = _this;
@@ -308,9 +308,9 @@ LABEL_21:
   dword_4456EC = v52;
 LABEL_23:
   v17 = n0x800000 / n0x2000;
-  v18 = dword_4456F4 * (n0x800000 / n0x2000);
+  v18 = n0x2000_1 * (n0x800000 / n0x2000);
   n0x800000_2 = n0x800000 - v18;
-  n0x800000_3 = (n0x2000_0 - dword_4456F4) * v17;
+  n0x800000_3 = (n0x2000_0 - n0x2000_1) * v17;
   if ( n0x2000_0 < (unsigned int)n0x2000 )
     n0x800000_2 = n0x800000_3;
   ::n0x800000 = n0x800000_2;
@@ -324,8 +324,8 @@ LABEL_23:
 #undef byte_445700
 #undef dword_4456E8
 #undef dword_4456EC
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000

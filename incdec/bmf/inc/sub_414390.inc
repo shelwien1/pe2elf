@@ -1,5 +1,5 @@
 // sub_414390 @ 0x00414390 — __thiscall
-// Extracted from BMF.c:18575-18743 by extract.py per incdec.md.
+// Extracted from BMF.c:18634-18801 by extract.py per incdec.md.
 
 typedef int t_sub_414390_Buffer_0;
 static t_sub_414390_Buffer_0& __sub_414390_Buffer_0 = *(t_sub_414390_Buffer_0*)0x00443378;
@@ -13,15 +13,15 @@ static t_sub_414390_dword_4456E8& __sub_414390_dword_4456E8 = *(t_sub_414390_dwo
 typedef int t_sub_414390_dword_4456EC;
 static t_sub_414390_dword_4456EC& __sub_414390_dword_4456EC = *(t_sub_414390_dword_4456EC*)0x004456EC;
 #define dword_4456EC __sub_414390_dword_4456EC
-typedef int t_sub_414390_dword_4456F4;
-static t_sub_414390_dword_4456F4& __sub_414390_dword_4456F4 = *(t_sub_414390_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_414390_dword_4456F4
 typedef int t_sub_414390_n0x2000;
 static t_sub_414390_n0x2000& __sub_414390_n0x2000 = *(t_sub_414390_n0x2000*)0x004456FC;
 #define n0x2000 __sub_414390_n0x2000
 typedef int t_sub_414390_n0x2000_0;
 static t_sub_414390_n0x2000_0& __sub_414390_n0x2000_0 = *(t_sub_414390_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_414390_n0x2000_0
+typedef int t_sub_414390_n0x2000_1;
+static t_sub_414390_n0x2000_1& __sub_414390_n0x2000_1 = *(t_sub_414390_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_414390_n0x2000_1
 typedef int t_sub_414390_n0x7F800000;
 static t_sub_414390_n0x7F800000& __sub_414390_n0x7F800000 = *(t_sub_414390_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_414390_n0x7F800000
@@ -79,20 +79,20 @@ __attribute__((thiscall)) int __sub_414390(unsigned __int16 *_this, int a2, int 
     if ( (a3 & 1) != 0 )
     {
       v3 = *(_this + 1);
-      dword_4456F4 = v3;
+      ::n0x2000_1 = v3;
       v5 = _this + 2;
       v25 = _this + 2;
     }
     else
     {
-      dword_4456F4 = v3;
+      ::n0x2000_1 = v3;
       v5 = _this + 3;
       v25 = _this + 3;
     }
   }
   else
   {
-    dword_4456F4 = 0;
+    ::n0x2000_1 = 0;
     v5 = _this + 1;
     v3 = 0;
     v25 = _this + 1;
@@ -153,7 +153,7 @@ LABEL_19:
   n0x2000 = ::n0x2000;
   n0x2000_1 = n0x2000_0;
   n0x7F800000 = n0x7F800000_1;
-  v3 = dword_4456F4;
+  v3 = ::n0x2000_1;
   dword_4456EC = v30;
   n0x2000_2 = ::n0x2000;
 LABEL_21:
@@ -205,9 +205,9 @@ LABEL_21:
 #undef byte_4456F0
 #undef dword_4456E8
 #undef dword_4456EC
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000
 #undef n256_1

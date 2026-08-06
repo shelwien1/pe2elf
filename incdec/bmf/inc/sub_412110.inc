@@ -1,5 +1,5 @@
 // sub_412110 @ 0x00412110 — __cdecl
-// Extracted from BMF.c:16106-16210 by extract.py per incdec.md.
+// Extracted from BMF.c:16165-16268 by extract.py per incdec.md.
 
 typedef int t_sub_412110_Buffer_0;
 static t_sub_412110_Buffer_0& __sub_412110_Buffer_0 = *(t_sub_412110_Buffer_0*)0x00443378;
@@ -13,15 +13,15 @@ static t_sub_412110_dword_4456E8& __sub_412110_dword_4456E8 = *(t_sub_412110_dwo
 typedef int t_sub_412110_dword_4456EC;
 static t_sub_412110_dword_4456EC& __sub_412110_dword_4456EC = *(t_sub_412110_dword_4456EC*)0x004456EC;
 #define dword_4456EC __sub_412110_dword_4456EC
-typedef int t_sub_412110_dword_4456F4;
-static t_sub_412110_dword_4456F4& __sub_412110_dword_4456F4 = *(t_sub_412110_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_412110_dword_4456F4
 typedef int t_sub_412110_n0x2000;
 static t_sub_412110_n0x2000& __sub_412110_n0x2000 = *(t_sub_412110_n0x2000*)0x004456FC;
 #define n0x2000 __sub_412110_n0x2000
 typedef int t_sub_412110_n0x2000_0;
 static t_sub_412110_n0x2000_0& __sub_412110_n0x2000_0 = *(t_sub_412110_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_412110_n0x2000_0
+typedef int t_sub_412110_n0x2000_1;
+static t_sub_412110_n0x2000_1& __sub_412110_n0x2000_1 = *(t_sub_412110_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_412110_n0x2000_1
 typedef int t_sub_412110_n0x7F800000;
 static t_sub_412110_n0x7F800000& __sub_412110_n0x7F800000 = *(t_sub_412110_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_412110_n0x7F800000
@@ -31,13 +31,13 @@ static t_sub_412110_n0x800000& __sub_412110_n0x800000 = *(t_sub_412110_n0x800000
 
 
 PROBE_DECL(__sub_412110)
-int __sub_412110(int a1, int a2)
+int __sub_412110(int n0x2000, unsigned int n8193)
 {
   PROBE_HIT(__sub_412110);
-  int v2; // esi
-  unsigned int v3; // ebp
+  int n0x2000_3; // esi
+  unsigned int n8193_1; // ebp
   unsigned int n0x800000; // ecx
-  unsigned int v5; // ebx
+  unsigned int n0x2000_2; // ebx
   int v6; // ebx
   int n0x7F800000_1; // esi
   unsigned int v8; // edi
@@ -49,22 +49,22 @@ int __sub_412110(int a1, int a2)
   int n0x800000_3; // eax
   int n0x800000_2; // ecx
   int n0x7F800000; // [esp+0h] [ebp-20h]
-  unsigned int v17; // [esp+4h] [ebp-1Ch]
+  unsigned int n0x2000_1; // [esp+4h] [ebp-1Ch]
   unsigned int n0x800000_1; // [esp+4h] [ebp-1Ch]
   char v19; // [esp+8h] [ebp-18h]
   int v20; // [esp+Ch] [ebp-14h]
 
-  v2 = a1;
-  v3 = a2;
+  n0x2000_3 = n0x2000;
+  n8193_1 = n8193;
   n0x800000 = ::n0x800000;
-  n0x2000 = a2;
-  dword_4456F4 = a1;
+  ::n0x2000 = n8193;
+  ::n0x2000_1 = n0x2000;
   n0x7F800000 = ::n0x7F800000;
-  v5 = a1 + 1;
-  n0x2000_0 = a1 + 1;
+  n0x2000_2 = n0x2000 + 1;
+  n0x2000_0 = n0x2000 + 1;
   if ( (unsigned int)::n0x800000 > 0x800000 )
   {
-    v17 = n0x2000;
+    n0x2000_1 = ::n0x2000;
     goto LABEL_16;
   }
   v6 = dword_4456E8;
@@ -111,17 +111,17 @@ LABEL_14:
     n0x7F800000_1 = (n0x7F800000_1 << 8) & 0x7FFFFFFF;
   }
   while ( n0x800000 <= 0x800000 );
-  v3 = n0x2000;
-  v5 = n0x2000_0;
+  n8193_1 = ::n0x2000;
+  n0x2000_2 = n0x2000_0;
   n0x7F800000 = n0x7F800000_1;
-  v2 = dword_4456F4;
+  n0x2000_3 = ::n0x2000_1;
   dword_4456EC = v20;
-  v17 = n0x2000;
+  n0x2000_1 = ::n0x2000;
 LABEL_16:
-  v13 = n0x800000 / v17 * v2;
-  n0x800000_3 = (v5 - v2) * (n0x800000 / v17);
+  v13 = n0x800000 / n0x2000_1 * n0x2000_3;
+  n0x800000_3 = (n0x2000_2 - n0x2000_3) * (n0x800000 / n0x2000_1);
   n0x800000_2 = n0x800000 - v13;
-  if ( v5 < v3 )
+  if ( n0x2000_2 < n8193_1 )
     n0x800000_2 = n0x800000_3;
   ::n0x7F800000 = n0x7F800000 + v13;
   ::n0x800000 = n0x800000_2;
@@ -132,8 +132,8 @@ LABEL_16:
 #undef byte_4456F0
 #undef dword_4456E8
 #undef dword_4456EC
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000

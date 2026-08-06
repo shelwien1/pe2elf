@@ -1,5 +1,5 @@
 // sub_4256F0 @ 0x004256F0 — __thiscall
-// Extracted from BMF.c:30905-31035 by extract.py per incdec.md.
+// Extracted from BMF.c:30966-31095 by extract.py per incdec.md.
 
 typedef char t_sub_4256F0_byte_439BC0[8];
 static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)0x00439BC0;
@@ -25,7 +25,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4256F0)
-__attribute__((thiscall)) int *__sub_4256F0(int *_this, int a2, int a3, int n4)
+__attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
 {
   PROBE_HIT(__sub_4256F0);
   unsigned int n0x99C60; // edi
@@ -53,7 +53,7 @@ __attribute__((thiscall)) int *__sub_4256F0(int *_this, int a2, int a3, int n4)
   int v28; // [esp+4h] [ebp-1Ch]
 
   n0x99C60 = 0;
-  *_this = a2;
+  *_this = i;
   *(_this + 1) = a3;
   do
     sub_413560((_WORD *)_this + 8 * n0x99C60++ + 1900);

@@ -1,5 +1,5 @@
 // sub_4259F0 @ 0x004259F0 — __thiscall
-// Extracted from BMF.c:31037-31802 by extract.py per incdec.md.
+// Extracted from BMF.c:31098-31862 by extract.py per incdec.md.
 
 typedef int t_sub_4259F0_n256_1;
 static t_sub_4259F0_n256_1& __sub_4259F0_n256_1 = *(t_sub_4259F0_n256_1*)0x00445708;

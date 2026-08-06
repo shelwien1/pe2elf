@@ -45,12 +45,13 @@ INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
                     r'|BYTE\d|WORD\d|SLOBYTE|SLOWORD|SHIDWORD|COERCE_|abs32'
                     r'|alloca|qmemcpy|memset32|sizeof|_BitScanForward|_fxsave)')
 # Checked *before* INTRIN, whose `__` branch would otherwise swallow these.
-# They are real functions in the image, not compiler helpers — but they take
-# their arguments in registers, and Hex-Rays recovered neither the count nor
-# the types (`__svml_log2()` with no arguments at all, `__intel_sse2_strlen(int,
-# int)` for what is really `size_t(const char *)`).  A redirect built on those
-# signatures would pass garbage, so refuse instead.
-INTEL_CRT = re.compile(r'^(__svml_|__intel_)')
+# They are real functions in the image, not compiler helpers.  The ones with a
+# recovered signature are listed in CRT_PROTO and resolve like any other static
+# CRT entry; the rest take their arguments in SSE registers and Hex-Rays
+# recovered nothing — `__svml_log2()` and `__libm_sse2_log()` are printed with
+# no arguments at all, at call sites that plainly compute one — so a redirect
+# built on that signature would pass garbage.  Refuse those.
+INTEL_CRT = re.compile(r'^(__svml_|__intel_|__libm_)')
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof'}
 
 # Type names the head defines that a body may also use as a variable name.
@@ -77,6 +78,9 @@ CRT_PROTO = {
     'exit':   ('void', 'int'),
     'memcpy_0': ('void *', 'void *, const void *, unsigned int'),
     'irc__print':   ('int', 'const char *, ...'),
+    # Intel CRT, __fastcall — the one register-argument helper whose signature
+    # Hex-Rays does recover, and whose call sites agree with it.
+    '__intel_sse2_strlen': ('int', 'unsigned int, const void *', 'fastcall'),
     'irc__get_msg': ('char *', 'int, int, void *'),
     '_strcmpi': ('int', 'const char *, const char *'),
 }
@@ -144,6 +148,19 @@ def load():
     for l in open(os.path.join(HERE, 'symbols.txt')):
         addr, name, base, ext = (l.rstrip('\n').split('\t') + [''])[:4]
         globals_[name] = (int(addr, 16), base, ext)
+
+    # BMF.c's own "// 4456F4: using guessed type int n0x2000_1;" comments win
+    # over symbols.txt.  symbols.txt is keyed by name, and Hex-Rays' names are
+    # generated per run: re-decompiling the same binary renumbered the
+    # `n0x2000*` family, so a name that resolved last time can be absent or —
+    # worse — carry a *stale* address this time.  The comments come from the
+    # decompilation being extracted, so they are always in step with it.
+    for l in lines:
+        gm = re.match(r'^\s*//\s*([0-9A-Fa-f]+):\s*using guessed type\s+'
+                      r'(.+?)\s+([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*;\s*$', l)
+        if gm and '(' not in gm.group(2):        # skip function declarations
+            globals_[gm.group(3)] = (int(gm.group(1), 16), gm.group(2).strip(),
+                                     gm.group(4) or '')
 
     # Declared extents from the data-declaration section refine the guesses.
     gstart = next(i for i, l in enumerate(lines) if l.startswith('// Data declarations'))
@@ -344,7 +361,15 @@ def emit(args, cache=None):
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', body):
         n = m.group(1)
         if INTEL_CRT.match(n):
-            unresolved.add(n + ' (register-argument Intel CRT helper)')
+            # Resolve here rather than falling through: INTRIN's `__` branch
+            # below would otherwise swallow these before they reach the CRT
+            # lookup.
+            hit = next((c for c in (n, '_' + n, '__' + n) if c in funcs), None)
+            if n in CRT_PROTO and hit:
+                crt[n] = (hit, funcs[hit])
+            else:
+                unresolved.add(n + ' (register-argument Intel CRT helper, '
+                                   'no signature recovered)')
             continue
         if n in CTRL or INTRIN.match(n) or n in PURE_LIBC:
             continue
@@ -460,11 +485,12 @@ def emit(args, cache=None):
         out.append("#endif")
     for n in sorted(crt):
         asm_name, addr = crt[n]
-        ret, argl = CRT_PROTO[n]
+        ret, argl, *cc = CRT_PROTO[n]
+        attr = f'__attribute__(({cc[0]})) ' if cc else ''
         t = f"t_{n}"
         out.append(f"#ifndef __PE_DECL___{n}")
         out.append(f"#define __PE_DECL___{n}")
-        out.append(f"typedef {ret} {t}({argl});   // {asm_name}")
+        out.append(f"typedef {attr}{ret} {t}({argl});   // {asm_name}")
         out.append(f"static {t}& __{n} = *({t}*)0x{addr:08X};")
         out.append("#endif")
         out.append(f"#define {n} __{n}")

@@ -1,5 +1,5 @@
 // sub_419680 @ 0x00419680 — __cdecl
-// Extracted from BMF.c:23658-23726 by extract.py per incdec.md.
+// Extracted from BMF.c:23720-23787 by extract.py per incdec.md.
 
 typedef __int128 t_sub_419680_xmmword_439A00;
 static t_sub_419680_xmmword_439A00& __sub_419680_xmmword_439A00 = *(t_sub_419680_xmmword_439A00*)0x00439A00;

@@ -1,17 +1,20 @@
-sub_402EF0	test: test: COMPRESS FAILED (rc=1)
+sub_402EF0	test: t1: COMPRESS FAILED (rc=1)
 sub_412E60	build: inc/sub_412E60.inc:321:14: error: invalid operands of types ‘uint32’ {aka ‘unsigned int’} and ‘short unsigned int*’ to b
-sub_413430	test: test: STREAM DIFFERS from reference
-sub_413900	test: test: STREAM DIFFERS from reference
-sub_414060	test: test: DECOMPRESS FAILED (rc=4)
-sub_414F60	build: inc/sub_414F60.inc:72:14: error: cannot convert ‘char*’ to ‘uint16*’ {aka ‘short unsigned int*’} in assignment
-sub_4159E0	test: test: COMPRESS FAILED (rc=1)
-sub_417980	test: test: COMPRESS FAILED (rc=1)
-sub_418650	test: test: DECOMPRESS FAILED (rc=1)
-sub_419430	test: test: DECOMPRESS FAILED (rc=1)
+sub_413430	test: t8g: STREAM DIFFERS from reference
+sub_413900	test: t8g: STREAM DIFFERS from reference
+sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
+sub_414F60	test: t8g: COMPRESS FAILED (rc=1)
+sub_4159E0	test: t1: COMPRESS FAILED (rc=1)
+sub_417980	test: t1: COMPRESS FAILED (rc=1)
+sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
+sub_419430	build: inc/sub_419430.inc:119:32: error: cannot convert ‘uint64*’ {aka ‘long long unsigned int*’} to ‘uint32*’ {aka ‘unsigned i
 sub_417E80	build: inc/sub_417E80.inc:445:21: error: cannot convert ‘char*’ to ‘uint32*’ {aka ‘unsigned int*’} in assignment
-sub_41C4B0	test: test: COMPRESS FAILED (rc=1)
-sub_4229E0	test: test: COMPRESS FAILED (rc=1)
-sub_424550	test: test: STREAM DIFFERS from reference
+sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
+sub_4229E0	test: t8g: COMPRESS FAILED (rc=1)
+sub_424550	test: t24: STREAM DIFFERS from reference
 sub_424D90	build: inc/sub_424D90.inc:415:28: error: cannot convert ‘unsigned char**’ to ‘uint32*’ {aka ‘unsigned int*’}
-sub_42AB20	test: test: COMPRESS FAILED (rc=1)
-sub_42B0C0	test: test: DECOMPRESS FAILED (rc=1)
+sub_429DB0	build: inc/sub_429DB0.inc:34:27: error: invalid type argument of unary ‘*’ (have ‘t_sub_429DB0_argv’ {aka ‘int’})
+sub_429C80	test: t8g: COMPRESS TIMED OUT
+sub_42B830	test: t1: COMPRESS FAILED (rc=1)
+sub_42AB20	test: t1: COMPRESS FAILED (rc=1)
+sub_42B0C0	test: t1: DECOMPRESS FAILED (rc=1)

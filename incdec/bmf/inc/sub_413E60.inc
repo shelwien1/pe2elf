@@ -1,5 +1,5 @@
 // sub_413E60 @ 0x00413E60 — __fastcall
-// Extracted from BMF.c:18239-18360 by extract.py per incdec.md.
+// Extracted from BMF.c:18298-18418 by extract.py per incdec.md.
 
 typedef int t_sub_413E60_Buffer_0;
 static t_sub_413E60_Buffer_0& __sub_413E60_Buffer_0 = *(t_sub_413E60_Buffer_0*)0x00443378;
@@ -10,15 +10,15 @@ static t_sub_413E60_byte_4456F0& __sub_413E60_byte_4456F0 = *(t_sub_413E60_byte_
 typedef int t_sub_413E60_dword_4456E8;
 static t_sub_413E60_dword_4456E8& __sub_413E60_dword_4456E8 = *(t_sub_413E60_dword_4456E8*)0x004456E8;
 #define dword_4456E8 __sub_413E60_dword_4456E8
-typedef int t_sub_413E60_dword_4456F4;
-static t_sub_413E60_dword_4456F4& __sub_413E60_dword_4456F4 = *(t_sub_413E60_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_413E60_dword_4456F4
 typedef int t_sub_413E60_n0x2000;
 static t_sub_413E60_n0x2000& __sub_413E60_n0x2000 = *(t_sub_413E60_n0x2000*)0x004456FC;
 #define n0x2000 __sub_413E60_n0x2000
 typedef int t_sub_413E60_n0x2000_0;
 static t_sub_413E60_n0x2000_0& __sub_413E60_n0x2000_0 = *(t_sub_413E60_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_413E60_n0x2000_0
+typedef int t_sub_413E60_n0x2000_1;
+static t_sub_413E60_n0x2000_1& __sub_413E60_n0x2000_1 = *(t_sub_413E60_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_413E60_n0x2000_1
 typedef int t_sub_413E60_n0x7F800000;
 static t_sub_413E60_n0x7F800000& __sub_413E60_n0x7F800000 = *(t_sub_413E60_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_413E60_n0x7F800000
@@ -95,9 +95,9 @@ __attribute__((fastcall)) int __sub_413E60(_WORD *a1, int a2, int a3)
   v24 = (unsigned int)(a1 + 1);
   for ( n0x2000_0 = n0x2000_2; n0x2000_2 <= n0x2000_1; n0x2000_0 = n0x2000_2 )
     n0x2000_2 += (unsigned __int16)*++v11;
-  dword_4456F4 = n0x2000_2 - (unsigned __int16)*v11;
-  v13 = dword_4456F4 * v9;
-  n0x800000_2 = (n0x2000_2 - dword_4456F4) * v9;
+  ::n0x2000_1 = n0x2000_2 - (unsigned __int16)*v11;
+  v13 = ::n0x2000_1 * v9;
+  n0x800000_2 = (n0x2000_2 - ::n0x2000_1) * v9;
   ::n0x7F800000 = n0x7F800000 - v13;
   n0x800000_1 = n0x800000 - v13;
   if ( n0x2000_2 < n0x2000 )
@@ -155,9 +155,9 @@ __attribute__((fastcall)) int __sub_413E60(_WORD *a1, int a2, int a3)
 #undef Buffer_0
 #undef byte_4456F0
 #undef dword_4456E8
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000
 #undef n256_1

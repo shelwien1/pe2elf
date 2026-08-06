@@ -1,5 +1,5 @@
 // sub_4248D0 @ 0x004248D0 — __thiscall
-// Extracted from BMF.c:30245-30419 by extract.py per incdec.md.
+// Extracted from BMF.c:30309-30482 by extract.py per incdec.md.
 
 typedef int t_sub_4248D0_dword_439BD8[8];
 static t_sub_4248D0_dword_439BD8& __sub_4248D0_dword_439BD8 = *(t_sub_4248D0_dword_439BD8*)0x00439BD8;

@@ -1,20 +1,20 @@
 // sub_42CBB0 @ 0x0042CBB0 — __cdecl
-// Extracted from BMF.c:37124-37133 by extract.py per incdec.md.
+// Extracted from BMF.c:37179-37187 by extract.py per incdec.md.
 
-typedef int t_sub_42CBB0_dword_445930;
-static t_sub_42CBB0_dword_445930& __sub_42CBB0_dword_445930 = *(t_sub_42CBB0_dword_445930*)0x00445930;
-#define dword_445930 __sub_42CBB0_dword_445930
+typedef int t_sub_42CBB0_psub_402E30;
+static t_sub_42CBB0_psub_402E30& __sub_42CBB0_psub_402E30 = *(t_sub_42CBB0_psub_402E30*)0x00445930;
+#define psub_402E30 __sub_42CBB0_psub_402E30
 
 
 PROBE_DECL(__sub_42CBB0)
-int __sub_42CBB0(int a1)
+int __sub_42CBB0(int sub_402E30)
 {
   PROBE_HIT(__sub_42CBB0);
-  int result; // eax
+  int psub_402E30; // eax
 
-  result = dword_445930;
-  dword_445930 = a1;
-  return result;
+  psub_402E30 = ::psub_402E30;
+  ::psub_402E30 = sub_402E30;
+  return psub_402E30;
 }
 
-#undef dword_445930
+#undef psub_402E30

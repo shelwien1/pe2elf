@@ -1,5 +1,5 @@
 // sub_4135A0 @ 0x004135A0 — __fastcall
-// Extracted from BMF.c:17657-17874 by extract.py per incdec.md.
+// Extracted from BMF.c:17716-17932 by extract.py per incdec.md.
 
 typedef int t_sub_4135A0_Buffer_0;
 static t_sub_4135A0_Buffer_0& __sub_4135A0_Buffer_0 = *(t_sub_4135A0_Buffer_0*)0x00443378;
@@ -13,15 +13,15 @@ static t_sub_4135A0_dword_4456E8& __sub_4135A0_dword_4456E8 = *(t_sub_4135A0_dwo
 typedef int t_sub_4135A0_dword_4456EC;
 static t_sub_4135A0_dword_4456EC& __sub_4135A0_dword_4456EC = *(t_sub_4135A0_dword_4456EC*)0x004456EC;
 #define dword_4456EC __sub_4135A0_dword_4456EC
-typedef int t_sub_4135A0_dword_4456F4;
-static t_sub_4135A0_dword_4456F4& __sub_4135A0_dword_4456F4 = *(t_sub_4135A0_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_4135A0_dword_4456F4
 typedef int t_sub_4135A0_n0x2000;
 static t_sub_4135A0_n0x2000& __sub_4135A0_n0x2000 = *(t_sub_4135A0_n0x2000*)0x004456FC;
 #define n0x2000 __sub_4135A0_n0x2000
 typedef int t_sub_4135A0_n0x2000_0;
 static t_sub_4135A0_n0x2000_0& __sub_4135A0_n0x2000_0 = *(t_sub_4135A0_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_4135A0_n0x2000_0
+typedef int t_sub_4135A0_n0x2000_1;
+static t_sub_4135A0_n0x2000_1& __sub_4135A0_n0x2000_1 = *(t_sub_4135A0_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_4135A0_n0x2000_1
 typedef int t_sub_4135A0_n0x7F800000;
 static t_sub_4135A0_n0x7F800000& __sub_4135A0_n0x7F800000 = *(t_sub_4135A0_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_4135A0_n0x7F800000
@@ -40,18 +40,18 @@ static t_sub_413900& __sub_413900 = *(t_sub_413900*)0x00413900;
 #define sub_413900 __sub_413900
 
 PROBE_DECL(__sub_4135A0)
-BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int a2, int a3, int n5)
+BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int n5, int a3, int n5a)
 {
   PROBE_HIT(__sub_4135A0);
   __int16 v4; // di
-  int n4; // eax
+  int n5a_1; // eax
   unsigned int n0x2000; // edi
-  unsigned int n5_2; // esi
-  unsigned int n5_3; // eax
+  unsigned int n5a_3; // esi
+  unsigned int n5a_4; // eax
   __m128i v9; // xmm1
   __m128i v10; // xmm1
-  int v11; // ecx
-  int v12; // edi
+  int n0x2000_2; // ecx
+  unsigned __int16 *v12; // edi
   unsigned int n0x800000; // ebx
   int v14; // esi
   int n0x7F800000_1; // edi
@@ -66,17 +66,17 @@ BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int a2,
   int n0x800000_3; // ebx
   int n0x800000_4; // eax
   int result; // eax
-  _WORD *v27; // edi
+  unsigned __int16 *v27; // edi
   int n256; // edx
   bool v29; // cf
   unsigned __int16 *v30; // eax
-  __int16 v31; // ax
+  unsigned __int16 v31; // ax
   unsigned int n0x2000_1; // [esp+0h] [ebp-40h]
-  unsigned int n0x2000_2; // [esp+0h] [ebp-40h]
-  int n5_1; // [esp+8h] [ebp-38h]
+  unsigned int n0x2000_3; // [esp+0h] [ebp-40h]
+  int n5a_2; // [esp+8h] [ebp-38h]
   unsigned __int16 *v35; // [esp+Ch] [ebp-34h]
-  unsigned int v37; // [esp+14h] [ebp-2Ch]
-  unsigned int n0x2000_3; // [esp+18h] [ebp-28h]
+  unsigned __int16 *v37; // [esp+14h] [ebp-2Ch]
+  unsigned int n0x2000_4; // [esp+18h] [ebp-28h]
   char v39; // [esp+18h] [ebp-28h]
   int n0x7F800000; // [esp+1Ch] [ebp-24h]
   int n0x7F800000_2; // [esp+1Ch] [ebp-24h]
@@ -84,62 +84,62 @@ BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int a2,
   int n0x800000_1; // [esp+24h] [ebp-1Ch]
 
   v4 = *a1;
-  dword_4456F4 = 0;
-  n4 = 6 - (n5 & 1);
-  if ( n5 < 5 )
-    n4 = n5;
-  n5_1 = n4;
-  v37 = (unsigned int)(a1 + 1);
+  ::n0x2000_1 = 0;
+  n5a_1 = 6 - (n5a & 1);
+  if ( n5a < 5 )
+    n5a_1 = n5a;
+  n5a_2 = n5a_1;
+  v37 = a1 + 1;
   v35 = a1 + 1;
   n0x2000 = v4 & 0x7FFF;
   ::n0x2000 = n0x2000;
-  if ( n4 )
+  if ( n5a_1 )
   {
-    if ( n4 < 4 )
+    if ( n5a_1 < 4 )
     {
-      v11 = 0;
-      n5_2 = 0;
+      n0x2000_2 = 0;
+      n5a_3 = 0;
     }
     else
     {
-      n5_2 = n4 - (n4 & 3);
-      n5_3 = 0;
+      n5a_3 = n5a_1 - (n5a_1 & 3);
+      n5a_4 = 0;
       v9 = 0;
       do
       {
-        v9 = _mm_add_epi32(v9, _mm_unpacklo_epi16(_mm_loadl_epi64((const __m128i *)(v37 + 2 * n5_3)), (__m128i)0LL));
-        n5_3 += 4;
+        v9 = _mm_add_epi32(v9, _mm_unpacklo_epi16(_mm_loadl_epi64((const __m128i *)&v37[n5a_4]), (__m128i)0LL));
+        n5a_4 += 4;
       }
-      while ( n5_3 < n5_2 );
-      v35 = &a1[n5_3 + 1];
+      while ( n5a_4 < n5a_3 );
+      v35 = &a1[n5a_4 + 1];
       v10 = _mm_add_epi32(v9, _mm_srli_si128(v9, 8));
-      v11 = _mm_cvtsi128_si32(_mm_add_epi32(v10, _mm_srli_si128(v10, 4)));
+      n0x2000_2 = _mm_cvtsi128_si32(_mm_add_epi32(v10, _mm_srli_si128(v10, 4)));
     }
-    if ( n5_2 < n5_1 )
+    if ( n5a_3 < n5a_2 )
     {
       n0x2000_1 = n0x2000;
       do
       {
-        v11 += *(unsigned __int16 *)(v37 + 2 * n5_2);
-        v12 = (int)&a1[n5_2++ + 2];
+        n0x2000_2 += v37[n5a_3];
+        v12 = &a1[n5a_3++ + 2];
       }
-      while ( n5_2 < n5_1 );
-      v35 = (unsigned __int16 *)v12;
+      while ( n5a_3 < n5a_2 );
+      v35 = v12;
       n0x2000 = n0x2000_1;
     }
-    dword_4456F4 = v11;
+    ::n0x2000_1 = n0x2000_2;
   }
   else
   {
-    v11 = 0;
+    n0x2000_2 = 0;
   }
   n0x800000 = ::n0x800000;
   n0x7F800000 = ::n0x7F800000;
-  n0x2000_2 = v11 + *v35;
-  n0x2000_0 = n0x2000_2;
+  n0x2000_3 = n0x2000_2 + *v35;
+  n0x2000_0 = n0x2000_3;
   if ( (unsigned int)::n0x800000 > 0x800000 )
   {
-    n0x2000_3 = ::n0x2000;
+    n0x2000_4 = ::n0x2000;
     goto LABEL_29;
   }
   v14 = dword_4456E8;
@@ -189,19 +189,19 @@ LABEL_27:
   }
   while ( n0x800000_2 <= 0x800000 );
   n0x800000 = n0x800000_2;
-  v11 = dword_4456F4;
+  n0x2000_2 = ::n0x2000_1;
   n0x7F800000 = n0x7F800000_1;
   n0x2000 = ::n0x2000;
   dword_4456EC = v42;
-  n0x2000_3 = ::n0x2000;
-  n0x2000_2 = n0x2000_0;
+  n0x2000_4 = ::n0x2000;
+  n0x2000_3 = n0x2000_0;
 LABEL_29:
-  v22 = n0x800000 / n0x2000_3;
-  v23 = n0x800000 / n0x2000_3 * v11;
+  v22 = n0x800000 / n0x2000_4;
+  v23 = n0x800000 / n0x2000_4 * n0x2000_2;
   n0x800000_3 = n0x800000 - v23;
   ::n0x7F800000 = n0x7F800000 + v23;
-  n0x800000_4 = (n0x2000_2 - v11) * v22;
-  if ( n0x2000_2 < n0x2000 )
+  n0x800000_4 = (n0x2000_3 - n0x2000_2) * v22;
+  if ( n0x2000_3 < n0x2000 )
     n0x800000_3 = n0x800000_4;
   ::n0x800000 = n0x800000_3;
   if ( n0x2000 > 0x2000 )
@@ -209,9 +209,9 @@ LABEL_29:
     *a1 = 0x8000;
     v27 = a1 + 7;
     n256 = 256;
-    v29 = (unsigned int)(a1 + 7) < v37;
+    v29 = a1 + 7 < v37;
     v30 = a1 + 7;
-    if ( (unsigned int)(a1 + 7) >= v37 )
+    if ( a1 + 7 >= v37 )
     {
       do
       {
@@ -219,8 +219,8 @@ LABEL_29:
           n256 = *v30;
         --v30;
       }
-      while ( (unsigned int)v30 >= v37 );
-      v29 = (unsigned int)v27 < v37;
+      while ( v30 >= v37 );
+      v29 = v27 < v37;
     }
     if ( !v29 )
     {
@@ -229,24 +229,24 @@ LABEL_29:
         if ( (unsigned __int16)n256 <= 1u )
           v31 = *v27 - (*v27 >> 1);
         else
-          v31 = ((unsigned __int16)*v27 + 2) / 3;
+          v31 = (*v27 + 2) / 3;
         *v27 = v31;
         *a1 += v31;
         --v27;
       }
-      while ( (unsigned int)v27 >= v37 );
+      while ( v27 >= v37 );
     }
   }
   *v35 += 32;
   result = *a1 + 32;
   *a1 = result;
-  if ( n5_1 >= 5 )
+  if ( n5a_2 >= 5 )
     return sub_413900(
              (unsigned __int16 *)n256_1
-           + 32512 * (n5_1 & 1)
-           + 254 * (((a1[1] + (result & 0x7FFF) + 96 - 2 * (unsigned int)a1[n5_1 + 1]) >> 25) & 0xFFFFFFC0)
+           + 32512 * (n5a_2 & 1)
+           + 254 * (((a1[1] + (result & 0x7FFF) + 96 - 2 * (unsigned int)a1[n5a_2 + 1]) >> 25) & 0xFFFFFFC0)
            + 254 * a3,
-             (n5 - 5) >> 1);
+             (n5a - 5) >> 1);
   return result;
 }
 
@@ -254,9 +254,9 @@ LABEL_29:
 #undef byte_4456F0
 #undef dword_4456E8
 #undef dword_4456EC
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000
 #undef n256_1

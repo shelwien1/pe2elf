@@ -1,5 +1,5 @@
 // sub_411E90 @ 0x00411E90 — __cdecl
-// Extracted from BMF.c:15929-16017 by extract.py per incdec.md.
+// Extracted from BMF.c:15988-16075 by extract.py per incdec.md.
 
 typedef int t_sub_411E90_Buffer_0;
 static t_sub_411E90_Buffer_0& __sub_411E90_Buffer_0 = *(t_sub_411E90_Buffer_0*)0x00443378;
@@ -13,15 +13,15 @@ static t_sub_411E90_dword_4456E8& __sub_411E90_dword_4456E8 = *(t_sub_411E90_dwo
 typedef int t_sub_411E90_dword_4456EC;
 static t_sub_411E90_dword_4456EC& __sub_411E90_dword_4456EC = *(t_sub_411E90_dword_4456EC*)0x004456EC;
 #define dword_4456EC __sub_411E90_dword_4456EC
-typedef int t_sub_411E90_dword_4456F4;
-static t_sub_411E90_dword_4456F4& __sub_411E90_dword_4456F4 = *(t_sub_411E90_dword_4456F4*)0x004456F4;
-#define dword_4456F4 __sub_411E90_dword_4456F4
 typedef int t_sub_411E90_n0x2000;
 static t_sub_411E90_n0x2000& __sub_411E90_n0x2000 = *(t_sub_411E90_n0x2000*)0x004456FC;
 #define n0x2000 __sub_411E90_n0x2000
 typedef int t_sub_411E90_n0x2000_0;
 static t_sub_411E90_n0x2000_0& __sub_411E90_n0x2000_0 = *(t_sub_411E90_n0x2000_0*)0x004456F8;
 #define n0x2000_0 __sub_411E90_n0x2000_0
+typedef int t_sub_411E90_n0x2000_1;
+static t_sub_411E90_n0x2000_1& __sub_411E90_n0x2000_1 = *(t_sub_411E90_n0x2000_1*)0x004456F4;
+#define n0x2000_1 __sub_411E90_n0x2000_1
 typedef int t_sub_411E90_n0x7F800000;
 static t_sub_411E90_n0x7F800000& __sub_411E90_n0x7F800000 = *(t_sub_411E90_n0x7F800000*)0x004456E4;
 #define n0x7F800000 __sub_411E90_n0x7F800000
@@ -102,9 +102,9 @@ LABEL_13:
   }
 LABEL_15:
   v8 = n0x800000 / n0x2000;
-  v9 = dword_4456F4 * (n0x800000 / n0x2000);
+  v9 = n0x2000_1 * (n0x800000 / n0x2000);
   n0x800000_1 = n0x800000 - v9;
-  n0x800000_3 = (n0x2000_0 - dword_4456F4) * v8;
+  n0x800000_3 = (n0x2000_0 - n0x2000_1) * v8;
   if ( n0x2000_0 < (unsigned int)n0x2000 )
     n0x800000_1 = n0x800000_3;
   ::n0x800000 = n0x800000_1;
@@ -116,8 +116,8 @@ LABEL_15:
 #undef byte_4456F0
 #undef dword_4456E8
 #undef dword_4456EC
-#undef dword_4456F4
 #undef n0x2000
 #undef n0x2000_0
+#undef n0x2000_1
 #undef n0x7F800000
 #undef n0x800000

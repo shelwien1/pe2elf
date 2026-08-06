@@ -1,7 +1,7 @@
 // sub_4108C0 @ 0x004108C0 — __cdecl
-// Extracted from BMF.c:14564-14726 by extract.py per incdec.md.
+// Extracted from BMF.c:14623-14784 by extract.py per incdec.md.
 
-typedef int t_sub_4108C0_buf;
+typedef int t_sub_4108C0_buf[0x10000];
 static t_sub_4108C0_buf& __sub_4108C0_buf = *(t_sub_4108C0_buf*)0x00443380;
 #define buf __sub_4108C0_buf
 typedef __int128 t_sub_4108C0_xmmword_4396C0;
@@ -19,19 +19,19 @@ static t_sub_4108C0_xmmword_4396F0& __sub_4108C0_xmmword_4396F0 = *(t_sub_4108C0
 
 
 PROBE_DECL(__sub_4108C0)
-BMF_SSE unsigned int __sub_4108C0(int a1, int a2, int a3)
+BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
 {
   PROBE_HIT(__sub_4108C0);
   _BYTE *v3; // edx
   _BYTE *v4; // edi
-  unsigned int i; // esi
+  unsigned int j; // esi
   __m128i si128; // xmm1
   __m128i v7; // xmm0
-  unsigned int j; // eax
+  unsigned int k; // eax
   int v9; // eax
-  unsigned int k; // esi
+  unsigned int m; // esi
   char v11; // cl
-  int v12; // ebx
+  int i_1; // ebx
   __m128i v13; // xmm1
   __m128i v14; // xmm0
   unsigned int n15; // eax
@@ -53,31 +53,31 @@ BMF_SSE unsigned int __sub_4108C0(int a1, int a2, int a3)
   _BYTE v31[272]; // [esp+10h] [ebp-110h]
 
   v31[0] = 0;
-  v3 = (_BYTE *)(a1 + a3 * a2);
-  v4 = &v3[-a2];
+  v3 = (_BYTE *)(Src + a3 * i);
+  v4 = &v3[-i];
   v31[128] = -1;
-  for ( i = 0; i < 7; ++i )
+  for ( j = 0; j < 7; ++j )
   {
-    v31[2 * i + 1] = 4 * i + 2;
-    v31[2 * i + 2] = 4 * i + 4;
+    v31[2 * j + 1] = 4 * j + 2;
+    v31[2 * j + 2] = 4 * j + 4;
   }
   si128 = _mm_load_si128((const __m128i *)&xmmword_4396C0);
   v7 = _mm_load_si128((const __m128i *)&xmmword_4396D0);
   v31[15] = 30;
-  for ( j = 15; j < 0x7F; j += 16 )
+  for ( k = 15; k < 0x7F; k += 16 )
   {
-    *(__m128i *)&v31[j + 1] = v7;
+    *(__m128i *)&v31[k + 1] = v7;
     v7 = _mm_add_epi8(v7, si128);
   }
   v9 = 0;
-  for ( k = 0; k < 7; ++k )
+  for ( m = 0; m < 7; ++m )
   {
-    v31[2 * k + 129] = 2 * v9 - 3;
+    v31[2 * m + 129] = 2 * v9 - 3;
     v11 = 2 * v9 - 5;
     v9 -= 2;
-    v31[2 * k + 130] = v11;
+    v31[2 * m + 130] = v11;
   }
-  v12 = a2;
+  i_1 = i;
   v13 = _mm_load_si128((const __m128i *)&xmmword_4396E0);
   v14 = _mm_load_si128((const __m128i *)&xmmword_4396F0);
   n15 = 15;
@@ -94,15 +94,15 @@ BMF_SSE unsigned int __sub_4108C0(int a1, int a2, int a3)
     goto LABEL_24;
   do
   {
-    v17 = a2 - 1;
-    if ( v12 == 1 )
+    v17 = i - 1;
+    if ( i_1 == 1 )
       goto LABEL_23;
     v29 = v16;
     do
     {
       v18 = (unsigned __int8)*--v4;
       v19 = (unsigned __int8)*(--v3 - 1);
-      v20 = (unsigned __int8)v3[-a2 - 1];
+      v20 = (unsigned __int8)v3[-i - 1];
       if ( v19 < v18 )
       {
         if ( v20 < v19 )
@@ -127,29 +127,29 @@ LABEL_20:
 LABEL_21:
       v21 = (unsigned __int8)v31[(unsigned __int8)(*v3 - v19)];
       *v3 = v21;
-      ++*((_DWORD *)buf + v21);
+      ++*(_DWORD *)&buf[4 * v21];
       --v17;
     }
     while ( v17 );
     v16 = v29;
-    v12 = a2;
+    i_1 = i;
 LABEL_23:
     --v4;
     --v3;
-    n15 = (unsigned __int8)v31[(unsigned __int8)(*v3 - v3[-v12])];
+    n15 = (unsigned __int8)v31[(unsigned __int8)(*v3 - v3[-i_1])];
     *v3 = n15;
-    ++*((_DWORD *)buf + n15);
+    ++*(_DWORD *)&buf[4 * n15];
     --v16;
   }
   while ( v16 );
 LABEL_24:
-  if ( v12 != 1 )
+  if ( i_1 != 1 )
   {
-    n15 = v12 - 1;
-    v22 = (v12 - 1) / 2;
+    n15 = i_1 - 1;
+    v22 = (i_1 - 1) / 2;
     if ( v22 )
     {
-      n15_1 = v12 - 1;
+      n15_1 = i_1 - 1;
       v23 = 0;
       v24 = 0;
       v25 = v22;

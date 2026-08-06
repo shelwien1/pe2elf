@@ -36,6 +36,7 @@
 00413E60	sub_413E60	fastcall
 00414060	sub_414060	thiscall
 00414390	sub_414390	thiscall
+00414620	sub_414620	thiscall
 00414800	sub_414800	thiscall
 00414860	sub_414860	userpurge
 004148F0	sub_4148F0	thiscall
@@ -62,6 +63,8 @@
 0041C4B0	sub_41C4B0	thiscall
 0041CAB0	sub_41CAB0	userpurge
 004229E0	sub_4229E0	thiscall
+00422D60	sub_422D60	usercall
+00422DB0	sub_422DB0	userpurge
 004244A0	sub_4244A0	thiscall
 00424500	sub_424500	cdecl
 00424550	sub_424550	thiscall
@@ -85,5 +88,5 @@
 004349F0	sub_4349F0	usercall
 00434A30	sub_434A30	cdecl
 00436BD0	sub_436BD0	usercall
-00436DC0	sub_436DC0	cdecl
+00436DC0	__svml_log2_w	usercall
 00436E10	sub_436E10	usercall

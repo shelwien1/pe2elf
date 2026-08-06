@@ -1,5 +1,5 @@
 // sub_419610 @ 0x00419610 — __thiscall
-// Extracted from BMF.c:23643-23656 by extract.py per incdec.md.
+// Extracted from BMF.c:23705-23717 by extract.py per incdec.md.
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

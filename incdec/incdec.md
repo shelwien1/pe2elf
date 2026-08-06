@@ -130,6 +130,13 @@ that **every step ends with a green test**.
    which is easily misread as "the decompiler could not lift this function"
    when the real answer is "the extractor handed the compiler two functions".
 
+   Names are per-run too.  Hex-Rays numbers its auto-generated globals from
+   scratch each time it decompiles, so re-decompiling the *same binary*
+   renumbered the `n0x2000*` family here.  Any symbol table keyed by name goes
+   stale across that — a name can vanish, or worse, keep resolving to the
+   address it had last time.  Prefer the `// <addr>: using guessed type …`
+   comments in the decompilation you are actually extracting from.
+
 3. **Look up the original VA** of the function:
    - Preferred source: `BMF.txt`. Each line has the form
      `<8-hex VA>  <name>`, e.g. `00401000  main`. The VA is the full 32-bit
@@ -1109,10 +1116,24 @@ make dummy32.so && ./pe2elf32 --inject=dummy32.so BMF.exe BMF.elf \
 ```
 
 `test.bmp` can be generated reproducibly with `python3 exe32/mkbmp32.py
-test.bmp 256 192`; `t32.sh` uses the same image for its BMF stage. A larger
-or more varied corpus exercises more of the encoder — extend it once the
-easy functions are done, since a function with probe count 0 is unverified
-(see below).
+test.bmp 256 192`; `t32.sh` uses the same image for its BMF stage.
+
+**One image is not a gate — use one per pixel format.** BMF takes a different
+path through the filters and the context model for 1bpp, 8bpp grayscale, 8bpp
+palette, 24bpp RGB and 32bpp RGBA, so a redirect that is wrong for one of them
+can be perfectly correct for the others and sail through a 24bpp-only test.
+Measured on this target: of the twenty candidates that fail the gate, eleven
+fail *first* on the 1bpp or 8bpp-grayscale image. Give every format an old-style
+40-byte `BITMAPINFOHEADER` — that is what BMF writes back — and generate them
+from a fixed PRNG so they are byte-reproducible.
+
+**Compare everything the format round-trips, not just the pixels.** It is
+tempting to start the comparison at `bfOffBits` and be done with it, but on an
+8bpp image that skips the entire 1 KB palette. Find out what the *un-injected*
+binary actually preserves and exclude exactly that: here it is four header
+fields (`biXPelsPerMeter`, `biYPelsPerMeter`, `biClrUsed`, `biClrImportant`,
+bytes 38..53), which BMF writes back as zero — and nothing else, palette
+included.
 
 The validation command is the sole gate for promoting an `.inc` from
 "drafted" to "accepted". Re-run the baseline only when `BMF.exe`, the test

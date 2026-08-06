@@ -1,5 +1,5 @@
 // sub_402DF0 @ 0x00402DF0 — __thiscall
-// Extracted from BMF.c:2393-2400 by extract.py per incdec.md.
+// Extracted from BMF.c:2463-2469 by extract.py per incdec.md.
 
 #define sub_402FB0 __sub_402FB0
 

@@ -1,5 +1,5 @@
 // sub_412490 @ 0x00412490 — __thiscall
-// Extracted from BMF.c:16375-16614 by extract.py per incdec.md.
+// Extracted from BMF.c:16434-16672 by extract.py per incdec.md.
 
 typedef int t_sub_412490_Buffer_0;
 static t_sub_412490_Buffer_0& __sub_412490_Buffer_0 = *(t_sub_412490_Buffer_0*)0x00443378;
@@ -25,7 +25,7 @@ static t_sub_412490_n0x88& __sub_412490_n0x88 = *(t_sub_412490_n0x88*)0x00445704
 
 
 PROBE_DECL(__sub_412490)
-__attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __int16 *a2, int a3)
+__attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __int16 *a2, int n15)
 {
   PROBE_HIT(__sub_412490);
   int v3; // ebx
@@ -38,7 +38,7 @@ __attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __i
   int v10; // eax
   unsigned int v11; // ecx
   _BYTE *v12; // esi
-  unsigned int n0x4000_1; // ebp
+  unsigned int n0x88; // ebp
   int n0x800000_1; // ebx
   int n0x4000; // esi
   int result; // eax
@@ -52,9 +52,9 @@ __attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __i
   int v24; // eax
   unsigned int v25; // ecx
   _BYTE *v26; // esi
-  unsigned int n0x88; // ebp
+  unsigned int n0x88_1; // ebp
   int n0x800000_5; // ebx
-  int n0x4000_2; // eax
+  int n0x4000_1; // eax
   unsigned int v30; // ebp
   int v31; // edi
   unsigned int v32; // ebp
@@ -94,10 +94,10 @@ __attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __i
     if ( (unsigned int)::n0x800000 > 0x800000 )
     {
 LABEL_18:
-      n0x4000_1 = v3 + v4;
-      ::n0x88 = n0x4000_1;
-      n0x800000_1 = n0x800000 / n0x4000_1 * v3;
-      if ( a3 )
+      n0x88 = v3 + v4;
+      ::n0x88 = n0x88;
+      n0x800000_1 = n0x800000 / n0x88 * v3;
+      if ( n15 )
       {
         ::n0x7F800000 += n0x800000_1;
         ::n0x800000 = n0x800000 - n0x800000_1;
@@ -107,7 +107,7 @@ LABEL_18:
         ::n0x800000 = n0x800000_1;
       }
       n0x4000 = *(_this + 2);
-      if ( n0x4000_1 > n0x4000 )
+      if ( n0x88 > n0x4000 )
       {
         v30 = *(_this + 1);
         *_this -= *_this >> 1;
@@ -115,9 +115,9 @@ LABEL_18:
         if ( n0x4000 < 0x4000 )
           *(_this + 2) = n0x4000 + 64;
       }
-      result = *(_this + a3) + 8;
-      *(_this + a3) = result;
-      a2[a3] += (unsigned int)::n0x88 < 0x88;
+      result = *(_this + n15) + 8;
+      *(_this + n15) = result;
+      a2[n15] += (unsigned int)::n0x88 < 0x88;
       return result;
     }
     n0x7F800000 = ::n0x7F800000;
@@ -232,10 +232,10 @@ LABEL_35:
   dword_4456EC = v46;
   ::n0x7F800000 = n0x7F800000_1;
 LABEL_37:
-  n0x88 = v18 + v19;
-  ::n0x88 = n0x88;
-  n0x800000_5 = n0x800000_3 / n0x88 * v18;
-  if ( a3 )
+  n0x88_1 = v18 + v19;
+  ::n0x88 = n0x88_1;
+  n0x800000_5 = n0x800000_3 / n0x88_1 * v18;
+  if ( n15 )
   {
     ::n0x7F800000 += n0x800000_5;
     ::n0x800000 = n0x800000_3 - n0x800000_5;
@@ -244,18 +244,18 @@ LABEL_37:
   {
     ::n0x800000 = n0x800000_5;
   }
-  n0x4000_2 = a2[2];
-  if ( n0x88 > n0x4000_2 )
+  n0x4000_1 = a2[2];
+  if ( n0x88_1 > n0x4000_1 )
   {
     v34 = a2[1];
     *a2 -= *a2 >> 1;
     a2[1] = v34 - (v34 >> 1);
-    if ( n0x4000_2 < 0x4000 )
-      a2[2] = n0x4000_2 + 64;
+    if ( n0x4000_1 < 0x4000 )
+      a2[2] = n0x4000_1 + 64;
   }
-  result = a2[a3] + 8;
-  a2[a3] = result;
-  *_this = a3 + 1;
+  result = a2[n15] + 8;
+  a2[n15] = result;
+  *_this = n15 + 1;
   return result;
 }
 

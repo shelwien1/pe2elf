@@ -1,11 +1,6 @@
 // sub_427F40 @ 0x00427F40 — __cdecl
-// Extracted from BMF.c:32391-32408 by extract.py per incdec.md.
+// Extracted from BMF.c:32448-32464 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_4280B0
-#define __PE_DECL___sub_4280B0
-typedef int t_sub_4280B0(...);
-static t_sub_4280B0& __sub_4280B0 = *(t_sub_4280B0*)0x004280B0;
-#endif
 #define sub_4280B0 __sub_4280B0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -26,7 +21,7 @@ static t_sprintf& __sprintf = *(t_sprintf*)0x0042CF4D;
 #define FILE FILE1
 
 PROBE_DECL(__sub_427F40)
-int __sub_427F40(int a1, int a2, int a3)
+int __sub_427F40(int BMF_Options, int UseFilters, int a3)
 {
   PROBE_HIT(__sub_427F40);
   const char *_0; // edx
@@ -37,7 +32,7 @@ int __sub_427F40(int a1, int a2, int a3)
   if ( a3 )
     _0 = "1";
   sprintf(Buffer, "%s", _0);
-  sub_4280B0(a1, a2, (int)Buffer, String1, 64);
+  sub_4280B0(BMF_Options, UseFilters, (int)Buffer, String1, 64);
   if ( !_strcmpi(String1, "0") || !_strcmpi(String1, "NO") || !_strcmpi(String1, "Off") || !_strcmpi(String1, "FALSE") )
     return 0;
   if ( _strcmpi(String1, "1") && _strcmpi(String1, "YES") && _strcmpi(String1, "On") && _strcmpi(String1, "TRUE") )

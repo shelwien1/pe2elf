@@ -1,5 +1,5 @@
 // sub_4346D0 @ 0x004346D0 — __cdecl
-// Extracted from BMF.c:37176-37262 by extract.py per incdec.md.
+// Extracted from BMF.c:37231-37316 by extract.py per incdec.md.
 
 typedef int t_sub_4346D0_n1024;
 static t_sub_4346D0_n1024& __sub_4346D0_n1024 = *(t_sub_4346D0_n1024*)0x00445B5C;
@@ -31,7 +31,7 @@ static t_irc__print& __irc__print = *(t_irc__print*)0x00434D40;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4346D0)
-BMF_SSE void __sub_4346D0(char a1)
+BMF_SSE void __sub_4346D0(char n3)
 {
   PROBE_HIT(__sub_4346D0);
   int v1; // esi
@@ -48,9 +48,9 @@ BMF_SSE void __sub_4346D0(char a1)
   {
     if ( (n1024 & 0xFFFFFE00) != 0 )
     {
-      v3 = a1 & 2;
-      v4 = a1 & 4;
-      if ( (a1 & 2) != 0 || (a1 & 4) != 0 )
+      v3 = n3 & 2;
+      v4 = n3 & 4;
+      if ( (n3 & 2) != 0 || (n3 & 4) != 0 )
       {
         memset(v8, 0, sizeof(v8));
         _fxsave(v8);
@@ -59,7 +59,7 @@ BMF_SSE void __sub_4346D0(char a1)
         if ( (v8[7] & 0x20000) == 0 )
           v4 = 0;
       }
-      if ( (a1 & 1) != 0 )
+      if ( (n3 & 1) != 0 )
       {
         v9 = _mm_getcsr() | 0x8000;
         _mm_setcsr(v9);
@@ -88,9 +88,9 @@ BMF_SSE void __sub_4346D0(char a1)
     }
     sub_434A30();
   }
-  v1 = a1 & 2;
-  v2 = a1 & 4;
-  if ( (a1 & 4) != 0 )
+  v1 = n3 & 2;
+  v2 = n3 & 4;
+  if ( (n3 & 4) != 0 )
   {
     memset(v8, 0, sizeof(v8));
     _fxsave(v8);
@@ -99,7 +99,7 @@ BMF_SSE void __sub_4346D0(char a1)
     if ( (v8[7] & 0x20000) == 0 )
       v2 = 0;
   }
-  if ( (a1 & 1) != 0 )
+  if ( (n3 & 1) != 0 )
   {
     v9 = _mm_getcsr() | 0x8000;
     _mm_setcsr(v9);

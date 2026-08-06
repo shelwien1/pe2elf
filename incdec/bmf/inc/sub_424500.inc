@@ -1,9 +1,9 @@
 // sub_424500 @ 0x00424500 — __cdecl
-// Extracted from BMF.c:30047-30061 by extract.py per incdec.md.
+// Extracted from BMF.c:30111-30124 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_424550
 #define __PE_DECL___sub_424550
-typedef __attribute__((thiscall)) void t_sub_424550(int _this, _BYTE *a2, _BYTE *a3);
+typedef __attribute__((thiscall)) int t_sub_424550(...);
 static t_sub_424550& __sub_424550 = *(t_sub_424550*)0x00424550;
 #endif
 #define sub_424550 __sub_424550
