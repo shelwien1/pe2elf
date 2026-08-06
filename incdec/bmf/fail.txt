@@ -1,0 +1,33 @@
+# globals with no recoverable address in BMF.c  [13]
+sub_4108C0 (cdecl)
+sub_412110 (cdecl)
+sub_412490 (thiscall)
+sub_412B10 (thiscall)
+sub_412E60 (fastcall)
+sub_4135A0 (fastcall)
+sub_4159E0 (thiscall)
+sub_416860 (thiscall)
+sub_416C90 (thiscall)
+sub_418650 (thiscall)
+sub_424550 (thiscall)
+sub_429DB0 (cdecl)
+sub_42CBB0 (cdecl)
+
+# n256_* typed as array but used as scalar (or vice versa)  [4]
+sub_410650 (cdecl)
+sub_4118A0 (cdecl)
+sub_413E60 (fastcall)
+sub_414390 (thiscall)
+
+# SSE: Hex-Rays vector idiom g++ rejects  [4]
+sub_411700 (cdecl)
+sub_413900 (thiscall)
+sub_419680 (cdecl)
+sub_429C80 (cdecl)
+
+# @<reg> annotation left in the pseudocode  [1]
+sub_41C4B0 (thiscall)
+
+# pseudo-register (_EAX) left in the pseudocode  [1]
+sub_434A30 (cdecl)
+

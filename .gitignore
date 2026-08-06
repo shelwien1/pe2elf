@@ -26,3 +26,11 @@ archive.nz
 archive.rar
 archive[0-9]*
 *.rar
+
+# incdec working tree: donor decompilation and per-run artifacts
+incdec/bmf/BMF.c
+incdec/bmf/run/
+incdec/bmf/dummy32.cpp
+incdec/bmf/trace.out
+incdec/bmf/*.bmp
+incdec/bmf/*.bmf
