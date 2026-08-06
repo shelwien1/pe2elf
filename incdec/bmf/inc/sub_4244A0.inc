@@ -1,12 +1,5 @@
 // sub_4244A0 @ 0x004244A0 — __thiscall
-// Extracted from BMF.c:30034-30046 by extract.py per incdec.md.
-
-#ifndef __PE_DECL___Block
-#define __PE_DECL___Block
-typedef int t_Block[0x10000];
-static t_Block& __Block = *(t_Block*)0x00445988;
-#endif
-#define Block __Block
+// Extracted from BMF.c:30034-30045 by extract.py per incdec.md.
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -34,4 +27,3 @@ __attribute__((thiscall)) void **__sub_4244A0(void **Block, char a2)
 }
 
 #undef FILE
-#undef Block

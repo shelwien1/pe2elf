@@ -1,0 +1,6 @@
+main	main references globals with no recoverable address (declared in BMF.c but absent from the 'using guessed type' comments): ['FindFileData']
+sub_411700	sub_411700 references unresolvable symbols (no symbol table for BMF's static CRT): ['__svml_log2 (register-argument Intel CRT helper)']
+sub_4280B0	sub_4280B0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__intel_sse2_strlen (register-argument Intel CRT helper)']
+sub_429C80	sub_429C80 references unresolvable symbols (no symbol table for BMF's static CRT): ['__intel_sse2_strlen (register-argument Intel CRT helper)']
+sub_429DB0	sub_429DB0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__intel_sse2_strlen (register-argument Intel CRT helper)']
+sub_436DC0	sub_436DC0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__svml_log2 (register-argument Intel CRT helper)']

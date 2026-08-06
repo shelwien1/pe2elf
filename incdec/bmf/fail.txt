@@ -1,79 +1,17 @@
-# Not moved into dummy32.so.  Regenerate with: python3 drive.py extractable.txt
-
-# SSE: MSVC __m128i union members / vector idioms g++ rejects  [7]
-sub_4108C0 (cdecl)
-sub_411700 (cdecl)
-sub_4135A0 (fastcall)
-sub_413900 (thiscall)
-sub_419680 (cdecl)
-sub_429C80 (cdecl)
-sub_429DB0 (cdecl)
-
-# @<reg> annotation left in the pseudocode  [7]
-sub_402FB0 (thiscall)
-sub_414800 (thiscall)
-sub_414920 (cdecl)
-sub_417980 (fastcall)
-sub_41C4B0 (thiscall)
-sub_4259F0 (thiscall)
-sub_4346D0 (cdecl)
-
-# local/global name resolution gap in the extractor  [6]
-sub_402EF0 (stdcall)
-sub_419430 (thiscall)
-sub_419610 (thiscall)
-sub_4280B0 (cdecl)
-sub_42AB20 (cdecl)
-sub_42B0C0 (cdecl)
-
-# global typed as array but used as scalar (or vice versa)  [3]
-sub_410650 (cdecl)
-sub_4118A0 (cdecl)
-sub_4229E0 (thiscall)
-
-# test: test: DECOMPRESS FAILED  [2]
-sub_413E60 (fastcall)
-sub_414060 (thiscall)
-
-# test: test: COMPRESS FAILED  [2]
-sub_414390 (thiscall)
-sub_4248D0 (thiscall)
-
-# hangs: decompiled body loops forever (caught by the 60s gate timeout)  [2]
-sub_424500 (cdecl)
-sub_4256F0 (thiscall)
-
-# missing Hex-Rays helper macro (BYTE4, abs32)  [2]
-sub_424550 (thiscall)
-sub_424D90 (cdecl)
-
-# build: inc/sub_412E60.inc:357:14: error: invalid operan  [1]
-sub_412E60 (fastcall)
-
-# WRONG OUTPUT: builds and runs, but the stream/pixels differ  [1]
-sub_413430 (thiscall)
-
-# build: inc/sub_414CE0.inc:217:8: error: incompatible ty  [1]
-sub_414CE0 (cdecl)
-
-# build: inc/sub_414F60.inc:278:8: error: incompatible ty  [1]
-sub_414F60 (cdecl)
-
-# build: inc/sub_416860.inc:101:40: error: invalid operan  [1]
-sub_416860 (thiscall)
-
-# build: inc/sub_4159E0.inc:304:10: error: incompatible t  [1]
-sub_4159E0 (thiscall)
-
-# build: inc/sub_416C90.inc:94:62: error: invalid operand  [1]
-sub_416C90 (thiscall)
-
-# build: inc/sub_418650.inc:320:10: error: incompatible t  [1]
-sub_418650 (thiscall)
-
-# build: inc/sub_417E80.inc:458:21: error: cannot convert  [1]
-sub_417E80 (thiscall)
-
-# pseudo-register (_EAX) left in the pseudocode  [1]
-sub_434A30 (cdecl)
-
+sub_402EF0	test: test: COMPRESS FAILED (rc=1)
+sub_412E60	build: inc/sub_412E60.inc:321:14: error: invalid operands of types ‘uint32’ {aka ‘unsigned int’} and ‘short unsigned int*’ to b
+sub_413430	test: test: STREAM DIFFERS from reference
+sub_413900	test: test: STREAM DIFFERS from reference
+sub_414060	test: test: DECOMPRESS FAILED (rc=4)
+sub_414F60	build: inc/sub_414F60.inc:72:14: error: cannot convert ‘char*’ to ‘uint16*’ {aka ‘short unsigned int*’} in assignment
+sub_4159E0	test: test: COMPRESS FAILED (rc=1)
+sub_417980	test: test: COMPRESS FAILED (rc=1)
+sub_418650	test: test: DECOMPRESS FAILED (rc=1)
+sub_419430	test: test: DECOMPRESS FAILED (rc=1)
+sub_417E80	build: inc/sub_417E80.inc:445:21: error: cannot convert ‘char*’ to ‘uint32*’ {aka ‘unsigned int*’} in assignment
+sub_41C4B0	test: test: COMPRESS FAILED (rc=1)
+sub_4229E0	test: test: COMPRESS FAILED (rc=1)
+sub_424550	test: test: STREAM DIFFERS from reference
+sub_424D90	build: inc/sub_424D90.inc:415:28: error: cannot convert ‘unsigned char**’ to ‘uint32*’ {aka ‘unsigned int*’}
+sub_42AB20	test: test: COMPRESS FAILED (rc=1)
+sub_42B0C0	test: test: DECOMPRESS FAILED (rc=1)

@@ -24,6 +24,37 @@ def run(cmd, **kw):
                           text=True, **kw)
 
 
+def resort():
+    """Rewrite accepted.txt callees-first.
+
+    §6.3 turns a call to an already-moved function into a bare `#define
+    sub_X __sub_X`, which needs `__sub_X` to be *defined* — the whole set is
+    one translation unit, assembled in accepted.txt order, so the callee's
+    include has to come first.  drive.py appends each acceptance at the end, so
+    accepting a callee after its caller puts them the wrong way round; sort the
+    file instead of trusting append order.
+    """
+    cands = [tuple(l.split()) for l in open('accepted.txt') if l.strip()]
+    order = toposort(cands, call_graph(cands))
+    open('accepted.txt', 'w').write(''.join(' '.join(c) + '\n' for c in order))
+    return [' '.join(c) for c in order]
+
+
+def reextract():
+    """Re-emit every accepted .inc against the current accepted.txt.
+
+    A caller that was moved *before* one of its callees still declares that
+    callee at its PE address (`static t_sub_402FB0& __sub_402FB0 =
+    *(t*)0x402FB0;`, incdec.md §6.2).  Once the callee is moved too, its real
+    definition collides with that declaration — "redeclared as different kind
+    of entity" — no matter which order the includes are in.  Callees-first
+    ordering does not prevent it, because the already-accepted set from earlier
+    runs is not reordered.  So every acceptance (and every revert) re-emits the
+    whole set, which flips those callers over to the §6.3 form instead.
+    """
+    return run([sys.executable, 'extract.py', '--all-accepted'])
+
+
 def load_candidates(path):
     out = []
     for l in open(path):
@@ -36,12 +67,12 @@ def load_candidates(path):
 def call_graph(cands):
     """name -> set(callees within the candidate set), for topological order."""
     src = open('BMF.c', errors='replace').read().split('\n')
-    sites = sorted((int(l.split('\t')[3]), l.split('\t')[1])
-                   for l in open('sites.txt') if l.strip())
     spans = {}
-    for i, (ln, nm) in enumerate(sites):
-        end = sites[i + 1][0] - 1 if i + 1 < len(sites) else len(src)
-        spans[nm] = (ln, end)
+    for l in open('sites.txt'):
+        if not l.strip():
+            continue
+        va, nm, conv, dline, end = l.rstrip('\n').split('\t')
+        spans[nm] = (int(dline), int(end))
     names = {c[1] for c in cands}
     g = {}
     for _, n, _ in cands:
@@ -96,6 +127,8 @@ def main():
         saved = list(accepted)
         accepted.append(f"{va} {name} {conv}")
         open('accepted.txt', 'w').write('\n'.join(accepted) + '\n')
+        accepted = resort()
+        reextract()
 
         b = run('./build.sh')
         if b.returncode != 0:
@@ -105,6 +138,7 @@ def main():
             fails.append((name, reason))
             accepted = saved
             open('accepted.txt', 'w').write('\n'.join(accepted) + ('\n' if accepted else ''))
+            reextract()
             run('./build.sh')
             continue
 
@@ -115,6 +149,7 @@ def main():
             fails.append((name, reason))
             accepted = saved
             open('accepted.txt', 'w').write('\n'.join(accepted) + ('\n' if accepted else ''))
+            reextract()
             run('./build.sh')
             continue
 

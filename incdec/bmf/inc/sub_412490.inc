@@ -1,48 +1,27 @@
 // sub_412490 @ 0x00412490 — __thiscall
-// Extracted from BMF.c:16375-16615 by extract.py per incdec.md.
+// Extracted from BMF.c:16375-16614 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___Buffer_0
-#define __PE_DECL___Buffer_0
-typedef int t_Buffer_0;
-static t_Buffer_0& __Buffer_0 = *(t_Buffer_0*)0x00443378;
-#endif
-#define Buffer_0 __Buffer_0
-#ifndef __PE_DECL___byte_4456F0
-#define __PE_DECL___byte_4456F0
-typedef char t_byte_4456F0;
-static t_byte_4456F0& __byte_4456F0 = *(t_byte_4456F0*)0x004456F0;
-#endif
-#define byte_4456F0 __byte_4456F0
-#ifndef __PE_DECL___dword_4456E8
-#define __PE_DECL___dword_4456E8
-typedef int t_dword_4456E8;
-static t_dword_4456E8& __dword_4456E8 = *(t_dword_4456E8*)0x004456E8;
-#endif
-#define dword_4456E8 __dword_4456E8
-#ifndef __PE_DECL___dword_4456EC
-#define __PE_DECL___dword_4456EC
-typedef int t_dword_4456EC;
-static t_dword_4456EC& __dword_4456EC = *(t_dword_4456EC*)0x004456EC;
-#endif
-#define dword_4456EC __dword_4456EC
-#ifndef __PE_DECL___n0x7F800000
-#define __PE_DECL___n0x7F800000
-typedef int t_n0x7F800000;
-static t_n0x7F800000& __n0x7F800000 = *(t_n0x7F800000*)0x004456E4;
-#endif
-#define n0x7F800000 __n0x7F800000
-#ifndef __PE_DECL___n0x800000
-#define __PE_DECL___n0x800000
-typedef int t_n0x800000;
-static t_n0x800000& __n0x800000 = *(t_n0x800000*)0x004456E0;
-#endif
-#define n0x800000 __n0x800000
-#ifndef __PE_DECL___n0x88
-#define __PE_DECL___n0x88
-typedef int t_n0x88;
-static t_n0x88& __n0x88 = *(t_n0x88*)0x00445704;
-#endif
-#define n0x88 __n0x88
+typedef int t_sub_412490_Buffer_0;
+static t_sub_412490_Buffer_0& __sub_412490_Buffer_0 = *(t_sub_412490_Buffer_0*)0x00443378;
+#define Buffer_0 __sub_412490_Buffer_0
+typedef char t_sub_412490_byte_4456F0;
+static t_sub_412490_byte_4456F0& __sub_412490_byte_4456F0 = *(t_sub_412490_byte_4456F0*)0x004456F0;
+#define byte_4456F0 __sub_412490_byte_4456F0
+typedef int t_sub_412490_dword_4456E8;
+static t_sub_412490_dword_4456E8& __sub_412490_dword_4456E8 = *(t_sub_412490_dword_4456E8*)0x004456E8;
+#define dword_4456E8 __sub_412490_dword_4456E8
+typedef int t_sub_412490_dword_4456EC;
+static t_sub_412490_dword_4456EC& __sub_412490_dword_4456EC = *(t_sub_412490_dword_4456EC*)0x004456EC;
+#define dword_4456EC __sub_412490_dword_4456EC
+typedef int t_sub_412490_n0x7F800000;
+static t_sub_412490_n0x7F800000& __sub_412490_n0x7F800000 = *(t_sub_412490_n0x7F800000*)0x004456E4;
+#define n0x7F800000 __sub_412490_n0x7F800000
+typedef int t_sub_412490_n0x800000;
+static t_sub_412490_n0x800000& __sub_412490_n0x800000 = *(t_sub_412490_n0x800000*)0x004456E0;
+#define n0x800000 __sub_412490_n0x800000
+typedef int t_sub_412490_n0x88;
+static t_sub_412490_n0x88& __sub_412490_n0x88 = *(t_sub_412490_n0x88*)0x00445704;
+#define n0x88 __sub_412490_n0x88
 
 
 PROBE_DECL(__sub_412490)

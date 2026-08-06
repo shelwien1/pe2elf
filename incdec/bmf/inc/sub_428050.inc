@@ -1,12 +1,5 @@
 // sub_428050 @ 0x00428050 — __cdecl
-// Extracted from BMF.c:32410-32422 by extract.py per incdec.md.
-
-#ifndef __PE_DECL___a1
-#define __PE_DECL___a1
-typedef int t_a1[0x10000];
-static t_a1& __a1 = *(t_a1*)0x00439BFC;
-#endif
-#define a1 __a1
+// Extracted from BMF.c:32410-32421 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_4280B0
 #define __PE_DECL___sub_4280B0
@@ -49,5 +42,4 @@ int __sub_428050(int a1, int a2, int a3)
 #undef FILE
 #undef sprintf
 #undef sscanf
-#undef a1
 #undef sub_4280B0

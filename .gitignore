@@ -35,5 +35,6 @@ incdec/bmf/*.out
 incdec/bmf/run/
 incdec/bmf/dummy32.cpp
 incdec/bmf/trace.out
+incdec/bmf/drive.log
 incdec/bmf/*.bmp
 incdec/bmf/*.bmf

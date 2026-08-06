@@ -1,18 +1,6 @@
 // sub_402DF0 @ 0x00402DF0 — __thiscall
-// Extracted from BMF.c:2393-2401 by extract.py per incdec.md.
+// Extracted from BMF.c:2393-2400 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___Block
-#define __PE_DECL___Block
-typedef int t_Block[0x10000];
-static t_Block& __Block = *(t_Block*)0x00445988;
-#endif
-#define Block __Block
-
-#ifndef __PE_DECL___sub_402FB0
-#define __PE_DECL___sub_402FB0
-typedef __attribute__((thiscall)) int t_sub_402FB0(...);
-static t_sub_402FB0& __sub_402FB0 = *(t_sub_402FB0*)0x00402FB0;
-#endif
 #define sub_402FB0 __sub_402FB0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -36,5 +24,4 @@ __attribute__((thiscall)) FILE **__sub_402DF0(FILE **Block, char a2)
 }
 
 #undef FILE
-#undef Block
 #undef sub_402FB0

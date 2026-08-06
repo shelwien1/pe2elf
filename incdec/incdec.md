@@ -115,6 +115,21 @@ that **every step ends with a green test**.
    the forward declaration. **Note the calling convention Hex-Rays printed —
    it is part of the signature and §4 depends on it.**
 
+   If you are automating this, do **not** derive the body's extent from a
+   scan for definition lines: it misses every `__usercall`/`__userpurge`
+   function, because those are printed as `sub_4022C0@<eax>(…)` — the name is
+   followed by `@`, not by `(`. Each miss is worse than it looks, because the
+   *preceding* function's span then runs on and swallows the missed body
+   whole; in `BMF.c` that was 38 of 151 functions, and one `.inc` came out
+   holding ten concatenated bodies. Use the `//----- (004XXXXX) --------`
+   banner Hex-Rays prints ahead of every function, and record an explicit end
+   line per function.
+
+   The symptom of getting this wrong is stray `@<reg>` annotations and
+   `_EAX`-style pseudo-registers appearing in bodies that do not contain any —
+   which is easily misread as "the decompiler could not lift this function"
+   when the real answer is "the extractor handed the compiler two functions".
+
 3. **Look up the original VA** of the function:
    - Preferred source: `BMF.txt`. Each line has the form
      `<8-hex VA>  <name>`, e.g. `00401000  main`. The VA is the full 32-bit
@@ -299,6 +314,21 @@ __attribute__((stdcall)) int __sub_40B120(int a1) {
 }
 ```
 
+### 4.1 Hand-written replacements
+
+A redirected function has to be *behaviourally* identical to the original.
+Nothing requires it to be textually derived from the decompilation, and for a
+few bodies it cannot be: the ones Hex-Rays rendered as `__asm { cpuid }` plus
+reads of its `_EAX`/`_ECX`/`_EDX` pseudo-registers have no C form at all, and
+the decompiler will happily mis-attribute one instruction's result to a
+variable it used for another's.
+
+For those, write the `.inc` by hand from what the routine is *for*, and keep
+it beside the generated ones so the same build, probe and gate machinery
+applies. Verify it against the original rather than against the pseudocode:
+for a routine whose whole output is one global, run the un-injected binary
+with a shim that prints that global at exit, and compare.
+
 ## 5. Redirection: patching a JMP at the original VA
 
 `dummy_init()` runs in the ELF's process **after** the loader has mapped the
@@ -376,26 +406,46 @@ and the matching line in `BMF.txt`:
 00441A20  dword_441A20
 ```
 
-emit in the `.inc`:
+emit in the `.inc`, with the alias **scoped to the function**:
 
 ```cpp
-#ifndef __PE_DECL___dword_441A20
-#define __PE_DECL___dword_441A20
-typedef int t_dword_441A20[16];
-static t_dword_441A20& __dword_441A20 = *(t_dword_441A20*)0x00441A20;
-#endif
-#define dword_441A20 __dword_441A20
+typedef int t_sub_412B10_dword_441A20[16];
+static t_sub_412B10_dword_441A20& __sub_412B10_dword_441A20 =
+    *(t_sub_412B10_dword_441A20*)0x00441A20;
+#define dword_441A20 __sub_412B10_dword_441A20
 ```
 
-The `#ifndef __PE_DECL___<sym>` / `#define __PE_DECL___<sym>` / `#endif`
-guard is mandatory. All `.inc` files are textually included into a single
-translation unit (`dummy32.cpp`). If two functions reference the same PE
-global, the compiler sees two definitions of the same `static` variable and
-emits "redefinition of …" — even though `static` suppresses the linker-level
-ODR error, it does not suppress same-TU redefinition. The guard makes the
-second occurrence a no-op. The `#define <orig> __<orig>` mapping sits
-*outside* the guard so it is always active for the lexical scope of the
-current `.inc`; the matching `#undef` at the bottom of the file closes it.
+All `.inc` files are textually included into one translation unit
+(`dummy32.cpp`), so two functions referencing the same PE global would
+otherwise collide. The obvious fix — one shared `__<sym>` behind an
+`#ifndef __PE_DECL___<sym>` guard — is worse than the collision it prevents:
+the type is derived per body (see below), so the guard silently gives every
+body whichever type the *first* `.inc` in the file happened to pick. Naming
+the alias after the function removes the collision without sharing the type.
+The `#define <orig> __<fn>_<orig>` mapping is closed by a matching `#undef` at
+the bottom of the file.
+
+**Deciding the type is per body, and it is where the silent wrong answers
+live.** Take it from, in order:
+
+1. the body's own trailing `// 443398: using guessed type int n256_0;`
+   comment, which is the decompiler's view of *that* function;
+2. otherwise the `// Data declarations` section, which is the union of every
+   use across the image;
+3. otherwise the prefix of the auto-generated name (`dword_` → `int`, …).
+
+Indexing in the body forces an array type on top of that. The union view and
+the per-body view routinely disagree — `int n256_0[];` in the declaration
+section, plain `int` in the body that writes `4 * n256_0`, which does not
+compile against an array type. But do **not** run the rule the other way and
+demote a declared array to a scalar because this body never wrote a `[`:
+`buf = buf_0;` is an array decaying to a pointer, and as a scalar it compiles
+fine and reads one byte of image instead. Wrong output, no diagnostic.
+
+When matching a global's name in a body, anchor it. `p_n15[3]` is a parameter
+Hex-Rays named after the global it usually receives, not the global; and when
+a local shadows the global outright (`unsigned __int16 *n4_3;` alongside
+`::n4_3 = n4_7;`), only the `::`-qualified uses are the global's.
 
 Rules:
 - The `typedef` names the *array/object type*, not a pointer to it. For
@@ -487,6 +537,16 @@ Leave the `#define F __F` and `#undef F` lines in place — the body still
 refers to `F` by its original name, and those macros map it to the now-real
 `__F` symbol. Ensure `F.inc` is `#include`d before `caller.inc` in
 `dummy32.cpp`.
+
+**Automating it.** If the driver regenerates `.inc` files, the cleanest form
+of this cleanup is to re-emit the *whole* accepted set on every acceptance,
+and to re-sort the accepted list callees-first at the same time. Both are
+needed and for different reasons: re-emitting flips already-moved callers from
+the §6.2 form to the §6.3 form, and re-sorting puts the callee's `#include`
+ahead of the caller's, which the §6.3 form requires. Ordering alone does not
+help — a caller accepted in an earlier run is not reordered by a
+callees-first traversal of the *new* candidates — and re-emitting alone leaves
+`__F` used before it is defined.
 
 **Call-site cast after cleanup.** After removing the typedef+static-ref, scan
 the caller body for C-style casts that pass a function pointer as this
@@ -716,6 +776,12 @@ Add to `DUMMY32_FLAGS` in `Makefile`:
 -m32 -fpermissive -Wno-narrowing -Wno-write-strings
 ```
 
+Note what is *not* there: any `-msse*`. Turning SSE on for the whole
+translation unit would change the code generated for every body in it, not
+just the ones that use intrinsics. Put `__attribute__((target("mmx,sse4.2")))`
+on the individual bodies that need it instead, so enabling it for one function
+cannot perturb another.
+
 Hex-Rays output relies on MSVC's lenient C-style casts between pointers
 and integers (e.g. `(unsigned __int8)v54` where `v54` is `const char*` —
 intended as "low byte of the pointer value"). g++ rejects these in C++17
@@ -727,16 +793,65 @@ and string-literal-to-`char*` conversions that appear throughout.
 the i386 calling conventions §4 depends on, and makes `long`/`size_t`
 4 bytes so the donor body's implicit assumptions hold.
 
-### 8.2 MSVC intrinsics
+### 8.2 Hex-Rays' own `defs.h`, and MSVC intrinsics
+
+Start from the real thing. `BMF.c` opens with `#include <defs.h>`, and that
+header ships with IDA: it defines `LOBYTE`/`BYTEn`/`WORDn`/`SBYTEn`,
+`__ROLn__`/`__RORn__`, `__PAIRn__`/`__SPAIRn__`, `__CFADD__`/`__OFSUB__`,
+`abs8`…`abs64`, `qmemcpy`, `COERCE_FLOAT`, `_UNKNOWN`, and the `__intN`
+aliases — with the exact semantics the decompiler assumed when it emitted
+them, and with a `#if defined(__GNUC__)` branch already in place. Copy it into
+the working tree and include it; hand-rolling the subset a given body happens
+to use is how `BYTE4` and `abs32` end up as "missing helper" build failures a
+week later.
+
+Two things it will not do for you:
+
+* **`_WINDOWS_`.** `defs.h` keys `BYTE`/`WORD`/`DWORD`/`LONG`/`BOOL` off
+  whether windows.h has been seen, and defines them as *signed* types if it
+  has not (`typedef int8 BYTE`, `int8` being plain `char`). The donor was
+  compiled against the real windows.h, where they are unsigned. Define
+  `_WINDOWS_` and supply the windows.h spellings yourself; letting `defs.h`
+  win silently sign-extends every `BYTE` the bodies touch.
+* **`__int128` on i386.** There is none. The only things typed that way are
+  16-byte `xmmword` globals, so alias it to the SSE register type.
 
 | MSVC construct                              | g++ remedy                                                   |
 |---------------------------------------------|--------------------------------------------------------------|
 | `_BitScanForward(idx, mask)`                | Macro using `__builtin_ctz`; emit `_BitScanForward` itself.  |
-| `_mm_*` SSE intrinsics                      | `#include <x86intrin.h>` once in `dummy32.cpp`.              |
-| `(__m128i)0LL` (compound C-style cast)      | Rewrite as `_mm_setzero_si128()`.                            |
-| `(__m128i)(unsigned __int64)scalar`         | `_mm_set_epi64x(0, scalar)`. **Not** `_mm_cvtsi64_si128`, which is x86-64 only. |
+| `_mm_*` SSE intrinsics                      | `#include <immintrin.h>` once in `dummy32.cpp`, plus a per-body `target` attribute (§8.1). |
+| `v.m128i_i32[k]`, `q.m64_u64`               | Wrapper unions; see below.                                   |
+| `(__m128i)0LL` (compound C-style cast)      | A converting constructor on the wrapper union that zero-extends the scalar — which is what the MOVD/MOVQ behind it does. |
+| `(__m128i)(unsigned __int64)scalar`         | Same. **Not** `_mm_cvtsi64_si128`, which is x86-64 only.     |
 | `__declspec(align(N))`                      | `#define __declspec(x) __attribute__((x))` + `#define align(n) aligned(n)` scoped around the `#include "BMF.h"`. |
 | `__declspec(noreturn)`                      | Already handled by `defs.h` for GCC.                         |
+
+**`__m128i` union members.** Hex-Rays writes `v.m128i_i32[1]`,
+`q.m128_f32[0]`, `w.m64_u64`, because on Windows `__m128i`/`__m128`/`__m128d`/
+`__m64` are *unions* with those members. GCC's `__m128i` is a bare vector type
+with no members at all, and no header changes that — `<intrin.h>` does not,
+because on GCC it is just an `x86intrin.h` alias, so the Intel-compiler
+spelling it provides on Windows never arrives.
+
+Wrap them instead: one union per register type, holding the vector plus the
+MSVC member arrays, with conversions in both directions, and then redirect the
+`__m128*` / `__m64` names onto the wrappers *after* the intrinsic headers are
+done with the originals. The conversions carry a wrapper through the
+intrinsics unchanged (`_mm_mul_ps(a, b)` takes its arguments by
+`operator __m128&`, and its result lands back in the wrapper through the
+converting constructor), and reinterpreting casts between the four —
+`(__m128)xmmword_441120`, which Hex-Rays emits freely — become cross-type
+constructors that copy the bits. The unions stay layout-compatible with the
+vector types, which is what keeps `*(__m128i *)ptr` addressing a real register
+image.
+
+Two follow-on cases need handling:
+
+* The memory-operand intrinsics take a pointer to the *vector* type, and the
+  body now casts to the wrapper. Overload them for the wrapper pointer.
+* An intrinsic *result* has no members, so `_mm_shuffle_ps(v, v, 1).m128_f32[0]`
+  does not compile. Rewrite the call site to wrap the result. This cannot be
+  fixed with an overload — C++ does not overload on return type.
 
 The `_BitScanForward` macro (place near the top of each body that uses it):
 

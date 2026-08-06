@@ -1,36 +1,21 @@
 // sub_412850 @ 0x00412850 — __thiscall
-// Extracted from BMF.c:16616-16772 by extract.py per incdec.md.
+// Extracted from BMF.c:16616-16771 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___Buffer_0
-#define __PE_DECL___Buffer_0
-typedef int t_Buffer_0;
-static t_Buffer_0& __Buffer_0 = *(t_Buffer_0*)0x00443378;
-#endif
-#define Buffer_0 __Buffer_0
-#ifndef __PE_DECL___byte_4456F0
-#define __PE_DECL___byte_4456F0
-typedef char t_byte_4456F0;
-static t_byte_4456F0& __byte_4456F0 = *(t_byte_4456F0*)0x004456F0;
-#endif
-#define byte_4456F0 __byte_4456F0
-#ifndef __PE_DECL___n0x7F800000
-#define __PE_DECL___n0x7F800000
-typedef int t_n0x7F800000;
-static t_n0x7F800000& __n0x7F800000 = *(t_n0x7F800000*)0x004456E4;
-#endif
-#define n0x7F800000 __n0x7F800000
-#ifndef __PE_DECL___n0x800000
-#define __PE_DECL___n0x800000
-typedef int t_n0x800000;
-static t_n0x800000& __n0x800000 = *(t_n0x800000*)0x004456E0;
-#endif
-#define n0x800000 __n0x800000
-#ifndef __PE_DECL___n0x88
-#define __PE_DECL___n0x88
-typedef int t_n0x88;
-static t_n0x88& __n0x88 = *(t_n0x88*)0x00445704;
-#endif
-#define n0x88 __n0x88
+typedef int t_sub_412850_Buffer_0;
+static t_sub_412850_Buffer_0& __sub_412850_Buffer_0 = *(t_sub_412850_Buffer_0*)0x00443378;
+#define Buffer_0 __sub_412850_Buffer_0
+typedef char t_sub_412850_byte_4456F0;
+static t_sub_412850_byte_4456F0& __sub_412850_byte_4456F0 = *(t_sub_412850_byte_4456F0*)0x004456F0;
+#define byte_4456F0 __sub_412850_byte_4456F0
+typedef int t_sub_412850_n0x7F800000;
+static t_sub_412850_n0x7F800000& __sub_412850_n0x7F800000 = *(t_sub_412850_n0x7F800000*)0x004456E4;
+#define n0x7F800000 __sub_412850_n0x7F800000
+typedef int t_sub_412850_n0x800000;
+static t_sub_412850_n0x800000& __sub_412850_n0x800000 = *(t_sub_412850_n0x800000*)0x004456E0;
+#define n0x800000 __sub_412850_n0x800000
+typedef int t_sub_412850_n0x88;
+static t_sub_412850_n0x88& __sub_412850_n0x88 = *(t_sub_412850_n0x88*)0x00445704;
+#define n0x88 __sub_412850_n0x88
 
 
 PROBE_DECL(__sub_412850)

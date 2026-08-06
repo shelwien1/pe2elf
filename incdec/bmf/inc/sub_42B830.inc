@@ -1,22 +1,9 @@
 // sub_42B830 @ 0x0042B830 — __cdecl
-// Extracted from BMF.c:35919-36014 by extract.py per incdec.md.
-
-#ifndef __PE_DECL___a1
-#define __PE_DECL___a1
-typedef int t_a1[0x10000];
-static t_a1& __a1 = *(t_a1*)0x00439BFC;
-#endif
-#define a1 __a1
-#ifndef __PE_DECL___n5
-#define __PE_DECL___n5
-typedef int t_n5;
-static t_n5& __n5 = *(t_n5*)0x004433F0;
-#endif
-#define n5 __n5
+// Extracted from BMF.c:35919-36013 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
-typedef int t_sub_4349F0(...);
+typedef __attribute__((usercall)) int t_sub_4349F0(...);
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
@@ -129,6 +116,4 @@ LABEL_20:
 }
 
 #undef FILE
-#undef a1
-#undef n5
 #undef sub_4349F0

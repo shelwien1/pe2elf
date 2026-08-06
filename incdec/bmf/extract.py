@@ -44,7 +44,20 @@ PURE_LIBC = {'strcpy', 'strncpy', 'strrchr', 'strchr', 'memset', 'memcpy',
 INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
                     r'|BYTE\d|WORD\d|SLOBYTE|SLOWORD|SHIDWORD|COERCE_|abs32'
                     r'|alloca|qmemcpy|memset32|sizeof|_BitScanForward|_fxsave)')
+# Checked *before* INTRIN, whose `__` branch would otherwise swallow these.
+# They are real functions in the image, not compiler helpers — but they take
+# their arguments in registers, and Hex-Rays recovered neither the count nor
+# the types (`__svml_log2()` with no arguments at all, `__intel_sse2_strlen(int,
+# int)` for what is really `size_t(const char *)`).  A redirect built on those
+# signatures would pass garbage, so refuse instead.
+INTEL_CRT = re.compile(r'^(__svml_|__intel_)')
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof'}
+
+# Type names the head defines that a body may also use as a variable name.
+# Hex-Rays invented the struct `Stream` for fopen's return value, and then
+# happily declares `Stream *Stream;` — legal in its own output, but the second
+# such declaration in a scope no longer parses once the name is a variable.
+HEAD_TYPES = {'Stream'}
 
 # Signatures for the statically-linked CRT entries the bodies call.  All are
 # __cdecl, so no attribute (incdec.md §4).
@@ -64,7 +77,7 @@ CRT_PROTO = {
     'exit':   ('void', 'int'),
     'memcpy_0': ('void *', 'void *, const void *, unsigned int'),
     'irc__print':   ('int', 'const char *, ...'),
-    'irc__get_msg': ('char *', 'int'),
+    'irc__get_msg': ('char *', 'int, int, void *'),
     '_strcmpi': ('int', 'const char *, const char *'),
 }
 # Variadic CRT entries: declared with ... so the call sites type-check.
@@ -90,15 +103,16 @@ WINAPI_PROTO = {
 def load():
     lines = open(SRC, errors='replace').read().split('\n')
     # --- function definition spans -----------------------------------------
-    sites = []
-    for ln in open(os.path.join(HERE, 'sites.txt')):
-        va, name, conv, line = ln.rstrip('\n').split('\t')
-        sites.append((int(line), name, va, conv))
-    sites.sort()
+    # sites.txt carries an explicit end line per function, derived from
+    # Hex-Rays' own "//----- (004XXXXX) -----" banners rather than from a
+    # scan for definition lines.  A regex over definition lines silently
+    # misses every __usercall function (its name is followed by @<eax>, not
+    # by '('), and the preceding function's span then swallows the whole
+    # missed body — which is where stray '@' characters in a .inc come from.
     spans = {}
-    for i, (line, name, va, conv) in enumerate(sites):
-        end = sites[i + 1][0] - 1 if i + 1 < len(sites) else len(lines)
-        spans[name] = (line, end, va, conv)
+    for ln in open(os.path.join(HERE, 'sites.txt')):
+        va, name, conv, dline, end = ln.rstrip('\n').split('\t')
+        spans[name] = (int(dline), int(end), va, conv)
 
     # --- prototypes from the declaration block ------------------------------
     protos = {}
@@ -156,23 +170,81 @@ def load():
     return lines, spans, protos, globals_, noaddr, funcs, winapi
 
 
-def array_used(lines, spans, name):
-    """True if any body indexes this global — decides array vs scalar typedef."""
-    pat = re.compile(re.escape(name) + r'\s*\[')
-    for (a, b, _, _) in spans.values():
-        if pat.search('\n'.join(lines[a - 1:b])):
-            return True
-    return False
+SSE_MEMBER_RE = re.compile(r'\.m(128i|128d|128|64)_[a-z]\w*')
+SSE_WRAPPER = {'128': 'M128F', '128i': 'M128I', '128d': 'M128D', '64': 'M64'}
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('name')
-    ap.add_argument('--accepted', default=os.path.join(HERE, 'accepted.txt'))
-    ap.add_argument('--out', default=None)
-    args = ap.parse_args()
+def wrap_intrinsic_members(line):
+    """`_mm_shuffle_ps(v, v, 1).m128_f32[0]` -> `M128F(_mm_shuffle_ps(...)).m128_f32[0]`.
 
-    lines, spans, protos, globals_, noaddr, funcs, winapi = load()
+    An intrinsic returns GCC's bare vector type, which has no members; only the
+    M128* wrappers do.  Hex-Rays reads a lane straight off a result often
+    enough that rewriting the call site is worth it — the alternative, an
+    overload of every intrinsic returning a wrapper, cannot be spelled (C++
+    does not overload on return type).
+    """
+    pos = 0
+    while True:
+        m = SSE_MEMBER_RE.search(line, pos)
+        if not m:
+            return line
+        pos, i = m.end(), m.start()
+        if i == 0 or line[i - 1] != ')':
+            continue
+        depth, j = 0, i - 1               # walk back to the matching '('
+        while j >= 0:
+            if line[j] == ')':
+                depth += 1
+            elif line[j] == '(':
+                depth -= 1
+                if depth == 0:
+                    break
+            j -= 1
+        if j < 0:
+            continue
+        k = j                             # ... and past the callee's name
+        while k > 0 and (line[k - 1].isalnum() or line[k - 1] == '_'):
+            k -= 1
+        if not line[k:j].startswith('_mm_'):
+            continue
+        wrapper = SSE_WRAPPER[m.group(1)]
+        line = line[:k] + wrapper + '(' + line[k:i] + ')' + line[i:]
+        pos += len(wrapper) + 2
+
+
+def array_used(body, name, shadowed=False):
+    """True if *this* body indexes the global — decides array vs scalar typedef.
+
+    Per body, not across all of BMF.c.  A global with no declared extent that
+    some other function indexes is still a plain scalar as far as this one is
+    concerned, and typing it `int[0x10000]` here makes every use of it a
+    non-lvalue array ("invalid operands of types 'int' and 'int [65536]'").
+
+    \\b matters: without it `p_n15[3]` — a *parameter* Hex-Rays named after the
+    global it usually receives — counts as indexing the global n15.  And when a
+    local shadows the global outright (`unsigned __int16 *n4_3;` alongside
+    `::n4_3 = n4_7;`), only the qualified uses are the global's.
+    """
+    pat = (r'::\s*' if shadowed else r'\b') + re.escape(name) + r'\s*\['
+    return re.search(pat, body) is not None
+
+
+def emit(args, cache=None):
+    # A hand-written override wins over the Hex-Rays body.  incdec.md §4 only
+    # requires the redirected function to be *behaviourally* identical, not
+    # textually derived from the decompilation, and a few bodies are inline
+    # asm the decompiler could not lift into C at all (see override/README).
+    ovr = os.path.join(HERE, 'override', args.name + '.inc')
+    if os.path.exists(ovr):
+        dest = args.out or os.path.join(HERE, 'inc', args.name + '.inc')
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        open(dest, 'w').write(open(ovr).read())
+        print(f"{dest}: hand-written override ({ovr})")
+        return
+
+    lines, spans, protos, globals0, noaddr, funcs, winapi = cache or load()
+    globals_ = dict(globals0)   # emit() adds address-derived entries; keep the
+                                # cache clean for the next name in a batch.
     if args.name not in spans:
         sys.exit(f"no such function: {args.name}")
     a, b, va, conv = spans[args.name]
@@ -180,6 +252,19 @@ def main():
         sys.exit(f"{args.name} is __{conv}: no g++ equivalent (incdec.md §4)")
 
     body_lines = lines[a - 1:b]
+    # Hex-Rays closes each body with its own per-function view of the globals it
+    # touched:  "// 443398: using guessed type int n256_0;".  That is the
+    # authoritative typing for *this* body and it can disagree with the
+    # declaration section, which is the union of every use across the image —
+    # `int n256_0[];` there, but plain `int` here, and the array form does not
+    # compile against `4 * n256_0`.  Collected before the trailing comments are
+    # trimmed off below.
+    per_body = {}
+    for l in body_lines:
+        gm = re.match(r'^\s*//\s*[0-9A-Fa-f]+:\s*using guessed type\s+'
+                      r'(.+?)\s+([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*;\s*$', l)
+        if gm:
+            per_body[gm.group(2)] = (gm.group(1).strip(), gm.group(3) or '')
     # The span runs to the line before the next definition, which sweeps up
     # that definition's "//----- (004123 40) ----" banner and any blank lines.
     # Cut back to the last line of actual code.
@@ -207,7 +292,17 @@ def main():
     # such collisions (n256_0, buf_0, n0x800000, ...).  The exception is an
     # explicit `::name`, which reaches past the local to the global; in that
     # case both are renamed together and the qualification still resolves.
+    # The parameter list counts: BMF has globals named Count, Destination,
+    # Buffer, Str, ... and Hex-Rays reuses exactly those names for parameters.
+    # Without this, `#define Destination __Destination` rewrites the parameter
+    # in the signature and the function is redefined against a global instead.
     locals_ = set()
+    msig = re.match(r'^[^(]*\(([^)]*)\)', body_lines[0])
+    if msig and msig.group(1).strip() not in ('', 'void'):
+        for prm in msig.group(1).split(','):
+            mp = re.search(r'([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*$', prm.strip())
+            if mp:
+                locals_.add(mp.group(1))
     for l in body_lines[1:]:
         t = l.strip()
         if not t or t == '{':
@@ -225,7 +320,13 @@ def main():
         return re.search(r'::\s*' + re.escape(n) + r'\b', body) is not None
 
     # --- classify every external reference ---------------------------------
+    # Callees are not all `sub_XXXXXX`: Hex-Rays also names functions after
+    # what they do plus their address (`exit_402E40`, `nullsub_1_401000`), and
+    # those need the same PE-address typedef.  Data symbols share the shape, so
+    # exclude anything matching the auto-named-global pattern.
     called = set(re.findall(r'\b(' + SUB_RE + r')\s*\(', body))
+    called |= {c for c in re.findall(r'\b([A-Za-z_]\w*_4[0-9A-Fa-f]{5})\s*\(', body)
+               if not re.fullmatch(GLOBAL_RE, c)}
     refd_globals = {g for g in globals_
                     if re.search(r'\b' + re.escape(g) + r'\b', body) and is_global_ref(g)}
     for g in set(re.findall(r'\b(' + GLOBAL_RE + r')\b', body)):
@@ -242,6 +343,9 @@ def main():
     crt = {}                      # body name -> (asm name, addr)
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', body):
         n = m.group(1)
+        if INTEL_CRT.match(n):
+            unresolved.add(n + ' (register-argument Intel CRT helper)')
+            continue
         if n in CTRL or INTRIN.match(n) or n in PURE_LIBC:
             continue
         if re.fullmatch(SUB_RE, n) or re.fullmatch(r'[A-Za-z_]\w*_4[0-9A-Fa-f]{5}', n):
@@ -278,21 +382,35 @@ def main():
     # --- globals (§6.1) -----------------------------------------------------
     for g in sorted(refd_globals):
         addr, base, ext = globals_[g]
-        if ext in ('', '[]'):
-            # "[]" (unspecified bound) cannot be used as *(T*)addr, and an
-            # indexed global needs an array type; pick a bound large enough
-            # that indexing is unconstrained — no storage is created, the
-            # type only reinterprets the PE image.
-            ext = '[0x10000]' if (ext == '[]' or array_used(lines, spans, g)) else '' 
+        # This body's own "using guessed type" comment wins over the declaration
+        # section (see above).  Indexing in the body overrides both: `(__m128)
+        # xmmword_445760[6 * n2]` needs an array however the object was
+        # declared.  What must *not* happen is demoting a declared array to a
+        # scalar on the strength of "this body never wrote a [": `buf = buf_0;`
+        # is the array decaying to a pointer, and as a scalar it silently reads
+        # one byte of image instead.
+        if g in per_body:
+            base, ext = per_body[g]
+        if array_used(body, g, g in locals_):
+            # An unspecified bound cannot be used as *(T*)addr; pick one large
+            # enough to leave indexing unconstrained.  No storage is created —
+            # the type only reinterprets the PE image.
+            if ext in ('', '[]'):
+                ext = '[0x10000]'
+        elif ext == '[]':
+            ext = '[0x10000]'
         if not base:
             base = PREFIX_TYPE.get(g.split('_')[0], 'unsigned char')
-        t = f"t_{g}"
-        out.append(f"#ifndef __PE_DECL___{g}")
-        out.append(f"#define __PE_DECL___{g}")
+        # The alias is scoped to this function, not shared across the
+        # translation unit.  A shared `__<g>` behind an include guard lets
+        # whichever body is included first fix the type for all of them, and
+        # since the type is derived per body that is routinely the wrong one —
+        # `n256` is `char[]` to one function and `unsigned short *` to the next,
+        # and `xmmword_445760` is a scalar in one body and an array in another.
+        t = f"t_{args.name}_{g}"
         out.append(f"typedef {base} {t}{ext};")
-        out.append(f"static {t}& __{g} = *({t}*)0x{addr:08X};")
-        out.append("#endif")
-        out.append(f"#define {g} __{g}")
+        out.append(f"static {t}& __{args.name}_{g} = *({t}*)0x{addr:08X};")
+        out.append(f"#define {g} __{args.name}_{g}")
     if refd_globals:
         out.append("")
 
@@ -378,6 +496,12 @@ def main():
             sig_line = attr + sig_line.lstrip()
             break
     sig_line = sig_line.replace('__noreturn ', '')
+    # build.sh deliberately leaves SSE off for the translation unit as a whole,
+    # so that turning it on for one body cannot change the code generated for
+    # any other.  A body that uses the intrinsics or the register types asks
+    # for it here instead.
+    if re.search(r'\b_mm_|\b__m128|\b__m64\b|\b_fxsave\b|\b_fxrstor\b', body_raw):
+        sig_line = 'BMF_SSE ' + sig_line
     sig_line = re.sub(r'\b' + re.escape(args.name) + r'\b', f'__{args.name}', sig_line, count=1)
     rest = body_lines[1:]
     # PROBE_HIT goes after the opening brace of the function.
@@ -393,13 +517,19 @@ def main():
     # every __thiscall function.  Rename it (and its uses) whole-word — the
     # sibling locals this_1/this_3/... are distinct identifiers and unaffected.
     joined = [re.sub(r'\bthis\b', '_this', l) for l in joined]
+    # A recursive call still spells the PE name; point it at the moved body
+    # (the signature above was already renamed, and `__name` does not re-match).
+    joined = [re.sub(r'\b' + re.escape(args.name) + r'\b', f'__{args.name}', l)
+              for l in joined]
+    # A local or parameter that collides with a type the head declares.
+    for t in sorted(HEAD_TYPES & locals_):
+        joined = [re.sub(r'\b' + re.escape(t) + r'\b(?!\s*\*)', t + '_v', l) for l in joined]
+    joined = [wrap_intrinsic_members(l) for l in joined]
     joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
     joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]
-    vec = {g for g in refd_globals if globals_[g][1] in ('__int128', '_OWORD', '__m128i', '__m128', '__m128d')}
-    if vec:
-        pat = re.compile(r'\b(' + '|'.join(re.escape(v) for v in vec) + r')(\[[^\]]*\])?\s*=\s*0(LL|i64)?\s*;')
-        joined = [pat.sub(lambda m: f"{m.group(1)}{m.group(2) or ''} = _mm_setzero_si128();", l)
-                  for l in joined]
+    # `xmmword_441120 = 0;` and `(__m128i)0LL` need no rewriting: the M128*
+    # wrappers in the head construct from a scalar by zero-extending it, which
+    # is what the MOVD/MOVQ behind them does.
     out.extend(joined)
     out.append("")
 
@@ -419,6 +549,36 @@ def main():
     open(dest, 'w').write('\n'.join(out) + '\n')
     print(f"{dest}: {b - a + 1} body lines, {len(refd_globals)} globals, "
           f"{len(ext_calls)} PE callees, {len(called & already)} moved callees")
+
+
+class _Args:
+    def __init__(self, name, accepted, out):
+        self.name, self.accepted, self.out = name, accepted, out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('name', nargs='*')
+    ap.add_argument('--accepted', default=os.path.join(HERE, 'accepted.txt'))
+    ap.add_argument('--out', default=None)
+    ap.add_argument('--all-accepted', action='store_true',
+                    help="re-emit every name in --accepted, in file order")
+    a = ap.parse_args()
+
+    names = list(a.name)
+    if a.all_accepted:
+        names += [l.split()[1] for l in open(a.accepted) if l.strip()]
+    if not names:
+        ap.error('nothing to extract')
+    if a.out and len(names) > 1:
+        ap.error('--out takes a single name')
+
+    # One load() for the whole batch: BMF.c is 1.2 MB and drive.py re-emits the
+    # entire accepted set on every acceptance (see below), so parsing it once
+    # per name would dominate the loop.
+    cache = load()
+    for n in names:
+        emit(_Args(n, a.accepted, a.out), cache)
 
 
 if __name__ == '__main__':
