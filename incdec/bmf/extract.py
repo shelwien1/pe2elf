@@ -43,8 +43,48 @@ PURE_LIBC = {'strcpy', 'strncpy', 'strrchr', 'strchr', 'memset', 'memcpy',
 
 INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
                     r'|BYTE\d|WORD\d|SLOBYTE|SLOWORD|SHIDWORD|COERCE_|abs32'
-                    r'|alloca|qmemcpy|memset32|sizeof|_BitScanForward)')
+                    r'|alloca|qmemcpy|memset32|sizeof|_BitScanForward|_fxsave)')
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof'}
+
+# Signatures for the statically-linked CRT entries the bodies call.  All are
+# __cdecl, so no attribute (incdec.md §4).
+CRT_PROTO = {
+    'fopen':  ('FILE1 *', 'const char *, const char *'),
+    'fclose': ('int', 'FILE1 *'),
+    'fread':  ('unsigned int', 'void *, unsigned int, unsigned int, FILE1 *'),
+    'fwrite': ('unsigned int', 'const void *, unsigned int, unsigned int, FILE1 *'),
+    'fseek':  ('int', 'FILE1 *, long, int'),
+    'ftell':  ('long', 'FILE1 *'),
+    'feof':   ('int', 'FILE1 *'),
+    'ferror': ('int', 'FILE1 *'),
+    'fgetc':  ('int', 'FILE1 *'),
+    'fgets':  ('char *', 'char *, int, FILE1 *'),
+    'fflush': ('int', 'FILE1 *'),
+    'flsall': ('int', 'int'),
+    'exit':   ('void', 'int'),
+    'memcpy_0': ('void *', 'void *, const void *, unsigned int'),
+    'irc__print':   ('int', 'const char *, ...'),
+    'irc__get_msg': ('char *', 'int'),
+    '_strcmpi': ('int', 'const char *, const char *'),
+}
+# Variadic CRT entries: declared with ... so the call sites type-check.
+CRT_VARIADIC = {'printf': ('int', 'const char *, ...'),
+                'sprintf': ('int', 'char *, const char *, ...'),
+                'sscanf': ('int', 'const char *, const char *, ...')}
+CRT_PROTO.update(CRT_VARIADIC)
+
+# WinAPI imports live behind a 4-byte IAT slot, not at an entry point, and
+# every Win32 entry is __stdcall (incdec.md §6.4).
+WINAPI_PROTO = {
+    'VirtualAlloc': ('void *', 'void *, unsigned int, unsigned int, unsigned int'),
+    'VirtualFree':  ('int', 'void *, unsigned int, unsigned int'),
+    'GetLastError': ('unsigned int', 'void'),
+    'CloseHandle':  ('int', 'void *'),
+    'DeleteFileA':  ('int', 'const char *'),
+    'MoveFileA':    ('int', 'const char *, const char *'),
+    'SetFileAttributesA': ('int', 'const char *, unsigned int'),
+    'GetFileAttributesA': ('unsigned int', 'const char *'),
+}
 
 
 def load():
@@ -76,6 +116,16 @@ def load():
     # comments Hex-Rays emits after each body.  That is the only symbol table
     # BMF ships with, and crucially it covers globals whose names carry no
     # address (n0x800000, n2_4, ...) as well as the auto-named ones.
+    winapi = {}
+    for l in open(os.path.join(HERE, 'winapi.txt')):
+        a, n = l.rstrip('\n').split('\t')
+        winapi[n] = int(a, 16)
+
+    funcs = {}
+    for l in open(os.path.join(HERE, 'funcs.txt')):
+        a, n = l.rstrip('\n').split('\t')
+        funcs[n] = int(a, 16)
+
     globals_ = {}
     for l in open(os.path.join(HERE, 'symbols.txt')):
         addr, name, base, ext = (l.rstrip('\n').split('\t') + [''])[:4]
@@ -95,13 +145,15 @@ def load():
             if name in globals_:
                 addr, base, old = globals_[name]
                 globals_[name] = (addr, m.group(1).strip(), ext or old)
-            elif not re.fullmatch(r'(?:' + GLOBAL_RE + r')', name):
+            elif not (re.fullmatch(r'(?:' + GLOBAL_RE + r')', name)
+                      or re.fullmatch(SUB_RE, name) or name in funcs
+                      or '_' + name in funcs or '__' + name in funcs):
                 # Declared in the data section but with no address anywhere:
                 # not in the "using guessed type" comments and no address in
                 # the name.  Nothing can be referenced at a known VA.
                 noaddr.add(name)
         i += 1
-    return lines, spans, protos, globals_, noaddr
+    return lines, spans, protos, globals_, noaddr, funcs, winapi
 
 
 def array_used(lines, spans, name):
@@ -120,7 +172,7 @@ def main():
     ap.add_argument('--out', default=None)
     args = ap.parse_args()
 
-    lines, spans, protos, globals_, noaddr = load()
+    lines, spans, protos, globals_, noaddr, funcs, winapi = load()
     if args.name not in spans:
         sys.exit(f"no such function: {args.name}")
     a, b, va, conv = spans[args.name]
@@ -186,14 +238,29 @@ def main():
     hit_noaddr = sorted(n for n in noaddr
                         if re.search(r'\b' + re.escape(n) + r'\b', body) and is_global_ref(n))
     unresolved = set()
+    win = {}
+    crt = {}                      # body name -> (asm name, addr)
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', body):
         n = m.group(1)
         if n in CTRL or INTRIN.match(n) or n in PURE_LIBC:
             continue
         if re.fullmatch(SUB_RE, n) or re.fullmatch(r'[A-Za-z_]\w*_4[0-9A-Fa-f]{5}', n):
             continue
-        unresolved.add(n)
-    if re.search(r'\bnew\b|\bdelete\b', body):
+        if n in ('operator', 'new', 'delete'):
+            continue              # operator new/delete, handled below
+        if n in winapi and n in WINAPI_PROTO:
+            win[n] = winapi[n]
+            continue
+        hit = next((c for c in (n, '_' + n, '__' + n) if c in funcs), None)
+        if hit and n in CRT_PROTO:
+            crt[n] = (hit, funcs[hit])
+        else:
+            unresolved.add(n)
+    # operator new / delete are keyword pairs the preprocessor cannot rename,
+    # so the call sites are rewritten to plain identifiers (§8.4-B).
+    uses_new = re.search(r'\boperator new\b', body) is not None
+    uses_del = re.search(r'\boperator delete\b', body) is not None
+    if (uses_new and '??2@YAPAXI@Z' not in funcs) or (uses_del and '??3@YAXPAX@Z' not in funcs):
         unresolved.add('operator new/delete')
     if hit_noaddr:
         sys.exit(f"{args.name} references globals with no recoverable address "
@@ -261,6 +328,44 @@ def main():
     if called:
         out.append("")
 
+    # --- statically-linked CRT entries (§6.2, §6.5) -------------------------
+    if crt or uses_new or uses_del or win:
+        out.append("// BMF links the MSVC CRT into the image, so these route to the PE's")
+        out.append("// own implementations — its FILE* objects and heap blocks belong to")
+        out.append("// that private runtime, not to glibc (§6.5).")
+    for n in sorted(win):
+        ret, argl = WINAPI_PROTO[n]
+        out.append(f"#ifndef __PE_DECL___{n}")
+        out.append(f"#define __PE_DECL___{n}")
+        out.append(f"typedef __attribute__((stdcall)) {ret} (*pfn_{n})({argl});")
+        out.append(f"static pfn_{n}& {n} = *(pfn_{n}*)0x{win[n]:08X};   // IAT slot")
+        out.append("#endif")
+    for n in sorted(crt):
+        asm_name, addr = crt[n]
+        ret, argl = CRT_PROTO[n]
+        t = f"t_{n}"
+        out.append(f"#ifndef __PE_DECL___{n}")
+        out.append(f"#define __PE_DECL___{n}")
+        out.append(f"typedef {ret} {t}({argl});   // {asm_name}")
+        out.append(f"static {t}& __{n} = *({t}*)0x{addr:08X};")
+        out.append("#endif")
+        out.append(f"#define {n} __{n}")
+    if uses_new:
+        out.append("#ifndef __PE_DECL___op_new")
+        out.append("#define __PE_DECL___op_new")
+        out.append("typedef void *t_op_new(unsigned int);   // ??2@YAPAXI@Z")
+        out.append(f"static t_op_new& __op_new = *(t_op_new*)0x{funcs['??2@YAPAXI@Z']:08X};")
+        out.append("#endif")
+    if uses_del:
+        out.append("#ifndef __PE_DECL___op_delete")
+        out.append("#define __PE_DECL___op_delete")
+        out.append("typedef void t_op_delete(void *);       // ??3@YAXPAX@Z")
+        out.append(f"static t_op_delete& __op_delete = *(t_op_delete*)0x{funcs['??3@YAXPAX@Z']:08X};")
+        out.append("#endif")
+    if crt or uses_new or uses_del:
+        out.append("#define FILE FILE1")
+        out.append("")
+
     # --- the body -----------------------------------------------------------
     out.append(f"PROBE_DECL(__{args.name})")
     sig_line = body_lines[0]
@@ -288,6 +393,8 @@ def main():
     # every __thiscall function.  Rename it (and its uses) whole-word — the
     # sibling locals this_1/this_3/... are distinct identifiers and unaffected.
     joined = [re.sub(r'\bthis\b', '_this', l) for l in joined]
+    joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
+    joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]
     vec = {g for g in refd_globals if globals_[g][1] in ('__int128', '_OWORD', '__m128i', '__m128', '__m128d')}
     if vec:
         pat = re.compile(r'\b(' + '|'.join(re.escape(v) for v in vec) + r')(\[[^\]]*\])?\s*=\s*0(LL|i64)?\s*;')
@@ -297,6 +404,10 @@ def main():
     out.append("")
 
     # --- close the macro scope (§6.5) ---------------------------------------
+    if crt or uses_new or uses_del:
+        out.append("#undef FILE")
+    for n in sorted(crt):
+        out.append(f"#undef {n}")
     for g in sorted(refd_globals):
         out.append(f"#undef {g}")
     for c in sorted(called):

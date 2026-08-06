@@ -1,11 +1,110 @@
+004058BA	movaps	int	
+0040897A	movdqa	int	
+0040B9F0	movdqu	int	
+0041C911	movups	int	
+0042E6E5	jpt_42E032	int	
+00433E85	jpt_433A47	int	
+00434F60	jpt_434F4B	int	
+00435360	jpt_435358	int	
+004358CA	movntdq	int	
+004359A0	jpt_435999	int	
+00435BE0	jpt_4353B1	int	
+00435C70	off_435C70	int	
+00436040	jpt_435D19	int	
+004361C0	jpt_436189	int	
+00436990	jpt_43640A	int	
+00438100	jpt_4013C9	int	
+00438160	jpt_402C17	int	
+00438220	aEMailDmitryShk	int	
+004385D0	qword_4385D0	int	
+004385E0	qword_4385E0	int	
+004385F0	qword_4385F0	int	
+004385F8	qword_4385F8	int	
+00438600	aFileNotFoundS	int	
+00438614	aUnknownOptionS	int	
+00438628	aSBadFile	int	
+00438638	aReadError	int	
+00438644	aWriteErrorForF	int	
+0043865C	aCanTOpenFileS	int	
+00438670	aOutOfMemory	int	
+00438680	aUserBreak	int	
+0043868C	aDisabled	int	
+00438698	aEnabled	int	
+004386A0	String2	int	
+004386A4	aTga	int	
+004386A8	aPnm	int	
+004386AC	aBmfOptions	int	
+004386B8	Mode	int	
+004386BC	aGif8	int	
+004386C4	aUsefilters	int	
+004386D0	aFsq	int	
+004386D4	aSleepywork	int	
+004386E0	aMaxerror	int	
+004386EC	aTemplateusage	int	
+004386FC	Template	int	
+00438708	aNotpack	int	
+00438710	aDeletefile	int	
+0043871C	aOutfiletype	int	
+00438728	aOutfname	int	
+00438734	aRawfileinfo	int	
+00438740	asc_438740	int	
+00438744	asc_438744	int	
+00438748	a63fBppS	int	
+00438754	aBmf	int	
+00438758	aFile16sImageDx_1	int	
+0043878C	asc_43878C	int	
+00438790	aFile16sImageDx	int	
+004387B8	aSAlreadyExists	int	
+004387EC	aWb	int	
+004387F0	Format	int	
+004387FC	aFile16s	int	
+00438808	aFile16sImageDx_0	int	
+0043883C	aArchived	int	
+00438860	aBmfLosslessIma	int	
+004388C0	aNone	int	
+004388C8	qword_4388C8	int	
+004388D0	qword_4388D0	int	
+004388E0	qword_4388E0	int	
+004388E8	qword_4388E8	int	
+004388F8	asc_4388F8	int	
+00438900	aAB	int	
 00438920	dword_438920	int	[24]
 00438980	dword_438980	int	[32]
+00438A00	byte_438A00	char	[252]
 00438AFC	dword_438AFC	int	[]
 00438B00	dword_438B00	int	[]
 00438B04	dword_438B04	int	[23]
+00438B60	byte_438B60	int	
+00438BE0	byte_438BE0	int	
+00438C60	byte_438C60	int	
+00438CE0	byte_438CE0	int	
+00438D60	byte_438D60	int	
+00438DE0	byte_438DE0	int	
+00438EE1	byte_438EE1	int	
+00438FE2	byte_438FE2	int	
+004390E3	byte_4390E3	int	
+004391E4	byte_4391E4	int	
 00439300	dword_439300	int	[24]
 00439360	dword_439360	int	[32]
+004393E0	qword_4393E0	int	
+004393E8	qword_4393E8	int	
+004393F0	qword_4393F0	int	
+004393F8	qword_4393F8	int	
+00439400	qword_439400	int	
+00439408	byte_439408	char	[]
+00439409	byte_439409	char	[15]
+00439418	byte_439418	char	[16]
+00439428	byte_439428	int	
+0043942C	byte_43942C	int	
+00439430	byte_439430	int	
+00439438	byte_439438	int	
+00439440	byte_439440	int	
+00439448	byte_439448	int	
+0043945C	byte_43945C	int	
+00439468	byte_439468	int	
+00439470	byte_439470	int	
 00439480	dword_439480	int	[6]
+00439498	dword_439498	int	
 0043949C	dword_43949C	int	[]
 004394A0	dword_4394A0	int	[4]
 004394B0	dword_4394B0	int	[12]
@@ -55,9 +154,19 @@
 00439790	xmmword_439790	__int128	
 004397A0	xmmword_4397A0	__int128	
 004397B0	xmmword_4397B0	__int128	
+004397C0	qword_4397C0	int	
 004397F0	xmmword_4397F0	__int128	
 00439800	xmmword_439800	__int128	
+00439828	qword_439828	int	
+00439830	qword_439830	int	
+00439838	qword_439838	int	
+00439840	qword_439840	int	
+00439848	qword_439848	int	
+00439850	qword_439850	int	
+00439860	byte_439860	char	[32]
 00439880	dword_439880	int	[4]
+00439890	byte_439890	char	[16]
+004398A0	byte_4398A0	char	[32]
 004398C0	dword_4398C0	int	[]
 004398C4	dword_4398C4	int	[]
 004398C8	dword_4398C8	int	[]
@@ -94,15 +203,288 @@
 00439B40	xmmword_439B40	__int128	
 00439B50	xmmword_439B50	__int128	
 00439B60	xmmword_439B60	__int128	
+00439B70	dword_439B70	int	
+00439B74	dword_439B74	int	
 00439B7C	dword_439B7C	int	
+00439B88	dword_439B88	int	
+00439B8C	dword_439B8C	int	
+00439B90	dword_439B90	int	
+00439B94	dword_439B94	int	
+00439B98	dword_439B98	int	
+00439B9C	dword_439B9C	int	
+00439BA0	dword_439BA0	int	
+00439BA4	dword_439BA4	int	
+00439BA8	dword_439BA8	int	
+00439BAC	dword_439BAC	int	
+00439BB0	dword_439BB0	int	
+00439BB4	dword_439BB4	int	
+00439BB8	dword_439BB8	int	
+00439BC0	byte_439BC0	char	[8]
+00439BC8	byte_439BC8	char	[8]
+00439BD0	byte_439BD0	char	[8]
 00439BD8	dword_439BD8	int	[8]
+00439BF8	aS_0	int	
+00439BFC	a1	int	
+00439C00	a0	int	
+00439C04	aFalse	int	
+00439C0C	aOff	int	
+00439C10	aNo	int	
+00439C14	aTrue	int	
+00439C1C	aOn	int	
+00439C20	aYes	int	
+00439C24	aD	int	
+00439C28	ini	int	
+00439C2C	aRt	int	
+00439C30	aSSAddedByProgr	int	
+00439C50	aWt	int	
+00439C54	aS	int	
+00439C60	aSS	int	
+00439C68	aChangedByProgr	int	
+00439C80	aPCDD	int	
+00439C8C	a255	int	
+00439C94	aSDD	int	
+00439C9C	aDDD	int	
 00439CA4	dword_439CA4	int	[5]
 00439CB8	dword_439CB8	int	[5]
+00439CCC	aWB	int	
+00439CD0	aRB	int	
+00439CE4	asc_439CE4	int	
+00439CE8	asc_439CE8	int	
+00439CEC	byte_439CEC	int	
+00439D58	aNull	int	
+00439D60	byte_439D60	int	
+00439D64	SrcStr	const WCHAR	
+00439D80	dbl_439D80	int	
+00439D88	dbl_439D88	int	
+00439D90	dbl_439D90	int	
+00439D98	ProcName	int	
+00439DB4	ModuleName	int	
+00439DC0	dbl_439DC0	int	
+00439DC8	aE000	int	
+00439DD0	aRuntimeError	int	
+00439DE0	asc_439DE0	int	
+00439DE4	aTlossError	int	
+00439DF4	aSingError	int	
+00439E04	aDomainError	int	
+00439E14	aR6028UnableToI	int	
+00439E3C	aR6027NotEnough	int	
+00439E74	aR6026NotEnough	int	
+00439EAC	aR6025PureVirtu	int	
+00439ED4	aR6024NotEnough	int	
+00439F0C	aR6019UnableToO	int	
+00439F38	aR6018Unexpecte	int	
+00439F5C	aR6017Unexpecte	int	
+00439F8C	aR6016NotEnough	int	
+00439FB8	aAbnormalProgra	int	
+00439FDC	aR6009NotEnough	int	
+0043A008	aR6008NotEnough	int	
+0043A034	aR6002FloatingP	int	
+0043A05C	aMicrosoftVisua	int	
+0043A084	asc_43A084	int	
+0043A088	aRuntimeErrorPr	int	
+0043A0A4	Source	int	
+0043A0A8	aProgramNameUnk	int	
+0043A0CC	aGetlastactivep	int	
+0043A0E0	aGetactivewindo	int	
+0043A0F0	aMessageboxa	int	
+0043A0FC	LibFileName	int	
+0043A108	a1Qnan	int	
+0043A110	a1Inf	int	
+0043A118	a1Ind	int	
+0043A120	a1Snan	int	
+0043A950	qword_43A950	int	
+0043A958	qword_43A958	int	
+0043A960	xmmword_43A960	int	
+0043A970	xmmword_43A970	int	
+0043A980	xmmword_43A980	int	
+0043A990	qword_43A990	int	
+0043A9A8	off_43A9A8	int	
+0043AC00	aConstantPropag	int	
+0043AC30	aFormal	int	
+0043AC38	aReturn	int	
+0043AC40	aGlobal	int	
+0043AC48	aI32LxLx	int	
+0043AC58	aSi32LdLd	int	
+0043AC6C	aF32FF	int	
+0043AC7C	aI64LxLxLxLx	int	
+0043AC94	aSi64LdLdLdLd	int	
+0043ACB0	aF64FF	int	
+0043ACC0	aBadSecondArgum	int	
+0043ACD4	aFatalErrorCanN	int	
+0043ACFC	aUsageSInputFil	int	
+0043AD20	aUsageSSegmentS	int	
+0043AD4C	aConversionFrom	int	
+0043AD80	aSegmentSize0xX	int	
+0043AD9C	aCannotAllocate	int	
+0043ADD4	aInputFileSCorr	int	
+0043ADF0	aRoutineNameS	int	
+0043AE04	aFileNameS	int	
+0043AE18	aProfDirS	int	
+0043AE2C	aDynamicProfile	int	
+0043AE60	aFatalErrorThis	int	
+0043AEC0	aTheAllowedProc	int	
+0043AEE0	aRunTimeCheckFa	int	
+0043AF40	aErrorBufferOve	int	
+0043AF70	aInitialization	int	
+0043AFA8	aNtdllModuleNot	int	
+0043AFC0	aRtlcapturecont	int	
+0043B000	aWindowsXp64Bit	int	
+0043B060	aStackwalkIsTer	int	
+0043B094	aExceptionIsRai	int	
+0043B0C0	aSignalSIsRaise	int	
+0043B0D4	aSignalSIsRaise_0	int	
+0043B0F0	aSigsegv	int	
+0043B0F8	aSigill	int	
+0043B100	aSigbus	int	
+0043B108	aSigfpe	int	
+0043B110	aUnknown	int	
+0043B118	aNoError	int	
+0043B124	aYouMustLinkWit	int	
+0043B160	aIntelRCoreTmDu	int	
+0043B200	aIntelRPentiumR	int	
+0043B280	aIntelRPentiumR_0	int	
+0043B2C0	aIntelRPentiumR_1	int	
+0043B360	aIntelRProcesso	int	
+0043B3A0	aIntelRProcesso_0	int	
+0043B3E0	aIntelRProcesso_1	int	
+0043B414	aIntelRProcesso_2	int	
+0043B450	aLuS	int	
+0043B458	aIrcMsgDll	int	
+0043B464	dword_43B464	int	
+0043B468	dword_43B468	int	
+0043B46C	dword_43B46C	int	
+0043B470	byte_43B470	int	
+0043B480	xmmword_43B480	int	
+0043B4A0	xmmword_43B4A0	int	
+0043B4B0	xmmword_43B4B0	int	
+0043B4C0	xmmword_43B4C0	int	
+0043B4D0	xmmword_43B4D0	int	
+0043B4E0	xmmword_43B4E0	int	
+0043B4F0	xmmword_43B4F0	int	
+0043B500	xmmword_43B500	int	
+0043B510	xmmword_43B510	int	
+0043B520	xmmword_43B520	int	
+0043B530	xmmword_43B530	int	
+0043B540	xmmword_43B540	int	
+0043B550	xmmword_43B550	int	
+0043B560	xmmword_43B560	int	
+0043B570	xmmword_43B570	int	
+0043B580	xmmword_43B580	int	
+0043B590	xmmword_43B590	int	
+0043B5A0	xmmword_43B5A0	int	
+0043D5E0	xmmword_43D5E0	int	
+0043D5F0	xmmword_43D5F0	int	
+0043D600	xmmword_43D600	int	
+0043D610	xmmword_43D610	int	
+0043D620	xmmword_43D620	int	
+0043D630	xmmword_43D630	int	
+0043D640	xmmword_43D640	int	
+0043D650	xmmword_43D650	int	
+0043D660	xmmword_43D660	int	
+0043D670	xmmword_43D670	int	
+0043D680	xmmword_43D680	int	
+0043D690	xmmword_43D690	int	
+0043D6A0	xmmword_43D6A0	int	
+0043D6B0	xmmword_43D6B0	int	
+0043D6C0	xmmword_43D6C0	int	
+0043D6D0	xmmword_43D6D0	int	
+0043D6E0	xmmword_43D6E0	int	
+0043F720	xmmword_43F720	int	
+0043F740	xmmword_43F740	int	
+0043F750	xmmword_43F750	int	
+0043F760	xmmword_43F760	int	
+0043F770	xmmword_43F770	int	
+0043F780	xmmword_43F780	int	
+0043F790	xmmword_43F790	int	
+0043F7A0	xmmword_43F7A0	int	
+0043F7B0	xmmword_43F7B0	int	
+0043F7C0	xmmword_43F7C0	int	
+0043F7D0	xmmword_43F7D0	int	
+0043F7E0	xmmword_43F7E0	int	
+0043F7F0	xmmword_43F7F0	int	
+00440020	FileName	int	
+00440028	__IMPORT_DESCRIPTOR_KERNEL32	int	
+00440050	off_440050	int	
+00440140	word_440140	int	
+00440152	word_440152	int	
+00440162	word_440162	int	
+0044017A	word_44017A	int	
+00440188	word_440188	int	
+00440196	word_440196	int	
+004401A4	word_4401A4	int	
+004401BA	word_4401BA	int	
+004401D2	word_4401D2	int	
+004401E0	word_4401E0	int	
+004401F0	word_4401F0	int	
+00440200	word_440200	int	
+0044020E	word_44020E	int	
+0044021C	word_44021C	int	
+00440230	word_440230	int	
+00440244	word_440244	int	
+00440256	word_440256	int	
+00440264	word_440264	int	
+00440270	word_440270	int	
+00440286	word_440286	int	
+0044029C	word_44029C	int	
+004402AC	word_4402AC	int	
+004402BC	word_4402BC	int	
+004402C8	word_4402C8	int	
+004402D4	word_4402D4	int	
+004402E0	word_4402E0	int	
+004402EC	word_4402EC	int	
+004402FE	word_4402FE	int	
+00440310	word_440310	int	
+00440324	word_440324	int	
+00440338	word_440338	int	
+00440354	word_440354	int	
+0044036A	word_44036A	int	
+00440384	word_440384	int	
+0044039E	word_44039E	int	
+004403B6	word_4403B6	int	
+004403D0	word_4403D0	int	
+004403E2	word_4403E2	int	
+004403F2	word_4403F2	int	
+00440400	word_440400	int	
+00440412	word_440412	int	
+00440420	word_440420	int	
+0044042E	word_44042E	int	
+0044043A	word_44043A	int	
+00440450	word_440450	int	
+00440466	word_440466	int	
+00440478	word_440478	int	
+0044048A	word_44048A	int	
+00440498	word_440498	int	
+004404A8	word_4404A8	int	
+004404B4	word_4404B4	int	
+004404BE	word_4404BE	int	
+004404CA	word_4404CA	int	
+004404DA	word_4404DA	int	
+004404EA	word_4404EA	int	
+004404FC	word_4404FC	int	
+0044050E	aKernel32Dll	int	
+0044051C	word_44051C	int	
+00440530	word_440530	int	
+00440542	word_440542	int	
+00441000	dword_441000	int	
+00441008	dword_441008	int	
+0044100C	First	int	
+00441018	Last	int	
+0044101C	dword_44101C	int	
+0044102C	dword_44102C	int	
+00441030	dword_441030	int	
+00441034	dword_441034	int	
+00441040	off_441040	int	
+00441044	off_441044	int	
+00441048	off_441048	int	
 0044104C	off_44104C	char *	[2]
+00441054	ElementCount	size_t	
+00441058	dword_441058	int	
+0044105C	dword_44105C	int	
 00441060	n4_6	int	
 00441060	dword_441060	int	
 00441064	n0xFFFF	int	
 00441064	dword_441064	int	
+00441068	off_441068	int	
 0044108C	dword_44108C	int	
 00441090	dword_441090	int	
 00441094	n2_4	int	
@@ -112,6 +494,7 @@
 004410A0	dword_4410A0	int	
 004410A4	dword_4410A4	int	[6]
 004410BC	dword_4410BC	int	[]
+004410C0	off_4410C0	int	
 00441120	xmmword_441120	__int128	
 00441130	xmmword_441130	__int128	
 00441140	xmmword_441140	__int128	
@@ -126,15 +509,66 @@
 004411D0	xmmword_4411D0	__int128	
 004411E0	xmmword_4411E0	__int128	
 004411F0	xmmword_4411F0	__int128	
+00441208	off_441208	int	
+00441220	off_441220	int	
+00441224	dword_441224	int	
+00441230	Str	int	
+00441234	off_441234	int	
+00441238	off_441238	int	
+00441248	qword_441248	int	
+00441278	byte_441278	int	
+004412A8	byte_4412A8	int	
+004414B8	off_4414B8	int	
+004414C2	word_4414C2	int	
+004416C4	SrcSizeInBytes	int	
+004416C8	byte_4416C8	int	
+004416D0	dword_4416D0	int	
+004416D4	dword_4416D4	int	
+00441838	off_441838	int	
+0044183C	off_44183C	int	
+00441840	off_441840	int	
+00441844	off_441844	int	
+00441848	off_441848	int	
+0044184C	off_44184C	int	
+00441850	dword_441850	int	
+004418C8	dword_4418C8	int	
+004418CC	dword_4418CC	int	
+004418D0	dword_4418D0	int	
+004418D4	dword_4418D4	int	
+004418D8	byte_4418D8	int	
+004418E4	byte_4418E4	int	
+004418F8	dword_4418F8	int	
+004418FC	off_4418FC	int	
+00441988	asc_441988	int	
+00441990	asc_441990	int	
+004419B0	dword_4419B0	int	
+004419B8	byte_4419B8	int	
+004419D0	byte_4419D0	int	
+004419F0	byte_4419F0	int	
+004419F8	byte_4419F8	int	
+004419FC	byte_4419FC	int	
+00441A08	dword_441A08	int	
+00441AE8	byte_441AE8	int	
+00441AF0	dword_441AF0	int	
+00441C50	byte_441C50	int	
+00441DB0	dword_441DB0	int	
+00441DB4	dword_441DB4	int	
 00441DC0	dword_441DC0	int	[]
 00441DC8	dword_441DC8	int	[]
 00441DCC	dword_441DCC	int	[]
 00441DD0	dword_441DD0	int	[521]
 004425F4	n2_2	int	
+00442600	word_442600	int	
+00442678	word_442678	int	
+00442940	dword_442940	int	
+00442944	hConsoleHandle	int	
+00442948	hObject	int	
+00442960	Destination_	char	
 00442BA0	dword_442BA0	int	
 00442BA4	n2_5	int	
 00442BA8	dword_442BA8	int	
 00442BAC	dword_442BAC	int	
+00442BB0	dwLowDateTime	int	
 00442BB8	dword_442BB8	int	
 00442BBC	dword_442BBC	int	
 00442BC0	m	int	[]
@@ -146,14 +580,18 @@
 00442DB8	dword_442DB8	int	[3]
 00442DC4	dword_442DC4	int	[6]
 00442DDC	dword_442DDC	int	[]
+00442DE0	dword_442DE0	int	
 00442DE4	dword_442DE4	int	[]
 00442DE8	dword_442DE8	int	[21]
 00442E3C	dword_442E3C	int	[]
+00442E40	n633	int	
 00442E44	dword_442E44	int	[]
 00442E48	dword_442E48	int	[3]
 00442E54	dword_442E54	int	[5]
 00442E68	dword_442E68	int	
 00442E6C	dword_442E6C	int	
+00442E70	Src	int	
+00442E74	dword_442E74	int	
 00442E88	dword_442E88	int	
 00442EA0	xmmword_442EA0	__int128	
 00442EB0	xmmword_442EB0	__int128	
@@ -178,14 +616,24 @@
 00443374	dword_443374	int	
 00443378	Buffer_0	int	
 00443378	dword_443378	int	
+0044337C	Buffer	int	
+00443380	buf	int	
 00443384	dword_443384	int	
 00443388	dword_443388	int	
 0044338C	n256_2	int	[]
 00443390	n512	int	[]
+00443394	n4_5	int	
 00443398	n256_0	int	
+0044339C	byte_44339C	char	[]
+0044339D	byte_44339D	char	[]
+0044339E	byte_44339E	char	[]
+0044339F	byte_44339F	char	[]
 004433A0	dword_4433A0	int	[]
 004433A4	dword_4433A4	int	[]
 004433A8	dword_4433A8	int	[]
+004433AC	byte_4433AC	char	[]
+004433AD	byte_4433AD	char	[16]
+004433BD	byte_4433BD	char	[15]
 004433CC	n3_1	char	
 004433CD	n3_0	char	
 004433CD	byte_4433CD	char	
@@ -202,9 +650,13 @@
 004433F0	n5	int	
 004433F4	p_n2	int	
 004433F8	dword_4433F8	int	
+004433FC	buf_2	int	
 00443400	Src_0	int	
 00443404	Src_1	int	
+00443408	dword_443408	int	
 0044340C	dword_44340C	int	[]
+00443410	n24	int	
+00443414	n14	int	
 00443418	n9	int	
 00443418	dword_443418	int	
 0044341C	n7	int	
@@ -217,6 +669,8 @@
 00443430	dword_443430	int	
 00443434	dword_443434	int	
 00443438	dword_443438	int	
+00443440	buf_0	char	[]
+00445440	byte_445440	char	[544]
 00445660	dword_445660	int	[32]
 004456E0	n0x800000	int	
 004456E4	n0x7F800000	int	
@@ -231,10 +685,14 @@
 00445700	byte_445700	char	
 00445704	dword_445704	int	
 00445704	n0x88	int	
+00445708	n256_1	int	
 0044570C	dword_44570C	int	
 0044570C	n8_1	int	
 00445710	dword_445710	int	
 00445710	n8_0	int	
+00445714	byte_445714	int	
+00445715	byte_445715	int	
+00445716	byte_445716	int	
 0044571C	n2_0	char	
 0044571D	byte_44571D	char	
 0044571E	byte_44571E	char	
@@ -252,6 +710,7 @@
 0044572E	byte_44572E	char	
 00445730	byte_445730	char	
 00445731	n32	char	
+00445732	byte_445732	int	
 0044573C	dword_44573C	int	[]
 00445740	n4_4	int	
 00445740	dword_445740	int	
@@ -299,7 +758,87 @@
 00445928	dword_445928	int	
 0044592C	dword_44592C	int	
 00445930	dword_445930	int	
+00445934	dword_445934	int	
+00445938	dword_445938	int	
+0044593C	dword_44593C	int	
+00445940	dword_445940	int	
+00445944	dword_445944	int	
+00445948	dword_445948	int	
+0044594C	dword_44594C	int	
+00445950	argc	int	
+00445954	argv	int	
+0044595C	envp	int	
+00445960	dword_445960	int	
+0044596C	dword_44596C	int	
+00445974	byte_445974	int	
+00445978	dword_445978	int	
+0044597C	dword_44597C	int	
+00445984	dword_445984	int	
+00445988	Block	int	
+00445990	dword_445990	int	
+00445994	byte_445994	int	
+004459A4	byte_4459A4	int	
+004459B4	dword_4459B4	int	
+004459BC	dword_4459BC	int	
+004459C0	dword_4459C0	int	
+004459C4	byte_4459C4	int	
+004459CC	dword_4459CC	int	
+004459DC	CodePage	int	
+004459E4	dword_4459E4	int	
+004459E8	byte_4459E8	int	
+004459EC	dword_4459EC	int	
+004459F0	byte_4459F0	int	
+004459F4	dword_4459F4	int	
+004459F8	Filename	int	
+00445AFC	dword_445AFC	int	
+00445B00	dword_445B00	int	
+00445B04	dword_445B04	int	
+00445B0C	dword_445B0C	int	
+00445B10	dword_445B10	int	
+00445B18	word_445B18	int	
+00445B1A	byte_445B1A	int	
+00445B1C	byte_445B1C	int	
+00445B38	dword_445B38	int	
+00445B3C	dword_445B3C	int	
+00445B40	dword_445B40	int	
+00445B44	dword_445B44	int	
+00445B48	dword_445B48	int	
+00445B4C	dword_445B4C	int	
+00445B50	dword_445B50	int	
+00445B54	dword_445B54	int	
+00445B58	dword_445B58	int	
 00445B5C	n1024	int	
+00445B60	Destination	int	
+00445D60	byte_445D60	int	
+00445F60	byte_445F60	int	
+00446160	lpSource	int	
 00446180	Size	int	
 00446180	dword_446180	int	
 00446184	dword_446184	int	
+00446188	dword_446188	int	
+00446190	byte_446190	int	
+0044619C	dword_44619C	int	
+004461A0	byte_4461A0	int	
+004462A0	unk_4462A0	int	
+004462A1	byte_4462A1	int	
+004463A4	Locale	int	
+004463A8	dword_4463A8	int	
+004463AC	dword_4463AC	int	
+004463B0	dword_4463B0	int	
+004463B4	dword_4463B4	int	
+004463B8	dword_4463B8	int	
+004463BC	lpMem	int	
+004463C0	hHeap	int	
+004463E0	dword_4463E0	int	
+004463E4	byte_4463E4	int	
+004464E0	uNumber	int	
+004464E4	dword_4464E4	int	
+00446500	byte_446500	int	
+00447500	Count	int	
+00447504	dword_447504	int	
+00447508	dword_447508	int	
+0044750C	dword_44750C	int	
+00447510	dword_447510	int	
+00447514	dword_447514	int	
+00448016	aDUsersNbtester	int	
+00448078	aLibmSse2Log	int	

@@ -26,6 +26,7 @@
 00414060	sub_414060	thiscall
 00414390	sub_414390	thiscall
 00414800	sub_414800	thiscall
+004148F0	sub_4148F0	thiscall
 00414920	sub_414920	cdecl
 00414CE0	sub_414CE0	cdecl
 00414F60	sub_414F60	cdecl

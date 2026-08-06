@@ -7,6 +7,12 @@ typedef int t_Buffer_0;
 static t_Buffer_0& __Buffer_0 = *(t_Buffer_0*)0x00443378;
 #endif
 #define Buffer_0 __Buffer_0
+#ifndef __PE_DECL___a1
+#define __PE_DECL___a1
+typedef int t_a1[0x10000];
+static t_a1& __a1 = *(t_a1*)0x00439BFC;
+#endif
+#define a1 __a1
 #ifndef __PE_DECL___byte_4456F0
 #define __PE_DECL___byte_4456F0
 typedef char t_byte_4456F0;
@@ -127,6 +133,7 @@ LABEL_15:
 }
 
 #undef Buffer_0
+#undef a1
 #undef byte_4456F0
 #undef dword_4456E8
 #undef dword_4456EC

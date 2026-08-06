@@ -29,6 +29,9 @@ archive[0-9]*
 
 # incdec working tree: donor decompilation and per-run artifacts
 incdec/bmf/BMF.c
+incdec/bmf/BMF.asm
+incdec/bmf/tr/
+incdec/bmf/*.out
 incdec/bmf/run/
 incdec/bmf/dummy32.cpp
 incdec/bmf/trace.out

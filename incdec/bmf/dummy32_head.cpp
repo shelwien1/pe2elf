@@ -58,6 +58,24 @@ typedef unsigned int   uint;
 #define HIBYTE(x)   (*((uint8_t*)&(x) + sizeof(x) - 1))
 #define qmemcpy     memcpy
 
+// incdec.md §8.3 — MSVC's _iobuf, which is what BMF's statically-linked CRT
+// hands out.  32 bytes on Win32 (the Win64 form is 48), and nothing like
+// glibc's FILE.  Bodies that touch stdio are compiled with `#define FILE
+// FILE1` so their FILE* is this, and every stdio call is routed to the PE's
+// own implementation (§6.5) — a glibc FILE* reaching BMF's fread would be
+// read with this layout.
+struct FILE1 {
+  char* _ptr;      // +0x00
+  int   _cnt;      // +0x04
+  char* _base;     // +0x08
+  int   _flag;     // +0x0C
+  int   _file;     // +0x10
+  int   _charbuf;  // +0x14
+  int   _bufsiz;   // +0x18
+  char* _tmpfname; // +0x1C
+};
+static_assert(sizeof(FILE1) == 32, "Win32 _iobuf is 32 bytes");
+
 // incdec.md §8.2
 #define _BitScanForward(idx_ptr, mask_val) \
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)
