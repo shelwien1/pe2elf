@@ -14,6 +14,17 @@ End-to-end this is enough to convert and run real-world tools — `t.sh`
 exercises rar390, rar550a, and rar701a, each invoked as
 `./rar.elf a -m5 archive *.so` and checked for `Done` + a non-empty `.rar`.
 
+A parallel 32-bit pipeline — `pe2elf32` + `winapi_shim32.so` — does the same
+for **PE32 / `IMAGE_FILE_MACHINE_I386`** input, producing ELFCLASS32 / `EM_386`
+binaries that run under `/lib/ld-linux.so.2`. It is a separate tree rather
+than a mode of `pe2elf`, because the two differ in almost every low-level
+detail: `REL` with in-place addends instead of `RELA`, three calling
+conventions (`stdcall`/`cdecl`/`thiscall`) instead of one `ms_abi`, a TEB
+reached through a `%fs` GDT descriptor instead of a `GS` base, and
+chain-based `fs:[0]` SEH instead of x64's `.pdata` unwind tables. See
+[`!pe2elf32-plan.md`](!pe2elf32-plan.md) and [the 32-bit section](#32-bit-pe32--elf32)
+below.
+
 ## How it works
 
 1. **ELF wrapper** — an ELF header, program headers, and a small synthetic
@@ -81,6 +92,57 @@ Produces:
 | `load` | Helper that dlopens a `pe2elf --so`-converted `.so` and invokes its `_entrypoint` symbol with the MSVC WinMain prototype (ms_abi). |
 
 `make pe2elf winapi_shim.so` skips the debug build and `dummy.so`.
+
+## 32-bit (PE32 → ELF32)
+
+```sh
+make all32
+```
+
+Produces `pe2elf32`, `winapi_shim32.so`, `winapi_shim32_dbg.so` and `load32`
+— the same four roles as the 64-bit outputs. The converter is a native host
+tool (it only emits ELF32 bytes, it never runs them); everything else is
+built `-m32`, which needs the 32-bit dev headers and libraries:
+
+```sh
+# Debian/Ubuntu
+sudo apt-get install gcc-multilib g++-multilib libc6-dev-i386
+# Fedora
+sudo dnf install glibc-devel.i686 libstdc++-devel.i686
+```
+
+32-bit *codegen* alone is not enough — the shim includes system headers.
+
+Usage mirrors the 64-bit tool, with 32-bit defaults (`--interp
+/lib/ld-linux.so.2`, `--shim-soname winapi_shim32.so`, ordinal-import DLLs
+read from `dll32/` rather than `dll/`):
+
+```sh
+./pe2elf32 exe32/1c.exe 1c.elf && ./1c.elf
+./pe2elf32 exe32/1c.exe 1c.so --so && ./load32 ./1c.so
+```
+
+`--strip-pdata` is accepted for CLI parity but never matches: `.pdata` is an
+x64/IA64/ARM unwind-table section that 32-bit x86 PEs do not carry.
+
+Notes specific to this pipeline:
+
+- **`--pie` needs base relocations.** ET_DYN images are relocated by the
+  kernel, so a PE built with `IMAGE_FILE_RELOCS_STRIPPED` can only run at its
+  preferred base. The converter prints a note when it sees this; `--so` still
+  works, because `dlopen` honours the `p_vaddr` hint. (This is not a
+  32-bit-specific rule, but it bites sooner here: the address space is packed
+  enough that a mis-sized mapping lands on something.)
+- **`-D_FILE_OFFSET_BITS=64` is load-bearing**, not cosmetic. On x86-64 it is
+  a no-op; on i386 it is what makes `off_t` 64-bit and redirects
+  `lseek`/`stat`/`open` to their `*64` variants.
+- **x86 SEH works.** `__try`/`__except` registration needs no shim support at
+  all (the fake TEB gives the PE a writable `fs:[0]`), and hardware faults are
+  dispatched through that chain from the POSIX signal handler, so a handler
+  can return `ExceptionContinueExecution` and resume. `_except_handler4` is
+  the exception: its scope table is XOR-obfuscated with the image's
+  `__security_cookie`, which the shim cannot reach, so it declines rather than
+  decode it wrong.
 
 ## Usage
 
@@ -179,6 +241,25 @@ For each target it converts `exe/<name>.exe → <name>.elf`, runs
 stdout contains `Done`, and the resulting `.rar` is non-empty.
 Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 
+`t32.sh` is the 32-bit counterpart. It builds `pe2elf32`, the 32-bit shim and
+`load32`, then converts each fixture in `exe32/` twice — once as a plain
+ET_EXEC and once with `--so` (run via `./load32`) — and checks both exit 0 and
+print the expected marker:
+
+```sh
+./t32.sh
+```
+
+| Fixture | What it gates |
+|---|---|
+| `1b.exe` | No-CRT PE32 (GetStdHandle/WriteFile/ExitProcess): the converter, the `%fs` TEB, stdcall dispatch, and the IAT `R_386_32` + `REL` base-reloc paths |
+| `1c.exe` | MSVCRT-linked PE32: CRT startup — `__getmainargs`, `_initterm`, cdecl `printf` over the native `va_list`, the 32-byte `_iobuf`, and the `fs:[0]` `__try` MSVC wraps `main` in |
+| `seh.exe` | Faults through a null pointer inside a hand-built `fs:[0]` frame whose handler rewrites `CONTEXT.Eip`: the signal-driven x86 SEH dispatcher. Regenerate with `exe32/mkseh32.sh` |
+
+The archiver targets `t.sh` uses are not covered: `exe/` holds x64 builds,
+which `pe2elf32` correctly rejects on machine type. Drop 32-bit builds into
+`exe32/` (and their 32-bit side DLLs into `dll32/`) to extend it.
+
 ## Supported features
 
 - **Named and ordinal imports** — ordinal lookup needs the matching
@@ -233,6 +314,15 @@ Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 | `elf_write.hpp` | `Writer`: ELF serialization and file output |
 | `pedump.cpp` | Standalone PE inspector (not part of the conversion pipeline) |
 
+The 32-bit converter is a parallel set of files with the same roles —
+`pe2elf32.cpp`, `pe_types32.hpp`, `elf_types32.hpp`, `pe_image32.hpp`,
+`elf_plan32.hpp`, `elf_build32.hpp`, `elf_write32.hpp` — sharing only
+`util.hpp`, which is width-independent. The parts worth reading for the
+differences are `elf_types32.hpp` (`Elf32_Sym` reorders its fields and
+`Elf32_Phdr` puts `p_flags` last) and `elf_build32.hpp` (`REL` with in-place
+addends, and the two startup trampolines — absolute for ET_EXEC, a `call`/`pop`
+get-PC thunk for ET_DYN, since i386 has no RIP-relative addressing).
+
 ### Shim
 
 | File | Purpose |
@@ -249,6 +339,16 @@ Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 | `!shim-plan.md` | Architecture map: every shim section, what it implements, what's stubbed |
 | `dummy.cpp` | Example injection library built as `dummy.so` |
 
+`shim32.cpp` / `shim32_*.hpp` / `shim32.map` mirror the same split for the
+32-bit shim. Most of it is the 64-bit logic recompiled `-m32` — POSIX
+translation does not care about pointer width — with the ABI boundary and the
+low-level machinery reworked: `shim32_types.h` defines `WINAPI`/`CDECLAPI`/
+`THISCALL` instead of one `ms_abi`, `shim32.cpp` builds the TEB at the x86
+offsets and installs it with `set_thread_area` + a `%fs` load per thread, and
+`shim32_kernel32_except.hpp` is a rewrite: the x86 `fs:[0]` chain dispatcher,
+a 4-argument `RtlUnwind`, i386 `CONTEXT`/`RtlCaptureContext`, and the msvcrt
+`_except_handler3` scope-table interpreter with `_local_unwind2`/`_global_unwind2`.
+
 ### Repo data
 
 | Path | Purpose |
@@ -256,3 +356,6 @@ Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 | `exe/` | Windows test binaries (rar390, rar550a, rar701a, …) |
 | `dll/` | Side-loaded Windows DLLs used only for ordinal-to-name resolution at conversion time |
 | `t.sh` | End-to-end smoke test: build, convert, run, check `Done` + non-empty `.rar` |
+| `exe32/` | 32-bit PE test fixtures (`1b`, `1c`, `seh`) plus the sources and generator for `seh.exe` |
+| `dll32/` | 32-bit side-loaded DLLs for ordinal-to-name resolution (x86 DLLs export different ordinals than their x64 siblings, so this is separate from `dll/`) |
+| `t32.sh` | End-to-end smoke test for the 32-bit pipeline, in both ET_EXEC and `--so` modes |

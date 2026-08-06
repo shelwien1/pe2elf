@@ -1,8 +1,11 @@
 # Compiled binaries
 pe2elf
+pe2elf32
 test_find
 winapi_shim.so
+winapi_shim32.so
 load
+load32
 
 # Build artifacts and backups
 *.bak
@@ -12,7 +15,9 @@ load
 *.pmx
 *.ppm
 winapi_shim_dbg.so
+winapi_shim32_dbg.so
 dummy.so
+dummy32.so
 backup
 1.exe
 2.exe

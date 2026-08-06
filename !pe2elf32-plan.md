@@ -1,6 +1,41 @@
 # pe2elf32 — Plan for a PE32/i386 → ELF32 Converter and 32-bit Shim
 
-Status: design document. Nothing here is implemented yet.
+Status: **implemented** (M1–M3 done, M4 partial). The tree described below
+now exists: `pe2elf32.cpp` + `pe_types32/elf_types32/pe_image32/elf_plan32/
+elf_build32/elf_write32.hpp`, `shim32.cpp` + `shim32_*.hpp` + `shim32.map`,
+`load32.cpp`, `t32.sh`, `exe32/`, and `make all32`.
+
+What landed, against §8's milestones:
+
+* **M1 (converter + minimal shim)** — done. `exe32/1b.exe` (no-CRT
+  GetStdHandle/WriteFile/ExitProcess) converts and runs.
+* **M2 (CRT startup)** — done. `exe32/1c.exe` (MSVCRT-linked) reaches `main`
+  and does formatted I/O; `__getmainargs`/`_initterm`/cdecl `printf` over the
+  native va_list/32-byte `_iobuf` all work.
+* **M3 (SEH v1)** — done, and further than planned: i386 `CONTEXT` +
+  `RtlCaptureContext`, signal-driven `fs:[0]` chain dispatch, a real 4-argument
+  x86 `RtlUnwind`, and a scope-table-interpreting `_except_handler3` with
+  `_local_unwind2`/`_global_unwind2` (§2.5's v2 for the `_handler3` case).
+  `exe32/seh.exe` faults through a null pointer inside an `fs:[0]` frame and
+  its handler resumes execution.
+* **M4 (full parity)** — the surface is ported (threads set up `%fs` per
+  thread, sync, `_beginthreadex`, i386 `setjmp`/`longjmp`, thiscall COM
+  vtable), but the `t32.sh` archiver run is **not** gated: no 32-bit builds of
+  rar/ppmonstr/nz/rz are in the tree, so `exe32/` holds the three fixtures
+  above instead. Dropping 32-bit archiver binaries into `exe32/` (plus their
+  32-bit side DLLs into `dll32/`) is what remains.
+
+Two deliberate gaps, both noted where they live in the code:
+
+* `_except_handler4`'s scope table is XOR-obfuscated with the image's
+  `__security_cookie`, which is not reachable from the shim; it declines
+  (`ExceptionContinueSearch`) rather than decode it wrong and call arbitrary
+  addresses as filters (§2.5).
+* Collided/nested unwind dispositions are logged and treated as
+  "continue search".
+
+The rest of this document is the original design, kept as the rationale for
+the shape of the implementation.
 
 Goal: build a **from-scratch** `pe2elf32` converter and a companion
 `winapi_shim32.so`, mirroring every feature of the existing 64-bit
