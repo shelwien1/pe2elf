@@ -106,7 +106,7 @@ run_target() {
 }
 
 # 1. Clean slate.
-step "clean" rm -f pe2elf32 winapi_shim32.so winapi_shim32_dbg.so load32 \
+step "clean" rm -f pe2elf32 winapi_shim32.so winapi_shim32_dbg.so dummy32.so load32 \
                 *.elf 1b.so 1c.so seh.so || exit 1
 
 # 2. Build.  Needs the 32-bit dev headers/libs — see the Makefile comment.
@@ -178,7 +178,37 @@ run_target 1b  "Hello, world!!!"
 run_target 1c  "Hello, world!!!"
 run_target seh "SEH caught the AV and resumed"
 
-# 4. Real-world target: BMF, checked for a correct compress/decompress
+# 4. --inject: a second DT_NEEDED whose ELF constructor runs before the PE
+# entry point.  seh.exe is the target because its own output ("SEH caught…")
+# is distinguishable from dummy32.so's, so the check can prove both ran and
+# in the right order.
+step "build dummy32.so" make dummy32.so
+if [ -f dummy32.so ]; then
+  step "convert seh (--inject=dummy32.so)" \
+    ./pe2elf32 exe32/seh.exe seh_inj.elf --inject=dummy32.so
+  echo
+  echo "=== run seh with dummy32.so injected ==="
+  echo "+ ./seh_inj.elf"
+  out=$(./seh_inj.elf 2>&1); rc=$?
+  echo "$out"
+  echo "(exit $rc)"
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: ./seh_inj.elf exited $rc (expected 0)"; FAIL=$((FAIL+1))
+  elif ! echo "$out" | grep -qF "Hello, world!!!"; then
+    echo "FAIL: injected dummy32.so constructor did not run"; FAIL=$((FAIL+1))
+  elif ! echo "$out" | grep -qF "SEH caught the AV and resumed"; then
+    echo "FAIL: PE did not run after injection"; FAIL=$((FAIL+1))
+  elif [ "$(echo "$out" | grep -n . | grep -F 'Hello, world!!!' | cut -d: -f1 | head -1)" \
+         -gt "$(echo "$out" | grep -n . | grep -F 'SEH caught' | cut -d: -f1 | head -1)" ]; then
+    echo "FAIL: injected constructor ran after the PE entry, not before"; FAIL=$((FAIL+1))
+  else
+    echo "ok: dummy32.so constructor ran before the PE entry, PE still correct"
+    PASS=$((PASS+1))
+  fi
+  rm -f seh_inj.elf
+fi
+
+# 5. Real-world target: BMF, checked for a correct compress/decompress
 # round-trip rather than for a string in stdout.
 if [ -f exe32/BMF.exe ]; then
   step "convert BMF (ET_EXEC)" ./pe2elf32 exe32/BMF.exe BMF.elf \

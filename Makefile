@@ -98,7 +98,7 @@ LOAD32_LDFLAGS = -ldl -L. -Wl,--no-as-needed,-l:winapi_shim32.so,--as-needed \
 
 all: $(SHIM_OUT) $(SHIM_DBG_OUT) $(DUMMY_OUT) $(PE2ELF_OUT) $(LOAD_OUT)
 
-all32: $(SHIM32_OUT) $(SHIM32_DBG_OUT) $(PE2ELF32_OUT) $(LOAD32_OUT)
+all32: $(SHIM32_OUT) $(SHIM32_DBG_OUT) $(DUMMY32_OUT) $(PE2ELF32_OUT) $(LOAD32_OUT)
 
 SHIM_HEADERS   = $(wildcard shim_*.hpp)
 SHIM32_HEADERS = $(wildcard shim32_*.hpp)
@@ -124,7 +124,9 @@ $(SHIM32_OUT): $(SHIM32_SRCS) $(SHIM32_HEADERS) shim32_types.h shim32.map
 $(SHIM32_DBG_OUT): $(SHIM32_SRCS) $(SHIM32_HEADERS) shim32_types.h shim32.map
 	$(CC) $(SHIM32_DBG_FLAGS) -DWINAPI_LOG_ENABLED -o $@ $(SHIM32_SRCS) $(SHIM32_DBG_LDFLAGS)
 
-$(DUMMY32_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h
+# No defs.h dependency here: unlike the 64-bit dummy.so rule, which carries
+# one for an out-of-tree build, dummy.cpp as committed includes nothing.
+$(DUMMY32_OUT): $(DUMMY_SRCS)
 	$(CC) $(DUMMY32_FLAGS) -o $@ $(DUMMY_SRCS) $(DUMMY32_LDFLAGS)
 
 $(PE2ELF32_OUT): $(PE2ELF32_SRCS) pe_types32.hpp elf_types32.hpp pe_image32.hpp \

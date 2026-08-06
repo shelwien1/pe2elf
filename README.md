@@ -99,9 +99,9 @@ Produces:
 make all32
 ```
 
-Produces `pe2elf32`, `winapi_shim32.so`, `winapi_shim32_dbg.so` and `load32`
-— the same four roles as the 64-bit outputs. The converter is a native host
-tool (it only emits ELF32 bytes, it never runs them); everything else is
+Produces `pe2elf32`, `winapi_shim32.so`, `winapi_shim32_dbg.so`, `dummy32.so`
+and `load32` — the same roles as the 64-bit outputs. The converter is a native
+host tool (it only emits ELF32 bytes, it never runs them); everything else is
 built `-m32`, which needs the 32-bit dev headers and libraries:
 
 ```sh
@@ -124,6 +124,23 @@ read from `dll32/` rather than `dll/`):
 
 `--strip-pdata` is accepted for CLI parity but never matches: `.pdata` is an
 x64/IA64/ARM unwind-table section that 32-bit x86 PEs do not carry.
+
+`--inject=<soname>` adds a second `DT_NEEDED`, so an arbitrary shared library
+loads with the converted binary and its ELF constructors run *before* the PE
+entry point. `dummy32.so` is the worked example (it just prints
+`Hello, world!!!` from a constructor):
+
+```sh
+./pe2elf32 exe32/BMF.exe BMF.elf --inject=dummy32.so
+./BMF.elf image.bmp
+# Hello, world!!!          <- dummy32.so constructor
+# BMF lossless image compressor, v.2.01 ...
+```
+
+It is linked at `-Ttext-segment=0x30000000`, which keeps it inside the 3 GB
+i386 user range and clear of both the PE image at `0x400000` and the mmap
+region the shim and libc land in — worth caring about here in a way it is not
+at 64-bit, where the address space is empty enough that any choice works.
 
 Notes specific to this pipeline:
 
@@ -257,6 +274,9 @@ print the expected marker:
 | `seh.exe` | Faults through a null pointer inside a hand-built `fs:[0]` frame whose handler rewrites `CONTEXT.Eip`: the signal-driven x86 SEH dispatcher. Regenerate with `exe32/mkseh32.sh` |
 | `BMF.exe` | BMF 2.01, Dmitry Shkarin's lossless image compressor — a real-world target, statically linked against the MSVC CRT (it imports *nothing* from msvcrt.dll, so it exercises a different surface from `1c`: heap, file I/O, `RtlUnwind`, `GetStringType`/`LCMapString`, console mode) |
 
+`t32.sh` also converts `seh.exe` with `--inject=dummy32.so` and asserts both
+the injected constructor and the PE ran, in that order.
+
 The first three fixtures are checked for a string in stdout. BMF is checked
 for **correctness**: `t32.sh` generates a BMP (`exe32/mkbmp32.py`), compresses
 it, decompresses it, and asserts the pixel data comes back identical — in both
@@ -344,7 +364,7 @@ get-PC thunk for ET_DYN, since i386 has no RIP-relative addressing).
 | `shim_msvcrt.hpp` | C runtime entry points (`printf`, `sprintf`, `strcmp`, `_beginthreadex`, `_setjmp`/`longjmp`, …) |
 | `shim_misc_dlls.hpp` | ole32, oleaut32 (BSTR/VARIANT), powrprof |
 | `!shim-plan.md` | Architecture map: every shim section, what it implements, what's stubbed |
-| `dummy.cpp` | Example injection library built as `dummy.so` |
+| `dummy.cpp` | Example injection library, built as `dummy.so` (64-bit) and `dummy32.so` (32-bit); the source is architecture-independent, only the link address differs |
 
 `shim32.cpp` / `shim32_*.hpp` / `shim32.map` mirror the same split for the
 32-bit shim. Most of it is the 64-bit logic recompiled `-m32` — POSIX
