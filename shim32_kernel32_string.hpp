@@ -16,6 +16,18 @@ extern "C" EXPORT DWORD kernel32_GetOEMCP(void) {
   return 437;
 }
 
+// Locale identity.  The shim has one locale (whatever setlocale(LC_ALL, "")
+// picked), so all three report the same LCID: 0x0409 = en-US, which pairs
+// with the 1252/437 code pages above.  The MSVC CRT calls GetThreadLocale
+// during multibyte init and only uses it to pick a code page.
+#define LCID_EN_US 0x0409u
+extern "C" EXPORT DWORD kernel32_GetThreadLocale(void)      { return LCID_EN_US; }
+extern "C" EXPORT DWORD kernel32_GetUserDefaultLCID(void)   { return LCID_EN_US; }
+extern "C" EXPORT DWORD kernel32_GetSystemDefaultLCID(void) { return LCID_EN_US; }
+extern "C" EXPORT BOOL  kernel32_SetThreadLocale(DWORD lcid) {
+  return (lcid == LCID_EN_US || lcid == 0x0400u /*LOCALE_USER_DEFAULT*/) ? TRUE : FALSE;
+}
+
 extern "C" EXPORT BOOL kernel32_IsValidCodePage(DWORD cp) {
   return (cp==65001||cp==437||cp==1252) ? TRUE : FALSE;
 }

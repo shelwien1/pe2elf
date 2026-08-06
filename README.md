@@ -255,6 +255,13 @@ print the expected marker:
 | `1b.exe` | No-CRT PE32 (GetStdHandle/WriteFile/ExitProcess): the converter, the `%fs` TEB, stdcall dispatch, and the IAT `R_386_32` + `REL` base-reloc paths |
 | `1c.exe` | MSVCRT-linked PE32: CRT startup — `__getmainargs`, `_initterm`, cdecl `printf` over the native `va_list`, the 32-byte `_iobuf`, and the `fs:[0]` `__try` MSVC wraps `main` in |
 | `seh.exe` | Faults through a null pointer inside a hand-built `fs:[0]` frame whose handler rewrites `CONTEXT.Eip`: the signal-driven x86 SEH dispatcher. Regenerate with `exe32/mkseh32.sh` |
+| `BMF.exe` | BMF 2.01, Dmitry Shkarin's lossless image compressor — a real-world target, statically linked against the MSVC CRT (it imports *nothing* from msvcrt.dll, so it exercises a different surface from `1c`: heap, file I/O, `RtlUnwind`, `GetStringType`/`LCMapString`, console mode) |
+
+The first three fixtures are checked for a string in stdout. BMF is checked
+for **correctness**: `t32.sh` generates a BMP (`exe32/mkbmp32.py`), compresses
+it, decompresses it, and asserts the pixel data comes back identical — in both
+ET_EXEC and `--so` modes, which also confirms the two startup trampolines
+agree (they produce byte-identical compressed output).
 
 The archiver targets `t.sh` uses are not covered: `exe/` holds x64 builds,
 which `pe2elf32` correctly rejects on machine type. Drop 32-bit builds into

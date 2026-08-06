@@ -21,8 +21,15 @@
 #        Gates the signal-driven x86 SEH dispatcher.  Rebuild it with
 #        exe32/mkseh32.sh.
 #
-# Drop 32-bit builds of the archiver tools into exe32/ and add them to
-# EXE_TARGETS to extend coverage; anything needing ordinal imports also needs
+# Then a real-world target: BMF 2.01, Dmitry Shkarin's lossless image
+# compressor.  It is statically linked against the MSVC CRT (no msvcrt.dll
+# imports at all), so it exercises a very different surface from 1c —
+# heap, file I/O, RtlUnwind, GetStringType/LCMapString, console mode — and
+# the round-trip is checked for pixel-exactness rather than for a string in
+# stdout, which makes it the first end-to-end correctness test here.
+#
+# Drop 32-bit builds of the archiver tools into exe32/ and add them to the
+# target list to extend coverage; anything needing ordinal imports also needs
 # the matching 32-bit DLLs under dll32/.
 
 set -u
@@ -113,10 +120,75 @@ for f in pe2elf32 winapi_shim32.so load32; do
   fi
 done
 
+# BMF round-trip: compress a generated BMP and decompress it again, asserting
+# the pixel data comes back identical.  Runs in a scratch directory because
+# BMF writes its output next to its input.
+#
+# Args: <label> <files-to-copy> <command...>
+#   files-to-copy is one space-separated word (the shim is copied anyway);
+#   command is run from inside the scratch dir with the image appended.
+run_bmf_roundtrip() {
+  local label="$1" copies="$2"; shift 2
+  local work="bmf_work_$$"
+  rm -rf "$work"; mkdir -p "$work"
+  cp winapi_shim32.so "$work/" || return 1
+  local f
+  for f in $copies; do
+    cp "$f" "$work/" || { echo "FAIL: cannot stage $f"; FAIL=$((FAIL+1)); rm -rf "$work"; return 1; }
+  done
+
+  if ! python3 exe32/mkbmp32.py "$work/test.bmp" 256 192 >/dev/null; then
+    echo "FAIL: could not generate test.bmp"; FAIL=$((FAIL+1)); rm -rf "$work"; return 1
+  fi
+
+  echo
+  echo "=== BMF round-trip ($label) ==="
+  echo "+ $* test.bmp"
+  local out rc
+  out=$( cd "$work"
+    "$@" test.bmp 2>&1 || exit 1
+    [ -s test.bmf ] || { echo "no test.bmf produced"; exit 1; }
+    echo "compressed: $(stat -c%s test.bmp) -> $(stat -c%s test.bmf) bytes"
+    mv test.bmp orig.bmp
+    "$@" test.bmf 2>&1 || exit 1
+    [ -s test.bmp ] || { echo "no test.bmp produced on decompress"; exit 1; }
+    # BMF does not store the BMP DPI fields, so a header-only difference is
+    # expected in general; mkbmp32.py zeroes them, so this should be exact.
+    if cmp -s orig.bmp test.bmp; then
+      echo "round-trip byte-exact"
+    else
+      pd=$(cmp -l orig.bmp test.bmp 2>/dev/null | awk '$1>54' | wc -l)
+      [ "$pd" = 0 ] && echo "round-trip pixel-exact (header metadata differs)" \
+                    || { echo "PIXELS DIFFER: $pd bytes"; exit 1; }
+    fi )
+  rc=$?
+  echo "$out"
+  rm -rf "$work"
+  if [ "$rc" -ne 0 ] || ! echo "$out" | grep -q "round-trip"; then
+    echo "FAIL: BMF round-trip ($label)"
+    FAIL=$((FAIL+1))
+    return 1
+  fi
+  echo "ok: BMF round-trip ($label)"
+  PASS=$((PASS+1))
+}
+
 # 3. Each target: convert + run + verify, in both output modes.
 run_target 1b  "Hello, world!!!"
 run_target 1c  "Hello, world!!!"
 run_target seh "SEH caught the AV and resumed"
+
+# 4. Real-world target: BMF, checked for a correct compress/decompress
+# round-trip rather than for a string in stdout.
+if [ -f exe32/BMF.exe ]; then
+  step "convert BMF (ET_EXEC)" ./pe2elf32 exe32/BMF.exe BMF.elf \
+    && run_bmf_roundtrip "ET_EXEC" "BMF.elf" ./BMF.elf
+  step "convert BMF (--so)" ./pe2elf32 exe32/BMF.exe BMF.so --so \
+    && run_bmf_roundtrip "--so via load32" "BMF.so load32" ./load32 ./BMF.so
+else
+  echo
+  echo "skip: exe32/BMF.exe not present"
+fi
 
 echo
 echo "=== summary ==="

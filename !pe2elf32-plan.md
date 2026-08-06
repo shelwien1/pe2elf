@@ -1,6 +1,6 @@
 # pe2elf32 — Plan for a PE32/i386 → ELF32 Converter and 32-bit Shim
 
-Status: **implemented** (M1–M3 done, M4 partial). The tree described below
+Status: **implemented** (M1–M3 done, M4 substantially done — see below). The tree described below
 now exists: `pe2elf32.cpp` + `pe_types32/elf_types32/pe_image32/elf_plan32/
 elf_build32/elf_write32.hpp`, `shim32.cpp` + `shim32_*.hpp` + `shim32.map`,
 `load32.cpp`, `t32.sh`, `exe32/`, and `make all32`.
@@ -20,10 +20,14 @@ What landed, against §8's milestones:
   its handler resumes execution.
 * **M4 (full parity)** — the surface is ported (threads set up `%fs` per
   thread, sync, `_beginthreadex`, i386 `setjmp`/`longjmp`, thiscall COM
-  vtable), but the `t32.sh` archiver run is **not** gated: no 32-bit builds of
-  rar/ppmonstr/nz/rz are in the tree, so `exe32/` holds the three fixtures
-  above instead. Dropping 32-bit archiver binaries into `exe32/` (plus their
-  32-bit side DLLs into `dll32/`) is what remains.
+  vtable), and a real-world target passes end-to-end: `exe32/BMF.exe` (BMF
+  2.01, statically linked against the MSVC CRT, 59 kernel32 imports and no
+  msvcrt.dll at all) compresses and decompresses images with pixel-exact
+  round-trips in both ET_EXEC and `--so` modes. The **archiver** run §5 calls
+  for is still not gated: no 32-bit builds of rar/ppmonstr/nz/rz are in the
+  tree, so `exe32/` holds the fixtures above instead. Dropping 32-bit archiver
+  binaries into `exe32/` (plus their 32-bit side DLLs into `dll32/`) is what
+  remains.
 
 Two deliberate gaps, both noted where they live in the code:
 

@@ -82,6 +82,16 @@ extern "C" EXPORT HANDLE kernel32_HeapCreate(DWORD flags, size_t init, size_t ma
   return HEAP_PSEUDO_HANDLE;
 }
 
+// Every heap handle is the same pseudo-handle and every allocation comes
+// from the process allocator, so there is no per-heap arena to tear down.
+// Destroying it would have to free every outstanding block, which we cannot
+// enumerate — report success and let the allocations live until exit, which
+// is what a process shutting down was about to do anyway.
+extern "C" EXPORT BOOL kernel32_HeapDestroy(HANDLE heap) {
+  (void)heap;
+  return TRUE;
+}
+
 extern "C" EXPORT HANDLE kernel32_GetProcessHeap(void) {
   return HEAP_PSEUDO_HANDLE;
 }

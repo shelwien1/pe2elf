@@ -18,6 +18,11 @@ WINAPI_SHIM_1.0 {
     kernel32_VirtualProtect;
     kernel32_VirtualQuery;
     kernel32_HeapCreate;
+    kernel32_HeapDestroy;
+    kernel32_GetThreadLocale;
+    kernel32_GetUserDefaultLCID;
+    kernel32_GetSystemDefaultLCID;
+    kernel32_SetThreadLocale;
     kernel32_GetProcessHeap;
     kernel32_HeapAlloc;
     kernel32_HeapFree;
