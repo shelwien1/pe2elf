@@ -33,6 +33,7 @@
 004259F0 sub_4259F0 thiscall
 004256F0 sub_4256F0 thiscall
 00424500 sub_424500 cdecl
+00429DB0 sub_429DB0 cdecl
 004280B0 sub_4280B0 cdecl
 00427F40 sub_427F40 cdecl
 00428050 sub_428050 cdecl
@@ -40,3 +41,7 @@
 0042D3E8 sub_42D3E8 cdecl
 00434A30 sub_434A30 cdecl
 004346D0 sub_4346D0 cdecl
+004229E0 sub_4229E0 thiscall
+0042B830 sub_42B830 cdecl
+0042B0C0 sub_42B0C0 cdecl
+00429C80 sub_429C80 cdecl

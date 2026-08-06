@@ -1,5 +1,4 @@
 00402DF0	sub_402DF0	thiscall
-00402EF0	sub_402EF0	stdcall
 00402FB0	sub_402FB0	thiscall
 00410650	sub_410650	cdecl
 004108C0	sub_4108C0	cdecl
@@ -34,9 +33,7 @@
 00416860	sub_416860	thiscall
 00416C90	sub_416C90	thiscall
 00417980	sub_417980	fastcall
-00417E80	sub_417E80	thiscall
 00418650	sub_418650	thiscall
-00419430	sub_419430	thiscall
 00419610	sub_419610	thiscall
 00419680	sub_419680	cdecl
 0041C4B0	sub_41C4B0	thiscall

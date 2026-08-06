@@ -5,18 +5,13 @@ typedef int t_sub_4280B0_ini;
 static t_sub_4280B0_ini& __sub_4280B0_ini = *(t_sub_4280B0_ini*)0x00439C28;
 #define ini __sub_4280B0_ini
 
-#ifndef __PE_DECL___sub_429DB0
-#define __PE_DECL___sub_429DB0
-typedef int t_sub_429DB0(...);
-static t_sub_429DB0& __sub_429DB0 = *(t_sub_429DB0*)0x00429DB0;
-#endif
-#define sub_429DB0 __sub_429DB0
 #ifndef __PE_DECL___sub_42CAD0
 #define __PE_DECL___sub_42CAD0
 typedef int t_sub_42CAD0(...);
 static t_sub_42CAD0& __sub_42CAD0 = *(t_sub_42CAD0*)0x0042CAD0;
 #endif
 #define sub_42CAD0 __sub_42CAD0
+#define sub_429DB0 __sub_429DB0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 42 of 64 called functions redirected, gate green on all five pixel
+**Status: 47 of 64 called functions redirected, gate green on all five pixel
 formats.**
 
 ## Layout
@@ -21,7 +21,8 @@ formats.**
 | `called.txt` / `targets.txt` | What a `-S -Q9` round-trip actually executes (§ below). |
 | `extractable.txt` / `noextract.txt` | Targets whose every external reference resolves, and the ones that refuse with the reason. |
 | `accepted.txt` | The moved set, callees-first — drives `build.sh`. |
-| `fail.txt` | Extractable candidates that did not survive the gate, with the build error or test result. |
+| `fail.txt` | Extractable candidates that did not survive the gate, with the image they failed on. |
+| `fixups.txt` | Per-function literal substitutions applied to the donor body — one documented reinterpreting cast per case where Hex-Rays emits C that C++ will not take. |
 | `inc/*.inc` | One moved function each — exactly the accepted set. |
 | `override/*.inc` | Hand-written replacements for bodies the decompiler could not lift into C; see [`override/README.md`](override/README.md). |
 | `mksites.py` | Rebuilds `sites.txt`/`sites.inc` from `BMF.c`. Re-run it whenever the donor is re-decompiled. |
@@ -66,9 +67,16 @@ writes back. `mkbmps.py` generates them from a fixed LCG, so they are
 reproducible byte-for-byte. `f05_200.bmp` — a real 1728×2339 1bpp scan — is
 picked up as a sixth when present.
 
-The set earns its keep: of the 20 candidates that fail the gate, **11 fail
-first on an image that is neither 24bpp nor the 1bpp scan** — seven on `t1`,
-six on `t8g`.
+The set earns its keep, and the evidence is specific. `sub_42B830` allocates an
+image buffer and clears its palette area with a `memset` that Hex-Rays printed
+as a `__usercall`. Built with that convention (which g++ silently ignores) it
+**passed on 24bpp and 32bpp and failed on all three paletted formats** — the
+clearing path only runs when there is a palette. A 24bpp-only gate would have
+accepted it.
+
+The converse holds too: `sub_424550` and `sub_429C80` pass on 1bpp, both 8bpp
+formats and the 1bpp scan, and fail only on 24bpp and 32bpp. No single format
+is a gate.
 
 "Identical" excludes bytes 38..53 of the `BITMAPINFOHEADER` —
 `biXPelsPerMeter`, `biYPelsPerMeter`, `biClrUsed`, `biClrImportant` — which BMF
@@ -80,7 +88,7 @@ so the earlier "compare from `bfOffBits`" rule was leaving 1 KB of each
 unchecked.
 
 Each invocation runs under `timeout 60`; a hang is not a failure unless
-something makes it one, and one candidate does hang.
+something makes it one, and candidates have hung.
 
 ## Finding the called set
 
@@ -100,8 +108,8 @@ Every image in the set is traced, because they do not overlap. Union: **92 of
 ### Locating the bodies
 
 `mksites.py` builds `sites.txt` from Hex-Rays' own
-`//----- (004XXXXX) --------` banners, not from a scan for definition lines, and it records an explicit **end** line
-per function. This matters more than it sounds: a regex over definition lines
+`//----- (004XXXXX) --------` banners, not from a scan for definition lines,
+and it records an explicit **end** line per function. This matters more than it sounds: a regex over definition lines
 misses every `__usercall` function, because its name is followed by `@<eax>`
 rather than by `(`. 38 of the 151 banners were missed that way, and each
 missed body was silently swallowed by the span of the function *before* it —
@@ -139,17 +147,44 @@ target can be decoded straight out of the image, giving `0x0042CF0A` and
 that *do* have labels — **zero disagreements** — before being trusted for the
 two that do not.
 
-Two of the 64 candidates refuse to extract; `noextract.txt` records why.
-`sub_411700` reaches `__svml_log2` and `__libm_sse2_log`, which take their
-argument in `xmm0`; the *definitions* now carry a recovered signature
-(`__m128d __usercall __svml_log2@<xmm0>(__m128i a1@<xmm0>)`), but the call
-sites inside `sub_411700` are still printed as `__svml_log2()` with no
-argument at all, next to code that plainly computes one, so a redirect built on
-that would pass garbage. `main` reaches a global (`bmp_`) that appears in no
-`using guessed type` comment and has no address in its name, so there is
-nothing to bind it to.
+Five of the 64 candidates refuse to extract, all for the same reason:
+`noextract.txt` records it.
 
-`__intel_sse2_strlen` used to be in that bucket and no longer is: the current
+## Calling a `__usercall` function
+
+§4 rules out *defining* a `__usercall`/`__userpurge` function in g++. Calling
+one is the same problem and is much easier to miss, because it compiles:
+`__attribute__((usercall))` is not a GCC attribute, so g++ emits
+`warning: 'usercall' attribute directive ignored` and generates an ordinary
+cdecl call with every argument on the stack. The callee reads them out of
+`ebx`, `xmm1`, `xmm3`. Nothing fails at build time.
+
+`sub_42B830` is what that looks like from the outside: correct on 24bpp and
+32bpp, silent memory corruption on anything with a palette. So the extractor
+now refuses a body that calls one — the honest failure, recorded before a build
+and test cycle is spent on it.
+
+Two of them are worth an exception, and only two. `sub_4349F0` and
+`sub_434980` are the Intel CRT's dispatch stubs for `memset` and `memcpy`:
+each tests `n1024`, the CPU level `sub_434A30` computes, and jumps to the
+matching variant. IDA's own frame for each declares exactly three plain stack
+arguments (`buf = dword ptr 4`, `Val = dword ptr 8`, `Size = dword ptr 0Ch`);
+the `@<ebx>` and `@<fpstat>` annotations come from the chunks the dispatcher
+jumps into, not from the interface. The value printed in the `@<ebx>` slot is
+`0` at eight call sites and a pointer at others, which no real argument would
+be. They are called as cdecl, with the two pseudo-arguments dropped from the
+call site — which is what let `sub_42B830`, `sub_4229E0` and `sub_42B0C0` in.
+
+The rest refuse: `main` (`sub_4015C0`, `sub_402BD0`), `sub_402EF0`
+(`sub_403820`, whose arguments are in `ecx`/`xmm1`/`xmm3`), `sub_417E80` and
+`sub_419430` (`sub_414860`, `sub_4149C0`), and `sub_411700` (`sub_436E10`, the
+`__svml_log2` wrapper). `__svml_log2` itself is the same story one level down:
+its *definition* now carries a recovered signature
+(`__m128d __usercall __svml_log2@<xmm0>(__m128i a1@<xmm0>)`), but the call
+sites are still printed as `__svml_log2()` with no argument at all, next to
+code that plainly computes one.
+
+`__intel_sse2_strlen` used to be refused and no longer is: the current
 decompilation gives it `int __fastcall(_DWORD, _DWORD)` and the call sites
 agree, so it resolves like any other static CRT entry.
 
@@ -182,28 +217,19 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 42 and not 62
+## Why 47 and not 59
 
-Extraction is not acceptance: 20 candidates produce a `.inc` that then fails to
-compile or fails the gate. `fail.txt` records each with its build error or test
-result.
+Extraction is not acceptance: 12 candidates produce a `.inc` that builds
+cleanly and then fails the gate. `fail.txt` records each with the image it
+failed on and how.
 
-**Five fail to build** — all the same shape: Hex-Rays emits C that is not valid
-C++. It types two objects differently and then assigns one to the other
-(`_WORD *n256_1; char *n256; … n256_1 = n256;`), or dereferences a global it
-typed as `int`. C accepts the first with a warning; C++ rejects it outright,
-and `-fpermissive` does not cover pointer conversions.
-
-**Fifteen fail the gate**, and only a running test finds them:
-
-* `sub_413430`, `sub_413900` and `sub_424550` build, run, and produce a
-  *different compressed stream*.
-* `sub_429C80` hangs. Each invocation runs under `timeout 60`, because without
-  it the driver simply stops making progress.
-* The rest abort during compression or decompression.
-
-Eleven of the fifteen fail first on `t1` or `t8g` — neither of which was in the
-image set before — which is the argument for the set in one line.
+Three of them — `sub_413430`, `sub_413900`, `sub_424550` — build, run to
+completion, and produce a *different compressed stream*. The rest abort during
+compression or decompression. Nothing here is a compile error any more: the
+last four of those were Hex-Rays emitting C that C++ will not take (a pointer
+assigned to a differently-typed pointer, a global typed `int` and then
+dereferenced), and `fixups.txt` now carries one documented reinterpreting cast
+per case.
 
 These are exactly the cases §3 step 7 is about, and they are the reason the
 protocol insists on a green test per function rather than a batch conversion.

@@ -284,6 +284,30 @@ that **every step ends with a green test**.
   marshals the custom convention into a normal cdecl call. Record the choice
   in `fail.txt` if you defer it.
 
+  **The same rule applies to *calling* one, and there it is much easier to
+  miss, because it compiles.** `__attribute__((usercall))` is not a GCC
+  attribute: g++ emits `warning: 'usercall' attribute directive ignored` and
+  then generates an ordinary cdecl call with every argument on the stack,
+  while the callee reads them out of `ebx`, `xmm1`, `xmm3`. Nothing fails at
+  build time, and if the call sits on a path the test does not reach, nothing
+  fails at test time either. On this target that produced a function correct on
+  24bpp and 32bpp images and silently corrupting on anything with a palette —
+  its only `__usercall` call was the `memset` that clears the palette. **Refuse
+  a body that calls a `__usercall`/`__userpurge` function**, at extraction
+  time, before a build and test cycle is spent on it.
+
+  There is one exception worth looking for. Hex-Rays sometimes attaches
+  register arguments to a function that has none — typically a *chunked*
+  function, where it picks up a register read from one of the chunks the entry
+  jumps into. Check IDA's stack frame for the callee: if it declares exactly
+  the stack arguments and nothing else (`buf = dword ptr 4`, `Val = dword ptr
+  8`, `Size = dword ptr 0Ch`), and the value printed in the register slot
+  varies arbitrarily between call sites — `0` at some, a pointer at others —
+  then it is not an argument. Call the function as cdecl and drop the
+  pseudo-arguments from the call site. Both of the Intel CRT's dispatch stubs
+  (`memset` and `memcpy`, which test the CPU-level global and jump to the
+  matching variant) are this case.
+
 - Order inside the file:
   1. Typed references for data symbols this function reads/writes (§6.1).
   2. Typed references for functions this function calls — *only* for
@@ -875,6 +899,27 @@ reference them per §6.2, do not reimplement them. g++ generates its own
 inline sequences or libgcc calls for the same expressions written in C, so a
 body that Hex-Rays rendered as plain `a / b` on `__int64` needs no special
 handling; only an *explicit* `__alldiv(...)` call site does.
+
+### 8.2.1 When Hex-Rays emits C that C++ will not take
+
+A residue of cases are neither an intrinsic nor a convention problem: the
+decompiler's own type model is internally inconsistent, and C++ refuses what C
+would merely warn about. It types two objects differently and assigns one to
+the other (`_WORD *n256_1; char *n256; … n256_1 = n256;`), passes an argument
+whose type disagrees with the callee's own signature, subtracts a pointer from
+an integer, or dereferences a global it typed as `int`. `-fpermissive` does not
+cover pointer conversions.
+
+On i386 every one of these is a 4-byte-to-4-byte reinterpretation, so an
+explicit cast is faithful — it changes no code, only what the front end will
+accept. Do not hand-edit the `.inc`: it is regenerated. Keep the substitutions
+in a data file (one `function / find / replace / why` row each), apply them to
+the donor text so the `find` string can be grepped for in the decompilation,
+and **fail loudly when one stops matching** — otherwise a re-decompilation
+turns a fixup into a silent no-op.
+
+Keep the bar at "reinterpreting cast". Anything that would change behaviour is
+a hand-written replacement (§4.1), not a fixup.
 
 ### 8.3 MSVC `FILE` layout
 

@@ -54,6 +54,29 @@ INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
 INTEL_CRT = re.compile(r'^(__svml_|__intel_|__libm_)')
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof'}
 
+# Callees Hex-Rays prints as __usercall/__userpurge whose "register arguments"
+# are not arguments at all.
+#
+# Both of these are the Intel CRT's dispatch stubs — `sub_4349F0` tests n1024
+# (the CPU level sub_434A30 computes) and jumps to the matching memset variant,
+# `sub_434980` does the same for memcpy — and IDA's own frame for each declares
+# exactly three plain stack arguments (`buf = dword ptr 4`, `Val = dword ptr 8`,
+# `Size = dword ptr 0Ch`).  The `@<ebx>` and `@<fpstat>` annotations come from
+# the *chunks* the dispatcher jumps into, not from the interface: the value
+# printed for the `@<ebx>` slot is `0` at eight call sites and a pointer at
+# others, which no real argument would be.  So call them as cdecl and drop the
+# two pseudo-arguments from the call site.
+#
+# Every other __usercall/__userpurge callee is refused: their register
+# arguments are real (`@<ecx>`, `@<xmm1>`, `@<xmm3>`) or nonsensical on i386
+# (`@<sil>`), and g++ has no way to target them — it silently ignores an
+# `__attribute__((usercall))`, so the call compiles and passes everything on
+# the stack.
+USERCALL_STACK_ONLY = {
+    'sub_4349F0': ('void *', 'void *, int, unsigned int', 2),          # memset
+    'sub_434980': ('void *', 'void *, const void *, unsigned int', 2), # memcpy
+}
+
 # Type names the head defines that a body may also use as a variable name.
 # Hex-Rays invented the struct `Stream` for fopen's return value, and then
 # happily declares `Stream *Stream;` — legal in its own output, but the second
@@ -139,6 +162,16 @@ def load():
         a, n = l.rstrip('\n').split('\t')
         winapi[n] = int(a, 16)
 
+    # Per-function literal substitutions; see fixups.txt.
+    fixups = {}
+    fx = os.path.join(HERE, 'fixups.txt')
+    if os.path.exists(fx):
+        for l in open(fx):
+            if l.startswith('#') or not l.strip():
+                continue
+            fn, find, repl, _why = l.rstrip('\n').split('\t', 3)
+            fixups.setdefault(fn, []).append((find, repl))
+
     funcs = {}
     for l in open(os.path.join(HERE, 'funcs.txt')):
         a, n = l.rstrip('\n').split('\t')
@@ -184,7 +217,7 @@ def load():
                 # the name.  Nothing can be referenced at a known VA.
                 noaddr.add(name)
         i += 1
-    return lines, spans, protos, globals_, noaddr, funcs, winapi
+    return lines, spans, protos, globals_, noaddr, funcs, winapi, fixups
 
 
 SSE_MEMBER_RE = re.compile(r'\.m(128i|128d|128|64)_[a-z]\w*')
@@ -229,6 +262,36 @@ def wrap_intrinsic_members(line):
         pos += len(wrapper) + 2
 
 
+def drop_leading_args(text, name, n):
+    """`sub_4349F0(a, b, X, Y, Z)` -> `sub_4349F0(X, Y, Z)`, calls may span lines."""
+    out, pos = [], 0
+    for m in re.finditer(r'\b' + re.escape(name) + r'\s*\(', text):
+        if m.start() < pos:
+            continue
+        i = m.end()
+        depth, start, args = 1, i, []
+        while i < len(text) and depth:
+            ch = text[i]
+            if ch in '([':
+                depth += 1
+            elif ch in ')]':
+                depth -= 1
+                if not depth:
+                    args.append(text[start:i])
+                    break
+            elif ch == ',' and depth == 1:
+                args.append(text[start:i])
+                start = i + 1
+            i += 1
+        if depth or len(args) <= n:
+            continue                      # unbalanced or too few: leave alone
+        out.append(text[pos:m.end()])
+        out.append(','.join(a.strip() for a in args[n:]))
+        pos = i
+    out.append(text[pos:])
+    return ''.join(out)
+
+
 def array_used(body, name, shadowed=False):
     """True if *this* body indexes the global — decides array vs scalar typedef.
 
@@ -259,7 +322,7 @@ def emit(args, cache=None):
         print(f"{dest}: hand-written override ({ovr})")
         return
 
-    lines, spans, protos, globals0, noaddr, funcs, winapi = cache or load()
+    lines, spans, protos, globals0, noaddr, funcs, winapi, fixups = cache or load()
     globals_ = dict(globals0)   # emit() adds address-derived entries; keep the
                                 # cache clean for the next name in a batch.
     if args.name not in spans:
@@ -289,6 +352,16 @@ def emit(args, cache=None):
                           or re.match(r'^//-+\s*\(?[0-9A-Fa-f]*\)?\s*-*$', body_lines[-1].strip())
                           or body_lines[-1].lstrip().startswith('//')):
         body_lines.pop()
+    # Literal substitutions from fixups.txt, applied against the donor text so
+    # the `find` strings can be grepped for in BMF.c.  A fixup that no longer
+    # matches is an error, not a silent no-op: the donor gets re-decompiled and
+    # a stale one would quietly stop being applied.
+    for find, repl in fixups.get(args.name, ()):
+        hit = sum(l.count(find) for l in body_lines)
+        if not hit:
+            sys.exit(f"{args.name}: fixups.txt entry no longer matches the "
+                     f"donor body: {find!r}")
+        body_lines = [l.replace(find, repl) for l in body_lines]
     body_raw = '\n'.join(body_lines)
     # Reference detection must look at code only.  Hex-Rays appends
     # "// <addr>: using guessed type <t> <name>;" lines to each body, so a
@@ -391,6 +464,14 @@ def emit(args, cache=None):
     uses_del = re.search(r'\boperator delete\b', body) is not None
     if (uses_new and '??2@YAPAXI@Z' not in funcs) or (uses_del and '??3@YAXPAX@Z' not in funcs):
         unresolved.add('operator new/delete')
+    bad_conv = sorted(c for c in called
+                      if spans.get(c, (0, 0, 0, ''))[3] in ('usercall', 'userpurge')
+                      and c not in USERCALL_STACK_ONLY)
+    if bad_conv:
+        sys.exit(f"{args.name} calls __usercall/__userpurge functions whose "
+                 f"register arguments g++ cannot target (the attribute is "
+                 f"silently ignored and everything goes on the stack): "
+                 f"{bad_conv}")
     if hit_noaddr:
         sys.exit(f"{args.name} references globals with no recoverable address "
                  f"(declared in BMF.c but absent from the 'using guessed type' "
@@ -443,6 +524,16 @@ def emit(args, cache=None):
     ext_calls = sorted(c for c in called if c != args.name and c not in already)
     for c in ext_calls:
         addr = int(c.split('_')[-1], 16)
+        if c in USERCALL_STACK_ONLY:
+            ret, argl, _ = USERCALL_STACK_ONLY[c]
+            t = f"t_{c}"
+            out.append(f"#ifndef __PE_DECL___{c}")
+            out.append(f"#define __PE_DECL___{c}")
+            out.append(f"typedef {ret} {t}({argl});   // stack arguments only")
+            out.append(f"static {t}& __{c} = *({t}*)0x{addr:08X};")
+            out.append("#endif")
+            out.append(f"#define {c} __{c}")
+            continue
         proto = protos.get(c)
         if proto:
             sig = proto.rstrip(';')
@@ -550,6 +641,12 @@ def emit(args, cache=None):
     # A local or parameter that collides with a type the head declares.
     for t in sorted(HEAD_TYPES & locals_):
         joined = [re.sub(r'\b' + re.escape(t) + r'\b(?!\s*\*)', t + '_v', l) for l in joined]
+    stack_only = sorted(called & set(USERCALL_STACK_ONLY))
+    if stack_only:
+        text = '\n'.join(joined)
+        for c in stack_only:
+            text = drop_leading_args(text, c, USERCALL_STACK_ONLY[c][2])
+        joined = text.split('\n')
     joined = [wrap_intrinsic_members(l) for l in joined]
     joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
     joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]

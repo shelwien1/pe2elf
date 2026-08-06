@@ -1,0 +1,17 @@
+# fixups.txt — per-function literal substitutions applied to the donor body
+# before extraction.  Tab-separated: function, find, replace, why.
+#
+# This is for the cases incdec.md §8 is about: Hex-Rays emits something its own
+# type model implies but that g++ will not compile.  Every entry here is a
+# *reinterpreting cast* — on i386 all of these are 4-byte-to-4-byte, so they
+# change no code, only what the front end will accept.  Anything that would
+# change behaviour belongs in override/ as a hand-written .inc, not here.
+#
+# `find` is matched literally against BMF.c, so you can grep for it, and
+# extract.py fails loudly if it stops matching — a fixup cannot rot silently
+# into a no-op when the donor is re-decompiled.
+#
+sub_412E60	v32[1] -= v52;	v32[1] -= (unsigned int)v52;	v52 is a counter (`v52 = (unsigned __int16 *)((char *)v52 + 1)`) that Hex-Rays typed as a pointer. `unsigned -= pointer` is not valid C either; the instruction is `sub [ecx+4], edx`.
+sub_424D90	sub_4248D0(v103, v102, (int)Block);	sub_4248D0(v103, (_DWORD *)v102, (int)Block);	Hex-Rays types this argument `unsigned char **` at the call site and `_DWORD *` in sub_4248D0's own signature. Same pointer either way.
+sub_424D90	sub_4248D0(v104, v103, (int)v102);	sub_4248D0(v104, (_DWORD *)v103, (int)v102);	As above.
+sub_429DB0	strcpy(Str[0].m128i_i8, *argv);	strcpy(Str[0].m128i_i8, *(char **)argv);	The global at 0x00445954 is the CRT's `char **__argv` — `main` is declared `main(int argc, const char **argv, ...)` — but the data section types it `int argv;`, so `*argv` dereferences an int.
