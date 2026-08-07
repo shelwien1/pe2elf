@@ -37,10 +37,14 @@ static t_sub_4159E0_n4_4& __sub_4159E0_n4_4 = *(t_sub_4159E0_n4_4*)0x00445740;
 
 #define sub_411E90 __sub_411E90
 #define sub_411FD0 __sub_411FD0
-#define sub_412490 __sub_412490
-#define sub_412B10 __sub_412B10
-#define sub_4148F0 __sub_4148F0
-#define sub_416860 __sub_416860
+static inline int __fwd_sub_4159E0_sub_412490(void *a0, void *a1, int a2) { return __sub_412490((unsigned __int16 *)a0, (unsigned __int16 *)a1, a2); }
+#define sub_412490 __fwd_sub_4159E0_sub_412490
+static inline int __fwd_sub_4159E0_sub_412B10(void *a0, int a1) { return __sub_412B10((unsigned int *)a0, a1); }
+#define sub_412B10 __fwd_sub_4159E0_sub_412B10
+static inline int __fwd_sub_4159E0_sub_4148F0(void *a0) { return __sub_4148F0((_WORD *)a0); }
+#define sub_4148F0 __fwd_sub_4159E0_sub_4148F0
+static inline int __fwd_sub_4159E0_sub_416860(void *a0, void *a1) { return __sub_416860((int *)a0, (_DWORD *)a1); }
+#define sub_416860 __fwd_sub_4159E0_sub_416860
 
 PROBE_DECL(__sub_4159E0)
 __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)

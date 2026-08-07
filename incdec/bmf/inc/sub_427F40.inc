@@ -1,7 +1,8 @@
 // sub_427F40 @ 0x00427F40 — __cdecl
 // Extracted from BMF.c:32448-32464 by extract.py per incdec.md.
 
-#define sub_4280B0 __sub_4280B0
+static inline size_t __fwd_sub_427F40_sub_4280B0(int a0, int a1, int a2, void *a3, signed int a4) { return __sub_4280B0(a0, a1, a2, (char *)a3, a4); }
+#define sub_4280B0 __fwd_sub_427F40_sub_4280B0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

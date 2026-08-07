@@ -1,11 +1,20 @@
 // sub_42851C @ 0x0042851C — __usercall
 // Extracted from BMF.c:32733-32978 by extract.py per incdec.md.
 
-#define sub_429DB0 __sub_429DB0
+static inline _BYTE * __fwd_sub_42851C_sub_429DB0(void *a0, void *a1) { return __sub_429DB0((_BYTE *)a0, (char *)a1); }
+#define sub_429DB0 __fwd_sub_42851C_sub_429DB0
+static inline int __fwd_sub_42851C_sub_42CAD0(void *a0, int a1) { return __sub_42CAD0((_BYTE *)a0, a1); }
+#define sub_42CAD0 __fwd_sub_42851C_sub_42CAD0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to
 // that private runtime, not to glibc (§6.5).
+#ifndef __PE_DECL_____intel_sse2_strlen
+#define __PE_DECL_____intel_sse2_strlen
+typedef __attribute__((fastcall)) int t___intel_sse2_strlen(unsigned int, const void *);   // ___intel_sse2_strlen
+static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0x00434930;
+#endif
+#define __intel_sse2_strlen ____intel_sse2_strlen
 #ifndef __PE_DECL____access
 #define __PE_DECL____access
 typedef int t__access(const char *, int);   // __access
@@ -60,6 +69,12 @@ typedef int t_rename(const char *, const char *);   // _rename
 static t_rename& __rename = *(t_rename*)0x0042DC1B;
 #endif
 #define rename __rename
+#ifndef __PE_DECL___tmpnam
+#define __PE_DECL___tmpnam
+typedef char * t_tmpnam(char *);   // _tmpnam
+static t_tmpnam& __tmpnam = *(t_tmpnam*)0x0042DB25;
+#endif
+#define tmpnam __tmpnam
 #define FILE FILE1
 
 PROBE_DECL(__sub_42851C)
@@ -340,6 +355,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_42851C()
 }
 
 #undef FILE
+#undef __intel_sse2_strlen
 #undef _access
 #undef fclose
 #undef feof
@@ -349,4 +365,6 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_42851C()
 #undef fputs
 #undef remove
 #undef rename
+#undef tmpnam
 #undef sub_429DB0
+#undef sub_42CAD0

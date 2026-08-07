@@ -18,3 +18,7 @@ sub_429DB0	strcpy(Str[0].m128i_i8, *argv);	strcpy(Str[0].m128i_i8, *(char **)arg
 sub_41CAB0	v82 = v581;	v82 = (_BYTE *)v581;	Hex-Rays types v82 `_BYTE *` and v581 `_DWORD *`; the instruction is a register move.
 sub_419430	sub_412E60(&v28[12 * v19 + 3 * v17])	sub_412E60((_DWORD *)&v28[12 * v19 + 3 * v17])	v28 is a `_QWORD[2]` local Hex-Rays also indexes far past its own bound; sub_412E60's parameter is `_DWORD *`. Same address.
 sub_4273F0	sub_4248D0((unsigned __int8 **)v5, nullptr, 0);	sub_4248D0((_DWORD *)v5, nullptr, 0);	The cast at the call site disagrees with sub_4248D0's own `_DWORD *` parameter.
+sub_40F450	buf = ::buf;	buf = (char *)::buf;	Local `char *buf` assigned the global at 0x00443380, which the same body indexes as `int[]`. Same address.
+sub_417E80	ArgList_6 = ArgList_5;	ArgList_6 = (_DWORD *)ArgList_5;	`_DWORD *ArgList_6` and `char *ArgList_5`; the instruction is a register move.
+sub_41CAB0	v502 = &v385[2 * n0x10_2 + 235020];	v502 = (_WORD *)&v385[2 * n0x10_2 + 235020];	`_WORD *v502` from a `_DWORD *` base. Hex-Rays scales the index by the base type either way, so the address is what it computed.
+sub_417E80	ArgList_7 = ArgList_5;	ArgList_7 = (_DWORD *)ArgList_5;	As above, a second copy of the same register move.

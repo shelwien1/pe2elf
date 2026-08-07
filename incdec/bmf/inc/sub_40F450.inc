@@ -420,7 +420,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
         buf_3 = buf_2;
         v97 = (unsigned __int8)v98[(unsigned __int8)(*v109 - v85)];
         *v109 = v97;
-        buf = ::buf;
+        buf = (char *)::buf;
         v26 = v95 + 1;
         v109 = v26;
         ++*(_DWORD *)&::buf[4 * v97];

@@ -50,7 +50,8 @@ typedef __attribute__((thiscall)) int t_sub_413430(...);
 static t_sub_413430& __sub_413430 = *(t_sub_413430*)0x00413430;
 #endif
 #define sub_413430 __sub_413430
-#define sub_414800 __sub_414800
+static inline unsigned int __fwd_sub_41CAB0_sub_414800(void *a0) { return __sub_414800((unsigned __int16 *)a0); }
+#define sub_414800 __fwd_sub_41CAB0_sub_414800
 
 PROBE_DECL(__sub_41CAB0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) unsigned int __sub_41CAB0(int a1, __m128 &a2, int a3, unsigned __int8 a4, int a5)
@@ -1857,7 +1858,7 @@ LABEL_48:
               n0x10 = n0x10_1;
             }
             *(_WORD *)(n2 + v511 + 2) += (unsigned __int16)(n0xF0[470040] & 0xFFFC) >> 2;
-            v502 = &v385[2 * n0x10_2 + 235020];
+            v502 = (_WORD *)&v385[2 * n0x10_2 + 235020];
             if ( HIWORD(v385[2 * n0x10_2 + 235021])
                + LOWORD(v385[2 * n0x10_2 + 235021])
                + HIWORD(v385[2 * n0x10_2 + 235020]) > 29696 )

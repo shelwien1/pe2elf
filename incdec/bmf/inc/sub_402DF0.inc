@@ -1,7 +1,8 @@
 // sub_402DF0 @ 0x00402DF0 — __thiscall
 // Extracted from BMF.c:2463-2469 by extract.py per incdec.md.
 
-#define sub_402FB0 __sub_402FB0
+static inline Stream * __fwd_sub_402DF0_sub_402FB0(void *a0) { return __sub_402FB0((FILE1 **)a0); }
+#define sub_402FB0 __fwd_sub_402DF0_sub_402FB0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

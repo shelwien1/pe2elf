@@ -3,7 +3,7 @@
 
 #ifndef __PE_DECL___sub_412E60
 #define __PE_DECL___sub_412E60
-typedef __attribute__((fastcall)) int t_sub_412E60(_DWORD *a1);
+typedef __attribute__((fastcall)) int t_sub_412E60(void *);
 static t_sub_412E60& __sub_412E60 = *(t_sub_412E60*)0x00412E60;
 #endif
 #define sub_412E60 __sub_412E60

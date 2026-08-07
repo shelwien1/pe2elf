@@ -20,7 +20,8 @@ typedef int t_sub_416C90_n4_4;
 static t_sub_416C90_n4_4& __sub_416C90_n4_4 = *(t_sub_416C90_n4_4*)0x00445740;
 #define n4_4 __sub_416C90_n4_4
 
-#define sub_413230 __sub_413230
+static inline int __fwd_sub_416C90_sub_413230(void *a0, int a1, unsigned int a2) { return __sub_413230((unsigned int *)a0, a1, a2); }
+#define sub_413230 __fwd_sub_416C90_sub_413230
 
 PROBE_DECL(__sub_416C90)
 __attribute__((thiscall)) int __sub_416C90(int _this)

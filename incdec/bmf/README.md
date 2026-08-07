@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 76 of 132 reachable functions redirected — 52 of the 92 a round-trip
+**Status: 84 of 132 reachable functions redirected — 53 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats.**
 
 The goal is a lossless BMP codec that runs none of BMF's own code and
@@ -241,7 +241,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 76 and not 132
+## Why 84 and not 132
 
 `fail.txt` records every candidate that did not make it, with the build error
 or the image it failed the gate on. At convergence — the driver is run
@@ -250,23 +250,53 @@ its callers — they group as:
 
 | | |
 |---:|---|
-| 20 | blocked on a `__usercall` callee that itself failed |
-| 16 | build error: Hex-Rays emitting C that C++ will not take |
-| 13 | builds and runs, then crashes or aborts on some image |
-|  5 | reaches a symbol with no recoverable address or signature |
+| 22 | blocked on a `__usercall` callee that itself failed |
+| 16 | builds and runs, then crashes or aborts on some image |
+|  5 | build error |
+|  3 | reaches a symbol with no recoverable address or signature |
 |  2 | builds and runs and compresses *worse* than the original |
 
-Only the last two groups are interesting. The 20 are downstream of the other
-buckets — fix one blocking callee and several callers become candidates, which
-is why the count moves in jumps. The 16 are the `fixups.txt` pattern
-(a pointer assigned to a differently-typed pointer, an argument disagreeing
-with the callee's own signature): each needs one documented reinterpreting
-cast, and each is mechanical once the exact statement is in hand.
+The 22 are downstream of the rest — fix one blocking callee and several callers
+become candidates, which is why the count moves in jumps rather than one at a
+time.
 
-`sub_413430` compresses 4.8% worse on 8bpp grayscale and `sub_424550` 0.7%
-worse on 24bpp — both build, run to completion, and round-trip losslessly, so
-only the size check catches them. That check is the reason the relaxed gate is
-still a gate.
+The **16 runtime failures are the real remainder**. They build cleanly, run, and
+then produce wrong behaviour, so only the gate finds them; each needs its body
+read against the disassembly. `sub_413430` compresses 4.8% worse on 8bpp
+grayscale and `sub_424550` 0.7% worse on 24bpp — both round-trip losslessly, so
+*only* the no-regression size check catches them, which is what that check is
+for.
+
+### What stopped being a category
+
+Four buckets that used to dominate this list are gone, and the fixes are worth
+naming because each was systemic rather than per-function:
+
+* **Pointer type disagreements at call sites.** Hex-Rays spells the same
+  pointer differently at the call site and in the callee's own signature —
+  `unsigned char **` here, `_DWORD *` there — and C++ rejects what C shrugs at.
+  Every *not-yet-moved* callee is now declared with `void *` for each pointer
+  parameter (a pointer is four bytes and passed identically, and `T *`
+  converts to `void *` implicitly), and every *already-moved* callee gets a
+  `static inline` forwarder that takes `void *` and casts inside. That
+  cleared eight functions at once; only local-to-local assignments still need
+  a `fixups.txt` row.
+* **Functions referenced without being called.** Hex-Rays passes them as
+  pointers — `(void (__cdecl *)(int, int, int, int))::sub_42BB20` — and names
+  *locals* after the function they hold, so the qualified form needs the name
+  declared. The reference scan now looks for any known function name, not just
+  one followed by `(`.
+* **Missing vocabulary.** `SDWORD1`..`SDWORD3` (defs.h stops at `SLODWORD`),
+  and the calling-convention keywords, which survive inside casts where
+  `extract.py`'s signature rewriting does not reach.
+* **String literals read as code.** The scan that finds calls looks for an
+  identifier followed by `(`, and BMF's help text contains `function(`. The
+  regex that was supposed to blank literals first was mis-escaped: it required
+  *two* backslashes for an escape, so any string containing `\n` broke the
+  alternation and the match ran on to a later quote, swallowing the code
+  between. That silently hid real references — a call to
+  `__intel_sse2_strlen` among them — and the only symptom was an undeclared
+  identifier a hundred lines away.
 
 ## Where this stands
 
@@ -277,13 +307,15 @@ done:
   be moved, `__usercall`/`__userpurge` included, and the gate is a whole-file
   lossless round-trip over five pixel formats with a no-regression check on
   compressed size. Nothing about the remaining work needs new machinery.
-* **76 of 132** reachable functions are out, and the round-trip is green with
+* **84 of 132** reachable functions are out, and the round-trip is green with
   them out.
 
 What is not:
 
-* **40 of the 92 functions a round-trip executes are still the PE's.** Until
-  that is 0, the binary runs BMF's code.
+* **39 of the 92 functions a round-trip executes are still the PE's.** Until
+  that is 0, the binary runs BMF's code. Sixteen of them fail the gate on their
+  own merits and need their bodies read against the disassembly; the rest are
+  waiting behind those.
 * The statically-linked CRT is untouched — moved bodies still call the PE's
   `fopen`, `fread`, `operator new`, `memcpy` (§6.5). Those should be repointed
   at glibc rather than decompiled, which is a separate and much smaller job
@@ -294,8 +326,8 @@ What is not:
 
 ## Caveats
 
-* 52 of the 76 accepted functions have a non-zero probe count over the twelve
-  runs (compress + decompress for each of the six images). The other 24 are
+* 53 of the 84 accepted functions have a non-zero probe count over the twelve
+  runs (compress + decompress for each of the six images). The other 31 are
   reachable but not executed by this corpus: they are moved so that nothing
   calls back into the PE, and §9's "was it actually called?" check cannot
   vouch for them. `run/probe.txt` says which.

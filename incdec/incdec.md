@@ -993,6 +993,35 @@ turns a fixup into a silent no-op.
 Keep the bar at "reinterpreting cast". Anything that would change behaviour is
 a hand-written replacement (§4.1), not a fixup.
 
+### 8.2.2 Two systemic fixes worth reaching for before writing fixups
+
+Most of what looks like a long tail of per-function type errors is two problems
+wearing many hats. Fix them once:
+
+**Relax pointer parameters on callee declarations.** Hex-Rays types the same
+pointer differently at the call site and in the callee's own signature, all the
+time. Declaring every pointer parameter of a *not-yet-moved* callee as `void *`
+accepts every spelling and reaches the callee unchanged — a pointer is four
+bytes and passed identically, and `T *` converts to `void *` implicitly. Leave
+the return type alone; `void *` would not convert back. For an *already-moved*
+callee the declaration is the real C++ function and cannot be relaxed, so emit
+a `static inline` forwarder that takes `void *` and casts inside. Between them
+these cleared eight functions here that had been queued up as individual casts.
+
+**Detect a function reference, not just a call.** A scan for `name` followed by
+`(` misses the pointer forms — `(void (__cdecl *)(int, int))::sub_42BB20` — and
+misses the case where Hex-Rays names a *local* after the function it holds
+(`void *sub_428BE0;` alongside `::sub_428BE0`), where the name still has to be
+declared for the qualified form to resolve. Scan for any known function name.
+
+And a warning about the scan itself: it looks for an identifier followed by
+`(`, so blank out string and character literals first — help text contains
+things like `function(`. Get the escape handling right. A regex that required
+two backslashes for an escape meant every string containing `\n` failed to
+match, the search ran on to a later quote, and the code *between* two string
+literals disappeared from the scan. The symptom was an undeclared identifier a
+hundred lines from the cause, and it hid real references for several passes.
+
 ### 8.3 MSVC `FILE` layout
 
 Hex-Rays bodies access MSVC `_iobuf` internals: `v17->_cnt`, `v17->_ptr`,

@@ -12,7 +12,8 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
 #define sub_412110 __sub_412110
-#define sub_412B10 __sub_412B10
+static inline int __fwd_sub_417200_sub_412B10(void *a0, int a1) { return __sub_412B10((unsigned int *)a0, a1); }
+#define sub_412B10 __fwd_sub_417200_sub_412B10
 #define sub_414860 __sub_414860
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

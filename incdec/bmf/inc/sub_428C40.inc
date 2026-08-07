@@ -1,6 +1,30 @@
 // sub_428C40 @ 0x00428C40 — __cdecl
 // Extracted from BMF.c:33162-33667 by extract.py per incdec.md.
 
+#ifndef __PE_DECL___sub_428AA0
+#define __PE_DECL___sub_428AA0
+typedef int t_sub_428AA0(...);
+static t_sub_428AA0& __sub_428AA0 = *(t_sub_428AA0*)0x00428AA0;
+#endif
+#define sub_428AA0 __sub_428AA0
+#ifndef __PE_DECL___sub_428B00
+#define __PE_DECL___sub_428B00
+typedef int t_sub_428B00(...);
+static t_sub_428B00& __sub_428B00 = *(t_sub_428B00*)0x00428B00;
+#endif
+#define sub_428B00 __sub_428B00
+#ifndef __PE_DECL___sub_428B60
+#define __PE_DECL___sub_428B60
+typedef int t_sub_428B60(...);
+static t_sub_428B60& __sub_428B60 = *(t_sub_428B60*)0x00428B60;
+#endif
+#define sub_428B60 __sub_428B60
+#ifndef __PE_DECL___sub_428BE0
+#define __PE_DECL___sub_428BE0
+typedef int t_sub_428BE0(...);
+static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
+#endif
+#define sub_428BE0 __sub_428BE0
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
@@ -15,7 +39,8 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #define sub_4349F0 __sub_4349F0
 #define sub_42B830 __sub_42B830
 #define sub_42B990 __sub_42B990
-#define sub_42BA40 __sub_42BA40
+static inline unsigned int __fwd_sub_428C40_sub_42BA40(void *a0, int a1, int a2, int a3, int a4) { return __sub_42BA40((_WORD *)a0, a1, a2, a3, a4); }
+#define sub_42BA40 __fwd_sub_428C40_sub_42BA40
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to
@@ -591,6 +616,10 @@ LABEL_82:
 #undef fread
 #undef fseek
 #undef ftell
+#undef sub_428AA0
+#undef sub_428B00
+#undef sub_428B60
+#undef sub_428BE0
 #undef sub_42B830
 #undef sub_42B990
 #undef sub_42BA40

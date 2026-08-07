@@ -38,11 +38,15 @@ typedef char * t_sub_414F60();
 static t_sub_414F60& __sub_414F60 = *(t_sub_414F60*)0x00414F60;
 #endif
 #define sub_414F60 __sub_414F60
-#define sub_4135A0 __sub_4135A0
+static inline int __fwd_sub_424D90_sub_4135A0(void *a0, int a1, int a2, int a3) { return __sub_4135A0((unsigned __int16 *)a0, a1, a2, a3); }
+#define sub_4135A0 __fwd_sub_424D90_sub_4135A0
 #define sub_414CE0 __sub_414CE0
-#define sub_4244A0 __sub_4244A0
-#define sub_4248D0 __sub_4248D0
-#define sub_4256F0 __sub_4256F0
+static inline void ** __fwd_sub_424D90_sub_4244A0(void *a0, char a1) { return __sub_4244A0((void **)a0, a1); }
+#define sub_4244A0 __fwd_sub_424D90_sub_4244A0
+static inline int __fwd_sub_424D90_sub_4248D0(void *a0, void *a1, int a2) { return __sub_4248D0((unsigned __int8 **)a0, (_DWORD *)a1, a2); }
+#define sub_4248D0 __fwd_sub_424D90_sub_4248D0
+static inline int * __fwd_sub_424D90_sub_4256F0(void *a0, int a1, int a2, int a3) { return __sub_4256F0((int *)a0, a1, a2, a3); }
+#define sub_4256F0 __fwd_sub_424D90_sub_4256F0
 #define sub_4259F0 __sub_4259F0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

@@ -7,13 +7,13 @@ static t_sub_417E80_byte_439860& __sub_417E80_byte_439860 = *(t_sub_417E80_byte_
 
 #ifndef __PE_DECL___sub_418650
 #define __PE_DECL___sub_418650
-typedef __attribute__((thiscall)) int t_sub_418650(_DWORD *_this, int);
+typedef __attribute__((thiscall)) int t_sub_418650(void *, int);
 static t_sub_418650& __sub_418650 = *(t_sub_418650*)0x00418650;
 #endif
 #define sub_418650 __sub_418650
 #ifndef __PE_DECL___sub_419430
 #define __PE_DECL___sub_419430
-typedef __attribute__((thiscall)) void t_sub_419430(_DWORD *_this);
+typedef __attribute__((thiscall)) void t_sub_419430(void *);
 static t_sub_419430& __sub_419430 = *(t_sub_419430*)0x00419430;
 #endif
 #define sub_419430 __sub_419430
@@ -432,7 +432,7 @@ __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
         goto LABEL_53;
       if ( v51 > 0 )
       {
-        ArgList_6 = ArgList_5;
+        ArgList_6 = (_DWORD *)ArgList_5;
         v65 = 0;
         do
           *ArgList_6++ = *(_DWORD *)(*(_DWORD *)(this_4 + 1078240)
@@ -455,7 +455,7 @@ LABEL_53:
     {
       if ( v51 > 0 )
       {
-        ArgList_7 = ArgList_5;
+        ArgList_7 = (_DWORD *)ArgList_5;
         v56 = 0;
         do
         {
@@ -517,7 +517,7 @@ LABEL_53:
     }
     if ( v51 > 0 )
     {
-      ArgList_6 = ArgList_5;
+      ArgList_6 = (_DWORD *)ArgList_5;
       v60 = 0;
       do
       {

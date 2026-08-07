@@ -122,12 +122,6 @@ typedef int t_sub_40CF80_p_n2;
 static t_sub_40CF80_p_n2& __sub_40CF80_p_n2 = *(t_sub_40CF80_p_n2*)0x004433F4;
 #define p_n2 __sub_40CF80_p_n2
 
-#ifndef __PE_DECL___sub_40DEB0
-#define __PE_DECL___sub_40DEB0
-typedef int t_sub_40DEB0(...);
-static t_sub_40DEB0& __sub_40DEB0 = *(t_sub_40DEB0*)0x0040DEB0;
-#endif
-#define sub_40DEB0 __sub_40DEB0
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
@@ -140,7 +134,9 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
-#define sub_40AF40 __sub_40AF40
+static inline _DWORD * __fwd_sub_40CF80_sub_40AF40(void *a0, int a1, int a2, int a3, int a4) { return __sub_40AF40((_DWORD *)a0, a1, a2, a3, a4); }
+#define sub_40AF40 __fwd_sub_40CF80_sub_40AF40
+#define sub_40DEB0 __sub_40DEB0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

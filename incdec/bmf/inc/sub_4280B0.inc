@@ -1,13 +1,10 @@
 // sub_4280B0 @ 0x004280B0 — __cdecl
 // Extracted from BMF.c:32480-32721 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_42CAD0
-#define __PE_DECL___sub_42CAD0
-typedef int t_sub_42CAD0(...);
-static t_sub_42CAD0& __sub_42CAD0 = *(t_sub_42CAD0*)0x0042CAD0;
-#endif
-#define sub_42CAD0 __sub_42CAD0
-#define sub_429DB0 __sub_429DB0
+static inline _BYTE * __fwd_sub_4280B0_sub_429DB0(void *a0, void *a1) { return __sub_429DB0((_BYTE *)a0, (char *)a1); }
+#define sub_429DB0 __fwd_sub_4280B0_sub_429DB0
+static inline int __fwd_sub_4280B0_sub_42CAD0(void *a0, int a1) { return __sub_42CAD0((_BYTE *)a0, a1); }
+#define sub_42CAD0 __fwd_sub_4280B0_sub_42CAD0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

@@ -80,6 +80,23 @@ static_assert(sizeof(FILE1) == 32, "Win32 _iobuf is 32 bytes");
 // the way, since a body that declares one would otherwise shadow this.
 typedef FILE1 Stream;
 
+// defs.h stops at SLODWORD/SHIDWORD; the bodies also index DWORD lanes
+// directly.  Same DWORDn/SDWORDn machinery, just the names it left out.
+#define DWORD1(x)  DWORDn(x, 1)
+#define DWORD2(x)  DWORDn(x, 2)
+#define DWORD3(x)  DWORDn(x, 3)
+#define SDWORD1(x) SDWORDn(x, 1)
+#define SDWORD2(x) SDWORDn(x, 2)
+#define SDWORD3(x) SDWORDn(x, 3)
+
+// Calling-convention keywords survive inside *casts* — Hex-Rays writes
+// `(void (__cdecl *)(int, int))f` — where extract.py's signature rewriting
+// does not reach.  cdecl is gcc's i386 default, so it maps to nothing.
+#define __cdecl
+#define __stdcall  __attribute__((stdcall))
+#define __fastcall __attribute__((fastcall))
+#define __thiscall __attribute__((thiscall))
+
 // incdec.md §8.2
 #define _BitScanForward(idx_ptr, mask_val) \
   ((mask_val) ? ((*(idx_ptr) = __builtin_ctz((unsigned int)(mask_val))), 1u) : 0u)

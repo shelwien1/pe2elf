@@ -46,12 +46,24 @@ typedef int t__access(const char *, int);   // __access
 static t__access& ___access = *(t__access*)0x004314F0;
 #endif
 #define _access ___access
+#ifndef __PE_DECL____getch
+#define __PE_DECL____getch
+typedef int t__getch(void);   // __getch
+static t__getch& ___getch = *(t__getch*)0x004378FC;
+#endif
+#define _getch ___getch
 #ifndef __PE_DECL___fclose
 #define __PE_DECL___fclose
 typedef int t_fclose(FILE1 *);   // _fclose
 static t_fclose& __fclose = *(t_fclose*)0x0042CEB4;
 #endif
 #define fclose __fclose
+#ifndef __PE_DECL___fopen
+#define __PE_DECL___fopen
+typedef FILE1 * t_fopen(const char *, const char *);   // _fopen
+static t_fopen& __fopen = *(t_fopen*)0x0042CDB9;
+#endif
+#define fopen __fopen
 #ifndef __PE_DECL___fputc
 #define __PE_DECL___fputc
 typedef int t_fputc(int, FILE1 *);   // _fputc
@@ -234,7 +246,9 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4022C0()
 
 #undef FILE
 #undef _access
+#undef _getch
 #undef fclose
+#undef fopen
 #undef fputc
 #undef fwrite
 #undef printf

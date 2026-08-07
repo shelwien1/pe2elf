@@ -41,7 +41,7 @@ OUT=${OUT:-dummy32.so}
 # it at static-link time.  Unlike `static` it does not make the function local,
 # so gcc cannot give it a private calling convention — which would break the
 # patched entry point for every *non*-thunked function.
-g++ -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
+g++ ${CXXEXTRA:-} -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
     -Wno-narrowing -Wno-write-strings -Wno-unused-variable \
     -Wno-unused-but-set-variable -Wno-parentheses \
     -o "$OUT" dummy32.cpp \

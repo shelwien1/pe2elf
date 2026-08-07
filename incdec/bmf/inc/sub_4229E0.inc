@@ -41,7 +41,8 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
-#define sub_4118A0 __sub_4118A0
+static inline unsigned int __fwd_sub_4229E0_sub_4118A0(void *a0, void *a1) { return __sub_4118A0((_BYTE *)a0, (char *)a1); }
+#define sub_4118A0 __fwd_sub_4229E0_sub_4118A0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

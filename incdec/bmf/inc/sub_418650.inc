@@ -40,16 +40,19 @@ static t_sub_418650_n4_4& __sub_418650_n4_4 = *(t_sub_418650_n4_4*)0x00445740;
 
 #ifndef __PE_DECL___sub_412E60
 #define __PE_DECL___sub_412E60
-typedef __attribute__((fastcall)) int t_sub_412E60(_DWORD *a1);
+typedef __attribute__((fastcall)) int t_sub_412E60(void *);
 static t_sub_412E60& __sub_412E60 = *(t_sub_412E60*)0x00412E60;
 #endif
 #define sub_412E60 __sub_412E60
 #define sub_412280 __sub_412280
 #define sub_412300 __sub_412300
 #define sub_412340 __sub_412340
-#define sub_412850 __sub_412850
-#define sub_4148F0 __sub_4148F0
-#define sub_416860 __sub_416860
+static inline BOOL __fwd_sub_418650_sub_412850(void *a0, void *a1) { return __sub_412850((unsigned __int16 *)a0, (unsigned __int16 *)a1); }
+#define sub_412850 __fwd_sub_418650_sub_412850
+static inline int __fwd_sub_418650_sub_4148F0(void *a0) { return __sub_4148F0((_WORD *)a0); }
+#define sub_4148F0 __fwd_sub_418650_sub_4148F0
+static inline int __fwd_sub_418650_sub_416860(void *a0, void *a1) { return __sub_416860((int *)a0, (_DWORD *)a1); }
+#define sub_416860 __fwd_sub_418650_sub_416860
 
 PROBE_DECL(__sub_418650)
 __attribute__((thiscall)) int __sub_418650(_DWORD *_this, int a2)

@@ -365,6 +365,46 @@ def parse_signature(sig, name):
     return ret_reg, params
 
 
+def split_decl(decl):
+    """`_DWORD *a1` -> ('_DWORD *', 'a1');  `int` -> ('int', None)."""
+    m = re.match(r'^(.*?[\s\*])([A-Za-z_]\w*)$', decl.strip())
+    return (m.group(1).strip(), m.group(2)) if m else (decl.strip(), None)
+
+
+def moved_callee_wrapper(caller, callee, sig, ret_reg, params):
+    """A `void *`-taking forwarder for a call to an already-moved function.
+
+    §6.3 maps the call straight onto the moved body, which then type-checks
+    against the callee's *own* signature — and Hex-Rays routinely spells the
+    same pointer differently at the call site (`unsigned char **` there,
+    `_DWORD *` in the definition).  Relaxing the parameter to `void *` and
+    casting inside accepts every spelling and reaches the callee unchanged.
+    Non-pointer parameters keep their type, so nothing is promoted.
+    """
+    ret = sig[:sig.index(callee)]
+    for k in ('__usercall', '__userpurge', '__cdecl', '__stdcall',
+              '__fastcall', '__thiscall', '__noreturn'):
+        ret = ret.replace(k, '')
+    ret = ' '.join(ret.split()) or 'int'
+    args, casts = [], []
+    for i, (decl, nm, reg) in enumerate(params):
+        t, _ = split_decl(decl)
+        # The forwarder sits outside the `#define FILE FILE1` scope, and
+        # `Stream` is Hex-Rays' invented name for the same struct.
+        t = re.sub(r'\bFILE\b', 'FILE1', t)
+        t = re.sub(r'\bStream\b', 'FILE1', t)
+        a = f"a{i}"
+        if '*' in t and '(' not in t:
+            args.append(f"void *{a}"); casts.append(f"({t}){a}")
+        else:
+            args.append(f"{t} {a}"); casts.append(a)
+    call = f"__{callee}({', '.join(casts)})"
+    body = f"{'' if ret == 'void' else 'return '}{call};"
+    return [f"static inline {ret} __fwd_{caller}_{callee}({', '.join(args) or 'void'})"
+            f" {{ {body} }}",
+            f"#define {callee} __fwd_{caller}_{callee}"]
+
+
 def make_thunk(name, va, conv, params, ret_reg):
     """Emit the naked stub that goes at the original entry point."""
     stack = [p for p in params if p[2] is None]
@@ -556,8 +596,8 @@ def emit(args, cache=None):
     body = re.sub(r'//[^\n]*', '', body_raw)
     # Drop string and character literals too — BMF's messages contain things
     # like "function(" and the scan below would read them as calls.
-    body = re.sub(r'"(?:[^"\\\\]|\\\\.)*"', '""', body)
-    body = re.sub(r"'(?:[^'\\\\]|\\\\.)*'", "' '", body)
+    body = re.sub(r'"(?:[^"\\]|\\.)*"', '""', body)
+    body = re.sub(r"'(?:[^'\\]|\\.)*'", "' '", body)
 
     already = set()
     if os.path.exists(args.accepted):
@@ -605,6 +645,13 @@ def emit(args, cache=None):
     called = set(re.findall(r'\b(' + SUB_RE + r')\s*\(', body))
     called |= {c for c in re.findall(r'\b([A-Za-z_]\w*_4[0-9A-Fa-f]{5})\s*\(', body)
                if not re.fullmatch(GLOBAL_RE, c)}
+    # A function is not always referenced by calling it.  Hex-Rays passes them
+    # as pointers (`(void (__cdecl *)(int, int, int, int))::sub_42BB20`), and
+    # it also names *locals* after the function they hold — `void *sub_428BE0;`
+    # next to `::sub_428BE0` — so the name has to be declared either way for
+    # the qualified form to resolve.
+    called |= {c for c in re.findall(r'\b([A-Za-z_]\w*)\b', body)
+               if c in spans and c != args.name}
     refd_globals = {g for g in globals_
                     if re.search(r'\b' + re.escape(g) + r'\b', body) and is_global_ref(g)}
     for g in set(re.findall(r'\b(' + GLOBAL_RE + r')\b', body)):
@@ -739,6 +786,16 @@ def emit(args, cache=None):
         for k in ('__cdecl', '__stdcall', '__fastcall', '__thiscall', '__noreturn'):
             ret = ret.replace(k, '')
         ret = ' '.join(ret.split()) or 'int'
+        # Every *pointer* parameter is declared `void *`.  Hex-Rays types a
+        # pointer differently at the call site than in the callee's own
+        # signature all the time — `unsigned char **` here, `_DWORD *` there —
+        # and C++ rejects the mismatch where C would shrug.  A pointer is a
+        # pointer: four bytes, passed identically, and `T *` converts to
+        # `void *` implicitly, so relaxing the parameter accepts every spelling
+        # without changing what reaches the callee.  The return type is left
+        # alone: `void *` would not convert *back*.
+        argl = ', '.join('void *' if '*' in prm else prm
+                         for prm in split_params(argl)) if argl.strip() else argl
         attr = '' if cconv == 'cdecl' else f'__attribute__(({cconv})) '
         t = f"t_{c}"
         out.append(f"#ifndef __PE_DECL___{c}")
@@ -748,9 +805,24 @@ def emit(args, cache=None):
         out.append(f"static {t}& __{c} = *({t}*)0x{addr:08X};")
         out.append("#endif")
         out.append(f"#define {c} __{c}")
-    # Callees already moved: just map the name onto the C++ symbol (§6.3).
+    # Callees already moved: §6.3.  A forwarder rather than a bare #define
+    # wherever the callee takes a pointer, so that the call site's spelling of
+    # that pointer does not have to agree with the callee's.
     for c in sorted(called & already):
-        if c != args.name:
+        if c == args.name:
+            continue
+        csig, cparams, cret = None, None, None
+        if c in spans and spans[c][3] not in ('usercall', 'userpurge'):
+            ca, cb = spans[c][0], spans[c][1]
+            csig, _n = join_signature(lines[ca - 1:cb])
+            try:
+                cret, cparams = parse_signature(csig, c)
+            except Exception:
+                cparams = None
+        if cparams and any('*' in split_decl(d)[0] and '(' not in split_decl(d)[0]
+                           for d, _, _ in cparams):
+            out.extend(moved_callee_wrapper(args.name, c, csig, cret, cparams))
+        else:
             out.append(f"#define {c} __{c}")
     if called:
         out.append("")

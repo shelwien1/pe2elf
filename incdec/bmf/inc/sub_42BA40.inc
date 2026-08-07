@@ -1,6 +1,12 @@
 // sub_42BA40 @ 0x0042BA40 — __thiscall
 // Extracted from BMF.c:36123-36189 by extract.py per incdec.md.
 
+#ifndef __PE_DECL___sub_428BE0
+#define __PE_DECL___sub_428BE0
+typedef int t_sub_428BE0(...);
+static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
+#endif
+#define sub_428BE0 __sub_428BE0
 
 PROBE_DECL(__sub_42BA40)
 __attribute__((thiscall)) unsigned int __sub_42BA40(_WORD *_this, int a2, int sub_428BE0, int n5, int a5)
@@ -72,3 +78,4 @@ LABEL_22:
   return result;
 }
 
+#undef sub_428BE0

@@ -11,8 +11,10 @@ typedef char t_sub_4256F0_byte_439BD0[8];
 static t_sub_4256F0_byte_439BD0& __sub_4256F0_byte_439BD0 = *(t_sub_4256F0_byte_439BD0*)0x00439BD0;
 #define byte_439BD0 __sub_4256F0_byte_439BD0
 
-#define sub_4118A0 __sub_4118A0
-#define sub_413560 __sub_413560
+static inline unsigned int __fwd_sub_4256F0_sub_4118A0(void *a0, void *a1) { return __sub_4118A0((_BYTE *)a0, (char *)a1); }
+#define sub_4118A0 __fwd_sub_4256F0_sub_4118A0
+static inline _WORD * __fwd_sub_4256F0_sub_413560(void *a0) { return __sub_413560((_WORD *)a0); }
+#define sub_413560 __fwd_sub_4256F0_sub_413560
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

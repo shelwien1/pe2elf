@@ -7,8 +7,10 @@ typedef __attribute__((thiscall)) int t_sub_424550(...);
 static t_sub_424550& __sub_424550 = *(t_sub_424550*)0x00424550;
 #endif
 #define sub_424550 __sub_424550
-#define sub_4244A0 __sub_4244A0
-#define sub_4256F0 __sub_4256F0
+static inline void ** __fwd_sub_424500_sub_4244A0(void *a0, char a1) { return __sub_4244A0((void **)a0, a1); }
+#define sub_4244A0 __fwd_sub_424500_sub_4244A0
+static inline int * __fwd_sub_424500_sub_4256F0(void *a0, int a1, int a2, int a3) { return __sub_4256F0((int *)a0, a1, a2, a3); }
+#define sub_4256F0 __fwd_sub_424500_sub_4256F0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

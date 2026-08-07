@@ -38,3 +38,4 @@ incdec/bmf/trace.out
 incdec/bmf/drive.log
 incdec/bmf/*.bmp
 incdec/bmf/*.bmf
+__pycache__/
