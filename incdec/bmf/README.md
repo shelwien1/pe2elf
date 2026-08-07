@@ -4,9 +4,9 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 103 of 132 reachable functions redirected — 66 of the 92 a round-trip
-actually executes. Gate green on all five pixel formats, and nothing left in
-`fail.txt` is a build error.**
+**Status: 120 of 132 reachable functions redirected — 81 of the 92 a round-trip
+actually executes. Gate green on all five pixel formats, and every image
+compresses to a stream byte-identical to the original's.**
 
 The goal is a lossless BMP codec that runs none of BMF's own code and
 compresses no worse than it does. Everything below is the state of that
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 103 and not 132
+## Why 120 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -251,13 +251,14 @@ as:
 
 | | |
 |---:|---|
-| 20 | queued behind one of the nine below |
-|  6 | builds and runs, then crashes or aborts on some image |
-|  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
-|  1 | builds and runs and compresses *worse* than the original |
+|  8 | queued behind one of the four below |
+|  2 | reaches an Intel CRT helper (`__libm_sse2_log`, `__svml_log2`) whose xmm0 argument Hex-Rays did not recover — it decompiled the call as `__libm_sse2_log()`, taking nothing |
+|  1 | `sub_403820` — builds and runs, then fails during decompression |
+|  1 | `sub_4043E0` — a type error in the generated body, not yet triaged |
 
-No build errors. The 20 are downstream of the rest: fix one blocking callee and
-several callers become candidates, which is why the count moves in jumps.
+The 8 are downstream of the rest: fix one blocking callee and several callers
+become candidates, which is why the count moves in jumps. `main` is one of
+them, blocked behind `sub_4015C0`.
 
 ## Hex-Rays split my stack frame
 
@@ -298,7 +299,7 @@ That class of failure is why the harness has a fault locator. Build with
 that prints the faulting address and the EIP with the module it belongs to:
 
 ```
-[segv] addr=(nil) eip=300134b1  .../dummy32.so+0x134b1
+[fault] sig=11 addr=(nil) eip=300134b1 esp=ffff3630  .../dummy32.so+0x134b1
   -> __sub_418650(unsigned int*, int) inc/sub_418650.inc:617
 ```
 
@@ -309,13 +310,87 @@ shim's SEH turns the fault into a bare `exit(1)` with no output at all. Add
 instead means the fault is in code that was never touched, and the moved
 function corrupted something on its way past.
 
+It runs on a `sigaltstack`, so a fault that leaves `%esp` unusable still gets
+reported rather than killing the process a second time inside the handler —
+which looks like a bare exit with no output at all, because stdout is
+block-buffered into a file and the buffer goes with it.
+
+**`addr=(nil)` does not mean a null pointer.** An unaligned `movaps`/`movdqa`
+raises `#GP`, and Linux reports `#GP` as `SIGSEGV` with a null `si_addr`. A
+null fault address at a store whose operand is obviously a valid pointer means
+misalignment — see the two stack-alignment problems in `incdec.md` §8.2.3.
+
+For anything the locator does not settle in one step, `gdb` works directly on
+`dbg/BMF.elf` and gives a real backtrace across the PE/`.so` boundary:
+
+```
+$ cd dbg && gdb -q -batch -ex run -ex bt --args ./BMF.elf t1.bmf
+#0  __sub_412E60 (a1=<optimized out>) at inc/sub_412E60.inc:260
+#1  0x3000cc03 in __fwd_sub_418650_sub_412E60 () at inc/sub_418650.inc:34
+#2  __sub_418650 (_this=0xf70c8010, a2=<optimized out>) at inc/sub_418650.inc:945
+#3  0x3001a8a5 in __fwd_sub_417E80_sub_418650 (a1=0, a0=0xf70c8010) at inc/sub_417E80.inc:17
+#4  __sub_417E80 (_this=0xf70c8010, Src=0x461440 "") at inc/sub_417E80.inc:416
+#5  0x00417e3e in ?? ()
+```
+
+At `-O2` most locals read as `<optimized out>`. Rather than build the whole
+unit at `-O0` — which changes the compressed stream and fails for its own
+reasons — put `__attribute__((optimize("O0")))` on the one body under
+investigation. If that alone makes the failure go away, the body is relying on
+undefined behaviour and the question becomes *which*; §8.2.4 is one answer that
+no `-fno-…` switch turns off, so bisecting flags will not find it.
+
 `sub_412E60`, `sub_417E80` and `sub_419430` are all located this way — they
 compress to a byte-identical stream and then fault during *decompression*,
 which narrows each to a path only the decoder takes.
 
+### When nothing crashes and the output is just bigger
+
+A moved function can be wrong without being wrong *anywhere you can see*: the
+round-trip stays lossless, the decoder agrees with the encoder, and the only
+symptom is that the compressed stream grows. `sub_41CAB0` spent a long time at
+"20 bytes over the reference on the two 8-bit images, exact on the other
+three", with no fault to locate and no `-f…` switch that changed it.
+
+`calltrace32.cpp` is the tool for that. It hooks one VA with a **repeating**
+INT3 — restore the byte, rewind EIP, set `TF`, put the `0xCC` back on the
+single-step trap — and logs, per call, the incoming arguments plus a hash of a
+state block the caller names. Because the hook sits on the function's first
+byte, ahead of the `E9` that `patch_jmp` writes there, the same tracer works
+with the function moved and without it. Call *N*'s entry state is call *N-1*'s
+output, so the first entry whose hash differs names the first call that went
+wrong:
+
+```
+$ g++ -m32 -O2 -fPIC -shared -std=c++17 -o calltrace32.so calltrace32.cpp \
+      -Wl,-soname,calltrace32.so -Wl,-Ttext-segment=0x40000000
+$ g++ ... -o calltrace32d.so calltrace32.cpp -Wl,--no-as-needed -L. \
+      -l:dummy32.so -Wl,-rpath,'$ORIGIN'      # same tracer, pulls dummy32.so in
+$ setarch -R env BMF_CT_VA=0041CAB0 BMF_CT_STATE=ecx BMF_CT_OFF=44000 \
+      BMF_CT_LEN=2000 BMF_CT_STRIDE=1 BMF_CT_OUT=ct.txt ./BMF.elf -S -Q9 t8g.bmp
+```
+
+Three things that matter in practice:
+
+* **`setarch -R`.** Without it the two runs get different heap bases and every
+  stored pointer in the state block reads as a difference. With it both runs
+  put the block at the same address and the comparison is exact.
+* **The window has to cover the state.** Hashing the first `0x44000` bytes put
+  the first divergence at call 153088; widening to `0x46000` moved it to
+  153050; hashing `0x44000`–`0x46000` at stride 1 moved it to 153044. A
+  divergence you cannot see is one you will chase in the wrong function.
+* **`BMF_CT_DUMP=<call>` writes the whole block out.** Dumping at the first
+  diverging call and at the one before it gives a per-call delta — which is
+  what actually named the defect: six 16-bit counters, ours consistently
+  sixteen or eight larger than the original's.
+
+From there a gdb watchpoint on one of those words (`watch *(unsigned short*)$a`
+after `set $a = $ecx + 0x45852`) names the instruction that writes it, and the
+instruction was `lea ecx, [edi+1Fh]; shl ebx, cl` — `incdec.md` §8.2.3.1.
+
 ### What is left, and what has already been ruled out
 
-The thirteen root failures are individual defects in the decompiled bodies, not
+The four root failures are individual defects in the decompiled bodies, not
 tooling gaps. Every systematic lever has been tried and is either applied or
 excluded:
 
@@ -324,29 +399,40 @@ excluded:
 | `-fno-strict-aliasing` | **applied** — recovered `sub_4159E0` |
 | `-D_FORTIFY_SOURCE=0` | **applied** — glibc was aborting legitimate `strcpy`s |
 | `-msse2 -mfpmath=sse` | **applied** — x87's 80-bit intermediates are not what ICC emitted |
-| stack frame reassembly | **applied** — recovered `sub_41A130` and `sub_417200` |
+| stack frame reassembly | **applied** — recovered `sub_41A130`, `sub_417200`, `sub_424D90` |
 | callee prototypes from definitions | **applied** — 7 thiscall callees were being miscalled |
-| `-mincoming-stack-boundary=2` | **ruled out** — BMF keeps `esp` 16-byte aligned; forcing gcc to realign breaks a green round-trip |
+| `force_align_arg_pointer` per entry point | **applied** — recovered `sub_414F60`; PE callers do not keep `esp` 16-byte aligned |
+| `alignas(16)` on local arrays in SSE bodies | **applied** — the other half of the same problem |
+| masking every shift count | **applied** — recovered `sub_41CAB0`, 86 sites in that one body |
+| float literals from the disassembly | **applied** — `mulss` in the original, `double` in the decompilation |
+| `-mstackrealign` / `-mincoming-stack-boundary=2` | **ruled out** — the per-function attribute does the same job without the cost in every internal call |
 | `__attribute__((ms_abi))` | **ruled out** — a no-op on i386 (verified: identical code, identical alignment assumptions) |
-| `-O0` on the failing body | **ruled out** — rescues none of them, so this is not optimiser-exploited UB |
+| `-O0` on the failing body | **mixed** — no help on `sub_41CAB0`, but it *is* what identified `sub_412E60` as optimiser-exploited undefined behaviour |
 
 What remains is per-function work: read the body against `BMF.asm` and find
-where Hex-Rays got it wrong. `sub_41CAB0` is the closest — 20 bytes over the
-reference, first diverging at byte 16 of the stream, which points at
-initialisation rather than drift.
+where Hex-Rays got it wrong. The two `__libm_sse2_log` / `__svml_log2` cases
+are the clearest — Hex-Rays decompiled a call whose argument arrives in `xmm0`
+as `__libm_sse2_log()`, taking nothing at all, so each of the six call sites
+has to have its argument read back off the disassembly.
 
 ### What stopped being a category
 
 Four buckets that used to dominate this list are gone, and the fixes are worth
 naming because each was systemic rather than per-function:
 
-* **Shifts by a negative count.** Hex-Rays writes the shift count exactly as
-  the instruction computes it — `0xFFFFFFFF >> -*((_BYTE *)this + 8)` for
-  `neg ecx; shr ebp, cl` — because x86 masks the count to five bits. C++ calls
-  a negative shift undefined and gcc is free to do anything with it; here it
+* **Shift counts out of range.** Hex-Rays writes the shift count exactly as the
+  instruction computes it, because x86 masks it to five bits — and C++ calls
+  anything outside 0..31 undefined. Two shapes, both systemic:
+  `0xFFFFFFFF >> -*((_BYTE *)this + 8)` for `neg ecx; shr ebp, cl`, which
   produced `0xFFFFFFFF`, so a `j + 1` downstream came out `0` and the
-  arithmetic decoder divided by it. 36 of these in the donor. The count is now
-  masked wherever it is negated, which is a no-op for a count already in range.
+  arithmetic decoder divided by it (36 in the donor); and `1 << (n + 31)` for
+  `lea ecx, [edi+1Fh]; shl ebx, cl`, the rounding constant before an
+  arithmetic right shift, which g++ folds to the wrong value (86 in
+  `sub_41CAB0` alone). Both are now masked, which is a no-op for a count
+  already in range. The second one is the more instructive: it never crashed
+  and never lost a byte — every image still round-tripped losslessly, the
+  compressed stream was just twenty bytes bigger. Only the gate's size
+  comparison saw it.
 * **The width in an auto-generated name.** `byte_445714` is a *byte* at that
   address — Hex-Rays picks the name by how the body accesses it, and the
   disassembly agrees (`movzx eax, byte_445714[esi*4]`). `symbols.txt`, which is
@@ -401,31 +487,34 @@ done:
   be moved, `__usercall`/`__userpurge` included, and the gate is a whole-file
   lossless round-trip over five pixel formats with a no-regression check on
   compressed size. Nothing about the remaining work needs new machinery.
-* **89 of 132** reachable functions are out, and the round-trip is green with
-  them out. Every calling convention in the image can be moved, and no
-  candidate is blocked by a compile error any more.
+* **120 of 132** reachable functions are out, and the round-trip is green with
+  them out — byte-identical compressed streams on all five images, not merely
+  no larger.
 
 What is not:
 
-* **38 of the 92 functions a round-trip executes are still the PE's.** Until
-  that is 0, the binary runs BMF's code. Nineteen of them fail the gate on
-  their own merits and need their bodies read against the disassembly; the rest
-  are waiting behind those.
+* **11 of the 92 functions a round-trip executes are still the PE's.** Until
+  that is 0, the binary runs BMF's code. Four of them fail on their own merits
+  and need their bodies read against the disassembly; the rest are waiting
+  behind those.
 * The statically-linked CRT is untouched — moved bodies still call the PE's
   `fopen`, `fread`, `operator new`, `memcpy` (§6.5). Those should be repointed
   at glibc rather than decompiled, which is a separate and much smaller job
-  than the 56 remaining functions, but it has not been started.
-* `main` and the MSVC startup path are still the PE's, so even with every
-  function moved the process would still enter through BMF's entry point. A
-  standalone binary needs its own `main`.
+  than the remaining functions, but it has not been started.
+* `main` (`0x00401000`) is decompiled but not moved — it is blocked behind
+  `sub_4015C0`. Even once it moves, the process still enters through the PE's
+  CRT entry point at `0x0042D53A` (`start`, which calls `main` at `start+0xAF`)
+  and that path — `__alloca_probe`, `__alldiv`, `_flsall`, `__amsg_exit`, the
+  MSVC `_iobuf` stdio — is all statically-linked Intel/MSVC runtime. A
+  standalone binary needs its own entry point as well as its own `main`.
 
 ## Caveats
 
-* 54 of the 89 accepted functions have a non-zero probe count over the twelve
-  runs (compress + decompress for each of the six images). The other 35 are
+* 81 of the 120 accepted functions have a non-zero probe count over the ten
+  runs (compress + decompress for each of the five images). The other 39 are
   reachable but not executed by this corpus: they are moved so that nothing
   calls back into the PE, and §9's "was it actually called?" check cannot
-  vouch for them. `run/probe.txt` says which.
+  vouch for them. The `[probe]` dump at exit says which.
 * `accepted.txt` is re-sorted callees-first and the whole set re-emitted on
   every acceptance. Both are required: §6.3 turns a call to an already-moved
   function into a bare `#define`, which needs the callee's include to come

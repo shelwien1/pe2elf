@@ -1,0 +1,12 @@
+# Run artifacts: everything below is produced by build.sh / test.sh / the
+# debugging helpers and is reproducible from what is tracked.
+dbg/
+dbg[0-9]/
+ct_ref/
+ct_ours/
+*.so
+*.elf
+*.o
+dummy32.cpp
+calltrace.out
+trace.out

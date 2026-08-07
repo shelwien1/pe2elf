@@ -9,7 +9,7 @@ static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
 #define sub_428BE0 __sub_428BE0
 
 PROBE_DECL(__sub_42BA40)
-__attribute__((thiscall)) unsigned int __sub_42BA40(_WORD *_this, int a2, int sub_428BE0, int n5, int a5)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) unsigned int __sub_42BA40(_WORD *_this, int a2, int sub_428BE0, int n5, int a5)
 {
   PROBE_HIT(__sub_42BA40);
   unsigned int v5; // eax

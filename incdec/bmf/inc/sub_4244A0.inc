@@ -13,7 +13,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4244A0)
-__attribute__((thiscall)) void **__sub_4244A0(void **Block, char a2)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void **__sub_4244A0(void **Block, char a2)
 {
   PROBE_HIT(__sub_4244A0);
   __op_delete(*(Block + 44));

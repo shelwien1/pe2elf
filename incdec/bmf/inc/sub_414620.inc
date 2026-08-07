@@ -24,7 +24,7 @@ static inline int __fwd_sub_414620_sub_414060(void *a0) { return __sub_414060((u
 #define sub_414060 __fwd_sub_414620_sub_414060
 
 PROBE_DECL(__sub_414620)
-__attribute__((thiscall)) int __sub_414620(unsigned __int16 *_this, int a2)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_414620(unsigned __int16 *_this, int a2)
 {
   PROBE_HIT(__sub_414620);
   unsigned int __sub_414620_n0x800000; // ebp

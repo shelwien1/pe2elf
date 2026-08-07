@@ -55,7 +55,8 @@ static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 #endif
 #define sub_411700 __sub_411700
 #define sub_40CB70 __sub_40CB70
-#define sub_40CC50 __sub_40CC50
+static inline int __fwd_sub_40BEE0_sub_40CC50(int a0, void *a1, void *a2, char a3) { return __sub_40CC50(a0, (_DWORD *)a1, (char *)a2, a3); }
+#define sub_40CC50 __fwd_sub_40BEE0_sub_40CC50
 
 PROBE_DECL(__sub_40BEE0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BEE0(char a1)
@@ -377,7 +378,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BEE0(char a
     k_1 = k_4;
     v36 = __sub_40BEE0_dword_442E88;
     v120 = v125;
-    v101 |= 1 << (n11_3 + 31);
+    v101 |= 1 << ((n11_3 + 31) & 31);
     v37 = __sub_40BEE0_dword_442E88 & 0xF;
     if ( (__sub_40BEE0_dword_442E88 & 0xF) != 0 )
     {

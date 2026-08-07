@@ -48,17 +48,22 @@ OUT=${OUT:-dummy32.so}
 # attribute: `fpmath=` there makes gcc consider the options mismatched for the
 # always_inline intrinsics and refuse to inline them.)
 #
-# Deliberately *not* -mincoming-stack-boundary=2, and not
-# __attribute__((ms_abi)).  The one place the MS and SysV i386 ABIs really
-# differ is that SysV requires esp 16-byte aligned at a call and gcc assumes it
-# on entry, while MSVC guarantees only 4 — and patch_jmp sends PE callers
-# straight into a moved body.  But BMF is ICC output and does keep esp 16-byte
-# aligned, so the assumption holds: measured, telling gcc otherwise makes it
-# realign and *breaks* a round-trip that is green without it.  ms_abi would not
-# have helped either way — on i386 it is very nearly a no-op (verified: same
-# code, same alignment assumptions), unlike x86-64 where it selects a different
-# register convention entirely.  The per-function conventions that do matter
-# here — stdcall / fastcall / thiscall — are on the individual bodies, §4.
+# Not __attribute__((ms_abi)): on i386 it is very nearly a no-op (verified —
+# same code, same alignment assumptions), unlike x86-64 where it selects a
+# different register convention entirely.  The per-function conventions that do
+# matter here — stdcall / fastcall / thiscall — are on the individual bodies,
+# §4.
+#
+# The one place the MS and SysV i386 ABIs really differ is that SysV requires
+# esp 16-byte aligned at a call and gcc assumes it on entry, while MSVC
+# guarantees only 4 — and patch_jmp sends PE callers straight into a moved
+# body.  BMF is ICC output and *mostly* keeps esp aligned, but not always:
+# sub_414F60's callers do not, and it faulted on the `movaps %xmm0,0xc(%esp)`
+# g++ used to spill an __m128i local.  The fix is per-function, in extract.py —
+# __attribute__((force_align_arg_pointer)) on each moved entry point, §8.2.3.
+# Deliberately not the translation-unit forms, -mstackrealign or
+# -mincoming-stack-boundary=2: they cost a realigned prologue in every internal
+# g++-to-g++ call as well, where the alignment is already guaranteed.
 g++ ${CXXEXTRA:-} ${CXXABI:--msse2 -mfpmath=sse} -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
     ${CXXALIAS:--fno-strict-aliasing} \
     -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 \

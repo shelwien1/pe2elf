@@ -22,7 +22,7 @@ static t_sprintf& __sprintf = *(t_sprintf*)0x0042CF4D;
 #define FILE FILE1
 
 PROBE_DECL(__sub_427F40)
-int __sub_427F40(int BMF_Options, int UseFilters, int a3)
+__attribute__((force_align_arg_pointer)) int __sub_427F40(int BMF_Options, int UseFilters, int a3)
 {
   alignas(16) unsigned char __hexrays_frame[156];   // original frame, ebp-0x8c..ebp+0x0
   char (&Buffer)[64] = *(char (*)[64])(__hexrays_frame + 0);

@@ -14,7 +14,7 @@ static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0
 #define FILE FILE1
 
 PROBE_DECL(__sub_429C80)
-BMF_SSE int __sub_429C80(char *Str, int a2, char *a3)
+__attribute__((force_align_arg_pointer)) BMF_SSE int __sub_429C80(char *Str, int a2, char *a3)
 {
   PROBE_HIT(__sub_429C80);
   _BYTE *v3; // ebx

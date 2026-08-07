@@ -371,21 +371,34 @@ static void bmf_segv(int sig, siginfo_t *si, void *uc) {
   if (dladdr((void *)eip, &di) && di.dli_fbase) {
     who = di.dli_fname; off = eip - (unsigned)di.dli_fbase;
   }
-  fprintf(stderr, "[fault] sig=%d addr=%p eip=%08x  %s+0x%x\n", si->si_signo, si->si_addr, eip, who, off);
+  unsigned esp = (unsigned)((ucontext_t *)uc)->uc_mcontext.gregs[REG_ESP];
+  fprintf(stderr, "[fault] sig=%d addr=%p eip=%08x esp=%08x  %s+0x%x\n",
+          si->si_signo, si->si_addr, eip, esp, who, off);
   fflush(stderr);
   _exit(9);
 }
+static char bmf_sigstack[65536];
 static void bmf_trap_arm() {
   static int armed = 0;
   if (armed) return;
   armed = 1;
+  // On an alternate stack, so a fault that leaves %esp unusable — a stack
+  // overflow, or a moved function returning with the stack unbalanced — still
+  // gets reported instead of killing the process a second time inside the
+  // handler, silently and with stdout unflushed.
+  stack_t ss;
+  memset(&ss, 0, sizeof ss);
+  ss.ss_sp = bmf_sigstack;
+  ss.ss_size = sizeof bmf_sigstack;
+  sigaltstack(&ss, nullptr);
   struct sigaction sa;
   memset(&sa, 0, sizeof sa);
   sa.sa_sigaction = bmf_segv;
-  sa.sa_flags = SA_SIGINFO;
+  sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
   sigaction(SIGSEGV, &sa, nullptr);
   sigaction(SIGBUS, &sa, nullptr);
   sigaction(SIGFPE, &sa, nullptr);   // integer divide by zero lands here too
+  sigaction(SIGILL, &sa, nullptr);   // a wild jump usually lands on garbage
 }
 #define PROBE_TRAP() bmf_trap_arm()
 #else

@@ -1,21 +1,16 @@
 // sub_424550 @ 0x00424550 — __thiscall
 // Extracted from BMF.c:30127-30306 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_414F60
-#define __PE_DECL___sub_414F60
-typedef char * t_sub_414F60();
-static t_sub_414F60& __sub_414F60 = *(t_sub_414F60*)0x00414F60;
-#endif
-#define sub_414F60 __sub_414F60
 static inline int __fwd_sub_424550_sub_4135A0(void *a0, int a1, int a2, int a3) { return __sub_4135A0((unsigned __int16 *)a0, a1, a2, a3); }
 #define sub_4135A0 __fwd_sub_424550_sub_4135A0
 #define sub_414CE0 __sub_414CE0
+#define sub_414F60 __sub_414F60
 static inline int __fwd_sub_424550_sub_4248D0(void *a0, void *a1, int a2) { return __sub_4248D0((unsigned __int8 **)a0, (_DWORD *)a1, a2); }
 #define sub_4248D0 __fwd_sub_424550_sub_4248D0
 #define sub_4259F0 __sub_4259F0
 
 PROBE_DECL(__sub_424550)
-__attribute__((thiscall)) void __sub_424550(int _this, _BYTE *a2, _BYTE *a3)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_424550(int _this, _BYTE *a2, _BYTE *a3)
 {
   PROBE_HIT(__sub_424550);
   int v4; // eax
@@ -165,7 +160,7 @@ __attribute__((thiscall)) void __sub_424550(int _this, _BYTE *a2, _BYTE *a3)
             *(_DWORD *)(_this + 16),
             n5);
           v38 = (unsigned __int8)*v32;
-          v39 = v38 - *(_DWORD *)(_this + 8);
+          v39 = v38 - *(int *)(_this + 8);
           **(_BYTE **)(_this + 196) = v38;
           *(_BYTE *)(*(_DWORD *)(_this + 196) + 1) = (BYTE4(v39) ^ v39) - BYTE4(v39);
           *(_DWORD *)(_this + 4 * *(_DWORD *)(_this + 20) + 24) = *(_DWORD *)(_this + 4 * *(_DWORD *)(_this + 20) + 24)

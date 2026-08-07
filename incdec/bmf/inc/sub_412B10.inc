@@ -26,7 +26,7 @@ static t_sub_412B10_n0x800000& __sub_412B10_n0x800000 = *(t_sub_412B10_n0x800000
 
 
 PROBE_DECL(__sub_412B10)
-__attribute__((thiscall)) int __sub_412B10(unsigned int *_this, int a2)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_412B10(unsigned int *_this, int a2)
 {
   PROBE_HIT(__sub_412B10);
   char v2; // al

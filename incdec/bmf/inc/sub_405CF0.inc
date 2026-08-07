@@ -50,7 +50,8 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
-#define sub_407460 __sub_407460
+static inline int __fwd_sub_405CF0_sub_407460(void *a0, void *a1, int a2, char a3, int a4, int a5, int a6, int a7) { return __sub_407460((unsigned __int8 *)a0, (unsigned __int8 *)a1, a2, a3, a4, a5, a6, a7); }
+#define sub_407460 __fwd_sub_405CF0_sub_407460
 
 PROBE_DECL(__sub_405CF0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_405CF0(int a1, int n3, char a3)

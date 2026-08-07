@@ -42,7 +42,7 @@ static t_fopen& __fopen = *(t_fopen*)0x0042CDB9;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4280B0)
-BMF_SSE size_t __sub_4280B0(int BMF_Options, int OutFileType, int Destination, char *Destinationa, signed int Count)
+__attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Options, int OutFileType, int Destination, char *Destinationa, signed int Count)
 {
   alignas(16) unsigned char __hexrays_frame[420];   // original frame, ebp-0x194..ebp+0x0
   char (&OldFilename)[128] = *(char (*)[128])(__hexrays_frame + 0);

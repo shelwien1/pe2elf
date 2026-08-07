@@ -1,14 +1,11 @@
 // sub_419430 @ 0x00419430 — __thiscall
 // Extracted from BMF.c:23558-23702 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_412E60
-#define __PE_DECL___sub_412E60
-typedef __attribute__((fastcall)) int t_sub_412E60(void *);
-static t_sub_412E60& __sub_412E60 = *(t_sub_412E60*)0x00412E60;
-#endif
-#define sub_412E60 __sub_412E60
 #define sub_4123E0 __sub_4123E0
-#define sub_414860 __sub_414860
+static inline int __fwd_sub_419430_sub_412E60(void *a0) { return __sub_412E60((_DWORD *)a0); }
+#define sub_412E60 __fwd_sub_419430_sub_412E60
+static inline unsigned int __fwd_sub_419430_sub_414860(void *a0, int a1, int a2, int a3) { return __sub_414860((int *)a0, a1, a2, a3); }
+#define sub_414860 __fwd_sub_419430_sub_414860
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to
@@ -26,7 +23,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_419430)
-__attribute__((thiscall)) void __sub_419430(_DWORD *_this)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
 {
   alignas(16) unsigned char __hexrays_frame[420];   // original frame, ebp-0x194..ebp+0x0
   _QWORD (&v28)[2] = *(_QWORD (*)[2])(__hexrays_frame + 0);

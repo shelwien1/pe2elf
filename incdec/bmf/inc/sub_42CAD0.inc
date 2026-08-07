@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_42CAD0)
-int __sub_42CAD0(_BYTE *i, int a2)
+__attribute__((force_align_arg_pointer)) int __sub_42CAD0(_BYTE *i, int a2)
 {
   PROBE_HIT(__sub_42CAD0);
   int result; // eax

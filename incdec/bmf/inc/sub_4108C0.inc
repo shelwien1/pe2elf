@@ -14,7 +14,7 @@ static t_sub_4108C0_xmmword_4396F0& __sub_4108C0_xmmword_4396F0 = *(t_sub_4108C0
 
 
 PROBE_DECL(__sub_4108C0)
-BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
+__attribute__((force_align_arg_pointer)) BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
 {
   PROBE_HIT(__sub_4108C0);
   _BYTE *v3; // edx
@@ -45,7 +45,7 @@ BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
   _BYTE *v28; // edx
   int v29; // [esp+0h] [ebp-120h]
   unsigned int n15_1; // [esp+0h] [ebp-120h]
-  _BYTE v31[272]; // [esp+10h] [ebp-110h]
+  alignas(16) _BYTE v31[272]; // [esp+10h] [ebp-110h]
 
   v31[0] = 0;
   v3 = (_BYTE *)(Src + a3 * i);

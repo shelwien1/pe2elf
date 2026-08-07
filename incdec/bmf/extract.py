@@ -428,6 +428,108 @@ def frame_locals(body_lines, start):
     return out
 
 
+ASM = os.path.join(HERE, 'BMF.asm')
+_ASM_RANGES = None
+
+# Anything that computes in double precision, or converts between the two.
+DOUBLE_OP = re.compile(
+    r'^\s*(?:addsd|subsd|mulsd|divsd|sqrtsd|minsd|maxsd|comisd|ucomisd'
+    r'|cvtss2sd|cvtsd2ss|cvtsi2sd|cvtsd2si|cvttsd2si|cvtps2pd|cvtpd2ps'
+    r'|addpd|subpd|mulpd|divpd|movsd|movapd|movupd|unpcklpd|shufpd'
+    r'|fld|fadd|fsub|fmul|fdiv|fstp|fild|fistp)\b', re.I)
+
+
+def single_precision(name):
+    """True if `name`'s machine code has no double-precision float in it.
+
+    Hex-Rays prints every floating constant as a decimal `double` literal —
+    `* 0.001`, `+ 576.0` — even where the instruction is `mulss`/`addss` and
+    the constant in .rdata is a four-byte float.  Under C's usual arithmetic
+    conversions `float * double` is computed in double and rounded back, which
+    is a different result from the single-precision multiply the original did.
+    In a compressor that shows up as a slightly worse stream rather than a
+    crash, which is why it survives every correctness check.
+
+    Reading it back off the disassembly rather than guessing: if the function
+    contains no `*sd`, no `cvt*` between the two widths and no x87, then every
+    floating literal in its body is a float.
+    """
+    global _ASM_RANGES
+    if _ASM_RANGES is None:
+        _ASM_RANGES = {}
+        try:
+            lines = open(ASM, errors='replace').read().split('\n')
+        except OSError:
+            lines = []
+        start = {}
+        for i, l in enumerate(lines):
+            m = re.match(r'^[0-9A-F]{8}\s+(\S+)\s+proc\s+near', l)
+            if m:
+                start[m.group(1)] = i
+                continue
+            m = re.match(r'^[0-9A-F]{8}\s+(\S+)\s+endp\b', l)
+            if m and m.group(1) in start:
+                _ASM_RANGES[m.group(1)] = (start.pop(m.group(1)), i)
+        _ASM_RANGES['__lines'] = lines
+    lines = _ASM_RANGES.get('__lines') or []
+    rng = _ASM_RANGES.get(name)
+    if not rng:
+        return False                      # unknown: leave the body alone
+    a, b = rng
+    for l in lines[a:b]:
+        # Strip the address column and IDA's trailing comment.
+        if DOUBLE_OP.match(l[16:].split(';')[0]):
+            return False
+    return True
+
+
+FLOAT_LIT = re.compile(r'(?<![\w.])(\d+\.\d*(?:[eE][-+]?\d+)?|\.\d+(?:[eE][-+]?\d+)?)'
+                       r'(?![\w.])')
+
+
+def floatify(text):
+    """Suffix every floating literal with `f`.  Skips string/char literals."""
+    lit = [(m.start(), m.end()) for m in
+           re.finditer(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'", text)]
+    out, pos = [], 0
+    for m in FLOAT_LIT.finditer(text):
+        if any(a <= m.start() < b for a, b in lit):
+            continue
+        out.append(text[pos:m.end()]); out.append('f'); pos = m.end()
+    out.append(text[pos:])
+    return ''.join(out)
+
+
+def addr_taken(body_lines, locs):
+    """True if the body takes the address of one of its stack locals.
+
+    Hex-Rays' `BYREF` marker only appears when the address is *passed* to
+    something.  When the function instead walks the frame itself —
+
+        void *Block;              // [esp+24h] [ebp-5Ch]
+        unsigned __int8 **v102;   // [esp+28h] [ebp-58h]
+        ...
+        *(&Block + n4++) = v7;    // four consecutive slots, one array
+
+    — there is no marker, but the neighbours matter exactly as much: the
+    locals are one stack array Hex-Rays split into scalars, and compiled as
+    ordinary locals they stop being neighbours.  Treat any `&local` as a
+    reason to reassemble the frame.
+    """
+    if not locs:
+        return False
+    start = max(i for i, *_ in locs) + 1
+    text = '\n'.join(body_lines[start:])
+    for _i, _o, _t, nm, _e, _b in locs:
+        for m in re.finditer(r'&\s*' + re.escape(nm) + r'\b', text):
+            before = text[:m.start()].rstrip()
+            # `a & b` is a bitwise and, `f(&b)` and `*(&b + 1)` are not.
+            if before and (before[-1].isalnum() or before[-1] in '_)]&'):
+                continue
+            return True
+    return False
+
+
 def build_frame(locs):
     """-> (lines declaring the buffer and the references, set of indices to drop)."""
     lo = min(o for _, o, *_ in locs)
@@ -499,6 +601,49 @@ def mask_negative_shifts(line):
         i = j
 
 
+def mask_wide_shifts(line):
+    """`1 << (n + 31)` -> `1 << ((n + 31) & 31)`.
+
+    The other half of the same problem as `mask_negative_shifts`.  Rounding
+    before an arithmetic right shift is written `lea ecx, [edi+1Fh]; shl ebx,
+    cl`, i.e. `1 << (n - 1)` computed as `1 << ((n + 31) & 31)`, and Hex-Rays
+    prints the `+ 31` literally.  In C a shift count of 32 or more is
+    undefined, and g++ constant-folds `1 << (n + 31)` to something that is not
+    what the hardware does.
+
+    This one is quiet: nothing crashes, the round-trip stays lossless, and the
+    only symptom is that the compressor's model is slightly off and the output
+    grows.  sub_41CAB0 alone has 86 of them.
+    """
+    out, i = [], 0
+    pat = re.compile(r'(<<|>>)(\s*)\(')
+    while True:
+        m = pat.search(line, i)
+        if not m:
+            out.append(line[i:])
+            return ''.join(out)
+        j, depth, k = m.end() - 1, 0, m.end() - 1
+        while k < len(line):
+            if line[k] == '(':
+                depth += 1
+            elif line[k] == ')':
+                depth -= 1
+                if depth == 0:
+                    break
+            k += 1
+        if k >= len(line):                      # count runs onto the next line
+            out.append(line[i:m.end()])
+            i = m.end()
+            continue
+        inner = line[j + 1:k]
+        if re.search(r'[-+]\s*(31|63)\s*$', inner):
+            out.append(line[i:m.end(1)])
+            out.append(m.group(2) + '((' + inner + ') & 31)')
+        else:
+            out.append(line[i:k + 1])
+        i = k + 1
+
+
 def rename_ident(text, name, repl):
     """Rename `name` to `repl`, but not where it is a struct member.
 
@@ -554,7 +699,12 @@ def moved_callee_wrapper(caller, callee, sig, ret_reg, params):
         t = re.sub(r'\bFILE\b', 'FILE1', t)
         t = re.sub(r'\bStream\b', 'FILE1', t)
         a = f"a{i}"
-        if '*' in t and '(' not in t:
+        if reg in XMM:
+            # §4.2 passes a vector register argument by reference so the
+            # thunk's stack slot stays four bytes; the forwarder has to
+            # match that, and there is nothing to relax.
+            args.append(f"const {t} &{a}"); casts.append(a)
+        elif '*' in t and '(' not in t:
             args.append(f"void *{a}"); casts.append(f"({t}){a}")
         else:
             args.append(f"{t} {a}"); casts.append(a)
@@ -1023,7 +1173,12 @@ def emit(args, cache=None):
         if c == args.name:
             continue
         csig, cparams, cret = None, None, None
-        if c in spans and spans[c][3] not in ('usercall', 'userpurge'):
+        # __usercall / __userpurge callees included: §4.2 gives their moved
+        # body an ordinary cdecl signature taking every argument in order, so
+        # a forwarder can be built for it the same way — the only difference
+        # is that a vector argument is by reference there, and stays that way
+        # here rather than being relaxed to `void *`.
+        if c in spans:
             ca, cb = spans[c][0], spans[c][1]
             csig, _n = join_signature(lines[ca - 1:cb])
             try:
@@ -1095,7 +1250,10 @@ def emit(args, cache=None):
                 # never see, because the thunk points the reference at its own
                 # scratch, so it would only ever go wrong once both ends moved.
                 ty = re.sub(r'\b' + re.escape(nm) + r'\s*$', '', decl).strip()
-                decl = f"{ty} &{nm}__ref"
+                # const: a call site is free to pass a temporary —
+                # `sub_41CAB0(x, (__m128)xmmword_439B60, ...)` — and a
+                # non-const reference will not bind to one.
+                decl = f"const {ty} &{nm}__ref"
                 vec_copies.append(f"  {ty} {nm} = {nm}__ref;")
             decls.append(decl)
         ret = sig_text[:sig_text.index(args.name)]
@@ -1149,6 +1307,16 @@ def emit(args, cache=None):
         else:
             sig_line = 'BMF_SSE ' + sig_line
     if thunk is None:
+        # A moved function is entered straight from PE code, which — being
+        # compiled to the Microsoft i386 ABI — only guarantees 4-byte stack
+        # alignment at a call.  g++ assumes 16, and spills SSE locals with
+        # `movaps ...,N(%esp)`; on an odd caller that faults.  Realigning in
+        # the prologue is exactly what this attribute is for.  Per function
+        # rather than -mstackrealign: applied to the whole translation unit it
+        # breaks the round-trip, and the internal gcc-to-gcc calls never need
+        # it anyway.  Thunked entry points do their own `and $-16,%esp`
+        # (§4.2), so they are left alone.
+        sig_line = '__attribute__((force_align_arg_pointer)) ' + sig_line
         sig_line = re.sub(r'\b' + re.escape(args.name) + r'\b',
                           f'__{args.name}', sig_line, count=1)
         joined = [sig_line] + body_lines[1:]
@@ -1171,11 +1339,28 @@ def emit(args, cache=None):
     while _k < len(joined) and re.match(r'\s*(PROBE_HIT|__m128\w* \w+ = \w+__ref;)', joined[_k]):
         _k += 1
     locs = frame_locals(joined, _k)
-    if any(by for *_x, by in locs):
+    if any(by for *_x, by in locs) or addr_taken(joined, locs):
         frame, drop = build_frame(locs)
         kept = [l for i, l in enumerate(joined) if i not in drop]
         k = next((i for i, l in enumerate(kept) if l.strip() == '{'), 0)
         joined = kept[:k + 1] + frame + kept[k + 1:]
+    elif re.search(r'\b_mm_|\b__m128', body_raw):
+        # The original's frame was 16-byte aligned and Hex-Rays' locals sit at
+        # fixed offsets in it, so a body that casts a local array to
+        # `__m128i *` and stores through it — `*(__m128i *)&v31[k + 1] = v7`,
+        # an aligned store — is relying on that.  Hex-Rays declares the array
+        # `_BYTE v31[272]`, alignment 1; where it lands is then up to g++, and
+        # it faults (#GP, delivered as SIGSEGV with si_addr 0) whenever the
+        # frame layout happens to put it on an odd 16.  Ask for the alignment
+        # the original had rather than depending on luck.
+        for i, l in enumerate(joined[_k:len(joined)], _k):
+            if not l.strip():
+                continue
+            if not re.match(r'^\s*[A-Za-z_][\w\s\*]*\b[A-Za-z_]\w*\s*\[[^\]]*\]\s*;', l):
+                if re.match(r'^\s*[A-Za-z_][\w\s\*]*\b[A-Za-z_]\w*\s*;', l):
+                    continue             # a scalar local; keep scanning
+                break                    # first statement
+            joined[i] = re.sub(r'^(\s*)', r'\1alignas(16) ', l, count=1)
     joined = [re.sub(r'\bthis\b', '_this', l) for l in joined]
     # A recursive call still spells the PE name; point it at the moved body
     # (the signature above was already renamed, and `__name` does not re-match).
@@ -1193,6 +1378,9 @@ def emit(args, cache=None):
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
     joined = [mask_negative_shifts(l) for l in joined]
+    joined = [mask_wide_shifts(l) for l in joined]
+    if single_precision(args.name):
+        joined = [floatify(l) for l in joined]
     joined = [wrap_intrinsic_members(l) for l in joined]
     joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
     joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]

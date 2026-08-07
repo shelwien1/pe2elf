@@ -1,14 +1,10 @@
 // sub_424500 @ 0x00424500 — __cdecl
 // Extracted from BMF.c:30111-30124 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_424550
-#define __PE_DECL___sub_424550
-typedef __attribute__((thiscall)) void t_sub_424550(int _this, void *, void *);
-static t_sub_424550& __sub_424550 = *(t_sub_424550*)0x00424550;
-#endif
-#define sub_424550 __sub_424550
 static inline void ** __fwd_sub_424500_sub_4244A0(void *a0, char a1) { return __sub_4244A0((void **)a0, a1); }
 #define sub_4244A0 __fwd_sub_424500_sub_4244A0
+static inline void __fwd_sub_424500_sub_424550(int a0, void *a1, void *a2) { __sub_424550(a0, (_BYTE *)a1, (_BYTE *)a2); }
+#define sub_424550 __fwd_sub_424500_sub_424550
 static inline int * __fwd_sub_424500_sub_4256F0(void *a0, int a1, int a2, int a3) { return __sub_4256F0((int *)a0, a1, a2, a3); }
 #define sub_4256F0 __fwd_sub_424500_sub_4256F0
 
@@ -23,7 +19,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_424500)
-void __sub_424500(_BYTE *a1, int i, int a3, _BYTE *a4)
+__attribute__((force_align_arg_pointer)) void __sub_424500(_BYTE *a1, int i, int a3, _BYTE *a4)
 {
   PROBE_HIT(__sub_424500);
   int *v4; // eax

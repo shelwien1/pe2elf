@@ -115,7 +115,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
   _BYTE *v95; // esi
   char *buf_3; // ecx
   int v97; // edx
-  _BYTE v98[256]; // [esp+0h] [ebp-170h]
+  alignas(16) _BYTE v98[256]; // [esp+0h] [ebp-170h]
   int v99; // [esp+100h] [ebp-70h]
   char *buf_1; // [esp+104h] [ebp-6Ch]
   int v101; // [esp+108h] [ebp-68h]

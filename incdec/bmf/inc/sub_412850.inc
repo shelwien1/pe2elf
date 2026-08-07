@@ -14,7 +14,7 @@ static t_sub_412850_n0x88& __sub_412850_n0x88 = *(t_sub_412850_n0x88*)0x00445704
 
 
 PROBE_DECL(__sub_412850)
-__attribute__((thiscall)) BOOL __sub_412850(unsigned __int16 *_this, unsigned __int16 *a2)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) BOOL __sub_412850(unsigned __int16 *_this, unsigned __int16 *a2)
 {
   PROBE_HIT(__sub_412850);
   int v2; // ebp

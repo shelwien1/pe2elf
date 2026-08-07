@@ -357,11 +357,17 @@ Five things will bite you, in the order they bit here:
    assumes it — a moved body that spills an `__m128` uses an aligned store.
    Nothing in the PE maintains it. `and $-16, %esp`, then pad so the argument
    pushes land back on a multiple of 16.
-3. **Vector arguments by reference.** `__m128` by value is passed on the stack
-   on a 16-byte boundary, and emulating that layout in hand-written asm for an
-   arbitrary mix of argument types is not worth it. Rewrite the moved body's
-   vector parameters as references; every argument slot is then four bytes and
-   the thunk stays uniform.
+3. **Vector arguments by `const` reference.** `__m128` by value is passed on
+   the stack on a 16-byte boundary, and emulating that layout in hand-written
+   asm for an arbitrary mix of argument types is not worth it. Rewrite the
+   moved body's vector parameters as references; every argument slot is then
+   four bytes and the thunk stays uniform. `const`, because once the *caller*
+   is moved too it calls the body directly and is free to pass a temporary —
+   `sub_41CAB0(x, (__m128)xmmword_439B60, …)` — which will not bind to a
+   non-const reference. The body copies the reference into a local on entry
+   anyway (the original took the value in a register, so a write to it is
+   local), so there is nothing to lose. The §6.3 forwarder for an
+   already-moved callee has to spell the parameter the same way.
 4. **`extern "C"` on the moved body.** The thunk's `call __sub_XXXXXX` is
    assembly and names the unmangled symbol. Against a C++ function that symbol
    does not exist — and in a *shared object* an undefined symbol is not a link
@@ -650,6 +656,12 @@ ahead of the caller's, which the §6.3 form requires. Ordering alone does not
 help — a caller accepted in an earlier run is not reordered by a
 callees-first traversal of the *new* candidates — and re-emitting alone leaves
 `__F` used before it is defined.
+
+**The forwarder applies to `__usercall` callees too.** §4.2 gives a moved
+`__usercall`/`__userpurge` body an ordinary cdecl signature taking every
+argument in order, so the same `void *`-relaxing forwarder works for it — with
+the one exception that a vector argument is a `const` reference there and stays
+one here, since there is nothing about it to relax.
 
 **Call-site cast after cleanup.** After removing the typedef+static-ref, scan
 the caller body for C-style casts that pass a function pointer as this
@@ -1021,6 +1033,97 @@ two backslashes for an escape meant every string containing `\n` failed to
 match, the search ran on to a later quote, and the code *between* two string
 literals disappeared from the scan. The symptom was an undeclared identifier a
 hundred lines from the cause, and it hid real references for several passes.
+
+### 8.2.3 Stack alignment, which bites from two directions
+
+Neither of these produces a compile error, and neither is deterministic: they
+are latent until some unrelated change moves a stack frame, at which point a
+function that had been green for weeks starts faulting. Both surface as
+`SIGSEGV` with `si_addr == 0` — an unaligned `movaps`/`movdqa` raises `#GP`,
+not `#PF`, and Linux reports `#GP` with a null fault address. **A null
+`si_addr` at a store whose operand is obviously a valid pointer means
+misalignment, not a null pointer.** That one fact saves a lot of time.
+
+**Incoming: the PE caller does not align the stack.** g++ for i386 assumes
+`%esp` is 16-byte aligned at function entry and spills SSE locals with
+`movaps ...,N(%esp)`. The Microsoft ABI only promises 4. A moved function is
+entered by a `jmp` patched over the original's first instruction, so its caller
+is whatever PE code was there before, and every SSE-using entry point is one
+odd call away from a fault. Put
+`__attribute__((force_align_arg_pointer))` on every moved entry point. Not
+`-mstackrealign`: applied to the whole translation unit it broke the round-trip
+here, and internal g++-to-g++ calls never need it. `__usercall` thunks (§4.2)
+already do their own `and $-16, %esp`, so they are exempt.
+
+**Outgoing: Hex-Rays' locals have lost their alignment.** The original frame
+was 16-byte aligned and Hex-Rays' locals sit at fixed offsets in it, so a body
+that stores through a cast into a local array —
+
+```c
+_BYTE v31[272];                     // [esp+10h] [ebp-110h]
+...
+*(__m128i *)&v31[k + 1] = v7;       // k = 15, 31, 47, ...  aligned in the original
+```
+
+— is relying on `v31` being 16-byte aligned, which the declaration Hex-Rays
+wrote does not say and g++ has no reason to arrange. Give every local array in
+an SSE-using body `alignas(16)`. It is free where it is not needed, and the
+frame-reassembly buffer of §4 already does the same thing for the same reason.
+
+### 8.2.3.1 Shift counts, and the bug that only makes the output bigger
+
+x86 masks a variable shift count to five bits. C++ leaves a count of 32 or more
+undefined, and Hex-Rays prints what the instruction computes, so both of the
+idioms that rely on the masking come out as undefined behaviour:
+
+| Hex-Rays writes | the instruction is | what it means |
+|---|---|---|
+| `x >> -n` | `neg ecx; shr eax, cl` | `x >> ((-n) & 31)` |
+| `1 << (n + 31)` | `lea ecx, [edi+1Fh]; shl ebx, cl` | `1 << (n - 1)`, the rounding constant before `sar` by `n` |
+
+Mask both. The mask is free where the count is already in range — g++ knows
+x86 masks and emits the same `shl %cl` — so there is no reason to be selective.
+
+The second one is worth calling out on its own, because it is the only defect
+in this whole exercise that produced **no wrong answer at all**. Every image
+still round-tripped losslessly; the compressed stream was just twenty bytes
+bigger. A compressor's model can be wrong without its coder being wrong, so
+"decompresses to the original" is not a strong enough check — the size
+comparison in the gate is what caught it. `sub_41CAB0` had 86 of them.
+
+### 8.2.4 A pointer that is really a counter, and the loop g++ deletes
+
+Hex-Rays types a *register*, not a value, so a register that holds a pointer
+somewhere in the function is typed as one everywhere — including where it is
+being used as a plain loop counter. That is harmless until the counter is
+tested against zero:
+
+```c
+v43 = (unsigned __int16 *)v32[1];      // a count, e.g. 2 — `mov edi, [ecx+4]`
+do {
+  ...
+  v43 = (unsigned __int16 *)((char *)v43 - 1);   // `dec edi`
+} while ( v43 );                                 // `jnz`
+```
+
+Subtracting from a pointer can never produce a null pointer in C — the result
+would have to be outside the object, which is undefined — so g++ folds
+`while (v43)` to `while (1)`. The loop back-edge in the generated code becomes
+an unconditional `jmp` with the test gone entirely, and the body walks off the
+end of the array it is sorting. Nothing warns, `-O0` hides it, and no single
+`-fno-…` switch disables the inference.
+
+Launder the arithmetic through an integer, so the pointer is
+integer-derived — a value that *may* legitimately be null — rather than
+object-derived:
+
+```c
+v43 = (unsigned __int16 *)((uintptr_t)v43 - 1);
+```
+
+On i386 that is the same `dec`; only the inference g++ is allowed to draw
+changes. Worth grepping for across the whole donor: any `while (p)` /
+`if (p)` on a local that the same body steps with `(char *)p ± k`.
 
 ### 8.3 MSVC `FILE` layout
 

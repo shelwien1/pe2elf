@@ -146,7 +146,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_408510)
-BMF_SSE void __sub_408510(int Src, int n0x20000, int i)
+__attribute__((force_align_arg_pointer)) BMF_SSE void __sub_408510(int Src, int n0x20000, int i)
 {
   alignas(16) unsigned char __hexrays_frame[1348];   // original frame, ebp-0x534..ebp+0x0
   int &n12360 = *(int *)(__hexrays_frame + 0);

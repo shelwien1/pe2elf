@@ -14,7 +14,7 @@ static t_sub_416860_n4_4& __sub_416860_n4_4 = *(t_sub_416860_n4_4*)0x00445740;
 
 
 PROBE_DECL(__sub_416860)
-__attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
 {
   PROBE_HIT(__sub_416860);
   int result; // eax

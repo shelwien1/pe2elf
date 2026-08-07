@@ -56,7 +56,7 @@ static inline int __fwd_sub_41A130_sub_41C4B0(void *a0, void *a1, void *a2, int 
 #define sub_41C4B0 __fwd_sub_41A130_sub_41C4B0
 
 PROBE_DECL(__sub_41A130)
-extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128 *a1, __m128 &a2__ref, __m128 &a3__ref, _DWORD *a4, _DWORD *a5)
+extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128 *a1, const __m128 &a2__ref, const __m128 &a3__ref, _DWORD *a4, _DWORD *a5)
 {
   alignas(16) unsigned char __hexrays_frame[208];   // original frame, ebp-0xc0..ebp+0x0
   int &v246 = *(int *)(__hexrays_frame + 0);
@@ -469,9 +469,9 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
     a3.m128_f32[0] = (float)((float)*(__int16 *)(v246 - 18)
                            - (float)((float)(v33.m128_f32[0] + COERCE_FLOAT(_mm_shuffle_ps(v33, v33, 1)))
                                    + v28[17415].m128_f32[0]))
-                   * 2.0999999;
+                   * 2.0999999f;
     n0x45F20000 = (__m128)0x45F20000u;
-    n0x45F20000.m128_f32[0] = 7744.0 * v31[14].m128_f32[2];
+    n0x45F20000.m128_f32[0] = 7744.0f * v31[14].m128_f32[2];
     v35 = _mm_unpacklo_ps(a3, a3);
     v36 = _mm_movelh_ps(v35, v35);
     v37 = _mm_unpacklo_ps(n0x45F20000, n0x45F20000);
@@ -810,7 +810,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
   }
   v126 = v125 >> 11;
   v118[17417].m128_i32[1] = v126;
-  v127 = ((1 << (v118[17794].m128_i8[4 * v126 + 8] + 31)) + v118[17794].m128_i16[2 * v126 + 5]) >> v118[17794].m128_i8[4 * v126 + 8];
+  v127 = ((1 << ((v118[17794].m128_i8[4 * v126 + 8] + 31) & 31)) + v118[17794].m128_i16[2 * v126 + 5]) >> v118[17794].m128_i8[4 * v126 + 8];
   v128 = v290;
   v129 = (__int16 *)v118[17422].m128_i32[0];
   v130 = v292;
@@ -878,7 +878,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
   v118[17417].m128_i32[2] = v138;
   v139 = v118[25986].m128_i8[4 * v138 + 8];
   v140 = v118[25986].m128_i16[2 * v138 + 5];
-  v141 = 1 << (v139 + 31);
+  v141 = 1 << ((v139 + 31) & 31);
   v142 = v139;
   v143 = v295;
   v144 = (v141 + v140) >> v142;
@@ -944,7 +944,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
   v298 = v153;
   v155 = v154 >> 11;
   v118[17417].m128_i32[3] = v155;
-  v156 = ((1 << (v118[34178].m128_i8[4 * v155 + 8] + 31)) + v118[34178].m128_i16[2 * v155 + 5]) >> v118[34178].m128_i8[4 * v155 + 8];
+  v156 = ((1 << ((v118[34178].m128_i8[4 * v155 + 8] + 31) & 31)) + v118[34178].m128_i16[2 * v155 + 5]) >> v118[34178].m128_i8[4 * v155 + 8];
   v157 = v292;
   v158 = v295;
   v118[17432].m128_i32[3] = v156;
@@ -983,7 +983,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
   v289[17418].m128_i32[0] = v167;
   LOBYTE(v163) = v166[42370].m128_i8[4 * v167 + 8];
   v168 = v166[42370].m128_i16[2 * v167 + 5];
-  v169 = 1 << (v163 + 31);
+  v169 = 1 << ((v163 + 31) & 31);
   LOBYTE(v164) = v163;
   v170 = v294;
   v171 = (v169 + v168) >> v164;
@@ -1024,7 +1024,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
              | v181
              | v180) >> 11;
   v289[17418].m128_i32[1] = v185;
-  v186 = ((1 << (v184[50562].m128_i8[4 * v185 + 8] + 31)) + v184[50562].m128_i16[2 * v185 + 5]) >> v184[50562].m128_i8[4 * v185 + 8];
+  v186 = ((1 << ((v184[50562].m128_i8[4 * v185 + 8] + 31) & 31)) + v184[50562].m128_i16[2 * v185 + 5]) >> v184[50562].m128_i8[4 * v185 + 8];
   v187 = (unsigned __int8 *)v295;
   v271 = v186;
   v184[17433].m128_i32[3] = v186;

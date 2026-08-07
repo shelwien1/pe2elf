@@ -139,7 +139,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40FAC0(int
   int v115; // [esp+0h] [ebp-160h]
   int v116; // [esp+8h] [ebp-158h]
   int v117; // [esp+Ch] [ebp-154h]
-  _BYTE v118[255]; // [esp+10h] [ebp-150h]
+  alignas(16) _BYTE v118[255]; // [esp+10h] [ebp-150h]
   char v119; // [esp+10Fh] [ebp-51h]
   int *v120; // [esp+110h] [ebp-50h]
   int *v121; // [esp+114h] [ebp-4Ch]

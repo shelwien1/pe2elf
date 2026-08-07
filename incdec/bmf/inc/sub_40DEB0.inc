@@ -53,8 +53,37 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_40DEB0)
-int *__sub_40DEB0()
+__attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
 {
+  alignas(16) unsigned char __hexrays_frame[112];   // original frame, ebp-0x60..ebp+0x0
+  char * &v61 = *(char * *)(__hexrays_frame + 0);
+  int * &v62 = *(int * *)(__hexrays_frame + 4);
+  int * &v63 = *(int * *)(__hexrays_frame + 4);
+  int &v64 = *(int *)(__hexrays_frame + 8);
+  int &v65 = *(int *)(__hexrays_frame + 8);
+  _DWORD * &v66 = *(_DWORD * *)(__hexrays_frame + 8);
+  int &v67 = *(int *)(__hexrays_frame + 12);
+  int &v68 = *(int *)(__hexrays_frame + 12);
+  int &v69 = *(int *)(__hexrays_frame + 12);
+  int &v70 = *(int *)(__hexrays_frame + 12);
+  unsigned int &v71 = *(unsigned int *)(__hexrays_frame + 16);
+  unsigned int &v72 = *(unsigned int *)(__hexrays_frame + 16);
+  unsigned int &v73 = *(unsigned int *)(__hexrays_frame + 16);
+  int &v74 = *(int *)(__hexrays_frame + 20);
+  int &n11_1 = *(int *)(__hexrays_frame + 24);
+  unsigned int &v76 = *(unsigned int *)(__hexrays_frame + 28);
+  unsigned int &k_3 = *(unsigned int *)(__hexrays_frame + 32);
+  _DWORD * &v78 = *(_DWORD * *)(__hexrays_frame + 36);
+  int &v79 = *(int *)(__hexrays_frame + 40);
+  int &n8_2 = *(int *)(__hexrays_frame + 44);
+  int &v81 = *(int *)(__hexrays_frame + 48);
+  char * &v82 = *(char * *)(__hexrays_frame + 52);
+  int &v83 = *(int *)(__hexrays_frame + 56);
+  int &n256_1 = *(int *)(__hexrays_frame + 60);
+  int &v85 = *(int *)(__hexrays_frame + 64);
+  char &v86 = *(char *)(__hexrays_frame + 68);
+  int &v87 = *(int *)(__hexrays_frame + 72);
+  int &v88 = *(int *)(__hexrays_frame + 72);
   PROBE_HIT(__sub_40DEB0);
   int *v0; // esi
   int __sub_40DEB0_n8; // edi
@@ -116,34 +145,6 @@ int *__sub_40DEB0()
   int n256_2; // edx
   unsigned int v59; // esi
   unsigned int v60; // eax
-  char *v61; // [esp+0h] [ebp-60h]
-  int *v62; // [esp+4h] [ebp-5Ch]
-  int *v63; // [esp+4h] [ebp-5Ch]
-  int v64; // [esp+8h] [ebp-58h]
-  int v65; // [esp+8h] [ebp-58h]
-  _DWORD *v66; // [esp+8h] [ebp-58h]
-  int v67; // [esp+Ch] [ebp-54h]
-  int v68; // [esp+Ch] [ebp-54h]
-  int v69; // [esp+Ch] [ebp-54h]
-  int v70; // [esp+Ch] [ebp-54h]
-  unsigned int v71; // [esp+10h] [ebp-50h]
-  unsigned int v72; // [esp+10h] [ebp-50h]
-  unsigned int v73; // [esp+10h] [ebp-50h]
-  int v74; // [esp+14h] [ebp-4Ch]
-  int n11_1; // [esp+18h] [ebp-48h]
-  unsigned int v76; // [esp+1Ch] [ebp-44h]
-  unsigned int k_3; // [esp+20h] [ebp-40h]
-  _DWORD *v78; // [esp+24h] [ebp-3Ch]
-  int v79; // [esp+28h] [ebp-38h]
-  int n8_2; // [esp+2Ch] [ebp-34h]
-  int v81; // [esp+30h] [ebp-30h]
-  char *v82; // [esp+34h] [ebp-2Ch]
-  int v83; // [esp+38h] [ebp-28h]
-  int n256_1; // [esp+3Ch] [ebp-24h]
-  int v85; // [esp+40h] [ebp-20h]
-  char v86; // [esp+44h] [ebp-1Ch]
-  int v87; // [esp+48h] [ebp-18h]
-  int v88; // [esp+48h] [ebp-18h]
 
   v0 = (int *)__op_new(0x8ED0u);
   if ( v0 )

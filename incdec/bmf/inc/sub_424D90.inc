@@ -22,15 +22,10 @@ static t_sub_424D90_n3_0& __sub_424D90_n3_0 = *(t_sub_424D90_n3_0*)0x004433CD;
 typedef int t_sub_424D90_n4_5;
 static t_sub_424D90_n4_5& __sub_424D90_n4_5 = *(t_sub_424D90_n4_5*)0x00443394;
 
-#ifndef __PE_DECL___sub_414F60
-#define __PE_DECL___sub_414F60
-typedef char * t_sub_414F60();
-static t_sub_414F60& __sub_414F60 = *(t_sub_414F60*)0x00414F60;
-#endif
-#define sub_414F60 __sub_414F60
 static inline int __fwd_sub_424D90_sub_4135A0(void *a0, int a1, int a2, int a3) { return __sub_4135A0((unsigned __int16 *)a0, a1, a2, a3); }
 #define sub_4135A0 __fwd_sub_424D90_sub_4135A0
 #define sub_414CE0 __sub_414CE0
+#define sub_414F60 __sub_414F60
 static inline void ** __fwd_sub_424D90_sub_4244A0(void *a0, char a1) { return __sub_4244A0((void **)a0, a1); }
 #define sub_4244A0 __fwd_sub_424D90_sub_4244A0
 static inline int __fwd_sub_424D90_sub_4248D0(void *a0, void *a1, int a2) { return __sub_4248D0((unsigned __int8 **)a0, (_DWORD *)a1, a2); }
@@ -50,8 +45,39 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_424D90)
-int __sub_424D90(unsigned __int16 *p_i, int a2)
+__attribute__((force_align_arg_pointer)) int __sub_424D90(unsigned __int16 *p_i, int a2)
 {
+  alignas(16) unsigned char __hexrays_frame[144];   // original frame, ebp-0x80..ebp+0x0
+  char &v90 = *(char *)(__hexrays_frame + 0);
+  unsigned int &v91 = *(unsigned int *)(__hexrays_frame + 4);
+  unsigned int &v92 = *(unsigned int *)(__hexrays_frame + 4);
+  int &v93 = *(int *)(__hexrays_frame + 8);
+  int &v94 = *(int *)(__hexrays_frame + 8);
+  int &v95 = *(int *)(__hexrays_frame + 12);
+  int &v96 = *(int *)(__hexrays_frame + 16);
+  char &v97 = *(char *)(__hexrays_frame + 20);
+  int &v98 = *(int *)(__hexrays_frame + 24);
+  int &v99 = *(int *)(__hexrays_frame + 28);
+  int &n5_8 = *(int *)(__hexrays_frame + 32);
+  void * &Block = *(void * *)(__hexrays_frame + 36);
+  unsigned __int8 ** &v102 = *(unsigned __int8 ** *)(__hexrays_frame + 40);
+  unsigned __int8 ** &v103 = *(unsigned __int8 ** *)(__hexrays_frame + 44);
+  unsigned __int8 ** &v104 = *(unsigned __int8 ** *)(__hexrays_frame + 48);
+  int &v105 = *(int *)(__hexrays_frame + 52);
+  int &v106 = *(int *)(__hexrays_frame + 56);
+  unsigned int &i_1 = *(unsigned int *)(__hexrays_frame + 60);
+  int &v108 = *(int *)(__hexrays_frame + 64);
+  int &v109 = *(int *)(__hexrays_frame + 68);
+  unsigned int &i_4 = *(unsigned int *)(__hexrays_frame + 72);
+  int &v111 = *(int *)(__hexrays_frame + 76);
+  int &v112 = *(int *)(__hexrays_frame + 80);
+  int &v113 = *(int *)(__hexrays_frame + 84);
+  int &v114 = *(int *)(__hexrays_frame + 88);
+  int &v115 = *(int *)(__hexrays_frame + 92);
+  int &n5_6 = *(int *)(__hexrays_frame + 96);
+  int &v117 = *(int *)(__hexrays_frame + 100);
+  int &v118 = *(int *)(__hexrays_frame + 104);
+  int &n5 = *(int *)(__hexrays_frame + 108);
   PROBE_HIT(__sub_424D90);
   int i; // edx
   int v3; // ebx
@@ -140,36 +166,6 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
   int n4_3; // eax
   int n4_4; // ebx
   void **v89; // ecx
-  char v90; // [esp+0h] [ebp-80h]
-  unsigned int v91; // [esp+4h] [ebp-7Ch]
-  unsigned int v92; // [esp+4h] [ebp-7Ch]
-  int v93; // [esp+8h] [ebp-78h]
-  int v94; // [esp+8h] [ebp-78h]
-  int v95; // [esp+Ch] [ebp-74h]
-  int v96; // [esp+10h] [ebp-70h]
-  char v97; // [esp+14h] [ebp-6Ch]
-  int v98; // [esp+18h] [ebp-68h]
-  int v99; // [esp+1Ch] [ebp-64h]
-  int n5_8; // [esp+20h] [ebp-60h]
-  void *Block; // [esp+24h] [ebp-5Ch]
-  unsigned __int8 **v102; // [esp+28h] [ebp-58h]
-  unsigned __int8 **v103; // [esp+2Ch] [ebp-54h]
-  unsigned __int8 **v104; // [esp+30h] [ebp-50h]
-  int v105; // [esp+34h] [ebp-4Ch]
-  int v106; // [esp+38h] [ebp-48h]
-  unsigned int i_1; // [esp+3Ch] [ebp-44h]
-  int v108; // [esp+40h] [ebp-40h]
-  int v109; // [esp+44h] [ebp-3Ch]
-  unsigned int i_4; // [esp+48h] [ebp-38h]
-  int v111; // [esp+4Ch] [ebp-34h]
-  int v112; // [esp+50h] [ebp-30h]
-  int v113; // [esp+54h] [ebp-2Ch]
-  int v114; // [esp+58h] [ebp-28h]
-  int v115; // [esp+5Ch] [ebp-24h]
-  int n5_6; // [esp+60h] [ebp-20h]
-  int v117; // [esp+64h] [ebp-1Ch]
-  int v118; // [esp+68h] [ebp-18h]
-  int n5; // [esp+6Ch] [ebp-14h]
 
   i = *p_i;
   v3 = p_i[1];

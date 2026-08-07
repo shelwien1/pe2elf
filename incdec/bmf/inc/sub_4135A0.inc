@@ -26,7 +26,7 @@ static inline int __fwd_sub_4135A0_sub_413900(void *a0, int a1) { return __sub_4
 #define sub_413900 __fwd_sub_4135A0_sub_413900
 
 PROBE_DECL(__sub_4135A0)
-BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int n5, int a3, int n5a)
+__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int n5, int a3, int n5a)
 {
   PROBE_HIT(__sub_4135A0);
   __int16 v4; // di

@@ -17,7 +17,7 @@ static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0
 #define FILE FILE1
 
 PROBE_DECL(__sub_429DB0)
-BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
+__attribute__((force_align_arg_pointer)) BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
 {
   alignas(16) unsigned char __hexrays_frame[160];   // original frame, ebp-0x90..ebp+0x0
   __m128i (&Str)[8] = *(__m128i (*)[8])(__hexrays_frame + 0);

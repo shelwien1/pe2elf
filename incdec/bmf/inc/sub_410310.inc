@@ -18,7 +18,7 @@ static t_sub_410310_xmmword_439660& __sub_410310_xmmword_439660 = *(t_sub_410310
 
 
 PROBE_DECL(__sub_410310)
-BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
+__attribute__((force_align_arg_pointer)) BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
 {
   PROBE_HIT(__sub_410310);
   int Src_1; // edi
@@ -69,7 +69,7 @@ BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
   int v48; // [esp+0h] [ebp-120h]
   int n128_3; // [esp+4h] [ebp-11Ch]
   unsigned int v50; // [esp+4h] [ebp-11Ch]
-  _BYTE v52[255]; // [esp+10h] [ebp-110h]
+  alignas(16) _BYTE v52[255]; // [esp+10h] [ebp-110h]
   char v53; // [esp+10Fh] [ebp-11h]
 
   Src_1 = Src;

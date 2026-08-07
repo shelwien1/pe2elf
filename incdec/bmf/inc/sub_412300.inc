@@ -16,7 +16,7 @@ static t_sub_412300_n0x800000& __sub_412300_n0x800000 = *(t_sub_412300_n0x800000
 
 
 PROBE_DECL(__sub_412300)
-int __sub_412300()
+__attribute__((force_align_arg_pointer)) int __sub_412300()
 {
   PROBE_HIT(__sub_412300);
   int result; // eax

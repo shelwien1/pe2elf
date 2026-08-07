@@ -18,7 +18,7 @@ static t_sub_4111B0_xmmword_439790& __sub_4111B0_xmmword_439790 = *(t_sub_4111B0
 
 
 PROBE_DECL(__sub_4111B0)
-BMF_SSE unsigned int __sub_4111B0(_BYTE *Src, int i, int a3, _BYTE *a4)
+__attribute__((force_align_arg_pointer)) BMF_SSE unsigned int __sub_4111B0(_BYTE *Src, int i, int a3, _BYTE *a4)
 {
   alignas(16) unsigned char __hexrays_frame[848];   // original frame, ebp-0x340..ebp+0x0
   char &v57 = *(char *)(__hexrays_frame + 0);

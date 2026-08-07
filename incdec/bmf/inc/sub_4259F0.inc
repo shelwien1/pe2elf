@@ -8,7 +8,7 @@ static inline int __fwd_sub_4259F0_sub_413430(void *a0, int a1) { return __sub_4
 #define sub_413430 __fwd_sub_4259F0_sub_413430
 
 PROBE_DECL(__sub_4259F0)
-__attribute__((thiscall)) int __sub_4259F0(int _this)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_4259F0(int _this)
 {
   PROBE_HIT(__sub_4259F0);
   unsigned int n5; // edi

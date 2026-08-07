@@ -12,7 +12,7 @@ static t_sub_40E4D0_dword_443438& __sub_40E4D0_dword_443438 = *(t_sub_40E4D0_dwo
 
 
 PROBE_DECL(__sub_40E4D0)
-int *__sub_40E4D0()
+__attribute__((force_align_arg_pointer)) int *__sub_40E4D0()
 {
   PROBE_HIT(__sub_40E4D0);
   int v0; // ecx

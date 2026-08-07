@@ -86,7 +86,7 @@ static t_sub_419680_xmmword_4458D0& __sub_419680_xmmword_4458D0 = *(t_sub_419680
 
 
 PROBE_DECL(__sub_419680)
-void __sub_419680()
+__attribute__((force_align_arg_pointer)) void __sub_419680()
 {
   PROBE_HIT(__sub_419680);
   __sub_419680_xmmword_445760 = __sub_419680_xmmword_439A00;

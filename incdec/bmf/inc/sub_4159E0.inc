@@ -36,7 +36,7 @@ static inline int __fwd_sub_4159E0_sub_416860(void *a0, void *a1) { return __sub
 #define sub_416860 __fwd_sub_4159E0_sub_416860
 
 PROBE_DECL(__sub_4159E0)
-__attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
 {
   alignas(16) unsigned char __hexrays_frame[164];   // original frame, ebp-0x94..ebp+0x0
   int &p_n15 = *(int *)(__hexrays_frame + 0);

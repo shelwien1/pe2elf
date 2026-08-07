@@ -24,7 +24,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4256F0)
-__attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
 {
   PROBE_HIT(__sub_4256F0);
   unsigned int n0x99C60; // edi

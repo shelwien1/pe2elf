@@ -32,7 +32,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_414920)
-void __sub_414920()
+__attribute__((force_align_arg_pointer)) void __sub_414920()
 {
   PROBE_HIT(__sub_414920);
   unsigned int __sub_414920_n0x800000; // ecx

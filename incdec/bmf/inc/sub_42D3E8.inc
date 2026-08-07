@@ -14,7 +14,7 @@ static t_flsall& __flsall = *(t_flsall*)0x0042D3F1;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42D3E8)
-int __sub_42D3E8()
+__attribute__((force_align_arg_pointer)) int __sub_42D3E8()
 {
   PROBE_HIT(__sub_42D3E8);
   return flsall(1);

@@ -34,7 +34,7 @@ static t_sub_41C4B0_xmmword_4457B0& __sub_41C4B0_xmmword_4457B0 = *(t_sub_41C4B0
 
 
 PROBE_DECL(__sub_41C4B0)
-BMF_SSE __attribute__((thiscall)) int __sub_41C4B0(__m128 *_this, __m128 *a2, __m128 **a3, int n2)
+__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) int __sub_41C4B0(__m128 *_this, __m128 *a2, __m128 **a3, int n2)
 {
   PROBE_HIT(__sub_41C4B0);
   __m128 v4; // xmm1

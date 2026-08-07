@@ -18,7 +18,7 @@ static t_sub_410650_xmmword_4396B0& __sub_410650_xmmword_4396B0 = *(t_sub_410650
 
 
 PROBE_DECL(__sub_410650)
-BMF_SSE void __sub_410650(unsigned int Src, int i, int a3)
+__attribute__((force_align_arg_pointer)) BMF_SSE void __sub_410650(unsigned int Src, int i, int a3)
 {
   PROBE_HIT(__sub_410650);
   int n256; // ecx
@@ -56,7 +56,7 @@ BMF_SSE void __sub_410650(unsigned int Src, int i, int a3)
   int v35; // edi
   int v36; // eax
   int n128_2; // [esp+8h] [ebp-118h]
-  _BYTE v39[255]; // [esp+10h] [ebp-110h]
+  alignas(16) _BYTE v39[255]; // [esp+10h] [ebp-110h]
   char v40; // [esp+10Fh] [ebp-11h]
 
   n256 = __sub_410650_n256_0;

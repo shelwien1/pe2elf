@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_413560)
-__attribute__((thiscall)) _WORD *__sub_413560(_WORD *_this)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) _WORD *__sub_413560(_WORD *_this)
 {
   PROBE_HIT(__sub_413560);
   *(_this + 1) = 8;

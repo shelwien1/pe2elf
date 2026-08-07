@@ -48,8 +48,30 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42B0C0)
-int __sub_42B0C0(int p_i, char *FileName, int a3)
+__attribute__((force_align_arg_pointer)) int __sub_42B0C0(int p_i, char *FileName, int a3)
 {
+  alignas(16) unsigned char __hexrays_frame[96];   // original frame, ebp-0x50..ebp+0x0
+  char &Buffer = *(char *)(__hexrays_frame + 0);
+  unsigned int &Buffera = *(unsigned int *)(__hexrays_frame + 0);
+  char * &Bufferb = *(char * *)(__hexrays_frame + 0);
+  char * &Bufferd = *(char * *)(__hexrays_frame + 0);
+  char * &Bufferc = *(char * *)(__hexrays_frame + 0);
+  size_t &v62 = *(size_t *)(__hexrays_frame + 4);
+  size_t &v63 = *(size_t *)(__hexrays_frame + 4);
+  size_t &Size_2 = *(size_t *)(__hexrays_frame + 4);
+  char * &v65 = *(char * *)(__hexrays_frame + 8);
+  int &v66 = *(int *)(__hexrays_frame + 12);
+  int &v67 = *(int *)(__hexrays_frame + 12);
+  _BYTE * &v68 = *(_BYTE * *)(__hexrays_frame + 12);
+  FILE * &Stream_v = *(FILE * *)(__hexrays_frame + 16);
+  int &Buffer_2 = *(int *)(__hexrays_frame + 20);
+  char * &buf = *(char * *)(__hexrays_frame + 24);
+  _BYTE * &v72 = *(_BYTE * *)(__hexrays_frame + 28);
+  int &Buffer_5 = *(int *)(__hexrays_frame + 36);
+  signed int &n2_2 = *(signed int *)(__hexrays_frame + 44);
+  int &v75 = *(int *)(__hexrays_frame + 48);
+  char * &buf_2 = *(char * *)(__hexrays_frame + 52);
+  unsigned int &v77 = *(unsigned int *)(__hexrays_frame + 60);
   PROBE_HIT(__sub_42B0C0);
   int v3; // ebx
   Stream *Stream_1; // edi
@@ -104,27 +126,6 @@ int __sub_42B0C0(int p_i, char *FileName, int a3)
   int Size_1; // ecx
   int v55; // edi
   char v56; // al
-  char Buffer; // [esp+0h] [ebp-50h]
-  unsigned int Buffera; // [esp+0h] [ebp-50h]
-  char *Bufferb; // [esp+0h] [ebp-50h]
-  char *Bufferd; // [esp+0h] [ebp-50h]
-  char *Bufferc; // [esp+0h] [ebp-50h]
-  size_t v62; // [esp+4h] [ebp-4Ch]
-  size_t v63; // [esp+4h] [ebp-4Ch]
-  size_t Size_2; // [esp+4h] [ebp-4Ch]
-  char *v65; // [esp+8h] [ebp-48h]
-  int v66; // [esp+Ch] [ebp-44h]
-  int v67; // [esp+Ch] [ebp-44h]
-  _BYTE *v68; // [esp+Ch] [ebp-44h]
-  FILE *Stream_v; // [esp+10h] [ebp-40h]
-  int Buffer_2; // [esp+14h] [ebp-3Ch]
-  char *buf; // [esp+18h] [ebp-38h]
-  _BYTE *v72; // [esp+1Ch] [ebp-34h]
-  int Buffer_5; // [esp+24h] [ebp-2Ch]
-  signed int n2_2; // [esp+2Ch] [ebp-24h]
-  int v75; // [esp+30h] [ebp-20h]
-  char *buf_2; // [esp+34h] [ebp-1Ch]
-  unsigned int v77; // [esp+3Ch] [ebp-14h]
 
   v3 = a3;
   Stream_1 = fopen(FileName, "wb");

@@ -80,8 +80,19 @@ static t_fseek& __fseek = *(t_fseek*)0x0042D0DD;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402590)
-BMF_SSE int *__sub_402590(char *FileName)
+__attribute__((force_align_arg_pointer)) BMF_SSE int *__sub_402590(char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[56];   // original frame, ebp-0x28..ebp+0x0
+  char * &Str = *(char * *)(__hexrays_frame + 0);
+  char * &Stra = *(char * *)(__hexrays_frame + 0);
+  size_t &__sub_402590_ElementCount = *(size_t *)(__hexrays_frame + 4);
+  char * &ElementCounta = *(char * *)(__hexrays_frame + 4);
+  size_t &Offset = *(size_t *)(__hexrays_frame + 8);
+  char * &Offseta = *(char * *)(__hexrays_frame + 8);
+  WORD * &Offsetb = *(WORD * *)(__hexrays_frame + 8);
+  size_t &Size = *(size_t *)(__hexrays_frame + 12);
+  signed int &ElementCount_4 = *(signed int *)(__hexrays_frame + 16);
+  int &v34 = *(int *)(__hexrays_frame + 20);
   PROBE_HIT(__sub_402590);
   Stream *Stream_v; // ebp
   int *v2; // ebx
@@ -105,16 +116,6 @@ BMF_SSE int *__sub_402590(char *FileName)
   size_t ElementCount_1; // edx
   char *__sub_402590_dwLowDateTime; // eax
   char v24; // fps
-  char *Str; // [esp+0h] [ebp-28h]
-  char *Stra; // [esp+0h] [ebp-28h]
-  size_t __sub_402590_ElementCount; // [esp+4h] [ebp-24h]
-  char *ElementCounta; // [esp+4h] [ebp-24h]
-  size_t Offset; // [esp+8h] [ebp-20h]
-  char *Offseta; // [esp+8h] [ebp-20h]
-  WORD *Offsetb; // [esp+8h] [ebp-20h]
-  size_t Size; // [esp+Ch] [ebp-1Ch]
-  signed int ElementCount_4; // [esp+10h] [ebp-18h]
-  int v34; // [esp+14h] [ebp-14h]
 
   Stream_v = fopen(FileName, "rb");
   v2 = sub_42B830(__sub_402590_dword_441058, __sub_402590_dword_44105C, 8 * __sub_402590_n4_6, 0, 1);

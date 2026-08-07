@@ -29,7 +29,7 @@ static t_vprintf& __vprintf = *(t_vprintf*)0x0042D1B9;
 #define FILE FILE1
 
 PROBE_DECL(__exit_402E40)
-__attribute__((stdcall)) void __exit_402E40(int Code, char ArgList)
+__attribute__((force_align_arg_pointer)) __attribute__((stdcall)) void __exit_402E40(int Code, char ArgList)
 {
   PROBE_HIT(__exit_402E40);
   vprintf((&__exit_402E40_off_441068)[Code], &ArgList);       // "e-mail: <dmitry.shkarin@mtu-net.ru>;  web: http://compression.graphicon.ru/ds/\nInput formats: BMP,TGA,PNM,RAS,GIF,RAW;       Output formats: BMP,TGA,PNM,RAW;\nUsage: BMF [switches] FName[s] [[switches] FName[s]]\nStandalone switch can be turned off by '-' symbol appending\n\t-F     - use image Filters: %s\n\t-Q<N>  - filter selection Quality - [0,9]: %d\n\t-S     - use Slow, but efficient compression: %s\n\t-E<N>  - set maximal allowed Error for near-lossless mode - [0,15]: %d\n\t-T<N>  - filters Template usage - [0: disable, 1: store, 2: use]: %d\n\t-N     - do Not pack output files: %s\n\t-<ext> - set output file type for decompression - [bmp,tga,pnm]: %s\n\t-D     - Delete file after processing: %s\n\t-O<FName> - set Output file name to FName: %s\n-R[-][H<N1>][X<N2>][Y<N3>][B<N4>][L<N5>][A[-]] - read Raw image file: %s\nwith Header size N1(%d), X size N2(%d), Y size N3(%d), Bytes per pixel\nN4(%d), scanline aLignment N5(%d) and Archiving mode(%s)"

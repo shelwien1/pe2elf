@@ -14,7 +14,7 @@ static t_sub_40CB70_xmmword_442EA0& __sub_40CB70_xmmword_442EA0 = *(t_sub_40CB70
 
 
 PROBE_DECL(__sub_40CB70)
-int __sub_40CB70()
+__attribute__((force_align_arg_pointer)) int __sub_40CB70()
 {
   PROBE_HIT(__sub_40CB70);
   int v0; // ecx

@@ -10,7 +10,8 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
-#define sub_414860 __sub_414860
+static inline unsigned int __fwd_sub_417E80_sub_414860(void *a0, int a1, int a2, int a3) { return __sub_414860((int *)a0, a1, a2, a3); }
+#define sub_414860 __fwd_sub_417E80_sub_414860
 #define sub_414920 __sub_414920
 #define sub_4149C0 __sub_4149C0
 #define sub_416C90 __sub_416C90
@@ -35,8 +36,31 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_417E80)
-__attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
+__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
 {
+  alignas(16) unsigned char __hexrays_frame[100];   // original frame, ebp-0x54..ebp+0x0
+  int &Size = *(int *)(__hexrays_frame + 0);
+  int &v82 = *(int *)(__hexrays_frame + 8);
+  int &n4 = *(int *)(__hexrays_frame + 8);
+  int &v84 = *(int *)(__hexrays_frame + 8);
+  char * &v85 = *(char * *)(__hexrays_frame + 12);
+  int &v86 = *(int *)(__hexrays_frame + 12);
+  int &v87 = *(int *)(__hexrays_frame + 12);
+  int &v88 = *(int *)(__hexrays_frame + 16);
+  char * &ArgList_1 = *(char * *)(__hexrays_frame + 20);
+  char * &ArgList_5 = *(char * *)(__hexrays_frame + 20);
+  int &n6_3 = *(int *)(__hexrays_frame + 20);
+  char * &v92 = *(char * *)(__hexrays_frame + 24);
+  int &v93 = *(int *)(__hexrays_frame + 28);
+  int &v94 = *(int *)(__hexrays_frame + 32);
+  int &v95 = *(int *)(__hexrays_frame + 36);
+  int &ArgList_4 = *(int *)(__hexrays_frame + 40);
+  char * &Src_1 = *(char * *)(__hexrays_frame + 44);
+  _DWORD * &this_1 = *(_DWORD * *)(__hexrays_frame + 48);
+  int &v99 = *(int *)(__hexrays_frame + 52);
+  int &v100 = *(int *)(__hexrays_frame + 56);
+  int &v101 = *(int *)(__hexrays_frame + 60);
+  int &v102 = *(int *)(__hexrays_frame + 64);
   PROBE_HIT(__sub_417E80);
   int v3; // esi
   char *ArgList; // esi
@@ -116,28 +140,6 @@ __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
   int v78; // eax
   char *ArgList_8; // ebp
   int v80; // ecx
-  int Size; // [esp-8h] [ebp-54h]
-  int v82; // [esp+0h] [ebp-4Ch]
-  int n4; // [esp+0h] [ebp-4Ch]
-  int v84; // [esp+0h] [ebp-4Ch]
-  char *v85; // [esp+4h] [ebp-48h]
-  int v86; // [esp+4h] [ebp-48h]
-  int v87; // [esp+4h] [ebp-48h]
-  int v88; // [esp+8h] [ebp-44h]
-  char *ArgList_1; // [esp+Ch] [ebp-40h]
-  char *ArgList_5; // [esp+Ch] [ebp-40h]
-  int n6_3; // [esp+Ch] [ebp-40h]
-  char *v92; // [esp+10h] [ebp-3Ch]
-  int v93; // [esp+14h] [ebp-38h]
-  int v94; // [esp+18h] [ebp-34h]
-  int v95; // [esp+1Ch] [ebp-30h]
-  int ArgList_4; // [esp+20h] [ebp-2Ch]
-  char *Src_1; // [esp+24h] [ebp-28h]
-  _DWORD *this_1; // [esp+28h] [ebp-24h]
-  int v99; // [esp+2Ch] [ebp-20h]
-  int v100; // [esp+30h] [ebp-1Ch]
-  int v101; // [esp+34h] [ebp-18h]
-  int v102; // [esp+38h] [ebp-14h]
 
   v3 = *(_this + 2) < 8;
   Src_1 = Src;
