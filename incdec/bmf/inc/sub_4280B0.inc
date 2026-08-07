@@ -44,6 +44,10 @@ static t_fopen& __fopen = *(t_fopen*)0x0042CDB9;
 PROBE_DECL(__sub_4280B0)
 BMF_SSE size_t __sub_4280B0(int BMF_Options, int OutFileType, int Destination, char *Destinationa, signed int Count)
 {
+  alignas(16) unsigned char __hexrays_frame[420];   // original frame, ebp-0x194..ebp+0x0
+  char (&OldFilename)[128] = *(char (*)[128])(__hexrays_frame + 0);
+  __m128i (&Buffer)[16] = *(__m128i (*)[16])(__hexrays_frame + 128);
+  int &v51 = *(int *)(__hexrays_frame + 384);
   PROBE_HIT(__sub_4280B0);
   const char *FileName; // eax
   Stream *Stream_v; // ebp
@@ -88,9 +92,6 @@ BMF_SSE size_t __sub_4280B0(int BMF_Options, int OutFileType, int Destination, c
   unsigned int n0x20_4; // ecx
   int v47; // eax
   int v48; // eax
-  char OldFilename[128]; // [esp+0h] [ebp-194h] BYREF
-  __m128i Buffer[16]; // [esp+80h] [ebp-114h] BYREF
-  int v51; // [esp+180h] [ebp-14h]
 
   FileName = sub_429DB0(OldFilename, "ini");
   Stream_v = fopen(FileName, "rt");

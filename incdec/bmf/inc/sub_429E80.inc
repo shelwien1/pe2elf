@@ -57,6 +57,28 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_429E80)
 BMF_SSE unsigned __int16 *__sub_429E80(char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[96];   // original frame, ebp-0x50..ebp+0x0
+  signed int &v52 = *(signed int *)(__hexrays_frame + 0);
+  char * &v53 = *(char * *)(__hexrays_frame + 0);
+  unsigned __int16 * &v54 = *(unsigned __int16 * *)(__hexrays_frame + 4);
+  size_t &ElementCount = *(size_t *)(__hexrays_frame + 8);
+  char &ElementCounta = *(char *)(__hexrays_frame + 8);
+  char * &Src = *(char * *)(__hexrays_frame + 12);
+  char * &Srca = *(char * *)(__hexrays_frame + 12);
+  int &Srca_2 = *(int *)(__hexrays_frame + 16);
+  FILE * &Stream_v = *(FILE * *)(__hexrays_frame + 20);
+  FILE * &Streama = *(FILE * *)(__hexrays_frame + 20);
+  int &Buffer = *(int *)(__hexrays_frame + 24);
+  int &v63 = *(int *)(__hexrays_frame + 28);
+  int &v64 = *(int *)(__hexrays_frame + 32);
+  int &n5 = *(int *)(__hexrays_frame + 36);
+  char &v66 = *(char *)(__hexrays_frame + 40);
+  char &v67 = *(char *)(__hexrays_frame + 41);
+  char &v68 = *(char *)(__hexrays_frame + 42);
+  char &v69 = *(char *)(__hexrays_frame + 43);
+  unsigned int &n3 = *(unsigned int *)(__hexrays_frame + 44);
+  int &v71 = *(int *)(__hexrays_frame + 48);
+  unsigned int &v72 = *(unsigned int *)(__hexrays_frame + 52);
   PROBE_HIT(__sub_429E80);
   Stream *Stream_1; // esi
   int Buffer_1; // eax
@@ -108,27 +130,6 @@ BMF_SSE unsigned __int16 *__sub_429E80(char *FileName)
   int v49; // edi
   int v50; // esi
   char v51; // al
-  signed int v52; // [esp+0h] [ebp-50h]
-  char *v53; // [esp+0h] [ebp-50h]
-  unsigned __int16 *v54; // [esp+4h] [ebp-4Ch]
-  size_t ElementCount; // [esp+8h] [ebp-48h]
-  char ElementCounta; // [esp+8h] [ebp-48h]
-  char *Src; // [esp+Ch] [ebp-44h]
-  char *Srca; // [esp+Ch] [ebp-44h]
-  int Srca_2; // [esp+10h] [ebp-40h]
-  FILE *Stream_v; // [esp+14h] [ebp-3Ch]
-  FILE *Streama; // [esp+14h] [ebp-3Ch]
-  int Buffer; // [esp+18h] [ebp-38h] BYREF
-  int v63; // [esp+1Ch] [ebp-34h]
-  int v64; // [esp+20h] [ebp-30h]
-  int n5; // [esp+24h] [ebp-2Ch]
-  char v66; // [esp+28h] [ebp-28h]
-  char v67; // [esp+29h] [ebp-27h]
-  char v68; // [esp+2Ah] [ebp-26h]
-  char v69; // [esp+2Bh] [ebp-25h]
-  unsigned int n3; // [esp+2Ch] [ebp-24h]
-  int v71; // [esp+30h] [ebp-20h]
-  unsigned int v72; // [esp+34h] [ebp-1Ch]
 
   Stream_1 = fopen(FileName, "rb");
   if ( !Stream_1 || fread(&Buffer, 0x20u, 1u, Stream_1) != 1 )

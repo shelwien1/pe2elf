@@ -20,6 +20,23 @@ static t_sub_4111B0_xmmword_439790& __sub_4111B0_xmmword_439790 = *(t_sub_4111B0
 PROBE_DECL(__sub_4111B0)
 BMF_SSE unsigned int __sub_4111B0(_BYTE *Src, int i, int a3, _BYTE *a4)
 {
+  alignas(16) unsigned char __hexrays_frame[848];   // original frame, ebp-0x340..ebp+0x0
+  char &v57 = *(char *)(__hexrays_frame + 0);
+  char &v58 = *(char *)(__hexrays_frame + 4);
+  _BYTE * &Src_2 = *(_BYTE * *)(__hexrays_frame + 8);
+  _BYTE * &Src_3 = *(_BYTE * *)(__hexrays_frame + 8);
+  _BYTE * &Src_4 = *(_BYTE * *)(__hexrays_frame + 8);
+  int &n128_11 = *(int *)(__hexrays_frame + 16);
+  _BYTE (&v63)[512] = *(_BYTE (*)[512])(__hexrays_frame + 24);
+  _BYTE * &v64 = *(_BYTE * *)(__hexrays_frame + 536);
+  _BYTE * &v65 = *(_BYTE * *)(__hexrays_frame + 540);
+  unsigned int &v66 = *(unsigned int *)(__hexrays_frame + 544);
+  int &v67 = *(int *)(__hexrays_frame + 548);
+  int &n128_9 = *(int *)(__hexrays_frame + 552);
+  int &n128_2 = *(int *)(__hexrays_frame + 556);
+  _BYTE (&v70)[255] = *(_BYTE (*)[255])(__hexrays_frame + 560);
+  char &v71 = *(char *)(__hexrays_frame + 815);
+  _BYTE * &Src_5 = *(_BYTE * *)(__hexrays_frame + 816);
   PROBE_HIT(__sub_4111B0);
   _BYTE *Src_1; // edi
   int n256; // ecx
@@ -73,22 +90,6 @@ BMF_SSE unsigned int __sub_4111B0(_BYTE *Src, int i, int a3, _BYTE *a4)
   char v53; // al
   unsigned int n0x80; // eax
   int n64; // esi
-  char v57; // [esp+0h] [ebp-340h]
-  char v58; // [esp+4h] [ebp-33Ch]
-  _BYTE *Src_2; // [esp+8h] [ebp-338h]
-  _BYTE *Src_3; // [esp+8h] [ebp-338h]
-  _BYTE *Src_4; // [esp+8h] [ebp-338h]
-  int n128_11; // [esp+10h] [ebp-330h]
-  _BYTE v63[512]; // [esp+18h] [ebp-328h] BYREF
-  _BYTE *v64; // [esp+218h] [ebp-128h]
-  _BYTE *v65; // [esp+21Ch] [ebp-124h]
-  unsigned int v66; // [esp+220h] [ebp-120h]
-  int v67; // [esp+224h] [ebp-11Ch]
-  int n128_9; // [esp+228h] [ebp-118h]
-  int n128_2; // [esp+22Ch] [ebp-114h]
-  _BYTE v70[255]; // [esp+230h] [ebp-110h]
-  char v71; // [esp+32Fh] [ebp-11h]
-  _BYTE *Src_5; // [esp+330h] [ebp-10h]
 
   Src_1 = Src;
   n256 = __sub_4111B0_n256_0[0];

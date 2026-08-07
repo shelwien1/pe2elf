@@ -58,6 +58,18 @@ static t_fwrite& __fwrite = *(t_fwrite*)0x0042CF9F;
 PROBE_DECL(__sub_42BC50)
 extern "C" __attribute__((visibility("hidden"))) int __sub_42BC50(int a1, int a2, char a3, char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[344];   // original frame, ebp-0x148..ebp+0x0
+  Stream * &Stream_v = *(Stream * *)(__hexrays_frame + 0);
+  unsigned int &Buffer_ = *(unsigned int *)(__hexrays_frame + 4);
+  void * &Buffer_2 = *(void * *)(__hexrays_frame + 8);
+  unsigned int &v45 = *(unsigned int *)(__hexrays_frame + 12);
+  unsigned int &ElementCount_8 = *(unsigned int *)(__hexrays_frame + 260);
+  int &n44_1 = *(int *)(__hexrays_frame + 264);
+  char (&Buffer_4)[16] = *(char (*)[16])(__hexrays_frame + 268);
+  char (&Buffer)[12] = *(char (*)[12])(__hexrays_frame + 284);
+  size_t &v50 = *(size_t *)(__hexrays_frame + 296);
+  char (&Buffer_3)[8] = *(char (*)[8])(__hexrays_frame + 300);
+  int &v52 = *(int *)(__hexrays_frame + 308);
   PROBE_HIT(__sub_42BC50);
   int v4; // edi
   void *Buffer_1; // ebp
@@ -96,17 +108,6 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_42BC50(int a1, int a2
   int v39; // edx
   int v40; // ecx
   char v41; // al
-  Stream *Stream_v; // [esp-4h] [ebp-148h]
-  unsigned int Buffer_; // [esp+0h] [ebp-144h] BYREF
-  void *Buffer_2; // [esp+4h] [ebp-140h]
-  unsigned int v45; // [esp+8h] [ebp-13Ch]
-  unsigned int ElementCount_8; // [esp+100h] [ebp-44h]
-  int n44_1; // [esp+104h] [ebp-40h]
-  char Buffer_4[16]; // [esp+108h] [ebp-3Ch] BYREF
-  char Buffer[12]; // [esp+118h] [ebp-2Ch] BYREF
-  size_t v50; // [esp+124h] [ebp-20h]
-  char Buffer_3[8]; // [esp+128h] [ebp-1Ch] BYREF
-  int v52; // [esp+130h] [ebp-14h]
 
   v4 = a1;
   Buffer_1 = (void *)(a1 + 26);

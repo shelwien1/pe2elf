@@ -32,16 +32,17 @@ static t_irc__print& __irc__print = *(t_irc__print*)0x00434D40;
 PROBE_DECL(__sub_4346D0)
 BMF_SSE void __sub_4346D0(char n3)
 {
+  alignas(16) unsigned char __hexrays_frame[588];   // original frame, ebp-0x23c..ebp+0x0
+  char &ArgList_1 = *(char *)(__hexrays_frame + 0);
+  char &ArgList = *(char *)(__hexrays_frame + 36);
+  _DWORD (&v8)[128] = *(_DWORD (*)[128])(__hexrays_frame + 40);
+  unsigned int &v9 = *(unsigned int *)(__hexrays_frame + 552);
   PROBE_HIT(__sub_4346D0);
   int v1; // esi
   int v2; // ebx
   int v3; // esi
   int v4; // ebx
   const char *msg; // eax
-  char ArgList_1; // [esp-28h] [ebp-23Ch]
-  char ArgList; // [esp-4h] [ebp-218h]
-  _DWORD v8[128]; // [esp+0h] [ebp-214h] BYREF
-  unsigned int v9; // [esp+200h] [ebp-14h]
 
   while ( (__sub_4346D0_n1024 & 0xFFFFF800) == 0 && (__sub_4346D0_n1024 & 0x400) == 0 )
   {

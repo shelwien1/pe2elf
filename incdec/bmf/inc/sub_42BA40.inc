@@ -3,7 +3,7 @@
 
 #ifndef __PE_DECL___sub_428BE0
 #define __PE_DECL___sub_428BE0
-typedef int t_sub_428BE0(...);
+typedef char * t_sub_428BE0(void *, void *, int a3);
 static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
 #endif
 #define sub_428BE0 __sub_428BE0

@@ -47,6 +47,16 @@ static t_fscanf& __fscanf = *(t_fscanf*)0x0042DEE4;
 PROBE_DECL(__sub_42A4E0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int * __sub_42A4E0(unsigned int GIF8, char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[320];   // original frame, ebp-0x130..ebp+0x0
+  unsigned int &n0x100_2 = *(unsigned int *)(__hexrays_frame + 0);
+  FILE * &Stream_v = *(FILE * *)(__hexrays_frame + 4);
+  int * &v47 = *(int * *)(__hexrays_frame + 8);
+  int &n255 = *(int *)(__hexrays_frame + 16);
+  unsigned int &n0x100 = *(unsigned int *)(__hexrays_frame + 20);
+  unsigned int &n0x100_1 = *(unsigned int *)(__hexrays_frame + 24);
+  __m128i (&v51)[16] = *(__m128i (*)[16])(__hexrays_frame + 28);
+  int &n255_7 = *(int *)(__hexrays_frame + 284);
+  int &v53 = *(int *)(__hexrays_frame + 288);
   PROBE_HIT(__sub_42A4E0);
   Stream *Stream_1; // ebp
   bool v4; // zf
@@ -90,15 +100,6 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int * __sub_42A4E0(unsi
   int *v42; // edx
   int n255_6; // esi
   int v44; // eax
-  unsigned int n0x100_2; // [esp+0h] [ebp-130h] BYREF
-  FILE *Stream_v; // [esp+4h] [ebp-12Ch] BYREF
-  int *v47; // [esp+8h] [ebp-128h]
-  int n255; // [esp+10h] [ebp-120h] BYREF
-  unsigned int n0x100; // [esp+14h] [ebp-11Ch] BYREF
-  unsigned int n0x100_1; // [esp+18h] [ebp-118h] BYREF
-  __m128i v51[16]; // [esp+1Ch] [ebp-114h] BYREF
-  int n255_7; // [esp+11Ch] [ebp-14h] BYREF
-  int v53; // [esp+120h] [ebp-10h] BYREF
 
   Stream_1 = fopen(FileName, "rb");
   if ( !Stream_1 || fscanf(Stream_1, "%s%d%d", v51, &n255_7, &v53) != 3 )

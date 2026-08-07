@@ -371,6 +371,85 @@ def parse_signature(sig, name):
 
 MEMBER_BEFORE = re.compile(r'(?:\.|->)\s*$')
 
+# --- stack frame reassembly -------------------------------------------------
+# Hex-Rays gives every stack local its frame offset:
+#
+#     __m128 *v275; // [esp+Ch] [ebp-B4h] BYREF
+#     __int16 *v276; // [esp+10h] [ebp-B0h]
+#
+# and it splits a stack *array* into consecutive scalars like that.  Usually
+# harmless — but when the address of the first one escapes (BYREF) into a
+# function that indexes onward, the callee is reading v276, v277, ... as
+# elements.  Compiled as ordinary locals they are no longer neighbours, and the
+# callee dereferences whatever happens to follow: here it faulted on a null
+# three frames away, inside PE code, with nothing pointing back at the cause.
+#
+# So when a function has a BYREF stack local, lay all of its stack locals out
+# in one buffer at exactly the offsets Hex-Rays recorded, and declare each as a
+# reference into it.  That restores the original layout, which is the only
+# thing the escaping address depends on.
+FRAME_DECL = re.compile(
+    r'^\s*(?P<type>[A-Za-z_][\w\s\*]*?)\s*\b(?P<name>[A-Za-z_]\w*)\s*'
+    r'(?P<ext>\[[^\]]*\])?\s*;\s*//\s*\[esp[-+][0-9A-Fa-f]+h\]\s*'
+    r'\[ebp(?P<sign>[-+])(?P<off>[0-9A-Fa-f]+)h\](?P<rest>.*)$')
+BASE_SIZE = [('__m128i', 16), ('__m128d', 16), ('__m128', 16), ('_OWORD', 16),
+             ('__int128', 16), ('__m64', 8), ('_QWORD', 8), ('__int64', 8),
+             ('double', 8), ('long long', 8), ('_DWORD', 4), ('__int32', 4),
+             ('float', 4), ('int', 4), ('long', 4), ('_WORD', 2),
+             ('__int16', 2), ('short', 2), ('_BYTE', 1), ('__int8', 1),
+             ('char', 1), ('bool', 1)]
+
+
+def type_size(ty):
+    if '*' in ty:
+        return 4
+    for pat, sz in BASE_SIZE:
+        if re.search(r'\b' + re.escape(pat) + r'\b', ty):
+            return sz
+    return 4
+
+
+def frame_locals(body_lines, start):
+    """[(index, offset, type, name, extent)] for the stack locals, or []."""
+    out = []
+    for i in range(start, len(body_lines)):
+        t = body_lines[i].rstrip()
+        if not t.strip():
+            continue
+        m = FRAME_DECL.match(t)
+        if m:
+            off = int(m.group('off'), 16) * (1 if m.group('sign') == '+' else -1)
+            out.append((i, off, m.group('type').strip(), m.group('name'),
+                        m.group('ext') or '', 'BYREF' in m.group('rest')))
+        elif re.match(r'^\s*[A-Za-z_][\w\s\*]*\b[A-Za-z_]\w*\s*(\[[^\]]*\])?\s*;', t):
+            continue                     # a register local; keep scanning
+        else:
+            break                        # first statement
+    return out
+
+
+def build_frame(locs):
+    """-> (lines declaring the buffer and the references, set of indices to drop)."""
+    lo = min(o for _, o, *_ in locs)
+    hi = 0
+    for _, o, ty, nm, ext, _by in locs:
+        n = 1
+        if ext:
+            m = re.match(r'\[\s*([0-9]+)\s*\]', ext)
+            n = int(m.group(1)) if m else 1
+        hi = max(hi, o + n * type_size(ty))
+    size = hi - lo + 16
+    out = [f"  alignas(16) unsigned char __hexrays_frame[{size}];   "
+           f"// original frame, ebp{lo:+#x}..ebp{hi:+#x}"]
+    for _, o, ty, nm, ext, _by in locs:
+        at = f"__hexrays_frame + {o - lo}"
+        if ext:
+            out.append(f"  {ty} (&{nm}){ext} = *({ty} (*){ext})({at});")
+        else:
+            out.append(f"  {ty} &{nm} = *({ty} *)({at});")
+    return out, {i for i, *_ in locs}
+
+
 
 def rename_ident(text, name, repl):
     """Rename `name` to `repl`, but not where it is a struct member.
@@ -827,15 +906,36 @@ def emit(args, cache=None):
             out.append("#endif")
             out.append(f"#define {c} __{c}")
             continue
-        proto = protos.get(c)
-        if proto:
-            sig = proto.rstrip(';')
-            sig = re.sub(r'//.*$', '', sig).strip()
-            mm = re.match(r'^(.*?)\b' + re.escape(c) + r'\s*\((.*)\)\s*$', sig, re.S)
-            ret, argl = (mm.group(1).strip(), mm.group(2).strip()) if mm else ('int', '...')
-        else:
-            ret, argl = 'int', '...'
+        # The callee's own definition is the authoritative signature.  The
+        # forward-declaration block is not: BMF.c has none at all for several
+        # functions (sub_41C4B0, sub_413430, ...), and the fallback used to be
+        # `(...)`.  For a __thiscall or __fastcall callee that is silently
+        # fatal — gcc ignores the convention attribute on a variadic function,
+        # so `this` goes on the stack instead of ECX and the callee reads
+        # garbage.  It cost a null-pointer fault inside PE code three levels
+        # away from the call before it was found.
+        ret = argl = None
+        if c in spans and spans[c][3] not in ('usercall', 'userpurge'):
+            ca, cb = spans[c][0], spans[c][1]
+            csig, _n = join_signature(lines[ca - 1:cb])
+            mm = re.match(r'^(.*?)\b' + re.escape(c) + r'\s*\((.*)\)\s*$', csig, re.S)
+            if mm:
+                ret, argl = mm.group(1).strip(), mm.group(2).strip()
+                argl = re.sub(r'\bthis\b', '_this', argl)
+        if ret is None:
+            proto = protos.get(c)
+            if proto:
+                sig = proto.rstrip(';')
+                sig = re.sub(r'//.*$', '', sig).strip()
+                mm = re.match(r'^(.*?)\b' + re.escape(c) + r'\s*\((.*)\)\s*$', sig, re.S)
+                ret, argl = (mm.group(1).strip(), mm.group(2).strip()) if mm else (None, None)
         cconv = spans[c][3] if c in spans else 'cdecl'
+        if ret is None:
+            if cconv != 'cdecl':
+                sys.exit(f"{args.name} calls {c}, a __{cconv} function whose "
+                         f"parameter list could not be recovered; declaring it "
+                         f"variadic would silently drop the convention")
+            ret, argl = 'int', '...'
         for k in ('__cdecl', '__stdcall', '__fastcall', '__thiscall', '__noreturn'):
             ret = ret.replace(k, '')
         ret = ' '.join(ret.split()) or 'int'
@@ -1007,6 +1107,17 @@ def emit(args, cache=None):
     # `this` is a C++ keyword; Hex-Rays uses it as the first parameter name of
     # every __thiscall function.  Rename it (and its uses) whole-word — the
     # sibling locals this_1/this_3/... are distinct identifiers and unaffected.
+    # Reassemble the stack frame when the address of a stack local escapes.
+    _k = next((i for i, l in enumerate(joined) if l.strip() == '{'), 0)
+    _k += 1
+    while _k < len(joined) and re.match(r'\s*(PROBE_HIT|__m128\w* \w+ = \w+__ref;)', joined[_k]):
+        _k += 1
+    locs = frame_locals(joined, _k)
+    if any(by for *_x, by in locs):
+        frame, drop = build_frame(locs)
+        kept = [l for i, l in enumerate(joined) if i not in drop]
+        k = next((i for i, l in enumerate(kept) if l.strip() == '{'), 0)
+        joined = kept[:k + 1] + frame + kept[k + 1:]
     joined = [re.sub(r'\bthis\b', '_this', l) for l in joined]
     # A recursive call still spells the PE name; point it at the moved body
     # (the signature above was already renamed, and `__name` does not re-match).

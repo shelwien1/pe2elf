@@ -24,10 +24,11 @@ static t_sprintf& __sprintf = *(t_sprintf*)0x0042CF4D;
 PROBE_DECL(__sub_427F40)
 int __sub_427F40(int BMF_Options, int UseFilters, int a3)
 {
+  alignas(16) unsigned char __hexrays_frame[156];   // original frame, ebp-0x8c..ebp+0x0
+  char (&Buffer)[64] = *(char (*)[64])(__hexrays_frame + 0);
+  char (&String1)[76] = *(char (*)[76])(__hexrays_frame + 64);
   PROBE_HIT(__sub_427F40);
   const char *_0; // edx
-  char Buffer[64]; // [esp+0h] [ebp-8Ch] BYREF
-  char String1[76]; // [esp+40h] [ebp-4Ch] BYREF
 
   _0 = "0";
   if ( a3 )

@@ -5,9 +5,8 @@ sub_419430	test: t1: DECOMPRESS FAILED (rc=1)
 sub_417E80	test: t1: DECOMPRESS FAILED (rc=1)
 sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
 sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
-sub_41A130	test: t8g: COMPRESS FAILED (rc=1)
 sub_413430	test: t8g: LARGER THAN REFERENCE (44936 > 42896)
-sub_41CAB0	test: t8g: COMPRESS TIMED OUT
+sub_41CAB0	test: t8g: LARGER THAN REFERENCE (42916 > 42896)
 sub_422DB0	extract: sub_422DB0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_422D60	extract: sub_422D60 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_423600	extract: sub_423600 calls __usercall/__userpurge functions that have not been moved yet, whose regi
@@ -20,7 +19,6 @@ sub_436E10	extract: sub_436E10 calls __usercall/__userpurge functions that have 
 sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_414F60	test: t8g: COMPRESS FAILED (rc=1)
 sub_4159E0	test: t1: COMPRESS FAILED (rc=1)
-sub_417200	test: t1: COMPRESS FAILED (rc=1)
 sub_413900	test: t8g: DECOMPRESS FAILED (rc=3)
 sub_419800	extract: sub_419800 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4197A0	extract: sub_4197A0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
@@ -29,15 +27,10 @@ sub_424550	test: t8g: COMPRESS FAILED (rc=1)
 sub_424D90	test: t24: COMPRESS FAILED (rc=1)
 sub_415380	extract: sub_415380 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_405840	extract: sub_405840 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_407460	test: t24: COMPRESS FAILED (rc=1)
-sub_405CF0	extract: sub_405CF0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_407B30	extract: sub_407B30 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4043E0	extract: sub_4043E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_402FE0	extract: sub_402FE0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4028B0	extract: sub_4028B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_42AB20	test: t1: COMPRESS FAILED (rc=1)
 sub_4015C0	extract: sub_4015C0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_42851C	test: t8g: COMPRESS TIMED OUT
-sub_4284E0	extract: sub_4284E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 main	extract: main calls __usercall/__userpurge functions that have not been moved yet, whose register a

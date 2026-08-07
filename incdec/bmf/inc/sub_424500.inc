@@ -3,7 +3,7 @@
 
 #ifndef __PE_DECL___sub_424550
 #define __PE_DECL___sub_424550
-typedef __attribute__((thiscall)) int t_sub_424550(...);
+typedef __attribute__((thiscall)) void t_sub_424550(int _this, void *, void *);
 static t_sub_424550& __sub_424550 = *(t_sub_424550*)0x00424550;
 #endif
 #define sub_424550 __sub_424550

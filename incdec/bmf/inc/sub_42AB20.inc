@@ -69,6 +69,28 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_42AB20)
 BMF_SSE int *__sub_42AB20(char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[128];   // original frame, ebp-0x70..ebp+0x0
+  unsigned int &Size_4 = *(unsigned int *)(__hexrays_frame + 0);
+  int &v46 = *(int *)(__hexrays_frame + 0);
+  int &v47 = *(int *)(__hexrays_frame + 0);
+  int &Offset_1 = *(int *)(__hexrays_frame + 0);
+  signed int &Size = *(signed int *)(__hexrays_frame + 4);
+  size_t &Sizea = *(size_t *)(__hexrays_frame + 4);
+  char &Sizeb = *(char *)(__hexrays_frame + 4);
+  int * &v52 = *(int * *)(__hexrays_frame + 8);
+  int &Src_2 = *(int *)(__hexrays_frame + 12);
+  int &v54 = *(int *)(__hexrays_frame + 12);
+  void * &Buffer_3 = *(void * *)(__hexrays_frame + 16);
+  char * &Src = *(char * *)(__hexrays_frame + 24);
+  _BYTE (&Buffer_2)[4] = *(_BYTE (*)[4])(__hexrays_frame + 32);
+  _DWORD (&Buffer_1)[2] = *(_DWORD (*)[2])(__hexrays_frame + 36);
+  int &v59 = *(int *)(__hexrays_frame + 44);
+  __int16 &v60 = *(__int16 *)(__hexrays_frame + 48);
+  unsigned __int16 &n5 = *(unsigned __int16 *)(__hexrays_frame + 50);
+  int &n2 = *(int *)(__hexrays_frame + 52);
+  int &Size_3 = *(int *)(__hexrays_frame + 68);
+  __int16 (&Buffer)[5] = *(__int16 (*)[5])(__hexrays_frame + 76);
+  int &Offset = *(int *)(__hexrays_frame + 86);
   PROBE_HIT(__sub_42AB20);
   Stream *Stream_v; // esi
   int *v3; // ebx
@@ -113,27 +135,6 @@ BMF_SSE int *__sub_42AB20(char *FileName)
   char *Buffer_4; // edx
   char *Src_5; // ecx
   unsigned int v44; // ebx
-  unsigned int Size_4; // [esp+0h] [ebp-70h]
-  int v46; // [esp+0h] [ebp-70h]
-  int v47; // [esp+0h] [ebp-70h]
-  int Offset_1; // [esp+0h] [ebp-70h]
-  signed int Size; // [esp+4h] [ebp-6Ch]
-  size_t Sizea; // [esp+4h] [ebp-6Ch]
-  char Sizeb; // [esp+4h] [ebp-6Ch]
-  int *v52; // [esp+8h] [ebp-68h]
-  int Src_2; // [esp+Ch] [ebp-64h]
-  int v54; // [esp+Ch] [ebp-64h]
-  void *Buffer_3; // [esp+10h] [ebp-60h]
-  char *Src; // [esp+18h] [ebp-58h]
-  _BYTE Buffer_2[4]; // [esp+20h] [ebp-50h] BYREF
-  _DWORD Buffer_1[2]; // [esp+24h] [ebp-4Ch] BYREF
-  int v59; // [esp+2Ch] [ebp-44h]
-  __int16 v60; // [esp+30h] [ebp-40h]
-  unsigned __int16 n5; // [esp+32h] [ebp-3Eh]
-  int n2; // [esp+34h] [ebp-3Ch]
-  int Size_3; // [esp+44h] [ebp-2Ch]
-  __int16 Buffer[5]; // [esp+4Ch] [ebp-24h] BYREF
-  int Offset; // [esp+56h] [ebp-1Ah]
 
   Stream_v = fopen(FileName, "rb");
   if ( !Stream_v

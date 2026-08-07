@@ -19,6 +19,9 @@ static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0
 PROBE_DECL(__sub_429DB0)
 BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
 {
+  alignas(16) unsigned char __hexrays_frame[160];   // original frame, ebp-0x90..ebp+0x0
+  __m128i (&Str)[8] = *(__m128i (*)[8])(__hexrays_frame + 0);
+  char * &v12 = *(char * *)(__hexrays_frame + 128);
   PROBE_HIT(__sub_429DB0);
   _BYTE *OldFilename_1; // edi
   __m128i *Str_1; // ebx
@@ -27,8 +30,6 @@ BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
   int v7; // eax
   _BYTE *v8; // edi
   char *v9; // edx
-  __m128i Str[8]; // [esp+0h] [ebp-90h] BYREF
-  char *v12; // [esp+80h] [ebp-10h]
 
   strcpy(Str[0].m128i_i8, *(char **)__sub_429DB0_argv);
   OldFilename_1 = OldFilename;

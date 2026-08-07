@@ -80,6 +80,17 @@ static t_tmpnam& __tmpnam = *(t_tmpnam*)0x0042DB25;
 PROBE_DECL(__sub_42851C)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BMF_Options_3, const char *BMF_Options_1, const char *Buffer)
 {
+  alignas(16) unsigned char __hexrays_frame[556];   // original frame, ebp-0x180..ebp+0x9c
+  char (&Buffera)[256] = *(char (*)[256])(__hexrays_frame + 0);
+  char (&FileName)[128] = *(char (*)[128])(__hexrays_frame + 256);
+  char (&OldFilename)[128] = *(char (*)[128])(__hexrays_frame + 384);
+  char * &i_1 = *(char * *)(__hexrays_frame + 512);
+  const char * &Buffer_1 = *(const char * *)(__hexrays_frame + 516);
+  int &BMF_Options_2 = *(int *)(__hexrays_frame + 520);
+  int &BMF_Options = *(int *)(__hexrays_frame + 524);
+  FILE * &Stream_v = *(FILE * *)(__hexrays_frame + 528);
+  int &v48 = *(int *)(__hexrays_frame + 532);
+  Stream * &Stream_4 = *(Stream * *)(__hexrays_frame + 536);
   PROBE_HIT(__sub_42851C);
   const char *FileName_1; // eax
   char *NewFilename; // eax
@@ -114,16 +125,6 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
   const char *Buffer_3; // esi
   int C; // ebx
   int m; // eax
-  char Buffera[256]; // [esp+0h] [ebp-180h] BYREF
-  char FileName[128]; // [esp+100h] [ebp-80h] BYREF
-  char OldFilename[128]; // [esp+180h] [ebp+0h] BYREF
-  char *i_1; // [esp+200h] [ebp+80h]
-  const char *Buffer_1; // [esp+204h] [ebp+84h]
-  int BMF_Options_2; // [esp+208h] [ebp+88h]
-  int BMF_Options; // [esp+20Ch] [ebp+8Ch]
-  FILE *Stream_v; // [esp+210h] [ebp+90h]
-  int v48; // [esp+214h] [ebp+94h]
-  Stream *Stream_4; // [esp+218h] [ebp+98h]
 
   FileName_1 = sub_429DB0(OldFilename, "ini");
   if ( _access(FileName_1, 0) )

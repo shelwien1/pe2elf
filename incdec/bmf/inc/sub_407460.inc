@@ -8,7 +8,7 @@ static t_sub_407460_n4_5& __sub_407460_n4_5 = *(t_sub_407460_n4_5*)0x00443394;
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
-typedef int t_sub_411700(...);
+typedef int t_sub_411700(int a1, int n2);
 static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 #endif
 #define sub_411700 __sub_411700
@@ -22,6 +22,38 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 PROBE_DECL(__sub_407460)
 extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int8 *a1, unsigned __int8 *n2, int a3, char a4, int a5, int a6, int a7, int a8)
 {
+  alignas(16) unsigned char __hexrays_frame[26712];   // original frame, ebp-0x6848..ebp+0x0
+  char (&buf)[4096] = *(char (*)[4096])(__hexrays_frame + 0);
+  int (&v72)[1024] = *(int (*)[1024])(__hexrays_frame + 4096);
+  int (&v73)[1024] = *(int (*)[1024])(__hexrays_frame + 8192);
+  int (&v74)[1024] = *(int (*)[1024])(__hexrays_frame + 12288);
+  int (&v75)[1024] = *(int (*)[1024])(__hexrays_frame + 16384);
+  int (&v76)[1024] = *(int (*)[1024])(__hexrays_frame + 20480);
+  char (&buf_1)[4] = *(char (*)[4])(__hexrays_frame + 24576);
+  unsigned int &v78 = *(unsigned int *)(__hexrays_frame + 24580);
+  int &v79 = *(int *)(__hexrays_frame + 24584);
+  int &v80 = *(int *)(__hexrays_frame + 24588);
+  int &v81 = *(int *)(__hexrays_frame + 24592);
+  int &v82 = *(int *)(__hexrays_frame + 24596);
+  int &v83 = *(int *)(__hexrays_frame + 24600);
+  int &n4 = *(int *)(__hexrays_frame + 24604);
+  int &v85 = *(int *)(__hexrays_frame + 24608);
+  int &v86 = *(int *)(__hexrays_frame + 24612);
+  unsigned __int8 * &n2_2 = *(unsigned __int8 * *)(__hexrays_frame + 26624);
+  int &v88 = *(int *)(__hexrays_frame + 26628);
+  unsigned __int8 * &v89 = *(unsigned __int8 * *)(__hexrays_frame + 26632);
+  int &v90 = *(int *)(__hexrays_frame + 26636);
+  int &v91 = *(int *)(__hexrays_frame + 26640);
+  int &v92 = *(int *)(__hexrays_frame + 26644);
+  int &v93 = *(int *)(__hexrays_frame + 26648);
+  int &v94 = *(int *)(__hexrays_frame + 26652);
+  int &v95 = *(int *)(__hexrays_frame + 26656);
+  int &n191_5 = *(int *)(__hexrays_frame + 26660);
+  int &n191_2 = *(int *)(__hexrays_frame + 26664);
+  unsigned __int8 * &v98 = *(unsigned __int8 * *)(__hexrays_frame + 26668);
+  unsigned __int8 * &v99 = *(unsigned __int8 * *)(__hexrays_frame + 26672);
+  unsigned __int8 * &n2_1 = *(unsigned __int8 * *)(__hexrays_frame + 26676);
+  int &v101 = *(int *)(__hexrays_frame + 26680);
   PROBE_HIT(__sub_407460);
   void *v8; // esp
   int v9; // esi
@@ -85,37 +117,6 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int
   bool v67; // zf
   unsigned int v69; // edi
   unsigned int v70; // eax
-  char buf[4096]; // [esp+0h] [ebp-6848h] BYREF
-  int v72[1024]; // [esp+1000h] [ebp-5848h] BYREF
-  int v73[1024]; // [esp+2000h] [ebp-4848h] BYREF
-  int v74[1024]; // [esp+3000h] [ebp-3848h] BYREF
-  int v75[1024]; // [esp+4000h] [ebp-2848h] BYREF
-  int v76[1024]; // [esp+5000h] [ebp-1848h] BYREF
-  char buf_1[4]; // [esp+6000h] [ebp-848h] BYREF
-  unsigned int v78; // [esp+6004h] [ebp-844h]
-  int v79; // [esp+6008h] [ebp-840h]
-  int v80; // [esp+600Ch] [ebp-83Ch]
-  int v81; // [esp+6010h] [ebp-838h]
-  int v82; // [esp+6014h] [ebp-834h]
-  int v83; // [esp+6018h] [ebp-830h]
-  int n4; // [esp+601Ch] [ebp-82Ch]
-  int v85; // [esp+6020h] [ebp-828h]
-  int v86; // [esp+6024h] [ebp-824h]
-  unsigned __int8 *n2_2; // [esp+6800h] [ebp-48h]
-  int v88; // [esp+6804h] [ebp-44h]
-  unsigned __int8 *v89; // [esp+6808h] [ebp-40h]
-  int v90; // [esp+680Ch] [ebp-3Ch]
-  int v91; // [esp+6810h] [ebp-38h]
-  int v92; // [esp+6814h] [ebp-34h]
-  int v93; // [esp+6818h] [ebp-30h]
-  int v94; // [esp+681Ch] [ebp-2Ch]
-  int v95; // [esp+6820h] [ebp-28h]
-  int n191_5; // [esp+6824h] [ebp-24h]
-  int n191_2; // [esp+6828h] [ebp-20h]
-  unsigned __int8 *v98; // [esp+682Ch] [ebp-1Ch]
-  unsigned __int8 *v99; // [esp+6830h] [ebp-18h]
-  unsigned __int8 *n2_1; // [esp+6834h] [ebp-14h]
-  int v101; // [esp+6838h] [ebp-10h]
 
   v101 = a3;
   n2_1 = n2;

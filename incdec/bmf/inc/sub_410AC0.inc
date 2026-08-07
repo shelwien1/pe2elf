@@ -22,6 +22,24 @@ static t_sub_410AC0_xmmword_439740& __sub_410AC0_xmmword_439740 = *(t_sub_410AC0
 PROBE_DECL(__sub_410AC0)
 BMF_SSE _BYTE *__sub_410AC0(_BYTE *Src, int i, int a3, _BYTE *a4)
 {
+  alignas(16) unsigned char __hexrays_frame[848];   // original frame, ebp-0x340..ebp+0x0
+  _BYTE * &v80 = *(_BYTE * *)(__hexrays_frame + 0);
+  int &v81 = *(int *)(__hexrays_frame + 4);
+  int &v82 = *(int *)(__hexrays_frame + 4);
+  char &v83 = *(char *)(__hexrays_frame + 8);
+  int &v84 = *(int *)(__hexrays_frame + 8);
+  int &v85 = *(int *)(__hexrays_frame + 8);
+  int &n128_11 = *(int *)(__hexrays_frame + 12);
+  int &v87 = *(int *)(__hexrays_frame + 12);
+  _BYTE (&v88)[512] = *(_BYTE (*)[512])(__hexrays_frame + 16);
+  _BYTE * &v89 = *(_BYTE * *)(__hexrays_frame + 528);
+  _BYTE * &v90 = *(_BYTE * *)(__hexrays_frame + 532);
+  unsigned int &v91 = *(unsigned int *)(__hexrays_frame + 536);
+  unsigned __int8 * &v92 = *(unsigned __int8 * *)(__hexrays_frame + 540);
+  int &n128_9 = *(int *)(__hexrays_frame + 544);
+  int &n128_2 = *(int *)(__hexrays_frame + 548);
+  _BYTE (&v96)[255] = *(_BYTE (*)[255])(__hexrays_frame + 560);
+  char &v97 = *(char *)(__hexrays_frame + 815);
   PROBE_HIT(__sub_410AC0);
   int n256; // esi
   int n128_1; // eax
@@ -99,23 +117,6 @@ BMF_SSE _BYTE *__sub_410AC0(_BYTE *Src, int i, int a3, _BYTE *a4)
   unsigned __int8 *v77; // ecx
   unsigned int v78; // edx
   _BYTE *v79; // edi
-  _BYTE *v80; // [esp+0h] [ebp-340h]
-  int v81; // [esp+4h] [ebp-33Ch]
-  int v82; // [esp+4h] [ebp-33Ch]
-  char v83; // [esp+8h] [ebp-338h]
-  int v84; // [esp+8h] [ebp-338h]
-  int v85; // [esp+8h] [ebp-338h]
-  int n128_11; // [esp+Ch] [ebp-334h]
-  int v87; // [esp+Ch] [ebp-334h]
-  _BYTE v88[512]; // [esp+10h] [ebp-330h] BYREF
-  _BYTE *v89; // [esp+210h] [ebp-130h]
-  _BYTE *v90; // [esp+214h] [ebp-12Ch]
-  unsigned int v91; // [esp+218h] [ebp-128h]
-  unsigned __int8 *v92; // [esp+21Ch] [ebp-124h]
-  int n128_9; // [esp+220h] [ebp-120h]
-  int n128_2; // [esp+224h] [ebp-11Ch]
-  _BYTE v96[255]; // [esp+230h] [ebp-110h]
-  char v97; // [esp+32Fh] [ebp-11h]
 
   n256 = __sub_410AC0_n256_0[0];
   n128_1 = 2 * __sub_410AC0_n256_0[0] + 1;

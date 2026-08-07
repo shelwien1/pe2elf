@@ -33,6 +33,28 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_417200)
 extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, char a2, unsigned __int8 *a3)
 {
+  alignas(16) unsigned char __hexrays_frame[66064];   // original frame, ebp-0x10200..ebp+0x0
+  _DWORD (&v78)[15] = *(_DWORD (*)[15])(__hexrays_frame + 0);
+  void * &v79 = *(void * *)(__hexrays_frame + 60);
+  int &n0x2000_5 = *(int *)(__hexrays_frame + 64);
+  char (&buf)[4] = *(char (*)[4])(__hexrays_frame + 68);
+  _QWORD (&v82)[127] = *(_QWORD (*)[127])(__hexrays_frame + 72);
+  int &v83 = *(int *)(__hexrays_frame + 1088);
+  int &v84 = *(int *)(__hexrays_frame + 1092);
+  int &v85 = *(int *)(__hexrays_frame + 1096);
+  _QWORD (&v86)[2] = *(_QWORD (*)[2])(__hexrays_frame + 65604);
+  int &v87 = *(int *)(__hexrays_frame + 65620);
+  _DWORD (&v88)[91] = *(_DWORD (*)[91])(__hexrays_frame + 65624);
+  BOOL &n4_1 = *(BOOL *)(__hexrays_frame + 65988);
+  void * &Block = *(void * *)(__hexrays_frame + 65992);
+  unsigned __int8 * &v91 = *(unsigned __int8 * *)(__hexrays_frame + 65996);
+  unsigned int &v92 = *(unsigned int *)(__hexrays_frame + 66000);
+  unsigned int &v93 = *(unsigned int *)(__hexrays_frame + 66004);
+  unsigned int &v94 = *(unsigned int *)(__hexrays_frame + 66012);
+  int &Blockaa = *(int *)(__hexrays_frame + 66016);
+  unsigned __int8 * &v96 = *(unsigned __int8 * *)(__hexrays_frame + 66020);
+  unsigned int &k_1 = *(unsigned int *)(__hexrays_frame + 66024);
+  int &Blocka_1 = *(int *)(__hexrays_frame + 66032);
   PROBE_HIT(__sub_417200);
   void *v3; // esp
   unsigned __int8 *v4; // esi
@@ -109,27 +131,6 @@ extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, c
   unsigned int v75; // eax
   BOOL *p_n4_1; // esi
   int n16; // ebx
-  _DWORD v78[15]; // [esp+0h] [ebp-10200h]
-  void *v79; // [esp+3Ch] [ebp-101C4h]
-  int n0x2000_5; // [esp+40h] [ebp-101C0h]
-  char buf[4]; // [esp+44h] [ebp-101BCh] BYREF
-  _QWORD v82[127]; // [esp+48h] [ebp-101B8h] BYREF
-  int v83; // [esp+440h] [ebp-FDC0h]
-  int v84; // [esp+444h] [ebp-FDBCh]
-  int v85; // [esp+448h] [ebp-FDB8h]
-  _QWORD v86[2]; // [esp+10044h] [ebp-1BCh] BYREF
-  int v87; // [esp+10054h] [ebp-1ACh]
-  _DWORD v88[91]; // [esp+10058h] [ebp-1A8h]
-  BOOL n4_1; // [esp+101C4h] [ebp-3Ch] BYREF
-  void *Block; // [esp+101C8h] [ebp-38h]
-  unsigned __int8 *v91; // [esp+101CCh] [ebp-34h]
-  unsigned int v92; // [esp+101D0h] [ebp-30h]
-  unsigned int v93; // [esp+101D4h] [ebp-2Ch]
-  unsigned int v94; // [esp+101DCh] [ebp-24h]
-  int Blockaa; // [esp+101E0h] [ebp-20h]
-  unsigned __int8 *v96; // [esp+101E4h] [ebp-1Ch]
-  unsigned int k_1; // [esp+101E8h] [ebp-18h]
-  int Blocka_1; // [esp+101F0h] [ebp-10h]
 
   Blocka_1 = Blocka;
   v3 = alloca(65968);

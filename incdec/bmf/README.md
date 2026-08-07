@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 89 of 132 reachable functions redirected — 54 of the 92 a round-trip
+**Status: 96 of 132 reachable functions redirected — 59 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats, and nothing left in
 `fail.txt` is a build error.**
 
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 89 and not 132
+## Why 96 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -251,21 +251,45 @@ as:
 
 | | |
 |---:|---|
-| 22 | blocked on a `__usercall` callee that itself failed |
-| 15 | builds and runs, then crashes or aborts on some image |
-|  2 | builds and runs, then hangs |
+| 20 | blocked on a `__usercall` callee that itself failed |
+| 12 | builds and runs, then crashes or aborts on some image |
 |  2 | builds and runs and compresses *worse* than the original |
 |  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
 
-**There is no build-error row any more.** Everything that remains either runs
-and misbehaves, or is queued behind something that does — which is the point
-the protocol was aiming at, since only a running test can tell those apart.
+No build errors. The 20 are downstream of the rest: fix one blocking callee and
+several callers become candidates, which is why the count moves in jumps.
 
-The 22 are downstream of the rest: fix one blocking callee and several callers
-become candidates, which is why the count moves in jumps rather than one at a
-time. `sub_413430` compresses 4.8% worse on 8bpp grayscale and `sub_424550`
-0.7% worse on 24bpp — both round-trip losslessly, so *only* the no-regression
-size check catches them, which is what that check is for.
+## Hex-Rays split my stack frame
+
+The one that took longest to find, and the reason the count moved from 89 to 96.
+
+`sub_41A130` built cleanly, ran, and died on a **null-pointer fault inside PE
+code three frames away** — `mulps xmm2, [esi]` at `0x0041C58E`, inside
+`sub_41C4B0`, which had not been touched. What connects them is this:
+
+```c
+__m128 *v275; // [esp+Ch] [ebp-B4h] BYREF
+__int16 *v276; // [esp+10h] [ebp-B0h]
+int v277; // [esp+14h] [ebp-ACh]
+...
+n3536_5 = sub_41C4B0((__m128 *)v28[17416].m128_i32[0], v293, &v275, n2);
+```
+
+Those are not seven locals. They are one stack array of pointers, which
+Hex-Rays split into consecutive scalars — and `sub_41C4B0` takes the address of
+the first and reads `[edx]`, `[edx+4]`, `[edx+8]` as elements. Compiled as
+ordinary locals they are no longer neighbours, so the callee dereferences
+whatever happens to follow `v275`.
+
+The fix generalises: Hex-Rays records the frame offset of every stack local, so
+when a function has a `BYREF` stack local, `extract.py` now lays *all* of its
+stack locals out in one `alignas(16)` buffer at exactly those offsets and
+declares each as a reference into it. That restores the original layout, which
+is the only thing an escaping address depends on. Functions with no `BYREF`
+stack local are left alone.
+
+Worth knowing about because nothing points at the cause: the build is clean,
+the moved function looks right, and the crash is in code you did not change.
 
 ### What stopped being a category
 

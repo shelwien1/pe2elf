@@ -42,7 +42,7 @@ static t_sub_40B330_off_4410C0& __sub_40B330_off_4410C0 = *(t_sub_40B330_off_441
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
-typedef int t_sub_411700(...);
+typedef int t_sub_411700(int a1, int n2);
 static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 #endif
 #define sub_411700 __sub_411700
@@ -57,6 +57,43 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 PROBE_DECL(__sub_40B330)
 BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWORD *buf)
 {
+  alignas(16) unsigned char __hexrays_frame[2176];   // original frame, ebp-0x870..ebp+0x0
+  int &v79 = *(int *)(__hexrays_frame + 0);
+  int &v80 = *(int *)(__hexrays_frame + 0);
+  int &v81 = *(int *)(__hexrays_frame + 0);
+  int &v82 = *(int *)(__hexrays_frame + 0);
+  int &v83 = *(int *)(__hexrays_frame + 0);
+  int &v84 = *(int *)(__hexrays_frame + 4);
+  int &v85 = *(int *)(__hexrays_frame + 4);
+  int &v86 = *(int *)(__hexrays_frame + 4);
+  int &v87 = *(int *)(__hexrays_frame + 4);
+  int &v88 = *(int *)(__hexrays_frame + 4);
+  int &v89 = *(int *)(__hexrays_frame + 8);
+  int &v90 = *(int *)(__hexrays_frame + 8);
+  int &v91 = *(int *)(__hexrays_frame + 8);
+  int &v92 = *(int *)(__hexrays_frame + 8);
+  int &v93 = *(int *)(__hexrays_frame + 8);
+  int &__sub_40B330_Src = *(int *)(__hexrays_frame + 16);
+  int &Src_4 = *(int *)(__hexrays_frame + 20);
+  int &Src_8 = *(int *)(__hexrays_frame + 24);
+  _OWORD (&v97)[63] = *(_OWORD (*)[63])(__hexrays_frame + 32);
+  int &v98 = *(int *)(__hexrays_frame + 1040);
+  char (&v99)[16] = *(char (*)[16])(__hexrays_frame + 1044);
+  _OWORD (&v100)[63] = *(_OWORD (*)[63])(__hexrays_frame + 1060);
+  int &v101 = *(int *)(__hexrays_frame + 2068);
+  int (&v102)[6] = *(int (*)[6])(__hexrays_frame + 2072);
+  int &v103 = *(int *)(__hexrays_frame + 2096);
+  int &v104 = *(int *)(__hexrays_frame + 2100);
+  int &v105 = *(int *)(__hexrays_frame + 2104);
+  int &v106 = *(int *)(__hexrays_frame + 2108);
+  int &v107 = *(int *)(__hexrays_frame + 2112);
+  int &v108 = *(int *)(__hexrays_frame + 2116);
+  int &v109 = *(int *)(__hexrays_frame + 2120);
+  int &v110 = *(int *)(__hexrays_frame + 2124);
+  int &v111 = *(int *)(__hexrays_frame + 2128);
+  unsigned int &n5_2 = *(unsigned int *)(__hexrays_frame + 2132);
+  int &v113 = *(int *)(__hexrays_frame + 2136);
+  _DWORD * &this_1 = *(_DWORD * *)(__hexrays_frame + 2140);
   PROBE_HIT(__sub_40B330);
   unsigned int i; // eax
   int v3; // esi
@@ -135,42 +172,6 @@ BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWOR
   unsigned int n5_3; // ecx
   int v77; // eax
   int v78; // edx
-  int v79; // [esp+0h] [ebp-870h]
-  int v80; // [esp+0h] [ebp-870h]
-  int v81; // [esp+0h] [ebp-870h]
-  int v82; // [esp+0h] [ebp-870h]
-  int v83; // [esp+0h] [ebp-870h]
-  int v84; // [esp+4h] [ebp-86Ch]
-  int v85; // [esp+4h] [ebp-86Ch]
-  int v86; // [esp+4h] [ebp-86Ch]
-  int v87; // [esp+4h] [ebp-86Ch]
-  int v88; // [esp+4h] [ebp-86Ch]
-  int v89; // [esp+8h] [ebp-868h]
-  int v90; // [esp+8h] [ebp-868h]
-  int v91; // [esp+8h] [ebp-868h]
-  int v92; // [esp+8h] [ebp-868h]
-  int v93; // [esp+8h] [ebp-868h]
-  int __sub_40B330_Src; // [esp+10h] [ebp-860h] BYREF
-  int Src_4; // [esp+14h] [ebp-85Ch]
-  int Src_8; // [esp+18h] [ebp-858h]
-  _OWORD v97[63]; // [esp+20h] [ebp-850h] BYREF
-  int v98; // [esp+410h] [ebp-460h]
-  char v99[16]; // [esp+414h] [ebp-45Ch] BYREF
-  _OWORD v100[63]; // [esp+424h] [ebp-44Ch] BYREF
-  int v101; // [esp+814h] [ebp-5Ch]
-  int v102[6]; // [esp+818h] [ebp-58h] BYREF
-  int v103; // [esp+830h] [ebp-40h]
-  int v104; // [esp+834h] [ebp-3Ch]
-  int v105; // [esp+838h] [ebp-38h]
-  int v106; // [esp+83Ch] [ebp-34h]
-  int v107; // [esp+840h] [ebp-30h]
-  int v108; // [esp+844h] [ebp-2Ch]
-  int v109; // [esp+848h] [ebp-28h]
-  int v110; // [esp+84Ch] [ebp-24h]
-  int v111; // [esp+850h] [ebp-20h]
-  unsigned int n5_2; // [esp+854h] [ebp-1Ch]
-  int v113; // [esp+858h] [ebp-18h]
-  _DWORD *this_1; // [esp+85Ch] [ebp-14h]
 
   this_1 = _this;
   for ( i = 0; i < 0xC; ++i )

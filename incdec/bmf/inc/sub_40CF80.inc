@@ -116,6 +116,35 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_40CF80)
 BMF_SSE void __sub_40CF80(int i, _BYTE *Src, int n0x20000)
 {
+  alignas(16) unsigned char __hexrays_frame[1172];   // original frame, ebp-0x484..ebp+0x0
+  int &v144 = *(int *)(__hexrays_frame + 0);
+  void * &v145 = *(void * *)(__hexrays_frame + 4);
+  _DWORD (&v146)[2] = *(_DWORD (*)[2])(__hexrays_frame + 8);
+  int &v147 = *(int *)(__hexrays_frame + 16);
+  int &v148 = *(int *)(__hexrays_frame + 20);
+  _DWORD (&v149)[256] = *(_DWORD (*)[256])(__hexrays_frame + 28);
+  int &v150 = *(int *)(__hexrays_frame + 1052);
+  char * &buf_3 = *(char * *)(__hexrays_frame + 1056);
+  int &n4 = *(int *)(__hexrays_frame + 1060);
+  int &__sub_40CF80_n4_2 = *(int *)(__hexrays_frame + 1064);
+  int &n2_2 = *(int *)(__hexrays_frame + 1068);
+  unsigned int &v155 = *(unsigned int *)(__hexrays_frame + 1072);
+  int &n2_1 = *(int *)(__hexrays_frame + 1076);
+  int &n256_3 = *(int *)(__hexrays_frame + 1080);
+  int &v158 = *(int *)(__hexrays_frame + 1084);
+  int &v159 = *(int *)(__hexrays_frame + 1088);
+  int &v160 = *(int *)(__hexrays_frame + 1092);
+  int &v161 = *(int *)(__hexrays_frame + 1096);
+  int &v162 = *(int *)(__hexrays_frame + 1100);
+  int &v163 = *(int *)(__hexrays_frame + 1104);
+  int &v164 = *(int *)(__hexrays_frame + 1108);
+  int &v165 = *(int *)(__hexrays_frame + 1112);
+  void * &Block = *(void * *)(__hexrays_frame + 1116);
+  int &v167 = *(int *)(__hexrays_frame + 1120);
+  char * &v168 = *(char * *)(__hexrays_frame + 1124);
+  char * &buf = *(char * *)(__hexrays_frame + 1128);
+  int &v170 = *(int *)(__hexrays_frame + 1132);
+  int * &v171 = *(int * *)(__hexrays_frame + 1136);
   PROBE_HIT(__sub_40CF80);
   int i_1; // edi
   int n64; // ebx
@@ -258,34 +287,6 @@ BMF_SSE void __sub_40CF80(int i, _BYTE *Src, int n0x20000)
   unsigned int v141; // edx
   void *v142; // ebp
   unsigned int v143; // ebp
-  int v144; // [esp+0h] [ebp-484h]
-  void *v145; // [esp+4h] [ebp-480h]
-  _DWORD v146[2]; // [esp+8h] [ebp-47Ch] BYREF
-  int v147; // [esp+10h] [ebp-474h]
-  int v148; // [esp+14h] [ebp-470h]
-  _DWORD v149[256]; // [esp+1Ch] [ebp-468h]
-  int v150; // [esp+41Ch] [ebp-68h]
-  char *buf_3; // [esp+420h] [ebp-64h]
-  int n4; // [esp+424h] [ebp-60h]
-  int __sub_40CF80_n4_2; // [esp+428h] [ebp-5Ch]
-  int n2_2; // [esp+42Ch] [ebp-58h]
-  unsigned int v155; // [esp+430h] [ebp-54h]
-  int n2_1; // [esp+434h] [ebp-50h]
-  int n256_3; // [esp+438h] [ebp-4Ch]
-  int v158; // [esp+43Ch] [ebp-48h]
-  int v159; // [esp+440h] [ebp-44h]
-  int v160; // [esp+444h] [ebp-40h]
-  int v161; // [esp+448h] [ebp-3Ch]
-  int v162; // [esp+44Ch] [ebp-38h]
-  int v163; // [esp+450h] [ebp-34h]
-  int v164; // [esp+454h] [ebp-30h]
-  int v165; // [esp+458h] [ebp-2Ch]
-  void *Block; // [esp+45Ch] [ebp-28h]
-  int v167; // [esp+460h] [ebp-24h]
-  char *v168; // [esp+464h] [ebp-20h]
-  char *buf; // [esp+468h] [ebp-1Ch]
-  int v170; // [esp+46Ch] [ebp-18h]
-  int *v171; // [esp+470h] [ebp-14h]
 
   if ( ::__sub_40CF80_n2 )
   {

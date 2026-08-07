@@ -26,6 +26,21 @@ static t_sub_412E60_n0x800000& __sub_412E60_n0x800000 = *(t_sub_412E60_n0x800000
 PROBE_DECL(__sub_412E60)
 __attribute__((fastcall)) int __sub_412E60(_DWORD *a1)
 {
+  alignas(16) unsigned char __hexrays_frame[32824];   // original frame, ebp-0x8028..ebp+0x0
+  unsigned __int16 * &v55 = *(unsigned __int16 * *)(__hexrays_frame + 0);
+  unsigned __int16 * &v56 = *(unsigned __int16 * *)(__hexrays_frame + 4);
+  int &v57 = *(int *)(__hexrays_frame + 8);
+  signed int &v58 = *(signed int *)(__hexrays_frame + 12);
+  BOOL &v59 = *(BOOL *)(__hexrays_frame + 16);
+  unsigned int &n0x800000_1 = *(unsigned int *)(__hexrays_frame + 20);
+  int &v61 = *(int *)(__hexrays_frame + 24);
+  int &v62 = *(int *)(__hexrays_frame + 28);
+  unsigned int &n0x7F800000_1 = *(unsigned int *)(__hexrays_frame + 32768);
+  int &__sub_412E60_n0x2000 = *(int *)(__hexrays_frame + 32772);
+  int &v65 = *(int *)(__hexrays_frame + 32776);
+  unsigned __int16 * &v66 = *(unsigned __int16 * *)(__hexrays_frame + 32780);
+  _DWORD * &v67 = *(_DWORD * *)(__hexrays_frame + 32784);
+  _DWORD * &v68 = *(_DWORD * *)(__hexrays_frame + 32788);
   PROBE_HIT(__sub_412E60);
   void *v1; // esp
   int v2; // esi
@@ -80,20 +95,6 @@ __attribute__((fastcall)) int __sub_412E60(_DWORD *a1)
   unsigned __int16 *v52; // eax
   int v53; // edx
   unsigned int v54; // ebp
-  unsigned __int16 *v55; // [esp+0h] [ebp-8028h] BYREF
-  unsigned __int16 *v56; // [esp+4h] [ebp-8024h] BYREF
-  int v57; // [esp+8h] [ebp-8020h]
-  signed int v58; // [esp+Ch] [ebp-801Ch]
-  BOOL v59; // [esp+10h] [ebp-8018h]
-  unsigned int n0x800000_1; // [esp+14h] [ebp-8014h]
-  int v61; // [esp+18h] [ebp-8010h]
-  int v62; // [esp+1Ch] [ebp-800Ch]
-  unsigned int n0x7F800000_1; // [esp+8000h] [ebp-28h]
-  int __sub_412E60_n0x2000; // [esp+8004h] [ebp-24h]
-  int v65; // [esp+8008h] [ebp-20h]
-  unsigned __int16 *v66; // [esp+800Ch] [ebp-1Ch]
-  _DWORD *v67; // [esp+8010h] [ebp-18h]
-  _DWORD *v68; // [esp+8014h] [ebp-14h]
 
   v68 = a1;
   v1 = alloca(32788);

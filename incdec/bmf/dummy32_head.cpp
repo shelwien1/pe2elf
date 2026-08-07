@@ -8,7 +8,10 @@
 #include <cstring>
 #include <cstdint>
 #include <cmath>
-#include <cctype>   // isspace/isdigit/toupper — §6.5 lets these fall through to glibc
+#include <cctype>
+#include <csignal>
+#include <ucontext.h>
+#include <dlfcn.h>   // isspace/isdigit/toupper — §6.5 lets these fall through to glibc
 #include <sys/mman.h>
 #include <unistd.h>
 #include <immintrin.h>

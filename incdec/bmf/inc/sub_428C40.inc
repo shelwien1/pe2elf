@@ -3,25 +3,25 @@
 
 #ifndef __PE_DECL___sub_428AA0
 #define __PE_DECL___sub_428AA0
-typedef int t_sub_428AA0(...);
+typedef char * t_sub_428AA0(void *, void *, int a3);
 static t_sub_428AA0& __sub_428AA0 = *(t_sub_428AA0*)0x00428AA0;
 #endif
 #define sub_428AA0 __sub_428AA0
 #ifndef __PE_DECL___sub_428B00
 #define __PE_DECL___sub_428B00
-typedef int t_sub_428B00(...);
+typedef char * t_sub_428B00(void *, void *, int a3);
 static t_sub_428B00& __sub_428B00 = *(t_sub_428B00*)0x00428B00;
 #endif
 #define sub_428B00 __sub_428B00
 #ifndef __PE_DECL___sub_428B60
 #define __PE_DECL___sub_428B60
-typedef int t_sub_428B60(...);
+typedef char * t_sub_428B60(unsigned int a1, void *, int a3);
 static t_sub_428B60& __sub_428B60 = *(t_sub_428B60*)0x00428B60;
 #endif
 #define sub_428B60 __sub_428B60
 #ifndef __PE_DECL___sub_428BE0
 #define __PE_DECL___sub_428BE0
-typedef int t_sub_428BE0(...);
+typedef char * t_sub_428BE0(void *, void *, int a3);
 static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
 #endif
 #define sub_428BE0 __sub_428BE0
@@ -102,6 +102,33 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_428C40)
 unsigned __int16 *__sub_428C40(char *FileName)
 {
+  alignas(16) unsigned char __hexrays_frame[124];   // original frame, ebp-0x6c..ebp+0x0
+  int &sub_428BE0_1 = *(int *)(__hexrays_frame + 0);
+  void * &Src = *(void * *)(__hexrays_frame + 4);
+  size_t &Size_6 = *(size_t *)(__hexrays_frame + 12);
+  void * &Buffer_1 = *(void * *)(__hexrays_frame + 16);
+  int &Buffer_9 = *(int *)(__hexrays_frame + 20);
+  size_t &v85 = *(size_t *)(__hexrays_frame + 24);
+  size_t &Size_4 = *(size_t *)(__hexrays_frame + 28);
+  char * &buf_1 = *(char * *)(__hexrays_frame + 32);
+  size_t &v88 = *(size_t *)(__hexrays_frame + 36);
+  char * &v89 = *(char * *)(__hexrays_frame + 40);
+  char * &v90 = *(char * *)(__hexrays_frame + 44);
+  int &v91 = *(int *)(__hexrays_frame + 48);
+  signed int &v92 = *(signed int *)(__hexrays_frame + 52);
+  char * &v93 = *(char * *)(__hexrays_frame + 56);
+  char * &v94 = *(char * *)(__hexrays_frame + 60);
+  size_t &Size = *(size_t *)(__hexrays_frame + 64);
+  char (&Buffer)[2] = *(char (*)[2])(__hexrays_frame + 68);
+  unsigned __int8 &n3 = *(unsigned __int8 *)(__hexrays_frame + 70);
+  unsigned __int16 &v98 = *(unsigned __int16 *)(__hexrays_frame + 71);
+  unsigned __int16 &ElementCount = *(unsigned __int16 *)(__hexrays_frame + 73);
+  char &n24 = *(char *)(__hexrays_frame + 75);
+  unsigned __int16 &v101 = *(unsigned __int16 *)(__hexrays_frame + 80);
+  unsigned __int16 &sub_428BE0_2 = *(unsigned __int16 *)(__hexrays_frame + 82);
+  unsigned __int8 &n0x20 = *(unsigned __int8 *)(__hexrays_frame + 84);
+  char &v104 = *(char *)(__hexrays_frame + 85);
+  int &n5_1 = *(int *)(__hexrays_frame + 88);
   PROBE_HIT(__sub_428C40);
   Stream *Stream_v; // esi
   unsigned __int8 n3_1; // al
@@ -181,32 +208,6 @@ unsigned __int16 *__sub_428C40(char *FileName)
   size_t v77; // ebp
   int v78; // eax
   char v79; // fps
-  int sub_428BE0_1; // [esp+0h] [ebp-6Ch] BYREF
-  void *Src; // [esp+4h] [ebp-68h]
-  size_t Size_6; // [esp+Ch] [ebp-60h]
-  void *Buffer_1; // [esp+10h] [ebp-5Ch]
-  int Buffer_9; // [esp+14h] [ebp-58h]
-  size_t v85; // [esp+18h] [ebp-54h]
-  size_t Size_4; // [esp+1Ch] [ebp-50h]
-  char *buf_1; // [esp+20h] [ebp-4Ch]
-  size_t v88; // [esp+24h] [ebp-48h]
-  char *v89; // [esp+28h] [ebp-44h]
-  char *v90; // [esp+2Ch] [ebp-40h]
-  int v91; // [esp+30h] [ebp-3Ch]
-  signed int v92; // [esp+34h] [ebp-38h]
-  char *v93; // [esp+38h] [ebp-34h]
-  char *v94; // [esp+3Ch] [ebp-30h]
-  size_t Size; // [esp+40h] [ebp-2Ch]
-  char Buffer[2]; // [esp+44h] [ebp-28h] BYREF
-  unsigned __int8 n3; // [esp+46h] [ebp-26h]
-  unsigned __int16 v98; // [esp+47h] [ebp-25h]
-  unsigned __int16 ElementCount; // [esp+49h] [ebp-23h]
-  char n24; // [esp+4Bh] [ebp-21h]
-  unsigned __int16 v101; // [esp+50h] [ebp-1Ch]
-  unsigned __int16 sub_428BE0_2; // [esp+52h] [ebp-1Ah]
-  unsigned __int8 n0x20; // [esp+54h] [ebp-18h]
-  char v104; // [esp+55h] [ebp-17h]
-  int n5_1; // [esp+58h] [ebp-14h]
 
   Stream_v = fopen(FileName, "rb");
   fread(Buffer, 0x12u, 1u, Stream_v);

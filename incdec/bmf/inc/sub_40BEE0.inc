@@ -50,7 +50,7 @@ static t_sub_40BEE0_xmmword_442ED0& __sub_40BEE0_xmmword_442ED0 = *(t_sub_40BEE0
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
-typedef int t_sub_411700(...);
+typedef int t_sub_411700(int a1, int n2);
 static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 #endif
 #define sub_411700 __sub_411700
@@ -60,6 +60,51 @@ static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 PROBE_DECL(__sub_40BEE0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BEE0(char a1)
 {
+  alignas(16) unsigned char __hexrays_frame[2544];   // original frame, ebp-0x9e0..ebp+0x0
+  unsigned int &v101 = *(unsigned int *)(__hexrays_frame + 0);
+  int &n4_2 = *(int *)(__hexrays_frame + 0);
+  int &n4_3 = *(int *)(__hexrays_frame + 0);
+  unsigned int &v104 = *(unsigned int *)(__hexrays_frame + 4);
+  unsigned int &n0x15_1 = *(unsigned int *)(__hexrays_frame + 4);
+  int &n256_1 = *(int *)(__hexrays_frame + 4);
+  int &v107 = *(int *)(__hexrays_frame + 8);
+  int &n4 = *(int *)(__hexrays_frame + 8);
+  _BYTE (&k_2)[2288] = *(_BYTE (*)[2288])(__hexrays_frame + 12);
+  _DWORD (&v110)[3] = *(_DWORD (*)[3])(__hexrays_frame + 2300);
+  char &v111 = *(char *)(__hexrays_frame + 2314);
+  int &v112 = *(int *)(__hexrays_frame + 2316);
+  int (&v113)[4] = *(int (*)[4])(__hexrays_frame + 2320);
+  __int128 &v114 = *(__int128 *)(__hexrays_frame + 2336);
+  __int128 &v115 = *(__int128 *)(__hexrays_frame + 2352);
+  __int128 &v116 = *(__int128 *)(__hexrays_frame + 2368);
+  __int128 &v117 = *(__int128 *)(__hexrays_frame + 2384);
+  int &v118 = *(int *)(__hexrays_frame + 2400);
+  int &v119 = *(int *)(__hexrays_frame + 2404);
+  int &v120 = *(int *)(__hexrays_frame + 2408);
+  int &n11_1 = *(int *)(__hexrays_frame + 2412);
+  int &n11_2 = *(int *)(__hexrays_frame + 2416);
+  int &v123 = *(int *)(__hexrays_frame + 2420);
+  unsigned int &v124 = *(unsigned int *)(__hexrays_frame + 2424);
+  int &v125 = *(int *)(__hexrays_frame + 2428);
+  _BYTE * &k_4 = *(_BYTE * *)(__hexrays_frame + 2432);
+  int &v127 = *(int *)(__hexrays_frame + 2436);
+  unsigned int &v128 = *(unsigned int *)(__hexrays_frame + 2440);
+  int &v129 = *(int *)(__hexrays_frame + 2444);
+  int &j_2 = *(int *)(__hexrays_frame + 2448);
+  int &v131 = *(int *)(__hexrays_frame + 2452);
+  int &v132 = *(int *)(__hexrays_frame + 2456);
+  _DWORD * &v133 = *(_DWORD * *)(__hexrays_frame + 2460);
+  int &v134 = *(int *)(__hexrays_frame + 2464);
+  int &v135 = *(int *)(__hexrays_frame + 2468);
+  int &n14_5 = *(int *)(__hexrays_frame + 2472);
+  unsigned int &v137 = *(unsigned int *)(__hexrays_frame + 2476);
+  int &v138 = *(int *)(__hexrays_frame + 2480);
+  int &v139 = *(int *)(__hexrays_frame + 2484);
+  int &v140 = *(int *)(__hexrays_frame + 2488);
+  int &n14_2 = *(int *)(__hexrays_frame + 2492);
+  _DWORD * &v142 = *(_DWORD * *)(__hexrays_frame + 2496);
+  int &__sub_40BEE0_buf_1 = *(int *)(__hexrays_frame + 2500);
+  _BYTE * &k_1 = *(_BYTE * *)(__hexrays_frame + 2504);
   PROBE_HIT(__sub_40BEE0);
   int v1; // eax
   unsigned int i; // ebx
@@ -161,50 +206,6 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BEE0(char a
   int v98; // edi
   int n8_2; // edi
   int v100; // edi
-  unsigned int v101; // [esp+10h] [ebp-9E0h]
-  int n4_2; // [esp+10h] [ebp-9E0h]
-  int n4_3; // [esp+10h] [ebp-9E0h]
-  unsigned int v104; // [esp+14h] [ebp-9DCh]
-  unsigned int n0x15_1; // [esp+14h] [ebp-9DCh]
-  int n256_1; // [esp+14h] [ebp-9DCh]
-  int v107; // [esp+18h] [ebp-9D8h]
-  int n4; // [esp+18h] [ebp-9D8h]
-  _BYTE k_2[2288]; // [esp+1Ch] [ebp-9D4h] BYREF
-  _DWORD v110[3]; // [esp+90Ch] [ebp-E4h]
-  char v111; // [esp+91Ah] [ebp-D6h]
-  int v112; // [esp+91Ch] [ebp-D4h]
-  int v113[4]; // [esp+920h] [ebp-D0h] BYREF
-  __int128 v114; // [esp+930h] [ebp-C0h]
-  __int128 v115; // [esp+940h] [ebp-B0h]
-  __int128 v116; // [esp+950h] [ebp-A0h]
-  __int128 v117; // [esp+960h] [ebp-90h]
-  int v118; // [esp+970h] [ebp-80h]
-  int v119; // [esp+974h] [ebp-7Ch]
-  int v120; // [esp+978h] [ebp-78h]
-  int n11_1; // [esp+97Ch] [ebp-74h]
-  int n11_2; // [esp+980h] [ebp-70h]
-  int v123; // [esp+984h] [ebp-6Ch]
-  unsigned int v124; // [esp+988h] [ebp-68h]
-  int v125; // [esp+98Ch] [ebp-64h]
-  _BYTE *k_4; // [esp+990h] [ebp-60h]
-  int v127; // [esp+994h] [ebp-5Ch]
-  unsigned int v128; // [esp+998h] [ebp-58h]
-  int v129; // [esp+99Ch] [ebp-54h]
-  int j_2; // [esp+9A0h] [ebp-50h]
-  int v131; // [esp+9A4h] [ebp-4Ch]
-  int v132; // [esp+9A8h] [ebp-48h]
-  _DWORD *v133; // [esp+9ACh] [ebp-44h]
-  int v134; // [esp+9B0h] [ebp-40h]
-  int v135; // [esp+9B4h] [ebp-3Ch]
-  int n14_5; // [esp+9B8h] [ebp-38h]
-  unsigned int v137; // [esp+9BCh] [ebp-34h]
-  int v138; // [esp+9C0h] [ebp-30h]
-  int v139; // [esp+9C4h] [ebp-2Ch]
-  int v140; // [esp+9C8h] [ebp-28h]
-  int n14_2; // [esp+9CCh] [ebp-24h]
-  _DWORD *v142; // [esp+9D0h] [ebp-20h]
-  int __sub_40BEE0_buf_1; // [esp+9D4h] [ebp-1Ch]
-  _BYTE *k_1; // [esp+9D8h] [ebp-18h]
 
   v1 = 0;
   for ( i = 0; i < 7; ++i )

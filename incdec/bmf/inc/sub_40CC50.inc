@@ -14,6 +14,16 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 PROBE_DECL(__sub_40CC50)
 extern "C" __attribute__((visibility("hidden"))) int __sub_40CC50(int j, _DWORD *a2, char *buf, char a4)
 {
+  alignas(16) unsigned char __hexrays_frame[192];   // original frame, ebp-0xb0..ebp+0x0
+  _BYTE (&v44)[128] = *(_BYTE (*)[128])(__hexrays_frame + 0);
+  char * &bufa = *(char * *)(__hexrays_frame + 128);
+  int &k_2 = *(int *)(__hexrays_frame + 132);
+  _DWORD * &i_1 = *(_DWORD * *)(__hexrays_frame + 136);
+  int &v48 = *(int *)(__hexrays_frame + 140);
+  int &i_7 = *(int *)(__hexrays_frame + 144);
+  unsigned int &j_1 = *(unsigned int *)(__hexrays_frame + 148);
+  int &n15_1 = *(int *)(__hexrays_frame + 152);
+  int &v52 = *(int *)(__hexrays_frame + 156);
   PROBE_HIT(__sub_40CC50);
   int v5; // ebx
   int v6; // esi
@@ -54,15 +64,6 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_40CC50(int j, _DWORD 
   int v41; // esi
   char *bufa_1; // ebx
   BOOL v43; // ebp
-  _BYTE v44[128]; // [esp+0h] [ebp-B0h] BYREF
-  char *bufa; // [esp+80h] [ebp-30h]
-  int k_2; // [esp+84h] [ebp-2Ch]
-  _DWORD *i_1; // [esp+88h] [ebp-28h]
-  int v48; // [esp+8Ch] [ebp-24h]
-  int i_7; // [esp+90h] [ebp-20h]
-  unsigned int j_1; // [esp+94h] [ebp-1Ch]
-  int n15_1; // [esp+98h] [ebp-18h]
-  int v52; // [esp+9Ch] [ebp-14h]
 
   bufa = buf;
   j_1 = j;

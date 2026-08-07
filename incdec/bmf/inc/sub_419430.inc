@@ -28,6 +28,11 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 PROBE_DECL(__sub_419430)
 __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
 {
+  alignas(16) unsigned char __hexrays_frame[420];   // original frame, ebp-0x194..ebp+0x0
+  _QWORD (&v28)[2] = *(_QWORD (*)[2])(__hexrays_frame + 0);
+  int &v29 = *(int *)(__hexrays_frame + 16);
+  _DWORD (&v30)[91] = *(_DWORD (*)[91])(__hexrays_frame + 20);
+  _DWORD (&v31)[5] = *(_DWORD (*)[5])(__hexrays_frame + 384);
   PROBE_HIT(__sub_419430);
   int n8; // edx
   unsigned int j_2; // ebp
@@ -55,10 +60,6 @@ __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
   int v25; // edi
   unsigned int v26; // ebp
   int v27; // eax
-  _QWORD v28[2]; // [esp+0h] [ebp-194h] BYREF
-  int v29; // [esp+10h] [ebp-184h]
-  _DWORD v30[91]; // [esp+14h] [ebp-180h]
-  _DWORD v31[5]; // [esp+180h] [ebp-14h] BYREF
 
   n8 = *(_this + 2);
   j_2 = 0xFFFFFFFF >> -*((_BYTE *)_this + 8);

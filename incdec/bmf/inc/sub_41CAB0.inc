@@ -32,7 +32,7 @@ static t_sub_41CAB0_xmmword_4411F0& __sub_41CAB0_xmmword_4411F0 = *(t_sub_41CAB0
 
 #ifndef __PE_DECL___sub_413430
 #define __PE_DECL___sub_413430
-typedef __attribute__((thiscall)) int t_sub_413430(...);
+typedef __attribute__((thiscall)) int t_sub_413430(void *, int n2);
 static t_sub_413430& __sub_413430 = *(t_sub_413430*)0x00413430;
 #endif
 #define sub_413430 __sub_413430
@@ -42,6 +42,84 @@ static inline unsigned int __fwd_sub_41CAB0_sub_414800(void *a0) { return __sub_
 PROBE_DECL(__sub_41CAB0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) unsigned int __sub_41CAB0(int a1, __m128 &a2__ref, int a3, unsigned __int8 a4, int a5)
 {
+  alignas(16) unsigned char __hexrays_frame[416];   // original frame, ebp-0x190..ebp+0x0
+  int &n2 = *(int *)(__hexrays_frame + 0);
+  unsigned __int16 * &n0xF0 = *(unsigned __int16 * *)(__hexrays_frame + 4);
+  unsigned int &n0x10_2 = *(unsigned int *)(__hexrays_frame + 8);
+  unsigned __int16 * &v508 = *(unsigned __int16 * *)(__hexrays_frame + 12);
+  unsigned int &n0x10_1 = *(unsigned int *)(__hexrays_frame + 16);
+  int &v510 = *(int *)(__hexrays_frame + 20);
+  int &v511 = *(int *)(__hexrays_frame + 24);
+  int &v512 = *(int *)(__hexrays_frame + 64);
+  int &v513 = *(int *)(__hexrays_frame + 68);
+  int &v514 = *(int *)(__hexrays_frame + 72);
+  const char * &v515 = *(const char * *)(__hexrays_frame + 80);
+  unsigned int &v516 = *(unsigned int *)(__hexrays_frame + 84);
+  const char * &v517 = *(const char * *)(__hexrays_frame + 88);
+  const char * &v518 = *(const char * *)(__hexrays_frame + 96);
+  const char * &v519 = *(const char * *)(__hexrays_frame + 100);
+  const char * &v520 = *(const char * *)(__hexrays_frame + 104);
+  const char * &v521 = *(const char * *)(__hexrays_frame + 112);
+  const char * &v522 = *(const char * *)(__hexrays_frame + 116);
+  const char * &v523 = *(const char * *)(__hexrays_frame + 120);
+  const char * &v524 = *(const char * *)(__hexrays_frame + 128);
+  int &v525 = *(int *)(__hexrays_frame + 132);
+  const char * &v526 = *(const char * *)(__hexrays_frame + 136);
+  const char * &v527 = *(const char * *)(__hexrays_frame + 144);
+  const char * &v528 = *(const char * *)(__hexrays_frame + 148);
+  const char * &v529 = *(const char * *)(__hexrays_frame + 152);
+  const char * &v530 = *(const char * *)(__hexrays_frame + 160);
+  const char * &v531 = *(const char * *)(__hexrays_frame + 164);
+  const char * &v532 = *(const char * *)(__hexrays_frame + 168);
+  const char * &v533 = *(const char * *)(__hexrays_frame + 176);
+  const char * &v534 = *(const char * *)(__hexrays_frame + 180);
+  const char * &v535 = *(const char * *)(__hexrays_frame + 184);
+  int &v536 = *(int *)(__hexrays_frame + 192);
+  const char * &v537 = *(const char * *)(__hexrays_frame + 196);
+  int &v538 = *(int *)(__hexrays_frame + 200);
+  int &v539 = *(int *)(__hexrays_frame + 208);
+  const char * &v540 = *(const char * *)(__hexrays_frame + 212);
+  int &v541 = *(int *)(__hexrays_frame + 216);
+  int &v542 = *(int *)(__hexrays_frame + 224);
+  const char * &v543 = *(const char * *)(__hexrays_frame + 228);
+  const char * &v544 = *(const char * *)(__hexrays_frame + 232);
+  unsigned int &v545 = *(unsigned int *)(__hexrays_frame + 240);
+  int &n3 = *(int *)(__hexrays_frame + 244);
+  int &v547 = *(int *)(__hexrays_frame + 248);
+  int &v548 = *(int *)(__hexrays_frame + 252);
+  int &v549 = *(int *)(__hexrays_frame + 256);
+  int &v550 = *(int *)(__hexrays_frame + 260);
+  const char * &v551 = *(const char * *)(__hexrays_frame + 264);
+  const char * &v552 = *(const char * *)(__hexrays_frame + 268);
+  const char * &v553 = *(const char * *)(__hexrays_frame + 272);
+  const char * &v554 = *(const char * *)(__hexrays_frame + 276);
+  const char * &v555 = *(const char * *)(__hexrays_frame + 280);
+  const char * &v556 = *(const char * *)(__hexrays_frame + 284);
+  const char * &v557 = *(const char * *)(__hexrays_frame + 288);
+  int &v558 = *(int *)(__hexrays_frame + 292);
+  const char * &v559 = *(const char * *)(__hexrays_frame + 296);
+  const char * &v560 = *(const char * *)(__hexrays_frame + 300);
+  const char * &v561 = *(const char * *)(__hexrays_frame + 304);
+  const char * &v562 = *(const char * *)(__hexrays_frame + 308);
+  const char * &v563 = *(const char * *)(__hexrays_frame + 312);
+  const char * &v564 = *(const char * *)(__hexrays_frame + 316);
+  const char * &v565 = *(const char * *)(__hexrays_frame + 320);
+  unsigned int &v566 = *(unsigned int *)(__hexrays_frame + 324);
+  int &v567 = *(int *)(__hexrays_frame + 328);
+  int &v568 = *(int *)(__hexrays_frame + 332);
+  const char * &v569 = *(const char * *)(__hexrays_frame + 336);
+  int &v570 = *(int *)(__hexrays_frame + 340);
+  int &v571 = *(int *)(__hexrays_frame + 344);
+  int &v572 = *(int *)(__hexrays_frame + 348);
+  int &v573 = *(int *)(__hexrays_frame + 352);
+  int &v574 = *(int *)(__hexrays_frame + 356);
+  int &v575 = *(int *)(__hexrays_frame + 360);
+  int &v576 = *(int *)(__hexrays_frame + 364);
+  int &v577 = *(int *)(__hexrays_frame + 368);
+  _DWORD * &v578 = *(_DWORD * *)(__hexrays_frame + 372);
+  unsigned int &n5 = *(unsigned int *)(__hexrays_frame + 376);
+  int &v580 = *(int *)(__hexrays_frame + 380);
+  _DWORD * &v581 = *(_DWORD * *)(__hexrays_frame + 384);
   PROBE_HIT(__sub_41CAB0);
   __m128 a2 = a2__ref;
   int v6; // ecx
@@ -543,83 +621,6 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) unsigned int __sub_41CA
   _WORD *v502; // ebx
   int v503; // edx
   int v504; // ebx
-  int n2; // [esp+0h] [ebp-190h] BYREF
-  unsigned __int16 *n0xF0; // [esp+4h] [ebp-18Ch]
-  unsigned int n0x10_2; // [esp+8h] [ebp-188h]
-  unsigned __int16 *v508; // [esp+Ch] [ebp-184h]
-  unsigned int n0x10_1; // [esp+10h] [ebp-180h]
-  int v510; // [esp+14h] [ebp-17Ch]
-  int v511; // [esp+18h] [ebp-178h]
-  int v512; // [esp+40h] [ebp-150h]
-  int v513; // [esp+44h] [ebp-14Ch]
-  int v514; // [esp+48h] [ebp-148h]
-  const char *v515; // [esp+50h] [ebp-140h]
-  unsigned int v516; // [esp+54h] [ebp-13Ch]
-  const char *v517; // [esp+58h] [ebp-138h]
-  const char *v518; // [esp+60h] [ebp-130h]
-  const char *v519; // [esp+64h] [ebp-12Ch]
-  const char *v520; // [esp+68h] [ebp-128h]
-  const char *v521; // [esp+70h] [ebp-120h]
-  const char *v522; // [esp+74h] [ebp-11Ch]
-  const char *v523; // [esp+78h] [ebp-118h]
-  const char *v524; // [esp+80h] [ebp-110h]
-  int v525; // [esp+84h] [ebp-10Ch]
-  const char *v526; // [esp+88h] [ebp-108h]
-  const char *v527; // [esp+90h] [ebp-100h]
-  const char *v528; // [esp+94h] [ebp-FCh]
-  const char *v529; // [esp+98h] [ebp-F8h]
-  const char *v530; // [esp+A0h] [ebp-F0h]
-  const char *v531; // [esp+A4h] [ebp-ECh]
-  const char *v532; // [esp+A8h] [ebp-E8h]
-  const char *v533; // [esp+B0h] [ebp-E0h]
-  const char *v534; // [esp+B4h] [ebp-DCh]
-  const char *v535; // [esp+B8h] [ebp-D8h]
-  int v536; // [esp+C0h] [ebp-D0h]
-  const char *v537; // [esp+C4h] [ebp-CCh]
-  int v538; // [esp+C8h] [ebp-C8h]
-  int v539; // [esp+D0h] [ebp-C0h]
-  const char *v540; // [esp+D4h] [ebp-BCh]
-  int v541; // [esp+D8h] [ebp-B8h]
-  int v542; // [esp+E0h] [ebp-B0h]
-  const char *v543; // [esp+E4h] [ebp-ACh]
-  const char *v544; // [esp+E8h] [ebp-A8h]
-  unsigned int v545; // [esp+F0h] [ebp-A0h]
-  int n3; // [esp+F4h] [ebp-9Ch]
-  int v547; // [esp+F8h] [ebp-98h]
-  int v548; // [esp+FCh] [ebp-94h]
-  int v549; // [esp+100h] [ebp-90h]
-  int v550; // [esp+104h] [ebp-8Ch]
-  const char *v551; // [esp+108h] [ebp-88h]
-  const char *v552; // [esp+10Ch] [ebp-84h]
-  const char *v553; // [esp+110h] [ebp-80h]
-  const char *v554; // [esp+114h] [ebp-7Ch]
-  const char *v555; // [esp+118h] [ebp-78h]
-  const char *v556; // [esp+11Ch] [ebp-74h]
-  const char *v557; // [esp+120h] [ebp-70h]
-  int v558; // [esp+124h] [ebp-6Ch]
-  const char *v559; // [esp+128h] [ebp-68h]
-  const char *v560; // [esp+12Ch] [ebp-64h]
-  const char *v561; // [esp+130h] [ebp-60h]
-  const char *v562; // [esp+134h] [ebp-5Ch]
-  const char *v563; // [esp+138h] [ebp-58h]
-  const char *v564; // [esp+13Ch] [ebp-54h]
-  const char *v565; // [esp+140h] [ebp-50h]
-  unsigned int v566; // [esp+144h] [ebp-4Ch]
-  int v567; // [esp+148h] [ebp-48h]
-  int v568; // [esp+14Ch] [ebp-44h]
-  const char *v569; // [esp+150h] [ebp-40h]
-  int v570; // [esp+154h] [ebp-3Ch]
-  int v571; // [esp+158h] [ebp-38h]
-  int v572; // [esp+15Ch] [ebp-34h]
-  int v573; // [esp+160h] [ebp-30h]
-  int v574; // [esp+164h] [ebp-2Ch]
-  int v575; // [esp+168h] [ebp-28h]
-  int v576; // [esp+16Ch] [ebp-24h]
-  int v577; // [esp+170h] [ebp-20h]
-  _DWORD *v578; // [esp+174h] [ebp-1Ch]
-  unsigned int n5; // [esp+178h] [ebp-18h]
-  int v580; // [esp+17Ch] [ebp-14h]
-  _DWORD *v581; // [esp+180h] [ebp-10h]
 
   v6 = *(_DWORD *)(a1 + 278704) & 0xF;
   v7 = *(_WORD **)(a1 + 278736);

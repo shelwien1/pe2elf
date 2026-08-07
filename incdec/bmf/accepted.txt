@@ -87,3 +87,10 @@
 004022C0 sub_4022C0 usercall
 00402590 sub_402590 cdecl
 0042C220 sub_42C220 thiscall
+0041A130 sub_41A130 userpurge
+00417200 sub_417200 userpurge
+00407460 sub_407460 usercall
+00405CF0 sub_405CF0 usercall
+0042AB20 sub_42AB20 cdecl
+0042851C sub_42851C usercall
+004284E0 sub_4284E0 cdecl

@@ -22,7 +22,7 @@ static t_sub_414620_n256_1& __sub_414620_n256_1 = *(t_sub_414620_n256_1*)0x00445
 
 #ifndef __PE_DECL___sub_414060
 #define __PE_DECL___sub_414060
-typedef __attribute__((thiscall)) int t_sub_414060(...);
+typedef __attribute__((thiscall)) int t_sub_414060(void *);
 static t_sub_414060& __sub_414060 = *(t_sub_414060*)0x00414060;
 #endif
 #define sub_414060 __sub_414060

@@ -12,7 +12,7 @@ static t_sub_40BBC0_n24& __sub_40BBC0_n24 = *(t_sub_40BBC0_n24*)0x00443410;
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
-typedef int t_sub_411700(...);
+typedef int t_sub_411700(int a1, int n2);
 static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
 #endif
 #define sub_411700 __sub_411700
@@ -26,6 +26,21 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 PROBE_DECL(__sub_40BBC0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BBC0(int n2, int a2, int a3, char a4, int a5, int a6, int a7, int a8)
 {
+  alignas(16) unsigned char __hexrays_frame[2128];   // original frame, ebp-0x840..ebp+0x0
+  _OWORD (&__sub_40BBC0_Src)[64] = *(_OWORD (*)[64])(__hexrays_frame + 0);
+  int &v38 = *(int *)(__hexrays_frame + 1024);
+  char (&v39)[16] = *(char (*)[16])(__hexrays_frame + 1028);
+  _OWORD (&v40)[63] = *(_OWORD (*)[63])(__hexrays_frame + 1044);
+  int &v41 = *(int *)(__hexrays_frame + 2052);
+  int &v42 = *(int *)(__hexrays_frame + 2056);
+  int &v43 = *(int *)(__hexrays_frame + 2060);
+  int &v44 = *(int *)(__hexrays_frame + 2064);
+  int &n2_1 = *(int *)(__hexrays_frame + 2068);
+  int &v46 = *(int *)(__hexrays_frame + 2072);
+  int &v47 = *(int *)(__hexrays_frame + 2076);
+  int &v48 = *(int *)(__hexrays_frame + 2080);
+  int &v49 = *(int *)(__hexrays_frame + 2084);
+  int &v50 = *(int *)(__hexrays_frame + 2088);
   PROBE_HIT(__sub_40BBC0);
   int v9; // ebx
   int v10; // edi
@@ -54,20 +69,6 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BBC0(int n2
   char v34; // fps
   int v35; // eax
   int n2_2; // ecx
-  _OWORD __sub_40BBC0_Src[64]; // [esp+0h] [ebp-840h] BYREF
-  int v38; // [esp+400h] [ebp-440h]
-  char v39[16]; // [esp+404h] [ebp-43Ch] BYREF
-  _OWORD v40[63]; // [esp+414h] [ebp-42Ch] BYREF
-  int v41; // [esp+804h] [ebp-3Ch]
-  int v42; // [esp+808h] [ebp-38h]
-  int v43; // [esp+80Ch] [ebp-34h]
-  int v44; // [esp+810h] [ebp-30h]
-  int n2_1; // [esp+814h] [ebp-2Ch]
-  int v46; // [esp+818h] [ebp-28h]
-  int v47; // [esp+81Ch] [ebp-24h]
-  int v48; // [esp+820h] [ebp-20h]
-  int v49; // [esp+824h] [ebp-1Ch]
-  int v50; // [esp+828h] [ebp-18h]
 
   v49 = a3;
   v48 = a2;

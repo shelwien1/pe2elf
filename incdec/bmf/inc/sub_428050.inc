@@ -24,10 +24,11 @@ static t_sscanf& __sscanf = *(t_sscanf*)0x0042D662;
 PROBE_DECL(__sub_428050)
 int __sub_428050(int BMF_Options, int FSQ, int n7)
 {
+  alignas(16) unsigned char __hexrays_frame[156];   // original frame, ebp-0x8c..ebp+0x0
+  char (&Buffer)[64] = *(char (*)[64])(__hexrays_frame + 0);
+  char (&Destination)[64] = *(char (*)[64])(__hexrays_frame + 64);
+  int &v6 = *(int *)(__hexrays_frame + 128);
   PROBE_HIT(__sub_428050);
-  char Buffer[64]; // [esp+0h] [ebp-8Ch] BYREF
-  char Destination[64]; // [esp+40h] [ebp-4Ch] BYREF
-  int v6; // [esp+80h] [ebp-Ch] BYREF
 
   sprintf(Buffer, "%d", n7);
   sub_4280B0(BMF_Options, FSQ, (int)Buffer, Destination, 64);

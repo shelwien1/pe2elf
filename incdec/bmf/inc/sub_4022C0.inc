@@ -81,6 +81,15 @@ static t_printf& __printf = *(t_printf*)0x0042CBDB;
 PROBE_DECL(__sub_4022C0)
 extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
 {
+  alignas(16) unsigned char __hexrays_frame[68];   // original frame, ebp-0x34..ebp+0x0
+  struct _FILETIME &FileTime = *(struct _FILETIME *)(__hexrays_frame + 0);
+  LPCSTR &lpFileName = *(LPCSTR *)(__hexrays_frame + 8);
+  int &v24 = *(int *)(__hexrays_frame + 12);
+  void * &Buffer = *(void * *)(__hexrays_frame + 16);
+  FILE * &Stream_v = *(FILE * *)(__hexrays_frame + 20);
+  char * &dwLowDateTime_1 = *(char * *)(__hexrays_frame + 24);
+  size_t &ElementCount = *(size_t *)(__hexrays_frame + 28);
+  int &p_i_1 = *(int *)(__hexrays_frame + 32);
   PROBE_HIT(__sub_4022C0);
   unsigned __int16 *__sub_4022C0_dwLowDateTime; // esi
   const char *lpFileName_1; // ebp
@@ -102,14 +111,6 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   HANDLE FileA; // edi
   int n13; // eax
   int C; // eax
-  struct _FILETIME FileTime; // [esp+0h] [ebp-34h] BYREF
-  LPCSTR lpFileName; // [esp+8h] [ebp-2Ch]
-  int v24; // [esp+Ch] [ebp-28h]
-  void *Buffer; // [esp+10h] [ebp-24h]
-  FILE *Stream_v; // [esp+14h] [ebp-20h]
-  char *dwLowDateTime_1; // [esp+18h] [ebp-1Ch]
-  size_t ElementCount; // [esp+1Ch] [ebp-18h]
-  int p_i_1; // [esp+20h] [ebp-14h]
 
   __sub_4022C0_dwLowDateTime = (unsigned __int16 *)::__sub_4022C0_dwLowDateTime;
   lpFileName_1 = (char *)::__sub_4022C0_dwLowDateTime + 32;

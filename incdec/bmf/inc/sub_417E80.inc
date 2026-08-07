@@ -6,7 +6,7 @@ static t_sub_417E80_byte_439860& __sub_417E80_byte_439860 = *(t_sub_417E80_byte_
 
 #ifndef __PE_DECL___sub_418650
 #define __PE_DECL___sub_418650
-typedef __attribute__((thiscall)) int t_sub_418650(void *, int);
+typedef __attribute__((thiscall)) int t_sub_418650(void *, int a2);
 static t_sub_418650& __sub_418650 = *(t_sub_418650*)0x00418650;
 #endif
 #define sub_418650 __sub_418650
