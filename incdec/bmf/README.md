@@ -309,9 +309,31 @@ shim's SEH turns the fault into a bare `exit(1)` with no output at all. Add
 instead means the fault is in code that was never touched, and the moved
 function corrupted something on its way past.
 
-`sub_412E60`, `sub_417E80`, `sub_418650` and `sub_419430` are all located this
-way in `fail.txt` — they compress to a byte-identical stream and then fault
-during *decompression*, which narrows it to a path only the decoder takes.
+`sub_412E60`, `sub_417E80` and `sub_419430` are all located this way — they
+compress to a byte-identical stream and then fault during *decompression*,
+which narrows each to a path only the decoder takes.
+
+### What is left, and what has already been ruled out
+
+The thirteen root failures are individual defects in the decompiled bodies, not
+tooling gaps. Every systematic lever has been tried and is either applied or
+excluded:
+
+| Hypothesis | Result |
+|---|---|
+| `-fno-strict-aliasing` | **applied** — recovered `sub_4159E0` |
+| `-D_FORTIFY_SOURCE=0` | **applied** — glibc was aborting legitimate `strcpy`s |
+| `-msse2 -mfpmath=sse` | **applied** — x87's 80-bit intermediates are not what ICC emitted |
+| stack frame reassembly | **applied** — recovered `sub_41A130` and `sub_417200` |
+| callee prototypes from definitions | **applied** — 7 thiscall callees were being miscalled |
+| `-mincoming-stack-boundary=2` | **ruled out** — BMF keeps `esp` 16-byte aligned; forcing gcc to realign breaks a green round-trip |
+| `__attribute__((ms_abi))` | **ruled out** — a no-op on i386 (verified: identical code, identical alignment assumptions) |
+| `-O0` on the failing body | **ruled out** — rescues none of them, so this is not optimiser-exploited UB |
+
+What remains is per-function work: read the body against `BMF.asm` and find
+where Hex-Rays got it wrong. `sub_41CAB0` is the closest — 20 bytes over the
+reference, first diverging at byte 16 of the stream, which points at
+initialisation rather than drift.
 
 ### What stopped being a category
 
@@ -324,6 +346,11 @@ naming because each was systemic rather than per-function:
   does not happen. `-fno-strict-aliasing` is not a workaround here, it is the
   correct setting for this input, and it recovered a function that had been
   failing since the beginning.
+* **Fortification.** `_FORTIFY_SOURCE` is on by default on this toolchain, and
+  a decompiled body's buffer sizes are Hex-Rays' *guesses* — `char Str[16]`
+  for what the original treated as the head of a larger frame region. glibc
+  then aborts a `strcpy` the original performed happily. Built with
+  `-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0`.
 * **Pointer type disagreements at call sites.** Hex-Rays spells the same
   pointer differently at the call site and in the callee's own signature —
   `unsigned char **` here, `_DWORD *` there — and C++ rejects what C shrugs at.
