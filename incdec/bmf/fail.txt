@@ -1,6 +1,5 @@
 sub_417980	test: t1: COMPRESS FAILED (rc=1)
 sub_412E60	test: t1: DECOMPRESS FAILED (rc=1)
-sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
 sub_419430	test: t1: DECOMPRESS FAILED (rc=1)
 sub_417E80	test: t1: DECOMPRESS FAILED (rc=1)
 sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
@@ -17,7 +16,6 @@ __svml_log2_w	extract: __svml_log2_w references unresolvable symbols (no symbol 
 sub_436E10	extract: sub_436E10 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_414F60	test: t8g: COMPRESS FAILED (rc=1)
-sub_4159E0	test: t1: COMPRESS FAILED (rc=1)
 sub_413900	test: t8g: DECOMPRESS FAILED (rc=3)
 sub_419800	extract: sub_419800 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4197A0	extract: sub_4197A0 calls __usercall/__userpurge functions that have not been moved yet, whose regi

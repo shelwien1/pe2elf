@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 97 of 132 reachable functions redirected — 60 of the 92 a round-trip
+**Status: 99 of 132 reachable functions redirected — 61 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats, and nothing left in
 `fail.txt` is a build error.**
 
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 97 and not 132
+## Why 99 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -251,8 +251,8 @@ as:
 
 | | |
 |---:|---|
-| 20 | blocked on a `__usercall` callee that itself failed |
-| 11 | builds and runs, then crashes or aborts on some image |
+| 19 | blocked on a `__usercall` callee that itself failed |
+| 10 | builds and runs, then crashes or aborts on some image |
 |  2 | builds and runs and compresses *worse* than the original |
 |  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
 
@@ -318,6 +318,12 @@ during *decompression*, which narrows it to a path only the decoder takes.
 Four buckets that used to dominate this list are gone, and the fixes are worth
 naming because each was systemic rather than per-function:
 
+* **Strict aliasing.** Hex-Rays output reinterprets memory through pointers of
+  different types on nearly every line (`*(_DWORD *)(a + 4)`, `*(_WORD *)&x`),
+  which is exactly what `-fstrict-aliasing` — on by default at `-O2` — assumes
+  does not happen. `-fno-strict-aliasing` is not a workaround here, it is the
+  correct setting for this input, and it recovered a function that had been
+  failing since the beginning.
 * **Pointer type disagreements at call sites.** Hex-Rays spells the same
   pointer differently at the call site and in the callee's own signature —
   `unsigned char **` here, `_DWORD *` there — and C++ rejects what C shrugs at.

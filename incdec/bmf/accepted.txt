@@ -95,3 +95,5 @@
 0042AB20 sub_42AB20 cdecl
 0042851C sub_42851C usercall
 004284E0 sub_4284E0 cdecl
+00418650 sub_418650 thiscall
+004159E0 sub_4159E0 thiscall

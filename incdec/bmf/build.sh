@@ -60,6 +60,7 @@ OUT=${OUT:-dummy32.so}
 # register convention entirely.  The per-function conventions that do matter
 # here — stdcall / fastcall / thiscall — are on the individual bodies, §4.
 g++ ${CXXEXTRA:-} ${CXXABI:--msse2 -mfpmath=sse} -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
+    ${CXXALIAS:--fno-strict-aliasing} \
     -Wno-narrowing -Wno-write-strings -Wno-unused-variable \
     -Wno-unused-but-set-variable -Wno-parentheses \
     -o "$OUT" dummy32.cpp \
