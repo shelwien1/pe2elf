@@ -117,6 +117,9 @@ CRT_PROTO = {
     'irc__print':   ('int', 'const char *, ...'),
     # The rest of the statically-linked CRT the file-handling paths reach.
     'fputc':       ('int', 'int, FILE1 *'),
+    # A real function in this CRT, not stdio.h's macro: MSVC compiled _putc
+    # out of line and BMF's TGA writer calls it, so it needs its own entry.
+    'putc':        ('int', 'int, FILE1 *'),
     'fputs':       ('int', 'const char *, FILE1 *'),
     'remove':      ('int', 'const char *'),
     'rename':      ('int', 'const char *, const char *'),

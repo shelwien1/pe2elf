@@ -1,30 +1,6 @@
 // sub_428C40 @ 0x00428C40 — __cdecl
 // Extracted from BMF.cpp:33162-33667 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_428AA0
-#define __PE_DECL___sub_428AA0
-typedef char * t_sub_428AA0(void *, void *, int a3);
-static t_sub_428AA0& __sub_428AA0 = *(t_sub_428AA0*)0x00428AA0;
-#endif
-#define sub_428AA0 __sub_428AA0
-#ifndef __PE_DECL___sub_428B00
-#define __PE_DECL___sub_428B00
-typedef char * t_sub_428B00(void *, void *, int a3);
-static t_sub_428B00& __sub_428B00 = *(t_sub_428B00*)0x00428B00;
-#endif
-#define sub_428B00 __sub_428B00
-#ifndef __PE_DECL___sub_428B60
-#define __PE_DECL___sub_428B60
-typedef char * t_sub_428B60(unsigned int a1, void *, int a3);
-static t_sub_428B60& __sub_428B60 = *(t_sub_428B60*)0x00428B60;
-#endif
-#define sub_428B60 __sub_428B60
-#ifndef __PE_DECL___sub_428BE0
-#define __PE_DECL___sub_428BE0
-typedef char * t_sub_428BE0(void *, void *, int a3);
-static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
-#endif
-#define sub_428BE0 __sub_428BE0
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
@@ -37,6 +13,14 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
+static inline char * __fwd_sub_428C40_sub_428AA0(void *a0, void *a1, int a2) { return __sub_428AA0((_BYTE *)a0, (char *)a1, a2); }
+#define sub_428AA0 __fwd_sub_428C40_sub_428AA0
+static inline char * __fwd_sub_428C40_sub_428B00(void *a0, void *a1, int a2) { return __sub_428B00((_WORD *)a0, (char *)a1, a2); }
+#define sub_428B00 __fwd_sub_428C40_sub_428B00
+static inline char * __fwd_sub_428C40_sub_428B60(unsigned int a0, void *a1, int a2) { return __sub_428B60(a0, (char *)a1, a2); }
+#define sub_428B60 __fwd_sub_428C40_sub_428B60
+static inline char * __fwd_sub_428C40_sub_428BE0(void *a0, void *a1, int a2) { return __sub_428BE0((_DWORD *)a0, (char *)a1, a2); }
+#define sub_428BE0 __fwd_sub_428C40_sub_428BE0
 #define sub_42B830 __sub_42B830
 #define sub_42B990 __sub_42B990
 static inline unsigned int __fwd_sub_428C40_sub_42BA40(void *a0, int a1, int a2, int a3, int a4) { return __sub_42BA40((_WORD *)a0, a1, a2, a3, a4); }

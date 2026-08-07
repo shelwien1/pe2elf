@@ -22,18 +22,6 @@ static t_sub_4015C0_dword_442BAC& __sub_4015C0_dword_442BAC = *(t_sub_4015C0_dwo
 typedef int t_sub_4015C0_n2_5;
 static t_sub_4015C0_n2_5& __sub_4015C0_n2_5 = *(t_sub_4015C0_n2_5*)0x00442BA4;
 
-#ifndef __PE_DECL___sub_429840
-#define __PE_DECL___sub_429840
-typedef int t_sub_429840(void *, void *, int a3);
-static t_sub_429840& __sub_429840 = *(t_sub_429840*)0x00429840;
-#endif
-#define sub_429840 __sub_429840
-#ifndef __PE_DECL___sub_42A350
-#define __PE_DECL___sub_42A350
-typedef int t_sub_42A350(void *, void *);
-static t_sub_42A350& __sub_42A350 = *(t_sub_42A350*)0x0042A350;
-#endif
-#define sub_42A350 __sub_42A350
 #define exit_402E40 __exit_402E40
 #define sub_4022C0 __sub_4022C0
 static inline int * __fwd_sub_4015C0_sub_402590(void *a0) { return __sub_402590((char *)a0); }
@@ -50,10 +38,14 @@ static inline char * __fwd_sub_4015C0_sub_403820(int a0, const __m128 &a1, const
 #define sub_403820 __fwd_sub_4015C0_sub_403820
 static inline unsigned __int16 * __fwd_sub_4015C0_sub_428C40(void *a0) { return __sub_428C40((char *)a0); }
 #define sub_428C40 __fwd_sub_4015C0_sub_428C40
+static inline int __fwd_sub_4015C0_sub_429840(void *a0, void *a1, int a2) { return __sub_429840((unsigned __int16 *)a0, (char *)a1, a2); }
+#define sub_429840 __fwd_sub_4015C0_sub_429840
 static inline int __fwd_sub_4015C0_sub_429C80(void *a0, int a1, void *a2) { return __sub_429C80((char *)a0, a1, (char *)a2); }
 #define sub_429C80 __fwd_sub_4015C0_sub_429C80
 static inline unsigned __int16 * __fwd_sub_4015C0_sub_429E80(void *a0) { return __sub_429E80((char *)a0); }
 #define sub_429E80 __fwd_sub_4015C0_sub_429E80
+static inline int __fwd_sub_4015C0_sub_42A350(void *a0, void *a1) { return __sub_42A350((unsigned __int16 *)a0, (char *)a1); }
+#define sub_42A350 __fwd_sub_4015C0_sub_42A350
 static inline int * __fwd_sub_4015C0_sub_42A4E0(unsigned int a0, void *a1) { return __sub_42A4E0(a0, (char *)a1); }
 #define sub_42A4E0 __fwd_sub_4015C0_sub_42A4E0
 static inline int * __fwd_sub_4015C0_sub_42AB20(void *a0) { return __sub_42AB20((char *)a0); }

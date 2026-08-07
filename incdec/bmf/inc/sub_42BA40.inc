@@ -1,12 +1,8 @@
 // sub_42BA40 @ 0x0042BA40 — __thiscall
 // Extracted from BMF.cpp:36123-36189 by extract.py per incdec.md.
 
-#ifndef __PE_DECL___sub_428BE0
-#define __PE_DECL___sub_428BE0
-typedef char * t_sub_428BE0(void *, void *, int a3);
-static t_sub_428BE0& __sub_428BE0 = *(t_sub_428BE0*)0x00428BE0;
-#endif
-#define sub_428BE0 __sub_428BE0
+static inline char * __fwd_sub_42BA40_sub_428BE0(void *a0, void *a1, int a2) { return __sub_428BE0((_DWORD *)a0, (char *)a1, a2); }
+#define sub_428BE0 __fwd_sub_42BA40_sub_428BE0
 
 PROBE_DECL(__sub_42BA40)
 __attribute__((force_align_arg_pointer)) __attribute__((thiscall)) unsigned int __sub_42BA40(_WORD *_this, int a2, int sub_428BE0, int n5, int a5)

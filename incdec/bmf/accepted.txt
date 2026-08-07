@@ -81,6 +81,7 @@
 004111B0 sub_4111B0 cdecl
 0042BB20 sub_42BB20 usercall
 0042B990 sub_42B990 cdecl
+00428BE0 sub_428BE0 cdecl
 0042BA40 sub_42BA40 thiscall
 00429E80 sub_429E80 cdecl
 0042BC50 sub_42BC50 userpurge
@@ -91,6 +92,9 @@
 0040A8A0 sub_40A8A0 thiscall
 00408510 sub_408510 cdecl
 0040F450 sub_40F450 userpurge
+00428AA0 sub_428AA0 cdecl
+00428B00 sub_428B00 cdecl
+00428B60 sub_428B60 cdecl
 00428C40 sub_428C40 cdecl
 00436BD0 sub_436BD0 usercall
 004022C0 sub_4022C0 usercall
@@ -129,5 +133,11 @@
 0042BBD0 sub_42BBD0 cdecl
 0042C0B0 sub_42C0B0 thiscall
 004028B0 sub_4028B0 usercall
+004293B0 sub_4293B0 cdecl
+004294D0 sub_4294D0 cdecl
+004295E0 sub_4295E0 cdecl
+00429740 sub_429740 cdecl
+00429840 sub_429840 cdecl
+0042A350 sub_42A350 cdecl
 004015C0 sub_4015C0 usercall
 00401000 main cdecl
