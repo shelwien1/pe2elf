@@ -85,7 +85,7 @@ LABEL_20:
   v10 = v9 * a2;
   if ( a4 )
   {
-    Size = 3 << n5;
+    Size = 3 << (n5 & 31);
     if ( n5 > 8 )
       Size = 0;
     else

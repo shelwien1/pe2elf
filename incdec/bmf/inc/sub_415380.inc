@@ -247,7 +247,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_415380(const
             && (v20 = *((unsigned __int8 *)v12 + 110), v20 <= v73) )
           {
             v21 = 1;
-            v22 = (unsigned __int8)(1 << (5 - v20));
+            v22 = (unsigned __int8)(1 << ((5 - v20) & 31));
             *((_BYTE *)v12 + 111) = v22;
             *((_WORD *)v12 + 54) = v22 << 6;
             *((_WORD *)v12 + v72 + 48) += v22;

@@ -1,10 +1,9 @@
-sub_403820	test: t1: DECOMPRESS FAILED (rc=3)
-sub_402EF0	extract: sub_402EF0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_402EF0	test: t1: COMPRESS FAILED (rc=1)
 sub_40A8A0	extract: sub_40A8A0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__lib
 __svml_log2_w	extract: __svml_log2_w references unresolvable symbols (no symbol table for BMF's static CRT): ['__
 sub_436E10	extract: sub_436E10 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_4043E0	build: inc/sub_4043E0.inc:1202:31: error: incompatible types in assignment of ‘t_sub_4043E0_n4_5’ {aka ‘int’} to ‘t_sub_4043E0_
+sub_4043E0	test: t8g: COMPRESS FAILED (rc=1)
 sub_402FE0	extract: sub_402FE0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4028B0	extract: sub_4028B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi

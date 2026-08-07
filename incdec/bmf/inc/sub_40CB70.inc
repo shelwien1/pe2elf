@@ -44,7 +44,7 @@ __attribute__((force_align_arg_pointer)) int __sub_40CB70()
     n4 = 4;
     v2 = (int *)(__sub_40CB70_dword_44342C + 4);
   }
-  v3 = (1 << v0) - 1;
+  v3 = (1 << (v0 & 31)) - 1;
   if ( v3 >= 0 )
   {
     v4 = __sub_40CB70_buf_1;
@@ -55,7 +55,7 @@ __attribute__((force_align_arg_pointer)) int __sub_40CB70()
     do
     {
       v6 = *v2;
-      *(_WORD *)(v4 + 4 * v6) = v5 | ((_WORD)v3 << (((unsigned int)((char *)v2 - (char *)&__sub_40CB70_xmmword_442EA0) >> 2) - v9));
+      *(_WORD *)(v4 + 4 * v6) = v5 | ((_WORD)v3 << ((((unsigned int)((char *)v2 - (char *)&__sub_40CB70_xmmword_442EA0) >> 2) - v9) & 31));
       v7 = __sub_40CB70_dword_442EE0[v6];
       *v2 = v7;
       if ( v7 < 0 )
@@ -64,7 +64,7 @@ __attribute__((force_align_arg_pointer)) int __sub_40CB70()
         {
           do
           {
-            __sub_40CB70_dword_443428 = v5 | (v3 << (((unsigned int)(__sub_40CB70_dword_44342C - (_DWORD)&__sub_40CB70_xmmword_442EA0) >> 2) - v9));
+            __sub_40CB70_dword_443428 = v5 | (v3 << ((((unsigned int)(__sub_40CB70_dword_44342C - (_DWORD)&__sub_40CB70_xmmword_442EA0) >> 2) - v9) & 31));
             __sub_40CB70();
             --v3;
           }

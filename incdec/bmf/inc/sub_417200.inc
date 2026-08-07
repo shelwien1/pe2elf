@@ -189,7 +189,7 @@ extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, c
               ++v96;
               v57 = 8 - v56;
             }
-            v58 = v93 & (*v96 >> v57);
+            v58 = v93 & (*v96 >> (v57 & 31));
             v59 = *(_DWORD *)&buf[4 * v58 - 4] == 0;
             v85 = v57;
             ++v53;

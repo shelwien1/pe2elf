@@ -95,10 +95,10 @@ __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) _DWOR
           ++v43;
           if ( ::__sub_40AF40_n8 < 8 )
           {
-            *(_DWORD *)__sub_40AF40_Buffer_1 = ::__sub_40AF40_n256 | (2 * (v32 << (31 - ::__sub_40AF40_n8)));
+            *(_DWORD *)__sub_40AF40_Buffer_1 = ::__sub_40AF40_n256 | (2 * (v32 << ((31 - ::__sub_40AF40_n8) & 31)));
             __sub_40AF40_Buffer_1 = __sub_40AF40_Buffer_0;
             __sub_40AF40_Buffer_0 += 4;
-            __sub_40AF40_n256 = v32 >> ::__sub_40AF40_n8;
+            __sub_40AF40_n256 = v32 >> (::__sub_40AF40_n8 & 31);
             ::__sub_40AF40_n8 += 24;
             ::__sub_40AF40_n256 = __sub_40AF40_n256;
           }
@@ -117,9 +117,9 @@ __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) _DWOR
           ++v43;
           if ( ::__sub_40AF40_n8 < 8 )
           {
-            *(_DWORD *)__sub_40AF40_Buffer_1 = ::__sub_40AF40_n256 | (2 * ((2 * j + 1) << (31 - ::__sub_40AF40_n8)));
+            *(_DWORD *)__sub_40AF40_Buffer_1 = ::__sub_40AF40_n256 | (2 * ((2 * j + 1) << ((31 - ::__sub_40AF40_n8) & 31)));
             __sub_40AF40_Buffer_1 = __sub_40AF40_Buffer_0;
-            ::__sub_40AF40_n256 = (2 * j + 1) >> ::__sub_40AF40_n8;
+            ::__sub_40AF40_n256 = (2 * j + 1) >> (::__sub_40AF40_n8 & 31);
             __sub_40AF40_Buffer_0 += 4;
             ::__sub_40AF40_n8 += 24;
           }
@@ -148,7 +148,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) _DWOR
         v38 = *(_DWORD *)__sub_40AF40_Buffer_0;
         __sub_40AF40_Buffer_0 += 4;
         ::__sub_40AF40_n8 = __sub_40AF40_n8 + 24;
-        n256_1 = ::__sub_40AF40_n256 | (unsigned __int8)(v38 << __sub_40AF40_n8);
+        n256_1 = ::__sub_40AF40_n256 | (unsigned __int8)(v38 << (__sub_40AF40_n8 & 31));
         ::__sub_40AF40_n256 = v38 >> (-v48 & 31);
       }
       else

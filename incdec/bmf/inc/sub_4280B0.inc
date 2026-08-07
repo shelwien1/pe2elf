@@ -102,14 +102,14 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
       strcpy(Destinationa, (const char *)Destination);
     v8 = !_BitScanForward(
             (unsigned int *)&v48,
-            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> (Destination & 0xF));
+            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> ((Destination & 0xF) & 31));
     if ( v8 )
       v48 = __intel_sse2_strlen(Destination & 0xF, Destination);
     return v48 + 1;
   }
   v8 = !_BitScanForward(
           (unsigned int *)&v9,
-          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options & 0xFFFFFFF0))) >> (BMF_Options & 0xF));
+          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options & 0xFFFFFFF0))) >> ((BMF_Options & 0xF) & 31));
   if ( v8 )
     v9 = __intel_sse2_strlen(BMF_Options & 0xF, BMF_Options);
   v10 = v9;
@@ -127,7 +127,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
     for ( i = Buffer; ; v12 = i->m128i_u8[0] )
     {
       n0x20 = v12 - 9;
-      if ( n0x20 >= 0x20 || ((1 << n0x20) & 0x800011) == 0 )
+      if ( n0x20 >= 0x20 || ((1 << (n0x20 & 31)) & 0x800011) == 0 )
         break;
       i = (__m128i *)((char *)i + 1);
     }
@@ -141,7 +141,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
         while ( 1 )
         {
           n0x20_1 = v29 - 9;
-          if ( n0x20_1 >= 0x20 || ((1 << n0x20_1) & 0x800011) == 0 )
+          if ( n0x20_1 >= 0x20 || ((1 << (n0x20_1 & 31)) & 0x800011) == 0 )
             break;
           v29 = *v27;
           ++i_1;
@@ -155,7 +155,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
           for ( j = (unsigned __int8)j_1; ; j = (unsigned __int8)j_1 )
           {
             n0x20_2 = j - 9;
-            if ( n0x20_2 >= 0x20 || ((1 << n0x20_2) & 0x800011) == 0 )
+            if ( n0x20_2 >= 0x20 || ((1 << (n0x20_2 & 31)) & 0x800011) == 0 )
               break;
             j_1 = *v33++;
           }
@@ -163,7 +163,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
           {
             v8 = !_BitScanForward(
                     (unsigned int *)&v36,
-                    (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(OutFileType & 0xFFFFFFF0))) >> (OutFileType & 0xF));
+                    (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(OutFileType & 0xFFFFFFF0))) >> ((OutFileType & 0xF) & 31));
             if ( v8 )
               v36 = __intel_sse2_strlen(OutFileType & 0xF, OutFileType);
             v51 = v36;
@@ -184,7 +184,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
       for ( k = (unsigned __int8)k_1; ; k = (unsigned __int8)k_1 )
       {
         n0x20_3 = k - 9;
-        if ( n0x20_3 >= 0x20 || ((1 << n0x20_3) & 0x800011) == 0 )
+        if ( n0x20_3 >= 0x20 || ((1 << (n0x20_3 & 31)) & 0x800011) == 0 )
           break;
         k_1 = *v16;
         ++v17;
@@ -198,7 +198,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE size_t __sub_4280B0(int BMF_Opt
         for ( m = (unsigned __int8)m_1; ; m = (unsigned __int8)m_1 )
         {
           n0x20_4 = m - 9;
-          if ( n0x20_4 >= 0x20 || ((1 << n0x20_4) & 0x800011) == 0 )
+          if ( n0x20_4 >= 0x20 || ((1 << (n0x20_4 & 31)) & 0x800011) == 0 )
             break;
           m_1 = *v42;
           ++v43;
@@ -220,7 +220,7 @@ LABEL_21:
   Destinationa_1 = Destinationa;
   v8 = !_BitScanForward(
           (unsigned int *)&v47,
-          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(v43 & 0xFFFFFFF0))) >> (v43 & 0xF));
+          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(v43 & 0xFFFFFFF0))) >> ((v43 & 0xF) & 31));
   if ( v8 )
     v47 = __intel_sse2_strlen(v43 & 0xF, v43);
   memcpy(Buffer, (const void *)v43, v47 + 1);
@@ -249,7 +249,7 @@ LABEL_22:
     v38 = (v37 + 0x80) & 0xF;
     v8 = !_BitScanForward(
             (unsigned int *)&v39,
-            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, Buffer[0])) >> v38);
+            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, Buffer[0])) >> (v38 & 31));
     if ( v8 )
       v39 = __intel_sse2_strlen(v38, (char *)Buffer + v38);
     if ( v39 )
@@ -266,7 +266,7 @@ LABEL_22:
         strcpy(Destinationa_1, (const char *)Destination);
       v8 = !_BitScanForward(
               (unsigned int *)&v41,
-              (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> (Destination & 0xF));
+              (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> ((Destination & 0xF) & 31));
       if ( v8 )
         v41 = __intel_sse2_strlen(Destination & 0xF, Destination);
       return v41 + 1;
@@ -278,7 +278,7 @@ LABEL_22:
       strcpy(Destinationa_1, (const char *)Destination);
     v8 = !_BitScanForward(
             (unsigned int *)&v25,
-            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> (Destination & 0xF));
+            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(Destination & 0xFFFFFFF0))) >> ((Destination & 0xF) & 31));
     if ( v8 )
       v25 = __intel_sse2_strlen(Destination & 0xF, Destination);
     return v25 + 1;

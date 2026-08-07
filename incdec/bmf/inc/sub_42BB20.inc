@@ -32,8 +32,8 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_42BB20(char a1, int a
     {
       for ( i = 0; i < i_1; ++i )
       {
-        if ( (*(unsigned __int8 *)(i + a5) & (1 << (n3 & 7))) != 0 )
-          buf[i >> 3] |= 0x80u >> (i & 7);
+        if ( (*(unsigned __int8 *)(i + a5) & (1 << ((n3 & 7) & 31))) != 0 )
+          buf[i >> 3] |= 0x80u >> ((i & 7) & 31);
       }
     }
     buf += v5;

@@ -246,7 +246,7 @@ __attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_41
         {
           v19 = v100;
           v18 = 1;
-          v20 = (unsigned __int8)(1 << (5 - v17));
+          v20 = (unsigned __int8)(1 << ((5 - v17) & 31));
           *((_BYTE *)v13 + 111) = v20;
           *((_WORD *)v13 + 54) = v20 << 6;
           *((_WORD *)v13 + v19 + 48) += v20;
@@ -493,12 +493,12 @@ LABEL_53:
           {
             v62 = 8 - v64;
             *++ArgList_9 = *(_DWORD *)(*(_DWORD *)(this_4 + 1078240)
-                                     + 4 * *(unsigned __int16 *)(*(_DWORD *)(this_4 + 56) + 8 * v61 + 64)) << (8 - v64);
+                                     + 4 * *(unsigned __int16 *)(*(_DWORD *)(this_4 + 56) + 8 * v61 + 64)) << ((8 - v64) & 31);
           }
           else
           {
             *ArgList_9 |= *(_DWORD *)(*(_DWORD *)(this_4 + 1078240)
-                                    + 4 * *(unsigned __int16 *)(*(_DWORD *)(this_4 + 56) + 8 * v61 + 64)) << v62;
+                                    + 4 * *(unsigned __int16 *)(*(_DWORD *)(this_4 + 56) + 8 * v61 + 64)) << (v62 & 31);
           }
           ++v61;
         }

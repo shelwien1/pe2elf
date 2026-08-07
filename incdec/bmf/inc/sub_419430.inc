@@ -110,7 +110,7 @@ __attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_41
             do
             {
               v20 = sub_412E60((_DWORD *)&v28[12 * v19 + 3 * v17]);
-              v21 = v20 << (8 * v19);
+              v21 = v20 << ((8 * v19) & 31);
               v17 = v20 >> 6;
               *(_DWORD *)(*(_this + 269560) + 4 * v18) += v21;
               ++v19;

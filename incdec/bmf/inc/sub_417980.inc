@@ -102,7 +102,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((fastcall)) int _
     v13 = 0;
     do
     {
-      v12 += v13 == 2 << v12;
+      v12 += v13 == 2 << (v12 & 31);
       *(_BYTE *)(*(_DWORD *)(a1 + 1078684) + v13++ + 1) = v12;
     }
     while ( v13 < *(_DWORD *)a1 );

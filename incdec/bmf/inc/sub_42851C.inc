@@ -153,7 +153,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
     return 0;
   v9 = !_BitScanForward(
           (unsigned int *)&i_2,
-          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options_3 & 0xFFFFFFF0))) >> (BMF_Options_3 & 0xF));
+          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options_3 & 0xFFFFFFF0))) >> ((BMF_Options_3 & 0xF) & 31));
   if ( v9 )
     i_2 = __intel_sse2_strlen(BMF_Options_3 & 0xF, BMF_Options_3);
   i_1 = (char *)i_2;
@@ -176,7 +176,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
       for ( i = Buffera; ; v13 = (unsigned __int8)*i )
       {
         n0x20 = v13 - 9;
-        if ( n0x20 >= 0x20 || ((1 << n0x20) & 0x800011) == 0 )
+        if ( n0x20 >= 0x20 || ((1 << (n0x20 & 31)) & 0x800011) == 0 )
           break;
         ++i;
       }
@@ -197,7 +197,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
           for ( j = (unsigned __int8)j_1; ; j = (unsigned __int8)j_1 )
           {
             n0x20_1 = j - 9;
-            if ( n0x20_1 >= 0x20 || ((1 << n0x20_1) & 0x800011) == 0 )
+            if ( n0x20_1 >= 0x20 || ((1 << (n0x20_1 & 31)) & 0x800011) == 0 )
               break;
             j_1 = *v16;
             ++i;
@@ -212,7 +212,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
             for ( k = i_1; ; ++k )
             {
               n0x20_2 = v34 - 9;
-              if ( n0x20_2 >= 0x20 || ((1 << n0x20_2) & 0x800011) == 0 )
+              if ( n0x20_2 >= 0x20 || ((1 << (n0x20_2 & 31)) & 0x800011) == 0 )
                 break;
               v34 = *v33++;
             }
@@ -247,7 +247,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
         while ( 1 )
         {
           n0x20_3 = v25 - 9;
-          if ( n0x20_3 >= 0x20 || ((1 << n0x20_3) & 0x800011) == 0 )
+          if ( n0x20_3 >= 0x20 || ((1 << (n0x20_3 & 31)) & 0x800011) == 0 )
             break;
           v25 = *v24;
           ++i;
@@ -261,7 +261,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
           for ( n = (unsigned __int8)n_1; ; n = (unsigned __int8)n_1 )
           {
             n0x20_4 = n - 9;
-            if ( n0x20_4 >= 0x20 || ((1 << n0x20_4) & 0x800011) == 0 )
+            if ( n0x20_4 >= 0x20 || ((1 << (n0x20_4 & 31)) & 0x800011) == 0 )
               break;
             n_1 = *v27;
             ++i;
@@ -271,7 +271,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_42851C(int BM
           {
             v9 = !_BitScanForward(
                     (unsigned int *)&i_4,
-                    (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options & 0xFFFFFFF0))) >> (BMF_Options & 0xF));
+                    (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)(BMF_Options & 0xFFFFFFF0))) >> ((BMF_Options & 0xF) & 31));
             if ( v9 )
               i_4 = __intel_sse2_strlen(BMF_Options & 0xF, BMF_Options);
             v48 = 1;

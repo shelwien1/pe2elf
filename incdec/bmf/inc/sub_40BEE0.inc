@@ -493,7 +493,7 @@ LABEL_49:
     }
     v51 = (char *)(4 * v49 + 4468384);
     v52 = 4 * v49;
-    v53 = (1 << v49) - 1;
+    v53 = (1 << (v49 & 31)) - 1;
     if ( v53 < 0 )
     {
       __sub_40BEE0_dword_443428 = 0;
@@ -507,7 +507,7 @@ LABEL_49:
       do
       {
         v54 = *(_DWORD *)v51;
-        *(_WORD *)&buf[4 * v54] = v53 << (((unsigned int)(v51 - (char *)&__sub_40BEE0_xmmword_442EA0) >> 2) - v135);
+        *(_WORD *)&buf[4 * v54] = v53 << ((((unsigned int)(v51 - (char *)&__sub_40BEE0_xmmword_442EA0) >> 2) - v135) & 31);
         v55 = __sub_40BEE0_dword_442EE0[v54];
         *(_DWORD *)v51 = v55;
         if ( v55 < 0 )
@@ -522,7 +522,7 @@ LABEL_49:
             v59 = 0;
             do
             {
-              __sub_40BEE0_dword_443428 = (v57 - v59) << (((unsigned int)(__sub_40BEE0_dword_44342C - (_DWORD)&__sub_40BEE0_xmmword_442EA0) >> 2) - v135);
+              __sub_40BEE0_dword_443428 = (v57 - v59) << ((((unsigned int)(__sub_40BEE0_dword_44342C - (_DWORD)&__sub_40BEE0_xmmword_442EA0) >> 2) - v135) & 31);
               sub_40CB70();
               v53 = v58 + v57 - 1;
               --v58;
@@ -548,10 +548,10 @@ LABEL_49:
   __sub_40BEE0_buf_1 = (int)buf;
   if ( ::__sub_40BEE0_n8 < 18 )
   {
-    *(_DWORD *)__sub_40BEE0_Buffer_1 = ::__sub_40BEE0_n256 | (2 * (v101 << (31 - ::__sub_40BEE0_n8)));
+    *(_DWORD *)__sub_40BEE0_Buffer_1 = ::__sub_40BEE0_n256 | (2 * (v101 << ((31 - ::__sub_40BEE0_n8) & 31)));
     __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
     __sub_40BEE0_Buffer_0 += 4;
-    __sub_40BEE0_n256 = v101 >> ::__sub_40BEE0_n8;
+    __sub_40BEE0_n256 = v101 >> (::__sub_40BEE0_n8 & 31);
     n4_1 = ::__sub_40BEE0_n8 + 14;
     ::__sub_40BEE0_n8 += 14;
   }
@@ -623,7 +623,7 @@ LABEL_49:
       n4 = 4;
     }
     v77 = (char *)&__sub_40BEE0_xmmword_442EA0 + n4;
-    if ( (1 << v76) - 1 < 0 )
+    if ( (1 << (v76 & 31)) - 1 < 0 )
     {
       __sub_40BEE0_dword_443428 = 0;
     }
@@ -635,12 +635,12 @@ LABEL_49:
       buf_3 = __sub_40BEE0_buf_1;
       n4_3 = n4_1;
       n256_1 = __sub_40BEE0_n256;
-      v79 = (1 << v76) - 1;
+      v79 = (1 << (v76 & 31)) - 1;
       v110[0] = v76;
       do
       {
         v80 = *(_DWORD *)v77;
-        *(_WORD *)(buf_3 + 4 * v80) = v79 << (((unsigned int)(v77 - (char *)&__sub_40BEE0_xmmword_442EA0) >> 2) - LOBYTE(v110[0]));
+        *(_WORD *)(buf_3 + 4 * v80) = v79 << ((((unsigned int)(v77 - (char *)&__sub_40BEE0_xmmword_442EA0) >> 2) - LOBYTE(v110[0])) & 31);
         v81 = __sub_40BEE0_dword_442EE0[v80];
         *(_DWORD *)v77 = v81;
         if ( v81 < 0 && --v79 >= 0 )
@@ -649,7 +649,7 @@ LABEL_49:
           __sub_40BEE0_buf_1 = buf_3;
           do
           {
-            __sub_40BEE0_dword_443428 = v79 << (((unsigned int)(__sub_40BEE0_dword_44342C - (_DWORD)&__sub_40BEE0_xmmword_442EA0) >> 2) - v100);
+            __sub_40BEE0_dword_443428 = v79 << ((((unsigned int)(__sub_40BEE0_dword_44342C - (_DWORD)&__sub_40BEE0_xmmword_442EA0) >> 2) - v100) & 31);
             sub_40CB70();
             --v79;
           }
@@ -676,10 +676,10 @@ LABEL_49:
       v84 = *(unsigned __int8 *)(buf_4 + 8 * v82 + 2);
       if ( n4_1 < 4 )
       {
-        *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v84 << (31 - n4_1))) | __sub_40BEE0_n256;
+        *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v84 << ((31 - n4_1) & 31))) | __sub_40BEE0_n256;
         __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
         __sub_40BEE0_Buffer_0 += 4;
-        v87 = v84 >> ::__sub_40BEE0_n8;
+        v87 = v84 >> (::__sub_40BEE0_n8 & 31);
         __sub_40BEE0_n8 = ::__sub_40BEE0_n8 + 28;
       }
       else
@@ -692,10 +692,10 @@ LABEL_49:
       if ( __sub_40BEE0_n8 < 4 )
       {
         ::__sub_40BEE0_n8 = __sub_40BEE0_n8;
-        *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v88 << (31 - __sub_40BEE0_n8))) | v87;
+        *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v88 << ((31 - __sub_40BEE0_n8) & 31))) | v87;
         __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
         __sub_40BEE0_Buffer_0 += 4;
-        __sub_40BEE0_n256 = v88 >> ::__sub_40BEE0_n8;
+        __sub_40BEE0_n256 = v88 >> (::__sub_40BEE0_n8 & 31);
         n4_1 = ::__sub_40BEE0_n8 + 28;
       }
       else
@@ -714,10 +714,10 @@ LABEL_49:
     if ( n4_1 < 4 )
     {
       ::__sub_40BEE0_n8 = n4_1;
-      *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v91 << (31 - n4_1))) | __sub_40BEE0_n256;
+      *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (v91 << ((31 - n4_1) & 31))) | __sub_40BEE0_n256;
       __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
       __sub_40BEE0_Buffer_0 += 4;
-      n256_2 = v91 >> ::__sub_40BEE0_n8;
+      n256_2 = v91 >> (::__sub_40BEE0_n8 & 31);
       n8_1 = ::__sub_40BEE0_n8 + 28;
       ::__sub_40BEE0_n8 += 28;
       ::__sub_40BEE0_n256 = n256_2;
@@ -741,17 +741,17 @@ LABEL_49:
         k_9 = (unsigned __int16)k_11;
         if ( n8_1 < BYTE2(k_11) )
         {
-          *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * ((unsigned __int16)k_11 << (31 - n8_1))) | n256_2;
+          *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * ((unsigned __int16)k_11 << ((31 - n8_1) & 31))) | n256_2;
           __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
           __sub_40BEE0_Buffer_0 += 4;
-          n256_2 = (unsigned __int16)k_11 >> ::__sub_40BEE0_n8;
+          n256_2 = (unsigned __int16)k_11 >> (::__sub_40BEE0_n8 & 31);
           n8_1 = ::__sub_40BEE0_n8 - BYTE2(k_11) + 32;
         }
         else
         {
           LOBYTE(k_11) = n8_1;
           n8_1 -= BYTE2(k_11);
-          k_9 <<= -(char)k_11;
+          k_9 <<= (-(char)k_11 & 31);
           n256_2 |= k_9;
         }
         v40 = (v96 - 16 < 0) ^ __OFADD__(-16, v96);
@@ -762,16 +762,16 @@ LABEL_49:
           if ( n8_1 < n8_2 )
           {
             ::__sub_40BEE0_n8 = n8_1;
-            *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (k_9 << (31 - n8_1))) | n256_2;
+            *(_DWORD *)__sub_40BEE0_Buffer_1 = (2 * (k_9 << ((31 - n8_1) & 31))) | n256_2;
             __sub_40BEE0_Buffer_1 = __sub_40BEE0_Buffer_0;
             __sub_40BEE0_Buffer_0 += 4;
-            n256_2 = (unsigned int)k_9 >> ::__sub_40BEE0_n8;
-            ::__sub_40BEE0_n256 = (unsigned int)k_9 >> ::__sub_40BEE0_n8;
+            n256_2 = (unsigned int)k_9 >> (::__sub_40BEE0_n8 & 31);
+            ::__sub_40BEE0_n256 = (unsigned int)k_9 >> (::__sub_40BEE0_n8 & 31);
             n8_1 = ::__sub_40BEE0_n8 - n8_2 + 32;
           }
           else
           {
-            k_9 <<= -(char)n8_1;
+            k_9 <<= (-(char)n8_1 & 31);
             n8_1 -= n8_2;
             n256_2 |= k_9;
             ::__sub_40BEE0_n256 = n256_2;

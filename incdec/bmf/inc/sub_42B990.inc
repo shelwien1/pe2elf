@@ -16,8 +16,8 @@ __attribute__((force_align_arg_pointer)) void __sub_42B990(char n5, int buf)
   unsigned int v9; // ecx
   int v10; // ebx
 
-  v2 = 1 << n5;
-  if ( 1 << n5 )
+  v2 = 1 << (n5 & 31);
+  if ( 1 << (n5 & 31) )
   {
     if ( v2 >> 1 )
     {

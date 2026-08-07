@@ -1073,23 +1073,41 @@ frame-reassembly buffer of §4 already does the same thing for the same reason.
 ### 8.2.3.1 Shift counts, and the bug that only makes the output bigger
 
 x86 masks a variable shift count to five bits. C++ leaves a count of 32 or more
-undefined, and Hex-Rays prints what the instruction computes, so both of the
-idioms that rely on the masking come out as undefined behaviour:
+undefined, and Hex-Rays prints what the instruction computes, so every idiom
+that relies on the masking comes out as undefined behaviour:
 
 | Hex-Rays writes | the instruction is | what it means |
 |---|---|---|
 | `x >> -n` | `neg ecx; shr eax, cl` | `x >> ((-n) & 31)` |
 | `1 << (n + 31)` | `lea ecx, [edi+1Fh]; shl ebx, cl` | `1 << (n - 1)`, the rounding constant before `sar` by `n` |
+| `3 << v91` | `shl eax, cl` | `3 << (v91 & 31)`, where `v91` is a byte straight out of a file header |
 
-Mask both. The mask is free where the count is already in range — g++ knows
-x86 masks and emits the same `shl %cl` — so there is no reason to be selective.
+**Mask every count that is not a literal**, not just the recognisable idioms.
+The mask is free where the count is already in range — g++ knows x86 masks and
+emits the same `shl %cl` — so being selective buys nothing and costs the third
+row, which has no idiom to recognise at all. In this donor that is 1285 sites,
+none of them a 64-bit shift (which would want `& 63`).
 
-The second one is worth calling out on its own, because it is the only defect
-in this whole exercise that produced **no wrong answer at all**. Every image
-still round-tripped losslessly; the compressed stream was just twenty bytes
-bigger. A compressor's model can be wrong without its coder being wrong, so
-"decompresses to the original" is not a strong enough check — the size
-comparison in the gate is what caught it. `sub_41CAB0` had 86 of them.
+Two of the three are worth calling out on their own, because of *how* they
+failed:
+
+* `1 << (n + 31)` produced **no wrong answer at all**. Every image still
+  round-tripped losslessly; the compressed stream was just twenty bytes
+  bigger. A compressor's model can be wrong without its coder being wrong, so
+  "decompresses to the original" is not a strong enough check — the size
+  comparison in the gate is what caught it. `sub_41CAB0` had 86.
+* `3 << v91` was a header byte: `0x81` for a 1bpp image with a palette, low
+  six bits the depth, top bit a flag. `3 << 0x81` is `3 << 1` on the hardware
+  — six bytes of palette — and g++ made it `0`, so the palette was never
+  skipped, the following header read landed mid-file, and BMF printed
+  "bad file!" *after* writing an image whose second palette entry was black.
+  Three wrong bytes in a 9 KB file, from one shift.
+
+The count of a shift is an additive-expression — `* / % + -` bind tighter,
+everything else binds looser — so when wrapping it, the term ends at the first
+`< > = ! & ^ | ? : , ;` that is a *binary* operator at paren depth zero.
+Stopping at `+` instead would silently rewrite `a >> b + c` into
+`a >> (b & 31) + c`.
 
 ### 8.2.4 A pointer that is really a counter, and the loop g++ deletes
 

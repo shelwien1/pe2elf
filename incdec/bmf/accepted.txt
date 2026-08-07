@@ -118,3 +118,4 @@
 00415380 sub_415380 usercall
 00405840 sub_405840 usercall
 00407B30 sub_407B30 usercall
+00403820 sub_403820 userpurge

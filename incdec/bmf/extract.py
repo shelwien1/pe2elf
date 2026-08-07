@@ -554,27 +554,58 @@ def build_frame(locs):
 
 
 
-def mask_negative_shifts(line):
-    """`0xFFFFFFFF >> -x` -> `0xFFFFFFFF >> (-x & 31)`.
+def mask_shift_counts(line):
+    """`x >> n` -> `x >> (n & 31)` for every count that is not a literal.
 
-    Hex-Rays writes the shift count exactly as the instruction computes it, and
-    x86 masks it to five bits: `neg ecx; shr ebp, cl` is `>> ((-x) & 31)`, not a
-    shift by a negative number — which C++ calls undefined and gcc is free to
-    turn into anything.  It turned `0xFFFFFFFF >> -*((_BYTE *)this + 8)` into
-    `0xFFFFFFFF`, so a `j + 1` downstream came out 0 and the arithmetic decoder
-    divided by it.  The mask is a no-op for a count already in range, so
-    applying it wherever the count is negated costs nothing and removes the
-    undefined behaviour.
+    x86 masks a variable shift count to five bits; C++ leaves a count outside
+    0..31 undefined; and Hex-Rays prints exactly what the instruction computes.
+    Three shapes come out of that, all of them undefined and all of them
+    silently miscompiled:
+
+        0xFFFFFFFF >> -*((_BYTE *)this + 8)   neg ecx; shr ebp, cl
+        1 << (n + 31)                         lea ecx, [edi+1Fh]; shl ebx, cl
+        3 << v91                              a plain byte from a file header
+
+    The third is the reason this is applied to every non-literal count rather
+    than to the two recognisable idioms.  `v91` is a header byte whose low six
+    bits are the pixel depth and whose top bit is a flag: `0x81` for a 1bpp
+    image with a palette.  `3 << 0x81` is `3 << 1` on the hardware — six bytes
+    of palette — and g++ made it 0, so the palette was never skipped, the next
+    header read landed in the middle of the file, and BMF reported "bad file!"
+    after writing an image whose second palette entry was black.
+
+    Masking is a no-op wherever the count is already in range: g++ knows x86
+    masks and emits the same `shl %cl`.  So there is no reason to be selective,
+    and being selective is what let the third shape through.
+
+    The count of a shift is an additive-expression — `* / % + -` bind tighter,
+    everything else binds looser — so the term ends at the first `< > = ! & ^ |
+    ? : , ;` that is a *binary* operator at paren depth zero.
+
+    Only correct for 32-bit shifts.  Every variable-count shift in this donor
+    is one; a 64-bit shift would need `& 63` and there are none to check for.
     """
-    out, i = [], 0
+    lit = [(m.start(), m.end()) for m in
+           re.finditer(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'", line)]
+    cut = len(line)
+    for m in re.finditer(r'//', line):
+        if not any(a <= m.start() < b for a, b in lit):
+            cut = m.start()
+            break
+    out, i, n = [], 0, len(line)
+    pat = re.compile(r'(<<|>>)=?')
     while True:
-        m = re.compile(r'(<<|>>)(\s*)-').search(line, i)
-        if not m:
+        m = pat.search(line, i)
+        if not m or m.start() >= cut:
             out.append(line[i:])
             return ''.join(out)
-        # Scan the negated operand, respecting nesting, to the end of the term.
-        j, depth = m.end() - 1, 0
-        while j < len(line):
+        if any(a <= m.start() < b for a, b in lit):
+            out.append(line[i:m.end()]); i = m.end(); continue
+        j = m.end()
+        while j < n and line[j] == ' ':
+            j += 1
+        start, depth = j, 0
+        while j < cut:
             c = line[j]
             if c in '([':
                 depth += 1
@@ -582,68 +613,29 @@ def mask_negative_shifts(line):
                 if depth == 0:
                     break
                 depth -= 1
-            elif depth == 0 and (c == ';' or c == ','):
-                break
-            elif depth == 0 and c == ':' and (line[j:j + 2] == '::' or
-                                              (j and line[j - 1] == ':')):
-                j += 1                    # `::` is scope resolution, not an operator
-                continue
-            elif depth == 0 and c in '+-*/%&|^<>=!?:':
-                # Only a *binary* operator ends the term.  `-*((_BYTE *)p + 8)`
-                # is a unary minus on a dereference, not a subtraction.
+            elif depth == 0 and c in '<>=!&^|?:,;':
+                if c == ':' and (line[j:j + 2] == '::' or
+                                 (j and line[j - 1] == ':')):
+                    j += 1
+                    continue
+                # A *binary* operator ends the term.  `&x`, `->y` and a unary
+                # `!` follow an operator or an opening bracket, not an operand.
                 k = j - 1
-                while k >= 0 and line[k] == ' ':
+                while k >= start and line[k] == ' ':
                     k -= 1
-                if k >= 0 and (line[k].isalnum() or line[k] in '_)]'):
-                    break
+                if k < start or not (line[k].isalnum() or line[k] in '_)]'):
+                    j += 1
+                    continue
+                break
             j += 1
-        out.append(line[i:m.end(1)])
-        out.append(m.group(2) + '(' + line[m.end() - 1:j].strip() + ' & 31)')
-        i = j
-
-
-def mask_wide_shifts(line):
-    """`1 << (n + 31)` -> `1 << ((n + 31) & 31)`.
-
-    The other half of the same problem as `mask_negative_shifts`.  Rounding
-    before an arithmetic right shift is written `lea ecx, [edi+1Fh]; shl ebx,
-    cl`, i.e. `1 << (n - 1)` computed as `1 << ((n + 31) & 31)`, and Hex-Rays
-    prints the `+ 31` literally.  In C a shift count of 32 or more is
-    undefined, and g++ constant-folds `1 << (n + 31)` to something that is not
-    what the hardware does.
-
-    This one is quiet: nothing crashes, the round-trip stays lossless, and the
-    only symptom is that the compressor's model is slightly off and the output
-    grows.  sub_41CAB0 alone has 86 of them.
-    """
-    out, i = [], 0
-    pat = re.compile(r'(<<|>>)(\s*)\(')
-    while True:
-        m = pat.search(line, i)
-        if not m:
-            out.append(line[i:])
-            return ''.join(out)
-        j, depth, k = m.end() - 1, 0, m.end() - 1
-        while k < len(line):
-            if line[k] == '(':
-                depth += 1
-            elif line[k] == ')':
-                depth -= 1
-                if depth == 0:
-                    break
-            k += 1
-        if k >= len(line):                      # count runs onto the next line
-            out.append(line[i:m.end()])
-            i = m.end()
+        term = line[start:j].rstrip()
+        if not term or re.fullmatch(r'(?:0[xX][0-9A-Fa-f]+|\d+)[uUlL]*', term):
+            out.append(line[i:start + len(term)])
+            i = start + len(term)
             continue
-        inner = line[j + 1:k]
-        if re.search(r'[-+]\s*(31|63)\s*$', inner):
-            out.append(line[i:m.end(1)])
-            out.append(m.group(2) + '((' + inner + ') & 31)')
-        else:
-            out.append(line[i:k + 1])
-        i = k + 1
-
+        out.append(line[i:m.end()])
+        out.append(' (' + term + ' & 31)')
+        i = start + len(term)
 
 def rename_ident(text, name, repl):
     """Rename `name` to `repl`, but not where it is a struct member.
@@ -1085,6 +1077,15 @@ def emit(args, cache=None):
                 ext = '[0x10000]'
         elif ext == '[]':
             ext = '[0x10000]'
+        elif ext and g not in per_body:
+            # The mirror of the widening above, and for the same reason: an
+            # extent symbols.txt got from *another* body is not this one's.
+            # `dword_4410A4` is `int[6]` to main, which writes `dword_4410A4[0]`,
+            # and a plain scalar to sub_4043E0, which writes
+            # `dword_4410A4 = (n4_5 << 16) | ...` and reads `HIWORD(dword_4410A4)`.
+            # Same four bytes; only one of the two spellings compiles against a
+            # given declaration.
+            ext = ''
         if not base:
             base = PREFIX_TYPE.get(g.split('_')[0], 'unsigned char')
         # The alias is scoped to this function, not shared across the
@@ -1378,8 +1379,7 @@ def emit(args, cache=None):
         joined = text.split('\n')
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
-    joined = [mask_negative_shifts(l) for l in joined]
-    joined = [mask_wide_shifts(l) for l in joined]
+    joined = [mask_shift_counts(l) for l in joined]
     if single_precision(args.name):
         joined = [floatify(l) for l in joined]
     joined = [wrap_intrinsic_members(l) for l in joined]

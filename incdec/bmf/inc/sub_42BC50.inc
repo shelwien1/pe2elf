@@ -136,7 +136,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_42BC50(int a1, int a2
   fread((void *)(v4 + 4), 0xDu, 1u, *(FILE **)v4);
   if ( (*(_BYTE *)(v4 + 14) & 0x80) != 0 )
   {
-    Buffer__1 = 1 << ((*(_BYTE *)(v4 + 14) & 7) + 1);
+    Buffer__1 = 1 << (((*(_BYTE *)(v4 + 14) & 7) + 1) & 31);
     fread(Buffer_1, 1u, 3 * Buffer__1, *(FILE **)v4);
     if ( Buffer__1 >> 1 )
     {
@@ -257,7 +257,7 @@ LABEL_20:
   v16 = *(_BYTE *)(v4 + 25);
   if ( v16 < 0 )
   {
-    ElementCount_4 = 1 << ((v16 & 7) + 1);
+    ElementCount_4 = 1 << (((v16 & 7) + 1) & 31);
     v21 = v4 + 794;
     if ( fread((void *)(v4 + 794), 3u, ElementCount_4, *(FILE **)v4) == ElementCount_4 )
     {

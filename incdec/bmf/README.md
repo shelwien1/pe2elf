@@ -422,16 +422,21 @@ naming because each was systemic rather than per-function:
 
 * **Shift counts out of range.** Hex-Rays writes the shift count exactly as the
   instruction computes it, because x86 masks it to five bits — and C++ calls
-  anything outside 0..31 undefined. Two shapes, both systemic:
-  `0xFFFFFFFF >> -*((_BYTE *)this + 8)` for `neg ecx; shr ebp, cl`, which
-  produced `0xFFFFFFFF`, so a `j + 1` downstream came out `0` and the
-  arithmetic decoder divided by it (36 in the donor); and `1 << (n + 31)` for
-  `lea ecx, [edi+1Fh]; shl ebx, cl`, the rounding constant before an
-  arithmetic right shift, which g++ folds to the wrong value (86 in
-  `sub_41CAB0` alone). Both are now masked, which is a no-op for a count
-  already in range. The second one is the more instructive: it never crashed
-  and never lost a byte — every image still round-tripped losslessly, the
-  compressed stream was just twenty bytes bigger. Only the gate's size
+  anything outside 0..31 undefined. This got chased three times as three
+  different bugs before being fixed once, for all 1285 non-literal shift counts
+  in the donor. `0xFFFFFFFF >> -*((_BYTE *)this + 8)` for `neg ecx; shr ebp,
+  cl` produced `0xFFFFFFFF`, so a `j + 1` downstream came out `0` and the
+  arithmetic decoder divided by it. `1 << (n + 31)` for `lea ecx, [edi+1Fh];
+  shl ebx, cl` — the rounding constant before an arithmetic right shift — folds
+  to the wrong value; 86 of those in `sub_41CAB0` alone. And plain `3 << v91`,
+  where `v91` is a byte out of a `.bmf` header (`0x81` = 1bpp with a palette),
+  so the six-byte palette was never skipped, the next header read landed
+  mid-file, and BMF printed "bad file!" after writing an image whose second
+  palette entry was black. Masking is a no-op for a count already in range, so
+  there is no reason to be selective — and being selective is exactly what let
+  the third one through. The middle one is the most instructive: it never
+  crashed and never lost a byte — every image still round-tripped losslessly,
+  the compressed stream was just twenty bytes bigger. Only the gate's size
   comparison saw it.
 * **The width in an auto-generated name.** `byte_445714` is a *byte* at that
   address — Hex-Rays picks the name by how the body accesses it, and the

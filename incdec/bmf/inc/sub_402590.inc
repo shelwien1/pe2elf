@@ -146,7 +146,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int *__sub_402590(char *FileNam
     v19 = FileName_2 & 0xF;
     if ( !_BitScanForward(
             (unsigned int *)&Stra_1,
-            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *v18)) >> v19) )
+            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *v18)) >> (v19 & 31)) )
       Stra_1 = __intel_sse2_strlen(v19, &v18->m128i_i8[v19]);
     Stra = (char *)Stra_1;
     Size = Stra_1 + 1;

@@ -187,7 +187,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) unsig
       do
       {
         ++v6;
-        *(_DWORD *)(v3 + 4 * v6 - 4) -= 1 << (Src_4 - v4[v6 - 1]);
+        *(_DWORD *)(v3 + 4 * v6 - 4) -= 1 << ((Src_4 - v4[v6 - 1]) & 31);
       }
       while ( v6 < v5 );
       i = __sub_40B330_Src;
@@ -492,9 +492,9 @@ LABEL_65:
     v30 = (__sub_40B330_dword_443420 << 24) | (__sub_40B330_n7 << 18) | (__sub_40B330_n9 << 12) | __sub_40B330_n24 | (__sub_40B330_n14 << 6);
     if ( ::__sub_40B330_n8 < 30 )
     {
-      *(_DWORD *)__sub_40B330_Buffer_1 = __sub_40B330_n256 | (2 * (v30 << (31 - ::__sub_40B330_n8)));
+      *(_DWORD *)__sub_40B330_Buffer_1 = __sub_40B330_n256 | (2 * (v30 << ((31 - ::__sub_40B330_n8) & 31)));
       __sub_40B330_Buffer_1 = __sub_40B330_Buffer_0;
-      n6 = v30 >> ::__sub_40B330_n8;
+      n6 = v30 >> (::__sub_40B330_n8 & 31);
       __sub_40B330_Buffer_0 += 4;
       __sub_40B330_n256 = n6;
       __sub_40B330_n8 = ::__sub_40B330_n8 + 2;

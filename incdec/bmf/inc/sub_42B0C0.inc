@@ -157,11 +157,11 @@ __attribute__((force_align_arg_pointer)) int __sub_42B0C0(int p_i, char *FileNam
   buf = Bufferc_3 + 54;
   if ( n8 <= 8 )
   {
-    v14 = 1 << n8;
-    v66 = 1 << n8;
+    v14 = 1 << (n8 & 31);
+    v66 = 1 << (n8 & 31);
     if ( (Buffer & 0x40) != 0 )
     {
-      Buffera = 0x100u >> n8;
+      Buffera = 0x100u >> (n8 & 31);
       if ( v66 > 0 )
       {
         if ( v66 / 2 )
@@ -286,7 +286,7 @@ __attribute__((force_align_arg_pointer)) int __sub_42B0C0(int p_i, char *FileNam
       n2 = 1;
     *(_DWORD *)(Bufferc + 30) = n2;
     v75 = n2 - 1;
-    n2_2 = (0x100u >> (n2 - 1)) - 1;
+    n2_2 = (0x100u >> ((n2 - 1) & 31)) - 1;
     if ( Buffer_2 > 0 )
     {
       Buffer_3 = Buffer_2;
@@ -331,7 +331,7 @@ __attribute__((force_align_arg_pointer)) int __sub_42B0C0(int p_i, char *FileNam
 LABEL_67:
                   *buf_2 = 0;
                   v72 = buf_2 + 2;
-                  buf_2[1] = Size << v75;
+                  buf_2[1] = Size << (v75 & 31);
                   sub_434980(buf_2 + 2,&v31[-Size],Size);
                   buf_2 += Size + 2;
                   if ( (Size & 1) != 0 )
@@ -368,7 +368,7 @@ LABEL_69:
 LABEL_70:
               buf_2[1] = v40;
               v31 += n2_1;
-              *buf_2 = n2_1 << v75;
+              *buf_2 = n2_1 << (v75 & 31);
               buf_3 = buf_2 + 2;
               buf_2 += 2;
               if ( (unsigned int)v31 >= v77 )
@@ -411,7 +411,7 @@ LABEL_70:
             }
             *buf_2 = 0;
             v68 = buf_2 + 2;
-            buf_2[1] = Size << v75;
+            buf_2[1] = Size << (v75 & 31);
             sub_434980(buf_2 + 2,&v39[-Size],Size);
             buf_2 += Size + 2;
             if ( (Size & 1) != 0 )
@@ -449,7 +449,7 @@ LABEL_55:
           }
 LABEL_97:
           *buf_2 = 0;
-          buf_2[1] = Size << v75;
+          buf_2[1] = Size << (v75 & 31);
           sub_434980(buf_2 + 2,&v39[-Size],Size);
           Buffer_4 = Buffer_5;
           buf_1 = &buf_2[Size + 2];

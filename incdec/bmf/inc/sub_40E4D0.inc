@@ -45,9 +45,9 @@ __attribute__((force_align_arg_pointer)) int *__sub_40E4D0()
   v4 = __sub_40E4D0_dword_443438;
   *(_DWORD *)(__sub_40E4D0_dword_443434 + 4) = v0;
   *v3 = (v4 - (int)v3) >> 3;
-  __sub_40E4D0_dword_443438 = v4 + 8 * (1 << v0);
+  __sub_40E4D0_dword_443438 = v4 + 8 * (1 << (v0 & 31));
   result = (int *)(__sub_40E4D0_dword_443438 - 8);
-  v6 = (1 << v0) - 1;
+  v6 = (1 << (v0 & 31)) - 1;
   if ( v6 >= 0 )
   {
     __sub_40E4D0_dword_44342C = (int)v2;

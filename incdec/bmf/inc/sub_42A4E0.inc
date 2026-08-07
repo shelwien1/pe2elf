@@ -106,7 +106,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int * __sub_42A4E0(unsi
     return nullptr;
   v4 = !_BitScanForward(
           (unsigned int *)&n2,
-          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, v51[0])) >> ((unsigned int)v51 & 0xF));
+          (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, v51[0])) >> (((unsigned int)v51 & 0xF) & 31));
   if ( v4 )
     n2 = __intel_sse2_strlen((unsigned int)v51 & 0xF, (char *)v51 + ((unsigned int)v51 & 0xF));
   if ( n2 != 2 )

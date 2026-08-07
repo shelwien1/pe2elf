@@ -35,7 +35,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __sub_429C80(char *Str, int
   {
     if ( !_BitScanForward(
             (unsigned int *)&v6,
-            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)((unsigned int)Str & 0xFFFFFFF0))) >> ((unsigned __int8)Str & 0xF)) )
+            (unsigned int)_mm_movemask_epi8(_mm_cmpeq_epi8((__m128i)0LL, *(__m128i *)((unsigned int)Str & 0xFFFFFFF0))) >> (((unsigned __int8)Str & 0xF) & 31)) )
       v6 = __intel_sse2_strlen((unsigned __int8)Str & 0xF, Str);
     Str_1 = &Str[v6];
   }

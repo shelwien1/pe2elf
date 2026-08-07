@@ -229,13 +229,13 @@ __attribute__((force_align_arg_pointer)) unsigned __int16 *__sub_428C40(char *Fi
   if ( (n3_1 & 3) == 3 && (n5 >= 5 && n5 <= 7 || n5 == 3) )
   {
     n3 = n3_1 - 2;
-    buf = (char *)__op_new(3 * (1 << n5));
+    buf = (char *)__op_new(3 * (1 << (n5 & 31)));
     sub_42B990(n5, (int)buf);
-    ElementCount = 1 << n5;
+    ElementCount = 1 << (n5 & 31);
   }
   else if ( ElementCount )
   {
-    buf = (char *)__op_new(3 * (1 << n5));
+    buf = (char *)__op_new(3 * (1 << (n5 & 31)));
     Size_1 = 3 * v98;
     sub_4349F0(buf,0,Size_1);
     fread(&buf[Size_1], 3u, ElementCount, Stream_v);
@@ -591,7 +591,7 @@ LABEL_82:
               ++v69;
             else
               v74 = v77;
-            v78 = (unsigned __int8)*v67++ << v74;
+            v78 = (unsigned __int8)*v67++ << (v74 & 31);
             *v69 |= v78;
             Buffer_7 = *Buffer_4;
           }

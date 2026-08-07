@@ -157,7 +157,7 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
     {
       v60 = *(_DWORD *)__sub_40DEB0_Buffer_0;
       __sub_40DEB0_Buffer_0 += 4;
-      v4 = ::__sub_40DEB0_n256 | (v60 << __sub_40DEB0_n8) & 0x3FFFF;
+      v4 = ::__sub_40DEB0_n256 | (v60 << (__sub_40DEB0_n8 & 31)) & 0x3FFFF;
       ::__sub_40DEB0_n256 = v60 >> (-v3 & 31);
       ::__sub_40DEB0_n8 = __sub_40DEB0_n8 + 14;
     }
@@ -186,7 +186,7 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
           ::__sub_40DEB0_n8 = n8_1;
           v59 = *(_DWORD *)__sub_40DEB0_Buffer_0;
           __sub_40DEB0_Buffer_0 += 4;
-          v9 = __sub_40DEB0_n256 | (v59 << (n8_1 + 4)) & 0xF;
+          v9 = __sub_40DEB0_n256 | (v59 << ((n8_1 + 4) & 31)) & 0xF;
           __sub_40DEB0_n256 = v59 >> (-(char)n8_1 & 31);
           n8_1 += 32;
         }
@@ -220,9 +220,9 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
       v12 = (int *)((char *)&__sub_40DEB0_xmmword_442EA0 + n4);
       v62[1] = v10;
       *v62 = (v61 - (char *)v62) >> 3;
-      v13 = 1 << v10;
-      __sub_40DEB0_dword_443438 = (int)&v62[2 * (1 << v10) + 2];
-      v14 = &v62[2 * (1 << v10)];
+      v13 = 1 << (v10 & 31);
+      __sub_40DEB0_dword_443438 = (int)&v62[2 * (1 << (v10 & 31)) + 2];
+      v14 = &v62[2 * (1 << (v10 & 31))];
       v15 = v13 - 1;
       if ( v15 >= 0 )
       {
@@ -309,7 +309,7 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
                 ::__sub_40DEB0_n8 = n8_3;
                 v56 = *(_DWORD *)__sub_40DEB0_Buffer_0;
                 __sub_40DEB0_Buffer_0 += 4;
-                v43 = j | __sub_40DEB0_dword_439360[v40] & (v56 << (v40 + n8_3));
+                v43 = j | __sub_40DEB0_dword_439360[v40] & (v56 << ((v40 + n8_3) & 31));
                 j = v56 >> (-(char)n8_3 & 31);
                 n8_3 += 32;
                 v39 = v78;
@@ -317,7 +317,7 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
               else
               {
                 v43 = j & __sub_40DEB0_dword_439360[v40];
-                j >>= v40;
+                j >>= (v40 & 31);
               }
               v39 += 2 * *v39 + 2 * v43;
               v40 = v39[1];
@@ -347,7 +347,7 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
                   ::__sub_40DEB0_n8 = n8_3 - v51;
                   v57 = *(_DWORD *)__sub_40DEB0_Buffer_0;
                   __sub_40DEB0_Buffer_0 += 4;
-                  v52 = j | __sub_40DEB0_dword_439360[v51] & (v57 << n8_3);
+                  v52 = j | __sub_40DEB0_dword_439360[v51] & (v57 << (n8_3 & 31));
                   n256_2 = v57 >> (-(char)n8_2 & 31);
                   n8_2 += 32;
                   n256_1 = n256_2;
@@ -357,8 +357,8 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
                 else
                 {
                   v52 = j & __sub_40DEB0_dword_439360[v51];
-                  n256_1 = j >> v51;
-                  ::__sub_40DEB0_n256 = j >> v51;
+                  n256_1 = j >> (v51 & 31);
+                  ::__sub_40DEB0_n256 = j >> (v51 & 31);
                 }
                 v50 += v52;
               }
@@ -427,11 +427,11 @@ __attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
       }
       v21[1] = v27;
       *v21 = 1;
-      v29 = 1 << v27;
+      v29 = 1 << (v27 & 31);
       v74 = 4 * v27;
       v30 = (int *)(4 * v27 + 4468384);
-      __sub_40DEB0_dword_443438 = (int)&v21[2 * (1 << v27) + 2];
-      v31 = &v21[2 * (1 << v27)];
+      __sub_40DEB0_dword_443438 = (int)&v21[2 * (1 << (v27 & 31)) + 2];
+      v31 = &v21[2 * (1 << (v27 & 31))];
       k_1 = v29 - 1;
       if ( k_1 >= 0 )
       {

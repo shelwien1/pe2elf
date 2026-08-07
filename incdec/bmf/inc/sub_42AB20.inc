@@ -150,7 +150,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int *__sub_42AB20(char *FileNam
   Size_2 = (*((unsigned __int16 *)v3 + 2) + 3) & 0xFFFFFFFC;
   if ( n5 <= 8u )
   {
-    Size_1 = 1 << n5;
+    Size_1 = 1 << (n5 & 31);
     if ( Size_3 )
       Size_1 = Size_3;
     if ( Size_1 > 0 )

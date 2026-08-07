@@ -1,5 +1,5 @@
 // sub_4043E0 @ 0x004043E0 — __usercall
-// Extracted from BMF.c:3574-4720 by extract.py per incdec.md.
+// Extracted from BMF.cpp:3574-4720 by extract.py per incdec.md.
 
 typedef int t_sub_4043E0_Buffer;
 static t_sub_4043E0_Buffer& __sub_4043E0_Buffer = *(t_sub_4043E0_Buffer*)0x0044337C;
@@ -19,7 +19,7 @@ typedef unsigned char t_sub_4043E0_byte_44339E[0x10000];
 static t_sub_4043E0_byte_44339E& __sub_4043E0_byte_44339E = *(t_sub_4043E0_byte_44339E*)0x0044339E;
 typedef unsigned char t_sub_4043E0_byte_4433AD[16];
 static t_sub_4043E0_byte_4433AD& __sub_4043E0_byte_4433AD = *(t_sub_4043E0_byte_4433AD*)0x004433AD;
-typedef int t_sub_4043E0_dword_4410A4[6];
+typedef int t_sub_4043E0_dword_4410A4;
 static t_sub_4043E0_dword_4410A4& __sub_4043E0_dword_4410A4 = *(t_sub_4043E0_dword_4410A4*)0x004410A4;
 typedef int t_sub_4043E0_dword_443384;
 static t_sub_4043E0_dword_443384& __sub_4043E0_dword_443384 = *(t_sub_4043E0_dword_443384*)0x00443384;

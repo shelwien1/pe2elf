@@ -183,14 +183,14 @@ __attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_42C
     __op_delete(buf_1);
     return 6;
   }
-  n4096_10 = 1 << n2;
+  n4096_10 = 1 << (n2 & 31);
   v12 = n2 + 1;
   __sub_42C220_word_445910[0] = v12;
   n4096_5 = n4096_10;
   v73 = v12;
   n4096 = n4096_10 + 2;
   n4096_1 = n4096_10 + 2;
-  v13 = 1 << v12;
+  v13 = 1 << (v12 & 31);
   v14 = (unsigned int)v84;
   v80 = v13;
   v76 = v13;
@@ -227,7 +227,7 @@ LABEL_9:
     if ( n8 <= 8 )
     {
       n8_1 += (unsigned __int16)__sub_42C220_word_445910[0];
-      *v15 = v20 >> SLOBYTE(__sub_42C220_word_445910[0]);
+      *v15 = v20 >> (SLOBYTE(__sub_42C220_word_445910[0]) & 31);
       goto LABEL_24;
     }
     if ( ++v15 >= v84 )
@@ -243,11 +243,11 @@ LABEL_9:
         return 3;
       }
     }
-    v20 |= (unsigned __int8)*v15 << (8 - n8_1);
+    v20 |= (unsigned __int8)*v15 << ((8 - n8_1) & 31);
     if ( n8 <= 16 )
     {
       n8_1 = n8_1 + v82 - 8;
-      *v15 = (unsigned __int8)*v15 >> n8_1;
+      *v15 = (unsigned __int8)*v15 >> (n8_1 & 31);
       goto LABEL_24;
     }
     if ( ++v15 >= v84 )
@@ -271,12 +271,12 @@ LABEL_52:
       return 3;
     }
 LABEL_23:
-    v24 = (unsigned __int8)*v15 << (16 - n8_1);
+    v24 = (unsigned __int8)*v15 << ((16 - n8_1) & 31);
     n8_1 = n8_1 + v82 - 16;
     LOWORD(v20) = v24 | v20;
-    *v15 = (unsigned __int8)*v15 >> n8_1;
+    *v15 = (unsigned __int8)*v15 >> (n8_1 & 31);
 LABEL_24:
-    n4096_2 = (unsigned __int16)(~(-1 << v82) & v20);
+    n4096_2 = (unsigned __int16)(~(-1 << (v82 & 31)) & v20);
     n4096_11 = n4096_2;
     if ( n4096_2 == n4096_5 )
     {
@@ -376,7 +376,7 @@ LABEL_24:
       if ( n4096_7 + 1 >= v80 && (unsigned __int16)__sub_42C220_word_445910[0] < 0xCu )
       {
         ++__sub_42C220_word_445910[0];
-        v80 = 1 << SLOBYTE(__sub_42C220_word_445910[0]);
+        v80 = 1 << (SLOBYTE(__sub_42C220_word_445910[0]) & 31);
       }
     }
     n4096_3 = n4096_9;
@@ -475,7 +475,7 @@ LABEL_82:
   v50 = *(_BYTE *)(this_4 + 25);
   if ( v50 < 0 )
   {
-    ElementCount_7 = 1 << ((v50 & 7) + 1);
+    ElementCount_7 = 1 << (((v50 & 7) + 1) & 31);
     v93 = this_4 + 794;
     if ( fread((void *)(this_4 + 794), 3u, ElementCount_7, *(FILE **)this_4) == ElementCount_7 )
     {
