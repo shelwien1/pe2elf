@@ -19,7 +19,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42B830)
-__attribute__((force_align_arg_pointer)) int *__sub_42B830(int a1, int a2, int n5, int a4, int a5)
+BMF_REALIGN int *__sub_42B830(int a1, int a2, int n5, int a4, int a5)
 {
   PROBE_HIT(__sub_42B830);
   unsigned int v5; // eax

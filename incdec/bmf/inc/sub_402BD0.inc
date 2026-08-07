@@ -217,16 +217,17 @@ LABEL_34:
         default:
           v25 = v2;
 LABEL_32:
-          exit_402E40(2, v25 - 1);
+          exit_402E40(2, (const char *)(v25 - 1));
       }
       break;
     }
   }
   if ( !__sub_402BD0_dword_441058 || !__sub_402BD0_dword_44105C || __sub_402BD0_n4_6 <= 0 || __sub_402BD0_n4_6 > 4 || ::__sub_402BD0_n0xFFFF <= 0 || ::__sub_402BD0_n0xFFFF > 0xFFFF )
-    exit_402E40(2, result - 1);
+    exit_402E40(2, (const char *)(result - 1));
   return result;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_402BD0 @ 0x00402BD0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -251,5 +252,6 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_402BD0()
     "ret\n"
   );
 }
+#endif
 
 #undef exit_402E40

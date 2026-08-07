@@ -20,7 +20,7 @@ static t_sub_40A8A0_n4_1& __sub_40A8A0_n4_1 = *(t_sub_40A8A0_n4_1*)0x004433DC;
 
 
 PROBE_DECL(__sub_40A8A0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_40A8A0(_DWORD *_this, int Src, unsigned int *p_Src, int n6, int n24, int __sub_40A8A0_n2)
+BMF_REALIGN __attribute__((thiscall)) int __sub_40A8A0(_DWORD *_this, int Src, unsigned int *p_Src, int n6, int n24, int __sub_40A8A0_n2)
 {
   PROBE_HIT(__sub_40A8A0);
   double v6; // xmm0_8

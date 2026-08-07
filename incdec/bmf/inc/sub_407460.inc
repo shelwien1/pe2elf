@@ -295,6 +295,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int
   return v93 + v70;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_407460 @ 0x00407460: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -330,6 +331,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_407460()
     "ret\n"
   );
 }
+#endif
 
 #undef sub_411700
 #undef sub_4349F0

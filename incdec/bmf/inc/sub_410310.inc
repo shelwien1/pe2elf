@@ -18,7 +18,7 @@ static t_sub_410310_xmmword_439660& __sub_410310_xmmword_439660 = *(t_sub_410310
 
 
 PROBE_DECL(__sub_410310)
-__attribute__((force_align_arg_pointer)) BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
+BMF_REALIGN BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
 {
   PROBE_HIT(__sub_410310);
   int Src_1; // edi

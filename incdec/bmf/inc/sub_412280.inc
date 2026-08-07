@@ -16,7 +16,7 @@ static t_sub_412280_n0x800000& __sub_412280_n0x800000 = *(t_sub_412280_n0x800000
 
 
 PROBE_DECL(__sub_412280)
-__attribute__((force_align_arg_pointer)) unsigned int __sub_412280()
+BMF_REALIGN unsigned int __sub_412280()
 {
   PROBE_HIT(__sub_412280);
   unsigned int __sub_412280_n0x800000; // eax

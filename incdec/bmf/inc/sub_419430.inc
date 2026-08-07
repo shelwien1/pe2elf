@@ -23,7 +23,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_419430)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
+BMF_REALIGN __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
 {
   alignas(16) unsigned char __hexrays_frame[420];   // original frame, ebp-0x194..ebp+0x0
   _QWORD (&v28)[2] = *(_QWORD (*)[2])(__hexrays_frame + 0);

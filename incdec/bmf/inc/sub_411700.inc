@@ -7,7 +7,7 @@ static t_sub_411700_xmmword_4397A0& __sub_411700_xmmword_4397A0 = *(t_sub_411700
 #define sub_436E10 __sub_436E10
 
 PROBE_DECL(__sub_411700)
-__attribute__((force_align_arg_pointer)) BMF_SSE int __sub_411700(int a1, int n2)
+BMF_REALIGN BMF_SSE int __sub_411700(int a1, int n2)
 {
   PROBE_HIT(__sub_411700);
   unsigned int n2_1; // ecx

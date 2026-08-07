@@ -26,7 +26,7 @@ static inline int __fwd_sub_414390_sub_413900(void *a0, int a1) { return __sub_4
 #define sub_413900 __fwd_sub_414390_sub_413900
 
 PROBE_DECL(__sub_414390)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_414390(unsigned __int16 *_this, int a2, int a3)
+BMF_REALIGN __attribute__((thiscall)) int __sub_414390(unsigned __int16 *_this, int a2, int a3)
 {
   PROBE_HIT(__sub_414390);
   int v3; // esi

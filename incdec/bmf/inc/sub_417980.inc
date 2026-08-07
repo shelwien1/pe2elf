@@ -24,7 +24,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_417980)
-__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((fastcall)) int __sub_417980(int a1, int a2, int i, int a4, int a5)
+BMF_REALIGN BMF_SSE __attribute__((fastcall)) int __sub_417980(int a1, int a2, int i, int a4, int a5)
 {
   PROBE_HIT(__sub_417980);
   int i_1; // eax

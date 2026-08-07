@@ -44,7 +44,7 @@ static t_putc& __putc = *(t_putc*)0x0042D0CD;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42A350)
-__attribute__((force_align_arg_pointer)) int __sub_42A350(unsigned __int16 *a1, char *FileName)
+BMF_REALIGN int __sub_42A350(unsigned __int16 *a1, char *FileName)
 {
   PROBE_HIT(__sub_42A350);
   int n24; // eax

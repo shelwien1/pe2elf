@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_42B990)
-__attribute__((force_align_arg_pointer)) void __sub_42B990(char n5, int buf)
+BMF_REALIGN void __sub_42B990(char n5, int buf)
 {
   PROBE_HIT(__sub_42B990);
   unsigned int v2; // ebx

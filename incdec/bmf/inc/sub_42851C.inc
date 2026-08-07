@@ -320,6 +320,7 @@ LABEL_32:
   return 1;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_42851C @ 0x0042851C: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -348,6 +349,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_42851C()
     "ret\n"
   );
 }
+#endif
 
 #undef FILE
 #undef _access

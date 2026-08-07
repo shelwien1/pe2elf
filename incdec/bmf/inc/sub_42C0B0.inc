@@ -30,7 +30,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42C0B0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int *__sub_42C0B0(int _this, int a2)
+BMF_REALIGN __attribute__((thiscall)) int *__sub_42C0B0(int _this, int a2)
 {
   PROBE_HIT(__sub_42C0B0);
   char v3; // cl

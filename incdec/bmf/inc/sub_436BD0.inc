@@ -126,6 +126,7 @@ unsigned int __sub_436BD0(int a1)
   return level;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_436BD0 @ 0x00436BD0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -150,4 +151,5 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_436BD0()
     "ret\n"
   );
 }
+#endif
 

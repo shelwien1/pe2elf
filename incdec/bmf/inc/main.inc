@@ -3,10 +3,16 @@
 
 typedef char t_main_Destination_;
 static t_main_Destination_& __main_Destination_ = *(t_main_Destination_*)0x00442960;
+typedef size_t t_main_ElementCount;
+static t_main_ElementCount& __main_ElementCount = *(t_main_ElementCount*)0x00441054;
 typedef WIN32_FIND_DATAA t_main_FindFileData;
 static t_main_FindFileData& __main_FindFileData = *(t_main_FindFileData*)0x00442A60;
 typedef int t_main_bmp_;
 static t_main_bmp_& __main_bmp_ = *(t_main_bmp_*)0x00441040;
+typedef int t_main_dword_441058;
+static t_main_dword_441058& __main_dword_441058 = *(t_main_dword_441058*)0x00441058;
+typedef int t_main_dword_44105C;
+static t_main_dword_44105C& __main_dword_44105C = *(t_main_dword_44105C*)0x0044105C;
 typedef int t_main_dword_44108C;
 static t_main_dword_44108C& __main_dword_44108C = *(t_main_dword_44108C*)0x0044108C;
 typedef int t_main_dword_441090;
@@ -17,10 +23,18 @@ typedef int t_main_dword_4410A4[6];
 static t_main_dword_4410A4& __main_dword_4410A4 = *(t_main_dword_4410A4*)0x004410A4;
 typedef int t_main_dword_442BA0;
 static t_main_dword_442BA0& __main_dword_442BA0 = *(t_main_dword_442BA0*)0x00442BA0;
+typedef int t_main_dword_442BA8;
+static t_main_dword_442BA8& __main_dword_442BA8 = *(t_main_dword_442BA8*)0x00442BA8;
+typedef int t_main_dword_442BAC;
+static t_main_dword_442BAC& __main_dword_442BAC = *(t_main_dword_442BAC*)0x00442BAC;
+typedef int t_main_n0xFFFF;
+static t_main_n0xFFFF& __main_n0xFFFF = *(t_main_n0xFFFF*)0x00441064;
 typedef int t_main_n2_4;
 static t_main_n2_4& __main_n2_4 = *(t_main_n2_4*)0x00441094;
 typedef int t_main_n2_5;
 static t_main_n2_5& __main_n2_5 = *(t_main_n2_5*)0x00442BA4;
+typedef int t_main_n4_6;
+static t_main_n4_6& __main_n4_6 = *(t_main_n4_6*)0x00441060;
 typedef int t_main_n7_0;
 static t_main_n7_0& __main_n7_0 = *(t_main_n7_0*)0x0044109C;
 typedef int t_main_n7_1;
@@ -76,7 +90,7 @@ static t_printf& __printf = *(t_printf*)0x0042CBDB;
 #define FILE FILE1
 
 PROBE_DECL(__main)
-__attribute__((force_align_arg_pointer)) BMF_SSE int __main(int argc, const char **argv, const char **envp)
+BMF_REALIGN BMF_SSE int __main(int argc, const char **argv, const char **envp)
 {
   alignas(16) unsigned char __hexrays_frame[400];   // original frame, ebp-0x180..ebp+0x0
   char (&String1)[4] = *(char (*)[4])(__hexrays_frame + 0);
@@ -123,7 +137,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __main(int argc, const char
   sub_4280B0((int)"BMF_Options", (int)"RawFileInfo", (int)"-", &String1[2], 62);
   sub_402BD0((int)&String1[1]);
   if ( argc < 2 )
-    exit_402E40(0, (char)__main_off_44104C[__main_dword_44108C]);// "disabled"
+    exit_402E40(0, (const char *)__main_off_44104C[__main_dword_44108C], __main_n7_0, (const char *)__main_off_44104C[__main_dword_441090], __main_n7_1, __main_n2_4, (const char *)__main_off_44104C[__main_dword_441098 == 0], (const char *)*(&__main_bmp_ + __main_n2_5), (const char *)__main_off_44104C[__main_dword_442BA0], __main_Destination_ ? &__main_Destination_ : "none", (const char *)__main_off_44104C[__main_dword_442BAC], __main_ElementCount, __main_dword_441058, __main_dword_44105C, __main_n4_6, __main_n0xFFFF, (const char *)__main_off_44104C[__main_dword_442BA8]);// "disabled"
   do
   {
     ArgList = argv[argc_1];
@@ -188,7 +202,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __main(int argc, const char
                 __main_n2_4 = n2;
                 break;
               default:
-                exit_402E40(2, (char)ArgList);
+                exit_402E40(2, ArgList);
             }
           }
           else
@@ -208,10 +222,10 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __main(int argc, const char
     }
     else
     {
-      if ( strrchr(ArgList, 92) )
+      if ( bmf_path_sep(ArgList) )
       {
         strcpy(Str, ArgList);
-        strrchr(Str, 92)[1] = 0;
+        bmf_path_sep(Str)[1] = 0;
         ArgList = argv[argc_1];
       }
       else
@@ -220,7 +234,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __main(int argc, const char
       }
       FirstFileA = FindFirstFileA(ArgList, &__main_FindFileData);
       if ( FirstFileA == (HANDLE)-1 )
-        exit_402E40(1, (char)argv[argc_1]);
+        exit_402E40(1, argv[argc_1]);
       do
       {
         if ( (__main_FindFileData.dwFileAttributes & FILE_WRITE_EA) == 0 )

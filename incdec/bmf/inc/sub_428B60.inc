@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_428B60)
-__attribute__((force_align_arg_pointer)) char *__sub_428B60(unsigned int a1, char *a2, int a3)
+BMF_REALIGN char *__sub_428B60(unsigned int a1, char *a2, int a3)
 {
   PROBE_HIT(__sub_428B60);
   unsigned int v3; // edx

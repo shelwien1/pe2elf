@@ -16,7 +16,7 @@ static t_sprintf& __sprintf = *(t_sprintf*)0x0042CF4D;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4284E0)
-__attribute__((force_align_arg_pointer)) int __sub_4284E0(int BMF_Options, char *Template, int a3)
+BMF_REALIGN int __sub_4284E0(int BMF_Options, char *Template, int a3)
 {
   alignas(16) unsigned char __hexrays_frame[48];   // original frame, ebp-0x20..ebp+0x0
   char (&Buffer)[32] = *(char (*)[32])(__hexrays_frame + 0);

@@ -79,8 +79,10 @@ def main():
         f.write('\t.globl __bmf_data_end\n__bmf_data_end:\n')
 
     with open(os.path.join(HERE, 'bmfdata.mk'), 'w') as f:
-        f.write('BMFDATA_START = 0x%08X\n' % lo)
-        f.write('BMFDATA_END   = 0x%08X\n' % hi)
+        # No spaces around '=': build.sh dots this in as shell, and make
+        # accepts the same form.
+        f.write('BMFDATA_START=0x%08X\n' % lo)
+        f.write('BMFDATA_END=0x%08X\n' % hi)
     print('bmfdata.S: %08X..%08X (%d bytes) from %s'
           % (lo, hi, hi - lo, ', '.join(s[0] for s in secs)))
 

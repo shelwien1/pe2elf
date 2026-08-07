@@ -66,7 +66,10 @@ CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof',
         'void', 'int', 'char', 'short', 'long', 'float', 'double', 'signed',
         'unsigned', 'bool', 'struct', 'union', 'enum', 'const', 'static',
         '_BYTE', '_WORD', '_DWORD', '_QWORD', '_OWORD', '_UNKNOWN', '_BOOL1',
-        '_BOOL2', '_BOOL4', 'size_t', 'FILE', 'Stream'}
+        '_BOOL2', '_BOOL4', 'size_t', 'FILE', 'Stream',
+        # Helpers dummy32_head.cpp supplies, which a fixup can substitute into
+        # a body (bmf_path_sep replaces main's backslash-only strrchr).
+        'bmf_path_sep'}
 
 # Callees Hex-Rays prints as __usercall/__userpurge whose "register arguments"
 # are not arguments at all.
@@ -904,6 +907,10 @@ def make_thunk(name, va, conv, params, ret_reg):
 
     body = '\n'.join(f'    "{i}\\n"' for i in a)
     return [
+        # The thunk exists so that a caller still living in the PE can enter
+        # the moved body; nothing calls it in the standalone build, where the
+        # only callers are other moved bodies calling the cdecl form directly.
+        "#ifndef BMF_STANDALONE",
         f"// __{conv} thunk for {name} @ 0x{va}: reads the register arguments the",
         f"// caller passes, calls the moved body as cdecl, "
         + (f"and pops {pop} bytes of" if pop else "and lets the caller clean the"),
@@ -914,6 +921,7 @@ def make_thunk(name, va, conv, params, ret_reg):
         body,
         "  );",
         "}",
+        "#endif",
         "",
     ]
 
@@ -1477,7 +1485,10 @@ def emit(args, cache=None):
         # breaks the round-trip, and the internal gcc-to-gcc calls never need
         # it anyway.  Thunked entry points do their own `and $-16,%esp`
         # (§4.2), so they are left alone.
-        sig_line = '__attribute__((force_align_arg_pointer)) ' + sig_line
+        # BMF_REALIGN, not the attribute spelled out: the standalone build has
+        # no PE caller left, every call comes from g++ with esp already
+        # aligned, and the head compiles the macro away there.
+        sig_line = 'BMF_REALIGN ' + sig_line
         sig_line = re.sub(r'\b' + re.escape(args.name) + r'\b',
                           f'__{args.name}', sig_line, count=1)
         joined = [sig_line] + body_lines[1:]

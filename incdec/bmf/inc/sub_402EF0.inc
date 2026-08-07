@@ -50,7 +50,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_402EF0(_DWORD
   Stream_v = fopen(FileName, a_b);
   *(_DWORD *)(v5 + 4) = Stream_v;
   if ( !Stream_v )
-    exit_402E40(6, (char)FileName);
+    exit_402E40(6, FileName);
   *(_DWORD *)v5 = 0;
   v8 = fseek(Stream_v, 0, 0);
   v9 = *(_DWORD *)(v5 + 4);
@@ -59,7 +59,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_402EF0(_DWORD
 LABEL_10:
     if ( !v9 )
 LABEL_11:
-      exit_402E40(3, (char)FileName);
+      exit_402E40(3, FileName);
     return v5;
   }
   if ( !v9 )
@@ -81,6 +81,7 @@ LABEL_11:
   return v5;
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_402EF0 @ 0x00402EF0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 8 bytes of
 // stack on return.
@@ -107,6 +108,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_402EF0()
     "ret $8\n"
   );
 }
+#endif
 
 #undef FILE
 #undef feof

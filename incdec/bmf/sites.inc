@@ -7,7 +7,7 @@
   {0x00402BD0, "sub_402BD0", "usercall", 0, 0},
   {0x00402DF0, "sub_402DF0", "thiscall", 0, 0},
   {0x00402E10, "sub_402E10", "thiscall", 0, 0},
-  {0x00402E40, "exit_402E40", "stdcall", 0, 0},
+  {0x00402E40, "exit_402E40", "cdecl", 0, 0},
   {0x00402E70, "sub_402E70", "thiscall", 0, 0},
   {0x00402EB0, "sub_402EB0", "cdecl", 0, 0},
   {0x00402EF0, "sub_402EF0", "userpurge", 0, 0},

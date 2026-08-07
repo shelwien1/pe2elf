@@ -24,7 +24,7 @@ static t_sub_412E60_n0x800000& __sub_412E60_n0x800000 = *(t_sub_412E60_n0x800000
 
 
 PROBE_DECL(__sub_412E60)
-__attribute__((force_align_arg_pointer)) __attribute__((fastcall)) int __sub_412E60(_DWORD *a1)
+BMF_REALIGN __attribute__((fastcall)) int __sub_412E60(_DWORD *a1)
 {
   alignas(16) unsigned char __hexrays_frame[32824];   // original frame, ebp-0x8028..ebp+0x0
   unsigned __int16 * &v55 = *(unsigned __int16 * *)(__hexrays_frame + 0);

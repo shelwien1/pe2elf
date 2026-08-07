@@ -56,7 +56,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42C220)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_42C220(int _this, void (__cdecl *sub_42BB20)(int, int, int, int))
+BMF_REALIGN __attribute__((thiscall)) int __sub_42C220(int _this, void (__cdecl *sub_42BB20)(int, int, int, int))
 {
   PROBE_HIT(__sub_42C220);
   int this_1; // ebx

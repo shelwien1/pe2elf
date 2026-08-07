@@ -22,7 +22,7 @@ static t_sub_411E90_n0x800000& __sub_411E90_n0x800000 = *(t_sub_411E90_n0x800000
 
 
 PROBE_DECL(__sub_411E90)
-__attribute__((force_align_arg_pointer)) int __sub_411E90()
+BMF_REALIGN int __sub_411E90()
 {
   PROBE_HIT(__sub_411E90);
   unsigned int __sub_411E90_n0x800000; // ebp

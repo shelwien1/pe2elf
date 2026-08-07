@@ -211,10 +211,10 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_4015C0(const
   Stream_v = fopen(FileNamea, "rb");
   Stream_1 = Stream_v;
   if ( !Stream_v )
-    exit_402E40(6, (char)FileNamea);
+    exit_402E40(6, FileNamea);
   Buffer_1 = Buffer;
   if ( !fread(Buffer, 4u, 1u, Stream_v) )
-    exit_402E40(3, (char)FileNamea);
+    exit_402E40(3, FileNamea);
   fclose(Stream_1);
   if ( !__sub_4015C0_dword_442BAC )
   {
@@ -243,7 +243,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_4015C0(const
         p_i_8 = sub_42AB20(FileNamea);
         p_i = p_i_8;
         if ( !p_i_8 )
-          exit_402E40(4, Format);
+          exit_402E40(4);
         printf(
           "File %16s, image %dx%dx%d, size - %d:",
           FileNamea,
@@ -308,7 +308,7 @@ LABEL_117:
         }
         v63 = sub_402FE0(v56, a1, a2, (unsigned __int16 *)p_i, __sub_4015C0_dwLowDateTime);
         if ( !v63 )
-          exit_402E40(5, (char)FileName_1);
+          exit_402E40(5, FileName_1);
         printf(
           "%6.3f bpp%s",
           (double)v63 * 8.0 / (double)(*((unsigned __int16 *)p_i + 1) * *(unsigned __int16 *)p_i),
@@ -326,7 +326,7 @@ LABEL_10:
         p_i_10 = sub_429E80(FileNamea);
         p_i_1 = p_i_10;
         if ( !p_i_10 )
-          exit_402E40(4, Format);
+          exit_402E40(4);
         printf(
           "File %16s, image %dx%dx%d, size - %d:",
           FileNamea,
@@ -390,7 +390,7 @@ LABEL_47:
         }
         v30 = sub_402FE0(v24, a1, a2, p_i_1, __sub_4015C0_dwLowDateTime);
         if ( !v30 )
-          exit_402E40(5, (char)FileName_2);
+          exit_402E40(5, FileName_2);
         printf("%6.3f bpp%s", (double)v30 * 8.0 / (double)(p_i_1[1] * *p_i_1), "\n");
         __op_delete(p_i_1);
       }
@@ -399,7 +399,7 @@ LABEL_47:
         p_i_11 = sub_42A4E0((unsigned int)GIF8, FileNamea);
         p_i_2 = p_i_11;
         if ( !p_i_11 )
-          exit_402E40(4, Format);
+          exit_402E40(4);
         printf(
           "File %16s, image %dx%dx%d, size - %d:",
           FileNamea,
@@ -464,7 +464,7 @@ LABEL_93:
         }
         v52 = sub_402FE0(p_i_13, a1, a2, (unsigned __int16 *)p_i_2, __sub_4015C0_dwLowDateTime);
         if ( !v52 )
-          exit_402E40(5, (char)FileName_3);
+          exit_402E40(5, FileName_3);
         printf(
           "%6.3f bpp%s",
           (double)v52 * 8.0 / (double)(*((unsigned __int16 *)p_i_2 + 1) * *(unsigned __int16 *)p_i_2),
@@ -476,7 +476,7 @@ LABEL_93:
         p_i_14 = sub_428C40(FileNamea);
         p_i_3 = p_i_14;
         if ( !p_i_14 )
-          exit_402E40(4, Format);
+          exit_402E40(4);
         printf(
           "File %16s, image %dx%dx%d, size - %d:",
           FileNamea,
@@ -540,7 +540,7 @@ LABEL_28:
         }
         v20 = sub_402FE0(v14, a1, a2, p_i_3, __sub_4015C0_dwLowDateTime);
         if ( !v20 )
-          exit_402E40(5, (char)FileName_4);
+          exit_402E40(5, FileName_4);
         printf("%6.3f bpp%s", (double)v20 * 8.0 / (double)(p_i_3[1] * *p_i_3), "\n");
         __op_delete(p_i_3);
       }
@@ -559,7 +559,7 @@ LABEL_28:
       {
         printf("\n");
         if ( !*((_DWORD *)Block + 1) )
-          exit_402E40(3, (char)FileNamea);
+          exit_402E40(3, FileNamea);
         sub_402DF0((FILE **)Block, 1);
         goto LABEL_70;
       }
@@ -621,7 +621,7 @@ LABEL_146:
         p_i_12 = p_i_16;
       }
       if ( !sub_42B0C0((int)p_i_4, FileName_5, __sub_4015C0_dword_441098) )
-        exit_402E40(5, (char)FileName_5);
+        exit_402E40(5, FileName_5);
 LABEL_156:
       __op_delete(__sub_4015C0_dwLowDateTime);
       __sub_4015C0_dwLowDateTime = 0;
@@ -643,7 +643,7 @@ LABEL_145:
   p_i_18 = sub_402590(FileNamea);
   p_i_7 = p_i_18;
   if ( !p_i_18 )
-    exit_402E40(4, Format);
+    exit_402E40(4);
   printf(
     "File %16s, image %dx%dx%d, size - %d:",
     FileNamea,
@@ -708,7 +708,7 @@ LABEL_67:
   }
   v41 = sub_402FE0(p_i_6, a1, a2, (unsigned __int16 *)p_i_7, __sub_4015C0_dwLowDateTime);
   if ( !v41 )
-    exit_402E40(5, (char)FileName_6);
+    exit_402E40(5, FileName_6);
   printf(
     "%6.3f bpp%s",
     (double)v41 * 8.0 / (double)(*((unsigned __int16 *)p_i_7 + 1) * *(unsigned __int16 *)p_i_7),
@@ -721,6 +721,7 @@ LABEL_70:
     remove(FileNamea);
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_4015C0 @ 0x004015C0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -751,6 +752,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4015C0()
     "ret\n"
   );
 }
+#endif
 
 #undef FILE
 #undef _access

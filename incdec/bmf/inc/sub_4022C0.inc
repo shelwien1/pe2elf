@@ -124,7 +124,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
       if ( n13 == 13 || n13 == 79 )
         break;
       if ( n13 == 27 || n13 == 81 )
-        exit_402E40(8, FileTime.dwLowDateTime);
+        exit_402E40(8);
       if ( n13 == 83 )
         return n13;
     }
@@ -134,7 +134,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   if ( !Stream_v
     || fwrite((char *)::__sub_4022C0_dwLowDateTime + __sub_4022C0_dwLowDateTime[4] + 32, *((_DWORD *)__sub_4022C0_dwLowDateTime + 5), 1u, Stream_v) != 1 )
   {
-    exit_402E40(5, (char)lpFileName_1);
+    exit_402E40(5, lpFileName_1);
   }
   dwHighDateTime_1 = *(unsigned __int16 *)(p_i + 4);
   v5 = __sub_4022C0_dwLowDateTime[5];
@@ -170,7 +170,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
         dwHighDateTime_2 = fwrite(Buffer_1, 1u, dwHighDateTime, Stream_v);
         dwHighDateTime = *(unsigned __int16 *)(p_i_1 + 4);
         if ( dwHighDateTime_2 != dwHighDateTime )
-          exit_402E40(5, (char)lpFileName);
+          exit_402E40(5, lpFileName);
         if ( Buffer_2 )
         {
           Buffer_2 = (char *)((uintptr_t)Buffer_2 + (ElementCount));
@@ -200,12 +200,12 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   else
   {
     if ( fwrite(Buffer, 1u, *(_DWORD *)(p_i + 12), Stream_v) != *(_DWORD *)(p_i + 12) )
-      exit_402E40(5, (char)lpFileName);
+      exit_402E40(5, lpFileName);
     ElementCount_1 = *((_DWORD *)__sub_4022C0_dwLowDateTime + 6);
     dwLowDateTime_1 = (char *)::__sub_4022C0_dwLowDateTime;
   }
   if ( fwrite(&dwLowDateTime_1[v24 - ElementCount_1 + 8], ElementCount_1, 1u, Stream_v) != 1 )
-    exit_402E40(5, (char)lpFileName_2);
+    exit_402E40(5, lpFileName_2);
   fclose(Stream_v);
   DosDateTimeToFileTime(__sub_4022C0_dwLowDateTime[7], __sub_4022C0_dwLowDateTime[6], &FileTime);
   FileA = CreateFileA(lpFileName_2, GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
@@ -214,6 +214,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   return SetFileAttributesA(lpFileName_2, *((_DWORD *)__sub_4022C0_dwLowDateTime + 4));
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_4022C0 @ 0x004022C0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -238,6 +239,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4022C0()
     "ret\n"
   );
 }
+#endif
 
 #undef FILE
 #undef _access

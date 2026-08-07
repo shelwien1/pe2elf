@@ -74,7 +74,7 @@ typedef __attribute__((stdcall)) void * (*pfn_VirtualAlloc)(void *, unsigned int
 static pfn_VirtualAlloc& VirtualAlloc = *(pfn_VirtualAlloc*)0x00438024;   // IAT slot
 #endif
 PROBE_DECL(__sub_421930)
-__attribute__((force_align_arg_pointer)) BMF_SSE int __sub_421930(unsigned __int16 *p_i, unsigned __int8 *a2)
+BMF_REALIGN BMF_SSE int __sub_421930(unsigned __int16 *p_i, unsigned __int8 *a2)
 {
   alignas(16) unsigned char __hexrays_frame[324];   // original frame, ebp-0x134..ebp+0x0
   size_t &Size_1 = *(size_t *)(__hexrays_frame + 0);

@@ -13,7 +13,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402EB0)
-__attribute__((force_align_arg_pointer)) _DWORD *__sub_402EB0(int n256, int a2)
+BMF_REALIGN _DWORD *__sub_402EB0(int n256, int a2)
 {
   PROBE_HIT(__sub_402EB0);
   unsigned int v2; // esi

@@ -18,7 +18,7 @@ static inline int __fwd_sub_416C90_sub_413230(void *a0, int a1, unsigned int a2)
 #define sub_413230 __fwd_sub_416C90_sub_413230
 
 PROBE_DECL(__sub_416C90)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_416C90(int _this)
+BMF_REALIGN __attribute__((thiscall)) int __sub_416C90(int _this)
 {
   PROBE_HIT(__sub_416C90);
   int n2_1; // eax

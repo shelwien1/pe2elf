@@ -36,7 +36,7 @@ static t_sub_413900_n8_1& __sub_413900_n8_1 = *(t_sub_413900_n8_1*)0x0044570C;
 
 
 PROBE_DECL(__sub_413900)
-__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) int __sub_413900(unsigned __int16 *_this, int n2)
+BMF_REALIGN BMF_SSE __attribute__((thiscall)) int __sub_413900(unsigned __int16 *_this, int n2)
 {
   PROBE_HIT(__sub_413900);
   int n4; // edx

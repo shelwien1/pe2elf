@@ -20,7 +20,7 @@ static t_fseek& __fseek = *(t_fseek*)0x0042D0DD;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402FB0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) Stream *__sub_402FB0(FILE **_this)
+BMF_REALIGN __attribute__((thiscall)) Stream *__sub_402FB0(FILE **_this)
 {
   PROBE_HIT(__sub_402FB0);
   Stream *Stream_v; // eax

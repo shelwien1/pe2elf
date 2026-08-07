@@ -14,6 +14,7 @@
 #include <dlfcn.h>   // isspace/isdigit/toupper — §6.5 lets these fall through to glibc
 #include <sys/mman.h>
 #include <unistd.h>
+#include <cstdarg>
 #include <immintrin.h>
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,14 @@ typedef struct _WIN32_FIND_DATAA {
 } WIN32_FIND_DATAA;
 static_assert(sizeof(WIN32_FIND_DATAA) == 320, "Win32 WIN32_FIND_DATAA is 320 bytes");
 
+#ifdef BMF_STANDALONE
+// The standalone build has no PE runtime to hand out _iobufs: every stdio
+// call goes to glibc, so `FILE1` is glibc's FILE.  No body reads a field of
+// one — verified across all 143 — so nothing depends on the layout, only on
+// fopen's result reaching fread unchanged.  The name has to survive because
+// the bodies still say `#define FILE FILE1`.
+typedef FILE FILE1;
+#else
 // incdec.md §8.3 — MSVC's _iobuf, which is what BMF's statically-linked CRT
 // hands out.  32 bytes on Win32 (the Win64 form is 48), and nothing like
 // glibc's FILE.  Bodies that touch stdio are compiled with `#define FILE
@@ -112,6 +121,7 @@ struct FILE1 {
   char* _tmpfname; // +0x1C
 };
 static_assert(sizeof(FILE1) == 32, "Win32 _iobuf is 32 bytes");
+#endif
 
 // Hex-Rays invented a struct type named `Stream` for the thing fopen returns
 // (`Stream *Stream; ... Stream = fopen(...)`), so bodies use it as a type
@@ -135,6 +145,29 @@ typedef FILE1 Stream;
 #define __stdcall  __attribute__((stdcall))
 #define __fastcall __attribute__((fastcall))
 #define __thiscall __attribute__((thiscall))
+
+// Every moved entry point carries BMF_REALIGN.  In the hybrid build a PE
+// caller can enter one with esp aligned to 4 — the Microsoft i386 ABI promises
+// no more — while g++ assumes 16 and spills SSE locals with `movaps`, so the
+// prologue has to realign (§8.2.3).  Standalone there is no such caller: every
+// call comes from g++, which has already done the work, and the macro is empty.
+#ifdef BMF_STANDALONE
+#define BMF_REALIGN
+#else
+#define BMF_REALIGN __attribute__((force_align_arg_pointer))
+#endif
+
+// main splits argv[] on '\' to separate the directory from the file name,
+// because BMF is a Windows program.  Under the shim that works — it translates
+// backslashes — but standalone on POSIX a `dir/file.bmp` argument would leave
+// the directory part empty and the file would be looked for in the working
+// directory instead.  fixups.txt routes both strrchr calls through this, which
+// takes whichever separator appears last, so one body serves both builds.
+static inline char *bmf_path_sep(const char *s) {
+  const char *a = strrchr(s, '/');
+  const char *b = strrchr(s, '\\');
+  return (char *)(a > b ? a : b);
+}
 
 // incdec.md §8.2
 #define _BitScanForward(idx_ptr, mask_val) \
@@ -290,6 +323,29 @@ BMF_SSE static inline void _mm_stream_pi   (M64   *p, __gnu_m64   a) { _mm_strea
 typedef M128I _OWORD;
 #define __int128 M128I
 
+#ifdef BMF_STANDALONE
+// The standalone build has no Intel runtime to call, so the three
+// register-convention entries below become ordinary C.  Each is a plain
+// library function underneath — Intel's own documentation for the first two
+// is "log", and the third is strlen — and the trampolines existed only to
+// reach the PE's copies with their private register convention.
+BMF_SSE static inline unsigned __intel_sse2_strlen(unsigned off, const void *p) {
+  (void)off;
+  return (unsigned)strlen((const char *)p);
+}
+
+// Natural log, despite the name: see override/sub_436E10.inc.  Lane 1 is
+// computed too — the caller only ever reads lane 0 through the mask, but
+// leaving it undefined would let a signalling value through.
+BMF_SSE static inline M128D __svml_log2(const M128I &a) {
+  M128D x = a, r;
+  r.m128d_f64[0] = log(x.m128d_f64[0]);
+  r.m128d_f64[1] = log(x.m128d_f64[1]);
+  return r;
+}
+
+BMF_SSE static inline double __libm_sse2_log(double d) { return log(d); }
+#else
 // ---------------------------------------------------------------------------
 // Intel CRT maths entries, which take and return their argument in xmm0.
 //
@@ -381,6 +437,7 @@ BMF_SSE static inline double __libm_sse2_log(double d) {
                      "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7");
   return __y[0];
 }
+#endif
 
 // ---------------------------------------------------------------------------
 // CPUID, for the routines that override/ rewrites from their expected
@@ -426,6 +483,19 @@ static unsigned bmf_xgetbv0()
   return lo;
 }
 
+#if defined(BMF_STANDALONE) && !defined(BMF_PROBES)
+// §7.1's probes answered "did this body actually run inside the PE?".  In the
+// standalone build there is no PE and nothing to compare against, so they
+// compile away — including the trap-arming, which existed to get ahead of the
+// shim's own SIGSEGV handler.
+//
+// -DBMF_PROBES brings them back, and standalone/main.cpp dumps the counters
+// from an atexit handler.  That is how a standalone stream that differs from
+// the hybrid's gets pinned down: run both over the same image and the first
+// function whose call count diverges is where the two builds part company.
+#define PROBE_DECL(sym)
+#define PROBE_HIT(sym)  ((void)0)
+#else
 // ---------------------------------------------------------------------------
 // §7.1 probe registry
 // ---------------------------------------------------------------------------
@@ -509,9 +579,16 @@ static void bmf_trap_arm() {
 // A plain increment: BMF is single-threaded and this is a diagnostic counter,
 // so the atomic bought nothing and cost a `lock cmpxchg8b` per call.
 #define PROBE_HIT(sym)  (PROBE_TRAP(), ++sym##_probe.count)
+#endif   // standalone without -DBMF_PROBES
+
+#ifndef BMF_STANDALONE
 
 // ---------------------------------------------------------------------------
 // §5 patch helpers
+//
+// Both of these edit the loaded PE, and the ExitProcess hook below dumps the
+// probe counters on the way out of it.  Nothing in the standalone build has a
+// PE to edit or an ExitProcess to hook.
 // ---------------------------------------------------------------------------
 static void make_writable(void* addr, size_t len) {
   uintptr_t pg = (uintptr_t)sysconf(_SC_PAGESIZE);
@@ -556,3 +633,4 @@ static __attribute__((stdcall)) void my_ExitProcess(unsigned int code) {
   if (out != stderr) fclose(out);
   _exit((int)code);
 }
+#endif   // !BMF_STANDALONE

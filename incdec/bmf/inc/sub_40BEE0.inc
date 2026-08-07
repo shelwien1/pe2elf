@@ -788,6 +788,7 @@ LABEL_49:
   return k_9;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_40BEE0 @ 0x0040BEE0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -813,6 +814,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40BEE0()
     "ret\n"
   );
 }
+#endif
 
 #undef sub_40CB70
 #undef sub_40CC50

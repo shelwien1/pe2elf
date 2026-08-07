@@ -10,7 +10,7 @@ static inline int __fwd_sub_424550_sub_4248D0(void *a0, void *a1, int a2) { retu
 #define sub_4259F0 __sub_4259F0
 
 PROBE_DECL(__sub_424550)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_424550(int _this, _BYTE *a2, _BYTE *a3)
+BMF_REALIGN __attribute__((thiscall)) void __sub_424550(int _this, _BYTE *a2, _BYTE *a3)
 {
   PROBE_HIT(__sub_424550);
   int v4; // eax

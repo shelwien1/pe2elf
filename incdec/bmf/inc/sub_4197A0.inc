@@ -34,6 +34,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_4197A0(const
     sub_419610((void **)lpAddress, 1);
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_4197A0 @ 0x004197A0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -66,6 +67,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4197A0()
     "ret\n"
   );
 }
+#endif
 
 #undef sub_419610
 #undef sub_419800

@@ -484,6 +484,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_419800(__m12
   sub_414CE0();
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_419800 @ 0x00419800: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 16 bytes of
 // stack on return.
@@ -518,6 +519,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_419800()
     "ret $16\n"
   );
 }
+#endif
 
 #undef sub_414390
 #undef sub_414CE0

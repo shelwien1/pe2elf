@@ -50,7 +50,7 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 #define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_40B330)
-__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWORD *buf)
+BMF_REALIGN BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWORD *buf)
 {
   alignas(16) unsigned char __hexrays_frame[2176];   // original frame, ebp-0x870..ebp+0x0
   int &v79 = *(int *)(__hexrays_frame + 0);

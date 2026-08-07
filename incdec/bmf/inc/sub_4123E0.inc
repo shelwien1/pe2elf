@@ -20,7 +20,7 @@ static t_sub_4123E0_n0x800000& __sub_4123E0_n0x800000 = *(t_sub_4123E0_n0x800000
 
 
 PROBE_DECL(__sub_4123E0)
-__attribute__((force_align_arg_pointer)) unsigned int __sub_4123E0(unsigned int n8193)
+BMF_REALIGN unsigned int __sub_4123E0(unsigned int n8193)
 {
   PROBE_HIT(__sub_4123E0);
   unsigned int __sub_4123E0_n0x800000; // ebx

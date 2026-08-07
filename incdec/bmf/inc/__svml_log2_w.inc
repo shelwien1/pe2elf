@@ -9,6 +9,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) __gnu_m128d ____svml_lo
   return __svml_log2(a1);
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for __svml_log2_w @ 0x00436DC0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -34,4 +35,5 @@ BMF_SSE __attribute__((naked)) static void __thunk___svml_log2_w()
     "ret\n"
   );
 }
+#endif
 

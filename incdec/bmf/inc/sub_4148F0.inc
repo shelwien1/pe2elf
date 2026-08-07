@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_4148F0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_4148F0(_WORD *_this)
+BMF_REALIGN __attribute__((thiscall)) int __sub_4148F0(_WORD *_this)
 {
   PROBE_HIT(__sub_4148F0);
   int n0x4000; // eax

@@ -10,7 +10,7 @@ static t_sub_4118A0_xmmword_4397B0& __sub_4118A0_xmmword_4397B0 = *(t_sub_4118A0
 
 
 PROBE_DECL(__sub_4118A0)
-__attribute__((force_align_arg_pointer)) BMF_SSE unsigned int __sub_4118A0(_BYTE *a1, char *a2)
+BMF_REALIGN BMF_SSE unsigned int __sub_4118A0(_BYTE *a1, char *a2)
 {
   PROBE_HIT(__sub_4118A0);
   int n128_1; // ebx

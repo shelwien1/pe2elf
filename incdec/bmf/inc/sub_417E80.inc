@@ -36,7 +36,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_417E80)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
+BMF_REALIGN __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
 {
   alignas(16) unsigned char __hexrays_frame[100];   // original frame, ebp-0x54..ebp+0x0
   int &Size = *(int *)(__hexrays_frame + 0);

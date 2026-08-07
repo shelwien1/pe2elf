@@ -13,7 +13,7 @@ static t_sub_402E30& __sub_402E30 = *(t_sub_402E30*)0x00402E30;
 #define sub_402E30 __sub_402E30
 
 PROBE_DECL(__sub_42CBB0)
-__attribute__((force_align_arg_pointer)) int __sub_42CBB0(int sub_402E30)
+BMF_REALIGN int __sub_42CBB0(int sub_402E30)
 {
   PROBE_HIT(__sub_42CBB0);
   int __sub_42CBB0_psub_402E30; // eax

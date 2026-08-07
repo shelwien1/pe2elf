@@ -218,7 +218,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_4149C0(char A
   v4 = v1 + 1;
   __sub_4149C0_Buffer_0 = (int)v4;
   if ( n151 != 151 )
-    exit_402E40(4, ArgList);
+    exit_402E40(4);
   v5 = *v4;
   __sub_4149C0_n0x800000 = 128;
   result = (int)(v4 + 1);
@@ -228,6 +228,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_4149C0(char A
   return result;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_4149C0 @ 0x004149C0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -252,6 +253,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4149C0()
     "ret\n"
   );
 }
+#endif
 
 #undef FILE
 #undef exit_402E40

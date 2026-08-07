@@ -58,6 +58,7 @@ __gnu_m128d __sub_436E10(const __m128d &a0__ref, const __m128d &a1__ref)
 
 #undef __bmf_half_half
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_436E10 @ 0x00436E10: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -86,4 +87,5 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_436E10()
     "ret\n"
   );
 }
+#endif
 

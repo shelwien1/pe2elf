@@ -6,7 +6,7 @@ static t_sub_429DB0_argv& __sub_429DB0_argv = *(t_sub_429DB0_argv*)0x00445954;
 
 
 PROBE_DECL(__sub_429DB0)
-__attribute__((force_align_arg_pointer)) BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
+BMF_REALIGN BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
 {
   alignas(16) unsigned char __hexrays_frame[160];   // original frame, ebp-0x90..ebp+0x0
   __m128i (&Str)[8] = *(__m128i (*)[8])(__hexrays_frame + 0);

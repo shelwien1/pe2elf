@@ -18,7 +18,7 @@ static t_sub_412490_n0x88& __sub_412490_n0x88 = *(t_sub_412490_n0x88*)0x00445704
 
 
 PROBE_DECL(__sub_412490)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __int16 *a2, int n15)
+BMF_REALIGN __attribute__((thiscall)) int __sub_412490(unsigned __int16 *_this, unsigned __int16 *a2, int n15)
 {
   PROBE_HIT(__sub_412490);
   int v3; // ebx

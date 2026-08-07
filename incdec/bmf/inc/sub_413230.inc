@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_413230)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_413230(unsigned int *_this, int a2, unsigned int a3)
+BMF_REALIGN __attribute__((thiscall)) int __sub_413230(unsigned int *_this, int a2, unsigned int a3)
 {
   PROBE_HIT(__sub_413230);
   int n251; // eax

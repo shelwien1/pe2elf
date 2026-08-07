@@ -114,7 +114,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_4028B0(char *
   while ( n4 );
   if ( (!v15 && !v16) != v15 )
 LABEL_41:
-    exit_402E40(3, (char)FileName);
+    exit_402E40(3, FileName);
   Destination = &__sub_4028B0_Destination_;
   if ( !__sub_4028B0_Destination_ )
     Destination = FileName;
@@ -144,7 +144,7 @@ LABEL_15:
       p_i_1 = sub_42C0B0(v8, 1);
       p_i = (unsigned __int16 *)p_i_1;
       if ( !p_i_1 )
-        exit_402E40(4, Format);
+        exit_402E40(4);
       if ( v21 )
       {
         v24 = *((_BYTE *)p_i_1 + 10);
@@ -213,7 +213,7 @@ LABEL_30:
       }
       v29 = sub_402FE0(v38, a3, a4, p_i, __sub_4028B0_dwLowDateTime);
       if ( !v29 )
-        exit_402E40(5, (char)FileNamea);
+        exit_402E40(5, FileNamea);
       *(double *)a3.m128_u64 = (double)v29 * 8.0 / (double)(p_i[1] * *p_i);
       printf("%6.3f bpp%s", *(double *)a3.m128_u64, "\r");
       __op_delete(p_i);
@@ -229,6 +229,7 @@ LABEL_30:
   return printf("\n");
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_4028B0 @ 0x004028B0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -261,6 +262,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4028B0()
     "ret\n"
   );
 }
+#endif
 
 #undef FILE
 #undef printf

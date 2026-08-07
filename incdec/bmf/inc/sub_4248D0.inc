@@ -6,7 +6,7 @@ static t_sub_4248D0_dword_439BD8& __sub_4248D0_dword_439BD8 = *(t_sub_4248D0_dwo
 
 
 PROBE_DECL(__sub_4248D0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_4248D0(unsigned __int8 **_this, _DWORD *a2, int a3)
+BMF_REALIGN __attribute__((thiscall)) int __sub_4248D0(unsigned __int8 **_this, _DWORD *a2, int a3)
 {
   PROBE_HIT(__sub_4248D0);
   unsigned __int8 *v3; // esi

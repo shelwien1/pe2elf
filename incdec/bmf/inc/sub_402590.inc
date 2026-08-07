@@ -74,7 +74,7 @@ static t_fseek& __fseek = *(t_fseek*)0x0042D0DD;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402590)
-__attribute__((force_align_arg_pointer)) BMF_SSE int *__sub_402590(char *FileName)
+BMF_REALIGN BMF_SSE int *__sub_402590(char *FileName)
 {
   alignas(16) unsigned char __hexrays_frame[56];   // original frame, ebp-0x28..ebp+0x0
   char * &Str = *(char * *)(__hexrays_frame + 0);

@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_429C80)
-__attribute__((force_align_arg_pointer)) BMF_SSE int __sub_429C80(char *Str, int a2, char *a3)
+BMF_REALIGN BMF_SSE int __sub_429C80(char *Str, int a2, char *a3)
 {
   PROBE_HIT(__sub_429C80);
   _BYTE *v3; // ebx

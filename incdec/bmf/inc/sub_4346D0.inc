@@ -30,7 +30,7 @@ static t_irc__print& __irc__print = *(t_irc__print*)0x00434D40;
 #define FILE FILE1
 
 PROBE_DECL(__sub_4346D0)
-__attribute__((force_align_arg_pointer)) BMF_SSE void __sub_4346D0(char n3)
+BMF_REALIGN BMF_SSE void __sub_4346D0(char n3)
 {
   alignas(16) unsigned char __hexrays_frame[588];   // original frame, ebp-0x23c..ebp+0x0
   char &ArgList_1 = *(char *)(__hexrays_frame + 0);

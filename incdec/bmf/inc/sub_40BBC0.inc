@@ -154,6 +154,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BBC0(int n2
   return v47;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_40BBC0 @ 0x0040BBC0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -189,6 +190,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40BBC0()
     "ret\n"
   );
 }
+#endif
 
 #undef sub_411700
 #undef sub_434980

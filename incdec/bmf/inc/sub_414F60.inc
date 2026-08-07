@@ -82,7 +82,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_414F60)
-__attribute__((force_align_arg_pointer)) BMF_SSE char *__sub_414F60()
+BMF_REALIGN BMF_SSE char *__sub_414F60()
 {
   PROBE_HIT(__sub_414F60);
   char *__sub_414F60_n256; // eax

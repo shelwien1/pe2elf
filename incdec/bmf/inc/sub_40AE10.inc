@@ -6,7 +6,7 @@ static t_sub_40AE10_n2& __sub_40AE10_n2 = *(t_sub_40AE10_n2*)0x00443360;
 
 
 PROBE_DECL(__sub_40AE10)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_40AE10(_DWORD *_this, int Src)
+BMF_REALIGN __attribute__((thiscall)) int __sub_40AE10(_DWORD *_this, int Src)
 {
   PROBE_HIT(__sub_40AE10);
   int v2; // eax

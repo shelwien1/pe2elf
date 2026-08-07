@@ -18,7 +18,7 @@ static t_sub_411FD0_n0x88& __sub_411FD0_n0x88 = *(t_sub_411FD0_n0x88*)0x00445704
 
 
 PROBE_DECL(__sub_411FD0)
-__attribute__((force_align_arg_pointer)) unsigned int __sub_411FD0(int a1, int a2, int a3)
+BMF_REALIGN unsigned int __sub_411FD0(int a1, int a2, int a3)
 {
   PROBE_HIT(__sub_411FD0);
   unsigned int __sub_411FD0_n0x800000; // ecx

@@ -307,6 +307,7 @@ LABEL_24:
   return v4;
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_42BC50 @ 0x0042BC50: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 4 bytes of
 // stack on return.
@@ -337,6 +338,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_42BC50()
     "ret $4\n"
   );
 }
+#endif
 
 #undef FILE
 #undef _access

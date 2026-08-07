@@ -429,6 +429,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
   return __sub_40F450_buf;
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_40F450 @ 0x0040F450: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 12 bytes of
 // stack on return.
@@ -459,5 +460,6 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40F450()
     "ret $12\n"
   );
 }
+#endif
 
 #undef sub_434980

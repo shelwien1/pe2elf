@@ -680,6 +680,7 @@ LABEL_109:
   return p_i_1;
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_403820 @ 0x00403820: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 8 bytes of
 // stack on return.
@@ -712,6 +713,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_403820()
     "ret $8\n"
   );
 }
+#endif
 
 #undef FILE
 #undef fclose

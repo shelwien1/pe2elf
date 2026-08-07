@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_4293B0)
-__attribute__((force_align_arg_pointer)) unsigned __int8 *__sub_4293B0(unsigned __int8 *a1, unsigned int a2, int a3)
+BMF_REALIGN unsigned __int8 *__sub_4293B0(unsigned __int8 *a1, unsigned int a2, int a3)
 {
   PROBE_HIT(__sub_4293B0);
   unsigned __int8 n128; // cl

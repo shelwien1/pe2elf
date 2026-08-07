@@ -3,7 +3,7 @@
 
 
 PROBE_DECL(__sub_428BE0)
-__attribute__((force_align_arg_pointer)) char *__sub_428BE0(_DWORD *a1, char *Src, int a3)
+BMF_REALIGN char *__sub_428BE0(_DWORD *a1, char *Src, int a3)
 {
   PROBE_HIT(__sub_428BE0);
   _DWORD *v3; // ecx

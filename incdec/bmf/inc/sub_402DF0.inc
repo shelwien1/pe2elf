@@ -15,7 +15,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402DF0)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) FILE **__sub_402DF0(FILE **Block, char a2)
+BMF_REALIGN __attribute__((thiscall)) FILE **__sub_402DF0(FILE **Block, char a2)
 {
   PROBE_HIT(__sub_402DF0);
   sub_402FB0(Block);

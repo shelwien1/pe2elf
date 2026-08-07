@@ -53,7 +53,7 @@ static t_op_new& __op_new = *(t_op_new*)0x0042CF0A;
 #define FILE FILE1
 
 PROBE_DECL(__sub_40DEB0)
-__attribute__((force_align_arg_pointer)) int *__sub_40DEB0()
+BMF_REALIGN int *__sub_40DEB0()
 {
   alignas(16) unsigned char __hexrays_frame[112];   // original frame, ebp-0x60..ebp+0x0
   char * &v61 = *(char * *)(__hexrays_frame + 0);

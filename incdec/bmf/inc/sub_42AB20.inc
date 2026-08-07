@@ -67,7 +67,7 @@ static t_op_delete& __op_delete = *(t_op_delete*)0x0042CF18;
 #define FILE FILE1
 
 PROBE_DECL(__sub_42AB20)
-__attribute__((force_align_arg_pointer)) BMF_SSE int *__sub_42AB20(char *FileName)
+BMF_REALIGN BMF_SSE int *__sub_42AB20(char *FileName)
 {
   alignas(16) unsigned char __hexrays_frame[128];   // original frame, ebp-0x70..ebp+0x0
   unsigned int &Size_4 = *(unsigned int *)(__hexrays_frame + 0);

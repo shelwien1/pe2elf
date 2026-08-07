@@ -32,7 +32,7 @@ static t_sub_414060_n8_1& __sub_414060_n8_1 = *(t_sub_414060_n8_1*)0x0044570C;
 
 
 PROBE_DECL(__sub_414060)
-__attribute__((force_align_arg_pointer)) __attribute__((thiscall)) int __sub_414060(unsigned __int16 *_this)
+BMF_REALIGN __attribute__((thiscall)) int __sub_414060(unsigned __int16 *_this)
 {
   PROBE_HIT(__sub_414060);
   unsigned int __sub_414060_n0x800000; // ebx

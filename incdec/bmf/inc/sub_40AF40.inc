@@ -18,7 +18,7 @@ static t_sub_40AF40_n8& __sub_40AF40_n8 = *(t_sub_40AF40_n8*)0x00443368;
 
 
 PROBE_DECL(__sub_40AF40)
-__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40AF40(_DWORD *_this, int Src, int i, int n0x20000, int a5)
+BMF_REALIGN BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40AF40(_DWORD *_this, int Src, int i, int n0x20000, int a5)
 {
   PROBE_HIT(__sub_40AF40);
   _DWORD *this_1; // esi

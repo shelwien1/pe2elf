@@ -1007,6 +1007,7 @@ LABEL_19:
   return n192;
 }
 
+#ifndef BMF_STANDALONE
 // __usercall thunk for sub_405CF0 @ 0x00405CF0: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and lets the caller clean the
 // stack on return.
@@ -1036,6 +1037,7 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_405CF0()
     "ret\n"
   );
 }
+#endif
 
 #undef sub_407460
 #undef sub_411700

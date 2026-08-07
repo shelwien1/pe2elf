@@ -22,7 +22,7 @@ static t_sscanf& __sscanf = *(t_sscanf*)0x0042D662;
 #define FILE FILE1
 
 PROBE_DECL(__sub_428050)
-__attribute__((force_align_arg_pointer)) int __sub_428050(int BMF_Options, int FSQ, int n7)
+BMF_REALIGN int __sub_428050(int BMF_Options, int FSQ, int n7)
 {
   alignas(16) unsigned char __hexrays_frame[156];   // original frame, ebp-0x8c..ebp+0x0
   char (&Buffer)[64] = *(char (*)[64])(__hexrays_frame + 0);

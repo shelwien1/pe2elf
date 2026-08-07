@@ -1207,6 +1207,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
   return n255;
 }
 
+#ifndef BMF_STANDALONE
 // __userpurge thunk for sub_41A130 @ 0x0041A130: reads the register arguments the
 // caller passes, calls the moved body as cdecl, and pops 8 bytes of
 // stack on return.
@@ -1239,5 +1240,6 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_41A130()
     "ret $8\n"
   );
 }
+#endif
 
 #undef sub_41C4B0

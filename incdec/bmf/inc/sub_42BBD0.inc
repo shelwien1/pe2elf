@@ -14,7 +14,7 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #define sub_4349F0 __sub_4349F0
 
 PROBE_DECL(__sub_42BBD0)
-__attribute__((force_align_arg_pointer)) void __sub_42BBD0(int a2, int a3, int a4, int a5)
+BMF_REALIGN void __sub_42BBD0(int a2, int a3, int a4, int a5)
 {
   PROBE_HIT(__sub_42BBD0);
   int v5; // esi

@@ -14,7 +14,7 @@ static t_sub_412340_n0x88& __sub_412340_n0x88 = *(t_sub_412340_n0x88*)0x00445704
 
 
 PROBE_DECL(__sub_412340)
-__attribute__((force_align_arg_pointer)) BOOL __sub_412340(int a1, int a2)
+BMF_REALIGN BOOL __sub_412340(int a1, int a2)
 {
   PROBE_HIT(__sub_412340);
   unsigned int __sub_412340_n0x800000; // ecx
