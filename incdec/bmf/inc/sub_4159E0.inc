@@ -3,37 +3,26 @@
 
 typedef char t_sub_4159E0_buf_0[0x10000];
 static t_sub_4159E0_buf_0& __sub_4159E0_buf_0 = *(t_sub_4159E0_buf_0*)0x00443440;
-#define buf_0 __sub_4159E0_buf_0
 typedef char t_sub_4159E0_byte_445440[544];
 static t_sub_4159E0_byte_445440& __sub_4159E0_byte_445440 = *(t_sub_4159E0_byte_445440*)0x00445440;
-#define byte_445440 __sub_4159E0_byte_445440
 typedef char t_sub_4159E0_byte_445700;
 static t_sub_4159E0_byte_445700& __sub_4159E0_byte_445700 = *(t_sub_4159E0_byte_445700*)0x00445700;
-#define byte_445700 __sub_4159E0_byte_445700
 typedef int t_sub_4159E0_n0x2000;
 static t_sub_4159E0_n0x2000& __sub_4159E0_n0x2000 = *(t_sub_4159E0_n0x2000*)0x004456FC;
-#define n0x2000 __sub_4159E0_n0x2000
 typedef int t_sub_4159E0_n0x2000_0;
 static t_sub_4159E0_n0x2000_0& __sub_4159E0_n0x2000_0 = *(t_sub_4159E0_n0x2000_0*)0x004456F8;
-#define n0x2000_0 __sub_4159E0_n0x2000_0
 typedef int t_sub_4159E0_n0x2000_1;
 static t_sub_4159E0_n0x2000_1& __sub_4159E0_n0x2000_1 = *(t_sub_4159E0_n0x2000_1*)0x004456F4;
-#define n0x2000_1 __sub_4159E0_n0x2000_1
 typedef int t_sub_4159E0_n0x88;
 static t_sub_4159E0_n0x88& __sub_4159E0_n0x88 = *(t_sub_4159E0_n0x88*)0x00445704;
-#define n0x88 __sub_4159E0_n0x88
 typedef int t_sub_4159E0_n15;
 static t_sub_4159E0_n15& __sub_4159E0_n15 = *(t_sub_4159E0_n15*)0x00445748;
-#define n15 __sub_4159E0_n15
 typedef int t_sub_4159E0_n15_0;
 static t_sub_4159E0_n15_0& __sub_4159E0_n15_0 = *(t_sub_4159E0_n15_0*)0x0044574C;
-#define n15_0 __sub_4159E0_n15_0
 typedef int t_sub_4159E0_n4_3;
 static t_sub_4159E0_n4_3& __sub_4159E0_n4_3 = *(t_sub_4159E0_n4_3*)0x00445744;
-#define n4_3 __sub_4159E0_n4_3
 typedef int t_sub_4159E0_n4_4;
 static t_sub_4159E0_n4_4& __sub_4159E0_n4_4 = *(t_sub_4159E0_n4_4*)0x00445740;
-#define n4_4 __sub_4159E0_n4_4
 
 #define sub_411E90 __sub_411E90
 #define sub_411FD0 __sub_411FD0
@@ -54,7 +43,7 @@ __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
   int n4; // ebp
   _WORD *n2_8; // esi
   int n4_1; // eax
-  int n15; // ebx
+  int __sub_4159E0_n15; // ebx
   int n15_1; // ecx
   int v8; // edx
   int v9; // ebx
@@ -132,7 +121,7 @@ __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
   int v82; // eax
   int n15_36; // ecx
   int *n2_3; // esi
-  int n0x2000; // edx
+  int __sub_4159E0_n0x2000; // edx
   int n15_16; // eax
   int v87; // eax
   int n2; // ebx
@@ -142,8 +131,8 @@ __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
   int n15_38; // eax
   char v93; // al
   int n15_22; // esi
-  int n4_3; // edx
-  int n4_4; // ecx
+  int __sub_4159E0_n4_3; // edx
+  int __sub_4159E0_n4_4; // ecx
   unsigned __int16 *v97; // esi
   unsigned __int16 *v98; // ecx
   int p_n15_11; // eax
@@ -261,19 +250,19 @@ __attribute__((thiscall)) int __sub_4159E0(int *_this, int a2)
   n4 = *n2_7;
   n2_8 = (_WORD *)*(_this + 19);
   n4_1 = (unsigned __int16)*(n2_8 - 4);
-  n15 = n2_7[4];
+  __sub_4159E0_n15 = n2_7[4];
   this_1 = _this;
   n15_1 = *(n2_7 - 4);
   n15_3 = n4;
-  ::n4_4 = n4;
+  ::__sub_4159E0_n4_4 = n4;
   n15_7 = n4_1;
-  ::n4_3 = n4_1;
-  n15_4 = n15;
-  ::n15 = n15;
-  v8 = *((unsigned __int8 *)n2_7 + 3) + 4 * (n15 == n15_1);
+  ::__sub_4159E0_n4_3 = n4_1;
+  n15_4 = __sub_4159E0_n15;
+  ::__sub_4159E0_n15 = __sub_4159E0_n15;
+  v8 = *((unsigned __int8 *)n2_7 + 3) + 4 * (__sub_4159E0_n15 == n15_1);
   v9 = *((unsigned __int8 *)n2_7 + 11);
   n15_2 = n15_1;
-  n15_0 = n15_1;
+  __sub_4159E0_n15_0 = n15_1;
   v10 = 32 * *((unsigned __int8 *)n2_8 - 4)
       + 16 * *((unsigned __int8 *)n2_8 - 2)
       + 2 * *((unsigned __int8 *)n2_8 - 6)
@@ -570,7 +559,7 @@ LABEL_42:
     }
     sub_412490((unsigned __int16 *)this_3 + 3 * n15_32 + 538179, (unsigned __int16 *)this_3 + 538176, n15_4);
     n15_13 = n15_4;
-    n4_2 = ::n4_4;
+    n4_2 = ::__sub_4159E0_n4_4;
     v74 = this_3[269672];
     this_3[8] = n15_4;
     *(_BYTE *)(v74 + n4_2) = n15_13;
@@ -592,7 +581,7 @@ LABEL_42:
           n2_4 = n2_14;
           n2_1 = n15_14 & n15_35;
           sub_411FD0(*n2_14, n2_14[1], (n15_14 & n15_35) != 0);
-          if ( *((unsigned __int16 *)&this_1[24 * (n15_34 == 0) + 269474 + 24 * (n15_15 == p_n15)] + 3 * n15_15 + 1) < (unsigned int)n0x88 )
+          if ( *((unsigned __int16 *)&this_1[24 * (n15_34 == 0) + 269474 + 24 * (n15_15 == p_n15)] + 3 * n15_15 + 1) < (unsigned int)__sub_4159E0_n0x88 )
             sub_4148F0(n2_4);
           n2_15 = n2_1;
           n15_31 = n15_35;
@@ -616,10 +605,10 @@ LABEL_42:
     n15_36 = (int)&this_3[v82 + 24];
     n15_31 = n15_36;
     n2_3 = &this_3[4 * n0xFFFF_1 + 776];
-    n0x2000 = HIWORD(this_3[4 * n0xFFFF_1 + 778]);
-    if ( n0x2000 )
+    __sub_4159E0_n0x2000 = HIWORD(this_3[4 * n0xFFFF_1 + 778]);
+    if ( __sub_4159E0_n0x2000 )
     {
-      if ( n0x2000 == 1 )
+      if ( __sub_4159E0_n0x2000 == 1 )
       {
         v143 = &this_3[v82 + 24];
         v144 = *(unsigned __int8 *)(n15_36 + 15);
@@ -655,12 +644,12 @@ LABEL_42:
         this_3 = this_1;
         LOWORD(v149) = (v157 + v149 - 1) / v149 + n15_20;
         *((_WORD *)n2_3 + 4) = v149;
-        n0x2000 = (unsigned __int16)(p_n15 + v149 + v158);
-        *((_WORD *)n2_3 + 5) = n0x2000;
+        __sub_4159E0_n0x2000 = (unsigned __int16)(p_n15 + v149 + v158);
+        *((_WORD *)n2_3 + 5) = __sub_4159E0_n0x2000;
         v185 = (unsigned __int16 *)this_3[19];
       }
       n15_16 = *v185;
-      ::n0x2000 = n0x2000;
+      ::__sub_4159E0_n0x2000 = __sub_4159E0_n0x2000;
       if ( n15_16 == n15_3 )
       {
         v87 = *(unsigned __int16 *)n2_3;
@@ -687,8 +676,8 @@ LABEL_42:
         n2 = 0;
       }
       p_n15_5 = *((unsigned __int16 *)n2_3 + 6);
-      n0x2000_1 = v87;
-      n0x2000_0 = *((unsigned __int16 *)n2_3 + n2) + v87;
+      __sub_4159E0_n0x2000_1 = v87;
+      __sub_4159E0_n0x2000_0 = *((unsigned __int16 *)n2_3 + n2) + v87;
       p_n15_7 = *((unsigned __int16 *)n2_3 + 5);
       n15_17 = *((unsigned __int8 *)n2_3 + 15);
       if ( p_n15_7 > p_n15_5
@@ -750,7 +739,7 @@ LABEL_42:
     {
       v159 = (unsigned __int16 *)&this_3[v82 + 24];
       n15_18 = *v185;
-      ::n0x2000 = *(unsigned __int16 *)(n15_36 + 10);
+      ::__sub_4159E0_n0x2000 = *(unsigned __int16 *)(n15_36 + 10);
       if ( n15_18 == n15_3 )
       {
         v161 = *v159;
@@ -776,8 +765,8 @@ LABEL_42:
         v161 = 0;
         n2_2 = 0;
       }
-      n0x2000_1 = v161;
-      n0x2000_0 = *(unsigned __int16 *)(n15_31 + 2 * n2_2) + v161;
+      __sub_4159E0_n0x2000_1 = v161;
+      __sub_4159E0_n0x2000_0 = *(unsigned __int16 *)(n15_31 + 2 * n2_2) + v161;
       p_n15_10 = *(unsigned __int16 *)(n15_31 + 10);
       p_n15_8 = *(unsigned __int16 *)(n15_31 + 12);
       n15_20 = *(unsigned __int8 *)(n15_31 + 15);
@@ -836,17 +825,17 @@ LABEL_42:
       return 1;
     n15_12 = 0;
   }
-  v93 = byte_445700;
-  n15_22 = ::n15;
-  n4_3 = ::n4_3;
-  n4_4 = ::n4_4;
-  buf_0[n15_0] = byte_445700;
-  buf_0[n15_22] = v93;
+  v93 = __sub_4159E0_byte_445700;
+  n15_22 = ::__sub_4159E0_n15;
+  __sub_4159E0_n4_3 = ::__sub_4159E0_n4_3;
+  __sub_4159E0_n4_4 = ::__sub_4159E0_n4_4;
+  __sub_4159E0_buf_0[__sub_4159E0_n15_0] = __sub_4159E0_byte_445700;
+  __sub_4159E0_buf_0[n15_22] = v93;
   v97 = (unsigned __int16 *)this_3[1514859];
-  buf_0[n4_3] = v93;
-  buf_0[n4_4] = v93;
+  __sub_4159E0_buf_0[__sub_4159E0_n4_3] = v93;
+  __sub_4159E0_buf_0[__sub_4159E0_n4_4] = v93;
   v98 = (unsigned __int16 *)this_3[1514858];
-  byte_445440[0] = v93;
+  __sub_4159E0_byte_445440[0] = v93;
   n15_14 = n15_12;
   this_3[269554] = 0;
   p_n15_11 = *v97;
@@ -924,16 +913,16 @@ LABEL_42:
         n15_28);
       if ( n15_28 )
         return n15_14 + 1;
-      buf_0[v129] = byte_445700;
+      __sub_4159E0_buf_0[v129] = __sub_4159E0_byte_445700;
     }
     n32 = this_3[11] + 1;
     this_3[11] = n32;
   }
   while ( n32 < 32 );
   n15_29 = n15_14;
-  n4_5 = ::n4_4;
+  n4_5 = ::__sub_4159E0_n4_4;
   v134 = this_3[269552];
-  this_3[269554] = this_3[269553] + 24 * ::n4_3;
+  this_3[269554] = this_3[269553] + 24 * ::__sub_4159E0_n4_3;
   v135 = v134 + 24 * n4_5;
   v136 = (unsigned int **)this_3[269558];
   this_3[269555] = v135;
@@ -949,17 +938,6 @@ LABEL_94:
   }
 }
 
-#undef buf_0
-#undef byte_445440
-#undef byte_445700
-#undef n0x2000
-#undef n0x2000_0
-#undef n0x2000_1
-#undef n0x88
-#undef n15
-#undef n15_0
-#undef n4_3
-#undef n4_4
 #undef sub_411E90
 #undef sub_411FD0
 #undef sub_412490

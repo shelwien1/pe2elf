@@ -3,19 +3,14 @@
 
 typedef char t_sub_416860_buf_0[0x10000];
 static t_sub_416860_buf_0& __sub_416860_buf_0 = *(t_sub_416860_buf_0*)0x00443440;
-#define buf_0 __sub_416860_buf_0
 typedef char t_sub_416860_byte_445700;
 static t_sub_416860_byte_445700& __sub_416860_byte_445700 = *(t_sub_416860_byte_445700*)0x00445700;
-#define byte_445700 __sub_416860_byte_445700
 typedef int t_sub_416860_n15;
 static t_sub_416860_n15& __sub_416860_n15 = *(t_sub_416860_n15*)0x00445748;
-#define n15 __sub_416860_n15
 typedef int t_sub_416860_n4_3;
 static t_sub_416860_n4_3& __sub_416860_n4_3 = *(t_sub_416860_n4_3*)0x00445744;
-#define n4_3 __sub_416860_n4_3
 typedef int t_sub_416860_n4_4;
 static t_sub_416860_n4_4& __sub_416860_n4_4 = *(t_sub_416860_n4_4*)0x00445740;
-#define n4_4 __sub_416860_n4_4
 
 
 PROBE_DECL(__sub_416860)
@@ -40,7 +35,7 @@ __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
 
   n6 = *(_this + 11);
   result = p_n15[n6];
-  if ( buf_0[result] == byte_445700 )
+  if ( __sub_416860_buf_0[result] == __sub_416860_byte_445700 )
     return -1;
   v3 = 32
      * (result == p_n15[15] || result == p_n15[14] || result == p_n15[13] || result == p_n15[12] || result == p_n15[11])
@@ -69,7 +64,7 @@ __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
     return -1;
   v7 = *(_this + 269553);
   v16 = v7;
-  v8 = *(unsigned __int16 **)(v7 + 24 * n4_4 + 20);
+  v8 = *(unsigned __int16 **)(v7 + 24 * __sub_416860_n4_4 + 20);
   v9 = v6
      + 8
      * (result == *(unsigned __int16 *)((char *)v8 + 27)
@@ -83,9 +78,9 @@ __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
      || result == *(unsigned __int16 *)((char *)v8 + 3)
      || result == *v8);
   *(_this + 13) = v9;
-  v10 = *(unsigned __int16 **)(v7 + 24 * n4_3 + 20);
+  v10 = *(unsigned __int16 **)(v7 + 24 * __sub_416860_n4_3 + 20);
   v11 = *(unsigned __int16 **)(v7 + 24 * result + 20);
-  v12 = *(unsigned __int16 **)(v16 + 24 * n15 + 20);
+  v12 = *(unsigned __int16 **)(v16 + 24 * __sub_416860_n15 + 20);
   v13 = (result == *(unsigned __int16 *)((char *)v12 + 15)
       || result == v12[6]
       || result == *(unsigned __int16 *)((char *)v12 + 9)
@@ -93,16 +88,16 @@ __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
       || result == *(unsigned __int16 *)((char *)v12 + 3)
       || result == *v12)
       + 2
-      * (n4_3 == *(unsigned __int16 *)((char *)v11 + 27)
-      || n4_3 == v11[12]
-      || n4_3 == *(unsigned __int16 *)((char *)v11 + 21)
-      || n4_3 == v11[9]
-      || n4_3 == *(unsigned __int16 *)((char *)v11 + 15)
-      || n4_3 == v11[6]
-      || n4_3 == *(unsigned __int16 *)((char *)v11 + 9)
-      || n4_3 == v11[3]
-      || n4_3 == *(unsigned __int16 *)((char *)v11 + 3)
-      || n4_3 == *v11)
+      * (__sub_416860_n4_3 == *(unsigned __int16 *)((char *)v11 + 27)
+      || __sub_416860_n4_3 == v11[12]
+      || __sub_416860_n4_3 == *(unsigned __int16 *)((char *)v11 + 21)
+      || __sub_416860_n4_3 == v11[9]
+      || __sub_416860_n4_3 == *(unsigned __int16 *)((char *)v11 + 15)
+      || __sub_416860_n4_3 == v11[6]
+      || __sub_416860_n4_3 == *(unsigned __int16 *)((char *)v11 + 9)
+      || __sub_416860_n4_3 == v11[3]
+      || __sub_416860_n4_3 == *(unsigned __int16 *)((char *)v11 + 3)
+      || __sub_416860_n4_3 == *v11)
       + 4
       * (result == *(unsigned __int16 *)((char *)v10 + 9)
       || result == v10[3]
@@ -122,8 +117,3 @@ __attribute__((thiscall)) int __sub_416860(int *_this, _DWORD *p_n15)
   return result;
 }
 
-#undef buf_0
-#undef byte_445700
-#undef n15
-#undef n4_3
-#undef n4_4

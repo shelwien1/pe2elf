@@ -3,7 +3,6 @@
 
 typedef int t_sub_4248D0_dword_439BD8[8];
 static t_sub_4248D0_dword_439BD8& __sub_4248D0_dword_439BD8 = *(t_sub_4248D0_dword_439BD8*)0x00439BD8;
-#define dword_439BD8 __sub_4248D0_dword_439BD8
 
 
 PROBE_DECL(__sub_4248D0)
@@ -137,7 +136,7 @@ __attribute__((thiscall)) int __sub_4248D0(unsigned __int8 **_this, _DWORD *a2, 
   v16 = (v36 + 7) >> 4;
   v17 = (unsigned __int8 *)*((unsigned __int8 *)_this + v16 + 216);
   v31 = v17;
-  v35 = dword_439BD8[(_DWORD)v17];
+  v35 = __sub_4248D0_dword_439BD8[(_DWORD)v17];
   *(_this + 3) = v17;
   *(_this + 4) = &(*(_this + v16 + 438))[*((unsigned __int8 *)_this + (_DWORD)v4 + 728)];
   *(_this + 8) = (unsigned __int8 *)(((unsigned int)(216 - (_DWORD)v4) >> 31) + ((unsigned int)(22 - (_DWORD)v4) >> 31));
@@ -182,4 +181,3 @@ __attribute__((thiscall)) int __sub_4248D0(unsigned __int8 **_this, _DWORD *a2, 
   return result;
 }
 
-#undef dword_439BD8

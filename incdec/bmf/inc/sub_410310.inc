@@ -3,25 +3,18 @@
 
 typedef int t_sub_410310_n2;
 static t_sub_410310_n2& __sub_410310_n2 = *(t_sub_410310_n2*)0x00443360;
-#define n2 __sub_410310_n2
 typedef int t_sub_410310_n256_0;
 static t_sub_410310_n256_0& __sub_410310_n256_0 = *(t_sub_410310_n256_0*)0x00443398;
-#define n256_0 __sub_410310_n256_0
 typedef __int128 t_sub_410310_xmmword_439620;
 static t_sub_410310_xmmword_439620& __sub_410310_xmmword_439620 = *(t_sub_410310_xmmword_439620*)0x00439620;
-#define xmmword_439620 __sub_410310_xmmword_439620
 typedef __int128 t_sub_410310_xmmword_439630;
 static t_sub_410310_xmmword_439630& __sub_410310_xmmword_439630 = *(t_sub_410310_xmmword_439630*)0x00439630;
-#define xmmword_439630 __sub_410310_xmmword_439630
 typedef __int128 t_sub_410310_xmmword_439640;
 static t_sub_410310_xmmword_439640& __sub_410310_xmmword_439640 = *(t_sub_410310_xmmword_439640*)0x00439640;
-#define xmmword_439640 __sub_410310_xmmword_439640
 typedef __int128 t_sub_410310_xmmword_439650;
 static t_sub_410310_xmmword_439650& __sub_410310_xmmword_439650 = *(t_sub_410310_xmmword_439650*)0x00439650;
-#define xmmword_439650 __sub_410310_xmmword_439650
 typedef __int128 t_sub_410310_xmmword_439660;
 static t_sub_410310_xmmword_439660& __sub_410310_xmmword_439660 = *(t_sub_410310_xmmword_439660*)0x00439660;
-#define xmmword_439660 __sub_410310_xmmword_439660
 
 
 PROBE_DECL(__sub_410310)
@@ -80,15 +73,15 @@ BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
   char v53; // [esp+10Fh] [ebp-11h]
 
   Src_1 = Src;
-  n256 = n256_0;
+  n256 = __sub_410310_n256_0;
   result = (_BYTE *)(Src + 1);
-  n128_1 = 2 * n256_0 + 1;
-  if ( n2 )
+  n128_1 = 2 * __sub_410310_n256_0 + 1;
+  if ( __sub_410310_n2 )
   {
-    si128 = _mm_load_si128((const __m128i *)&xmmword_439640);
-    v8 = _mm_load_si128((const __m128i *)&xmmword_439620);
-    v9 = _mm_load_si128((const __m128i *)&xmmword_439650);
-    v10 = _mm_load_si128((const __m128i *)&xmmword_439660);
+    si128 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439640);
+    v8 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439620);
+    v9 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439650);
+    v10 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439660);
     n0x70 = 0;
     v52[0] = 0;
     v53 = 0x80;
@@ -113,7 +106,7 @@ BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
     Src_1 = Src;
     v52[253] = -127;
     v52[254] = 127;
-    if ( n256_0 )
+    if ( __sub_410310_n256_0 )
     {
       n128 = n128_1;
       if ( n128_1 < 128 )
@@ -140,8 +133,8 @@ BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
   }
   else
   {
-    v20 = _mm_load_si128((const __m128i *)&xmmword_439620);
-    v21 = _mm_load_si128((const __m128i *)&xmmword_439630);
+    v20 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439620);
+    v21 = _mm_load_si128((const __m128i *)&__sub_410310_xmmword_439630);
     for ( k = 0; k < 0x100; k += 128 )
     {
       *(__m128i *)&v52[k] = v21;
@@ -175,7 +168,7 @@ BMF_SSE _BYTE *__sub_410310(int Src, int i, int a3)
       }
       while ( n256 < 256 );
       Src_1 = Src;
-      n256_1 = n256_0;
+      n256_1 = __sub_410310_n256_0;
     }
     if ( n256 - n256_1 < 256 )
     {
@@ -282,10 +275,3 @@ LABEL_41:
   return result;
 }
 
-#undef n2
-#undef n256_0
-#undef xmmword_439620
-#undef xmmword_439630
-#undef xmmword_439640
-#undef xmmword_439650
-#undef xmmword_439660

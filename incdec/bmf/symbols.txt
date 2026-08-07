@@ -564,6 +564,7 @@
 00442944	hConsoleHandle	int	
 00442948	hObject	int	
 00442960	Destination_	char	
+00442A60	FindFileData	WIN32_FIND_DATAA	
 00442BA0	dword_442BA0	int	
 00442BA4	n2_5	int	
 00442BA8	dword_442BA8	int	

@@ -3,13 +3,10 @@
 
 typedef char t_sub_4256F0_byte_439BC0[8];
 static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)0x00439BC0;
-#define byte_439BC0 __sub_4256F0_byte_439BC0
 typedef char t_sub_4256F0_byte_439BC8[8];
 static t_sub_4256F0_byte_439BC8& __sub_4256F0_byte_439BC8 = *(t_sub_4256F0_byte_439BC8*)0x00439BC8;
-#define byte_439BC8 __sub_4256F0_byte_439BC8
 typedef char t_sub_4256F0_byte_439BD0[8];
 static t_sub_4256F0_byte_439BD0& __sub_4256F0_byte_439BD0 = *(t_sub_4256F0_byte_439BD0*)0x00439BD0;
-#define byte_439BD0 __sub_4256F0_byte_439BD0
 
 static inline unsigned int __fwd_sub_4256F0_sub_4118A0(void *a0, void *a1) { return __sub_4118A0((_BYTE *)a0, (char *)a1); }
 #define sub_4118A0 __fwd_sub_4256F0_sub_4118A0
@@ -67,18 +64,18 @@ __attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
   v27 = n4 << 8;
   do
   {
-    v9 = (unsigned __int8)byte_439BC0[v6];
+    v9 = (unsigned __int8)__sub_4256F0_byte_439BC0[v6];
     v28 = v8;
     *((_BYTE *)_this + 2 * v8 + 216) = v6;
     v10 = (2 * v8 == v9) + v6;
     *(_this + 2 * v8 + 438) = v27 | v7;
-    v11 = 2 * v8 == (unsigned __int8)byte_439BC8[v7];
+    v11 = 2 * v8 == (unsigned __int8)__sub_4256F0_byte_439BC8[v7];
     *((_BYTE *)_this + 2 * v8 + 217) = v10;
     v12 = 2 * v8 + 1;
     v13 = v11 + v7;
-    v6 = (v12 == (unsigned __int8)byte_439BC0[v10]) + v10;
+    v6 = (v12 == (unsigned __int8)__sub_4256F0_byte_439BC0[v10]) + v10;
     *(_this + 2 * v8 + 439) = v13 | v27;
-    v7 = (v12 == (unsigned __int8)byte_439BC8[v13]) + v13;
+    v7 = (v12 == (unsigned __int8)__sub_4256F0_byte_439BC8[v13]) + v13;
     ++v8;
   }
   while ( (unsigned int)(v28 + 1) < 0x100 );
@@ -86,11 +83,11 @@ __attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
   v15 = 0;
   do
   {
-    v16 = (unsigned __int8)byte_439BD0[v15];
+    v16 = (unsigned __int8)__sub_4256F0_byte_439BD0[v15];
     *((_BYTE *)_this + 2 * n0x80 + 728) = 8 * v15;
     v17 = (2 * n0x80 == v16) + v15;
     *((_BYTE *)_this + 2 * n0x80 + 729) = 8 * v17;
-    v18 = 2 * n0x80++ + 1 == (unsigned __int8)byte_439BD0[v17];
+    v18 = 2 * n0x80++ + 1 == (unsigned __int8)__sub_4256F0_byte_439BD0[v17];
     v15 = v18 + v17;
   }
   while ( n0x80 < 0x80 );
@@ -160,8 +157,5 @@ __attribute__((thiscall)) int *__sub_4256F0(int *_this, int i, int a3, int n4)
 }
 
 #undef FILE
-#undef byte_439BC0
-#undef byte_439BC8
-#undef byte_439BD0
 #undef sub_4118A0
 #undef sub_413560

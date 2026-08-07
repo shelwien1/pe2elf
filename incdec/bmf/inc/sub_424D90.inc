@@ -3,34 +3,24 @@
 
 typedef char t_sub_424D90_byte_44339D[0x10000];
 static t_sub_424D90_byte_44339D& __sub_424D90_byte_44339D = *(t_sub_424D90_byte_44339D*)0x0044339D;
-#define byte_44339D __sub_424D90_byte_44339D
 typedef char t_sub_424D90_byte_44339E[0x10000];
 static t_sub_424D90_byte_44339E& __sub_424D90_byte_44339E = *(t_sub_424D90_byte_44339E*)0x0044339E;
-#define byte_44339E __sub_424D90_byte_44339E
 typedef char t_sub_424D90_byte_44339F[0x10000];
 static t_sub_424D90_byte_44339F& __sub_424D90_byte_44339F = *(t_sub_424D90_byte_44339F*)0x0044339F;
-#define byte_44339F __sub_424D90_byte_44339F
 typedef char t_sub_424D90_byte_4433AD[16];
 static t_sub_424D90_byte_4433AD& __sub_424D90_byte_4433AD = *(t_sub_424D90_byte_4433AD*)0x004433AD;
-#define byte_4433AD __sub_424D90_byte_4433AD
 typedef char t_sub_424D90_byte_4433BD[15];
 static t_sub_424D90_byte_4433BD& __sub_424D90_byte_4433BD = *(t_sub_424D90_byte_4433BD*)0x004433BD;
-#define byte_4433BD __sub_424D90_byte_4433BD
 typedef int t_sub_424D90_dword_4433A0[0x10000];
 static t_sub_424D90_dword_4433A0& __sub_424D90_dword_4433A0 = *(t_sub_424D90_dword_4433A0*)0x004433A0;
-#define dword_4433A0 __sub_424D90_dword_4433A0
 typedef int t_sub_424D90_dword_4433A4[0x10000];
 static t_sub_424D90_dword_4433A4& __sub_424D90_dword_4433A4 = *(t_sub_424D90_dword_4433A4*)0x004433A4;
-#define dword_4433A4 __sub_424D90_dword_4433A4
 typedef int t_sub_424D90_dword_4433A8[0x10000];
 static t_sub_424D90_dword_4433A8& __sub_424D90_dword_4433A8 = *(t_sub_424D90_dword_4433A8*)0x004433A8;
-#define dword_4433A8 __sub_424D90_dword_4433A8
 typedef char t_sub_424D90_n3_0;
 static t_sub_424D90_n3_0& __sub_424D90_n3_0 = *(t_sub_424D90_n3_0*)0x004433CD;
-#define n3_0 __sub_424D90_n3_0
 typedef int t_sub_424D90_n4_5;
 static t_sub_424D90_n4_5& __sub_424D90_n4_5 = *(t_sub_424D90_n4_5*)0x00443394;
-#define n4_5 __sub_424D90_n4_5
 
 #ifndef __PE_DECL___sub_414F60
 #define __PE_DECL___sub_414F60
@@ -184,7 +174,7 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
   i = *p_i;
   v3 = p_i[1];
   i_1 = i;
-  if ( n4_5 > 0 )
+  if ( __sub_424D90_n4_5 > 0 )
   {
     i_2 = i;
     n4 = 0;
@@ -197,17 +187,17 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
         v7 = nullptr;
       *(&Block + n4++) = v7;
     }
-    while ( n4 < n4_5 );
+    while ( n4 < __sub_424D90_n4_5 );
   }
-  v8 = 16 * (unsigned __int8)byte_4433AD[0];
-  v9 = 16 * (unsigned __int8)byte_4433BD[0];
-  v10 = 16 * (unsigned __int8)n3_0;
-  v11 = byte_44339E[v8];
-  v12 = byte_44339E[v9];
-  v13 = byte_44339E[v10];
-  v14 = (unsigned __int8)byte_44339F[v9];
-  LOBYTE(v10) = byte_44339F[v10];
-  v105 = (unsigned __int8)byte_44339F[v8];
+  v8 = 16 * (unsigned __int8)__sub_424D90_byte_4433AD[0];
+  v9 = 16 * (unsigned __int8)__sub_424D90_byte_4433BD[0];
+  v10 = 16 * (unsigned __int8)__sub_424D90_n3_0;
+  v11 = __sub_424D90_byte_44339E[v8];
+  v12 = __sub_424D90_byte_44339E[v9];
+  v13 = __sub_424D90_byte_44339E[v10];
+  v14 = (unsigned __int8)__sub_424D90_byte_44339F[v9];
+  LOBYTE(v10) = __sub_424D90_byte_44339F[v10];
+  v105 = (unsigned __int8)__sub_424D90_byte_44339F[v8];
   v106 = v14;
   v15 = v11 & 8;
   v90 = v10;
@@ -221,7 +211,7 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
     v108 = v16;
     i_3 = i_1;
     v109 = v15;
-    n4_1 = n4_5;
+    n4_1 = __sub_424D90_n4_5;
     do
     {
       if ( n4_1 > 0 )
@@ -305,9 +295,9 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
           *(_DWORD *)(v23 + 28) = v49;
           *(_DWORD *)(v23 + 24) = *(unsigned __int8 *)(v46 - 3) + v48;
           *(_DWORD *)(v23 + 28) = *(unsigned __int8 *)(v46 - 1) + v49;
-          n4_1 = n4_5;
+          n4_1 = __sub_424D90_n4_5;
         }
-        while ( n4_2 < n4_5 );
+        while ( n4_2 < __sub_424D90_n4_5 );
         v19 = v91;
         v3 = v93;
         i_3 = i_1;
@@ -321,8 +311,8 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
         do
         {
           v50 = (unsigned __int8 *)Block;
-          n5_9 = *(unsigned __int8 *)(a2 + (unsigned __int8)byte_44339D[0]);
-          v114 = (unsigned __int8)byte_44339D[0];
+          n5_9 = *(unsigned __int8 *)(a2 + (unsigned __int8)__sub_424D90_byte_44339D[0]);
+          v114 = (unsigned __int8)__sub_424D90_byte_44339D[0];
           n5_6 = n5_9;
           sub_4248D0((unsigned __int8 **)Block, nullptr, 0);
           n5_7 = n5_6;
@@ -362,10 +352,10 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
           *((_DWORD *)v50 + 51) += 2;
           *((_DWORD *)v50 + 52) += 2;
           *((_DWORD *)v50 + 53) += 2;
-          v60 = *(_BYTE *)(a2 + (unsigned __int8)byte_4433AD[0]);
-          v113 = (unsigned __int8)byte_4433AD[0];
+          v60 = *(_BYTE *)(a2 + (unsigned __int8)__sub_424D90_byte_4433AD[0]);
+          v113 = (unsigned __int8)__sub_424D90_byte_4433AD[0];
           if ( v109 )
-            v60 = v60 - v105 - *(_BYTE *)((unsigned __int8)byte_44339D[0] + a2);
+            v60 = v60 - v105 - *(_BYTE *)((unsigned __int8)__sub_424D90_byte_44339D[0] + a2);
           v61 = v102;
           v118 = v60;
           sub_4248D0(v102, Block, 0);
@@ -405,15 +395,15 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
           v61[51] += 2;
           v61[52] += 2;
           v61[53] += 2;
-          v69 = *(unsigned __int8 *)((unsigned __int8)byte_4433BD[0] + a2);
-          v117 = (unsigned __int8)byte_4433BD[0];
+          v69 = *(unsigned __int8 *)((unsigned __int8)__sub_424D90_byte_4433BD[0] + a2);
+          v117 = (unsigned __int8)__sub_424D90_byte_4433BD[0];
           if ( v108 )
             v69 = (unsigned __int8)(v69
                                   - v106
-                                  - ((dword_4433A0[4 * (unsigned __int8)byte_4433BD[0]]
-                                    * *(unsigned __int8 *)((unsigned __int8)byte_44339D[0] + a2)
-                                    + dword_4433A4[4 * (unsigned __int8)byte_4433BD[0]]
-                                    * (unsigned int)*(unsigned __int8 *)((unsigned __int8)byte_4433AD[0] + a2)
+                                  - ((__sub_424D90_dword_4433A0[4 * (unsigned __int8)__sub_424D90_byte_4433BD[0]]
+                                    * *(unsigned __int8 *)((unsigned __int8)__sub_424D90_byte_44339D[0] + a2)
+                                    + __sub_424D90_dword_4433A4[4 * (unsigned __int8)__sub_424D90_byte_4433BD[0]]
+                                    * (unsigned int)*(unsigned __int8 *)((unsigned __int8)__sub_424D90_byte_4433AD[0] + a2)
                                     + 40) >> 7));
           v70 = v103;
           sub_4248D0(v103, (_DWORD *)v102, (int)Block);
@@ -451,19 +441,19 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
           v70[51] += 2;
           v70[52] += 2;
           v70[53] += 2;
-          n4_1 = n4_5;
-          if ( n4_5 >= 4 )
+          n4_1 = __sub_424D90_n4_5;
+          if ( __sub_424D90_n4_5 >= 4 )
           {
-            n3 = (unsigned __int8)n3_0;
+            n3 = (unsigned __int8)__sub_424D90_n3_0;
             if ( v96 )
-              v79 = *(_BYTE *)((unsigned __int8)n3_0 + a2)
+              v79 = *(_BYTE *)((unsigned __int8)__sub_424D90_n3_0 + a2)
                   - v90
-                  - ((dword_4433A4[4 * (unsigned __int8)n3_0] * *(unsigned __int8 *)((unsigned __int8)n3_0 + a2 - 2)
-                    + dword_4433A0[4 * (unsigned __int8)n3_0] * *(unsigned __int8 *)((unsigned __int8)n3_0 + a2 - 3)
-                    + dword_4433A8[4 * (unsigned __int8)n3_0] * *(unsigned __int8 *)((unsigned __int8)n3_0 + a2 - 1)
+                  - ((__sub_424D90_dword_4433A4[4 * (unsigned __int8)__sub_424D90_n3_0] * *(unsigned __int8 *)((unsigned __int8)__sub_424D90_n3_0 + a2 - 2)
+                    + __sub_424D90_dword_4433A0[4 * (unsigned __int8)__sub_424D90_n3_0] * *(unsigned __int8 *)((unsigned __int8)__sub_424D90_n3_0 + a2 - 3)
+                    + __sub_424D90_dword_4433A8[4 * (unsigned __int8)__sub_424D90_n3_0] * *(unsigned __int8 *)((unsigned __int8)__sub_424D90_n3_0 + a2 - 1)
                     + 64) >> 7);
             else
-              v79 = *(_BYTE *)((unsigned __int8)n3_0 + a2);
+              v79 = *(_BYTE *)((unsigned __int8)__sub_424D90_n3_0 + a2);
             v80 = v104;
             v99 = v79;
             sub_4248D0(v104, (_DWORD *)v103, (int)v102);
@@ -503,7 +493,7 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
             v80[51] += 2;
             v80[52] += 2;
             v80[53] += 2;
-            n4_1 = n4_5;
+            n4_1 = __sub_424D90_n4_5;
           }
           a2 += n4_1;
           ++i_4;
@@ -518,8 +508,8 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
     while ( v19 < v3 );
   }
   sub_414CE0();
-  n4_3 = n4_5;
-  if ( n4_5 > 0 )
+  n4_3 = __sub_424D90_n4_5;
+  if ( __sub_424D90_n4_5 > 0 )
   {
     n4_4 = 0;
     do
@@ -528,7 +518,7 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
       if ( v89 )
       {
         sub_4244A0(v89, 1);
-        n4_3 = n4_5;
+        n4_3 = __sub_424D90_n4_5;
       }
       ++n4_4;
     }
@@ -538,16 +528,6 @@ int __sub_424D90(unsigned __int16 *p_i, int a2)
 }
 
 #undef FILE
-#undef byte_44339D
-#undef byte_44339E
-#undef byte_44339F
-#undef byte_4433AD
-#undef byte_4433BD
-#undef dword_4433A0
-#undef dword_4433A4
-#undef dword_4433A8
-#undef n3_0
-#undef n4_5
 #undef sub_4135A0
 #undef sub_414CE0
 #undef sub_414F60

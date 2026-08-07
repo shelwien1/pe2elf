@@ -3,7 +3,6 @@
 
 typedef int t_sub_4259F0_n256_1;
 static t_sub_4259F0_n256_1& __sub_4259F0_n256_1 = *(t_sub_4259F0_n256_1*)0x00445708;
-#define n256_1 __sub_4259F0_n256_1
 
 #ifndef __PE_DECL___sub_413430
 #define __PE_DECL___sub_413430
@@ -166,7 +165,7 @@ __attribute__((thiscall)) int __sub_4259F0(int _this)
     *(_WORD *)(v11 + 3816) = v12;
     if ( n5_2 >= 5 )
       sub_413430(
-        (unsigned __int16 *)n256_1
+        (unsigned __int16 *)__sub_4259F0_n256_1
       + 32512 * (n5_2 & 1)
       + 254 * v110
       + 254
@@ -186,7 +185,7 @@ __attribute__((thiscall)) int __sub_4259F0(int _this)
     *(_WORD *)(v13 + 3784) = v15;
     if ( n5_2 >= 5 )
       sub_413430(
-        (unsigned __int16 *)n256_1
+        (unsigned __int16 *)__sub_4259F0_n256_1
       + 32512 * (n5_2 & 1)
       + 254 * v14
       + 254
@@ -221,7 +220,7 @@ __attribute__((thiscall)) int __sub_4259F0(int _this)
            + ((n5_2 & 1) << 7);
       if ( (v112 & 0x38) >= 0x38
         || (sub_413430(
-              (unsigned __int16 *)n256_1
+              (unsigned __int16 *)__sub_4259F0_n256_1
             + 32512 * (n5_2 & 1)
             + 254 * *(_DWORD *)(_this + 16)
             + 254
@@ -233,7 +232,7 @@ __attribute__((thiscall)) int __sub_4259F0(int _this)
               n2),
             (v112 & 0x38) != 0) )
       {
-        sub_413430((unsigned __int16 *)n256_1 + 254 * v112 - 2032, n2);
+        sub_413430((unsigned __int16 *)__sub_4259F0_n256_1 + 254 * v112 - 2032, n2);
       }
       result = *(_DWORD *)(_this + 12);
     }
@@ -780,5 +779,4 @@ __attribute__((thiscall)) int __sub_4259F0(int _this)
   return result;
 }
 
-#undef n256_1
 #undef sub_413430

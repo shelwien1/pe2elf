@@ -43,45 +43,6 @@ static t_n1024& __n1024 = *(t_n1024*)0x00445B5C;
 #endif
 #define n1024 __n1024
 
-// EFLAGS.ID (bit 21) is writable iff the CPU implements CPUID.
-static int bmf_has_cpuid()
-{
-  unsigned before, after;
-  __asm__ volatile("pushfl\n\t"
-                   "popl %0\n\t"
-                   "movl %0, %1\n\t"
-                   "xorl $0x200000, %1\n\t"
-                   "pushl %1\n\t"
-                   "popfl\n\t"
-                   "pushfl\n\t"
-                   "popl %1\n\t"
-                   : "=&r"(before), "=&r"(after) : : "cc");
-  if (before == after)
-    return 0;
-  __asm__ volatile("pushl %0\n\t popfl" : : "r"(before) : "cc");
-  return 1;
-}
-
-static void bmf_cpuid(unsigned leaf, unsigned *a, unsigned *b, unsigned *c, unsigned *d)
-{
-  // -fPIC on i386 reserves EBX, so it has to be saved around CPUID by hand.
-  __asm__ volatile("xchgl %%ebx, %1\n\t"
-                   "cpuid\n\t"
-                   "xchgl %%ebx, %1"
-                   : "=a"(*a), "=&r"(*b), "=c"(*c), "=d"(*d)
-                   : "0"(leaf), "2"(0));
-}
-
-// XGETBV encoded by hand: the mnemonic needs -mxsave, which the rest of this
-// translation unit is not built with.
-static unsigned bmf_xgetbv0()
-{
-  unsigned lo, hi;
-  __asm__ volatile(".byte 0x0f, 0x01, 0xd0" : "=a"(lo), "=d"(hi) : "c"(0));
-  (void)hi;
-  return lo;
-}
-
 PROBE_DECL(__sub_434A30)
 void __sub_434A30()
 {

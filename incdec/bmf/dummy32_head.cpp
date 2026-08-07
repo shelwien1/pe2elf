@@ -55,6 +55,41 @@ typedef unsigned int  UINT;
 #define PAGE_EXECUTE_READWRITE 0x40
 #define INVALID_HANDLE_VALUE ((HANDLE)(long)-1)
 #define INVALID_FILE_ATTRIBUTES ((DWORD)-1)
+#define GENERIC_READ          0x80000000
+#define GENERIC_WRITE         0x40000000
+#define FILE_SHARE_READ              0x01
+#define FILE_READ_ATTRIBUTES         0x80
+#define FILE_ATTRIBUTE_NORMAL        0x80
+#define FILE_ATTRIBUTE_DIRECTORY     0x10
+#define FILE_WRITE_EA                0x10   // IDA's name for the same bit
+#define CREATE_ALWAYS                   2
+#define OPEN_EXISTING                   3
+#define MAX_PATH                      260
+
+// The handful of Win32 types the file-handling bodies name, with the layouts
+// windows.h gives them — the structs are read and written by real Win32 calls
+// through the shim, so the field offsets have to match.
+typedef char           CHAR;
+typedef char *         LPSTR;
+typedef const char *   LPCSTR;
+typedef void *         LPVOID;
+typedef struct _FILETIME {
+  DWORD dwLowDateTime;
+  DWORD dwHighDateTime;
+} FILETIME;
+typedef struct _WIN32_FIND_DATAA {
+  DWORD    dwFileAttributes;      // +0x00
+  FILETIME ftCreationTime;        // +0x04
+  FILETIME ftLastAccessTime;      // +0x0C
+  FILETIME ftLastWriteTime;       // +0x14
+  DWORD    nFileSizeHigh;         // +0x1C
+  DWORD    nFileSizeLow;          // +0x20
+  DWORD    dwReserved0;           // +0x24
+  DWORD    dwReserved1;           // +0x28
+  CHAR     cFileName[MAX_PATH];   // +0x2C
+  CHAR     cAlternateFileName[14];// +0x130
+} WIN32_FIND_DATAA;
+static_assert(sizeof(WIN32_FIND_DATAA) == 320, "Win32 WIN32_FIND_DATAA is 320 bytes");
 
 // incdec.md §8.3 — MSVC's _iobuf, which is what BMF's statically-linked CRT
 // hands out.  32 bytes on Win32 (the Win64 form is 48), and nothing like
@@ -250,6 +285,50 @@ BMF_SSE static inline void _mm_stream_pi   (M64   *p, __gnu_m64   a) { _mm_strea
 // the same 16-byte SSE type.
 typedef M128I _OWORD;
 #define __int128 M128I
+
+// ---------------------------------------------------------------------------
+// CPUID, for the routines that override/ rewrites from their expected
+// results (Hex-Rays renders them as `__asm { cpuid }` plus reads of its
+// _EAX/_ECX/_EDX pseudo-registers, which have no C form).
+// ---------------------------------------------------------------------------
+// EFLAGS.ID (bit 21) is writable iff the CPU implements CPUID.
+static int bmf_has_cpuid()
+{
+  unsigned before, after;
+  __asm__ volatile("pushfl\n\t"
+                   "popl %0\n\t"
+                   "movl %0, %1\n\t"
+                   "xorl $0x200000, %1\n\t"
+                   "pushl %1\n\t"
+                   "popfl\n\t"
+                   "pushfl\n\t"
+                   "popl %1\n\t"
+                   : "=&r"(before), "=&r"(after) : : "cc");
+  if (before == after)
+    return 0;
+  __asm__ volatile("pushl %0\n\t popfl" : : "r"(before) : "cc");
+  return 1;
+}
+
+static void bmf_cpuid(unsigned leaf, unsigned *a, unsigned *b, unsigned *c, unsigned *d)
+{
+  // -fPIC on i386 reserves EBX, so it has to be saved around CPUID by hand.
+  __asm__ volatile("xchgl %%ebx, %1\n\t"
+                   "cpuid\n\t"
+                   "xchgl %%ebx, %1"
+                   : "=a"(*a), "=&r"(*b), "=c"(*c), "=d"(*d)
+                   : "0"(leaf), "2"(0));
+}
+
+// XGETBV encoded by hand: the mnemonic needs -mxsave, which the rest of this
+// translation unit is not built with.
+static unsigned bmf_xgetbv0()
+{
+  unsigned lo, hi;
+  __asm__ volatile(".byte 0x0f, 0x01, 0xd0" : "=a"(lo), "=d"(hi) : "c"(0));
+  (void)hi;
+  return lo;
+}
 
 // ---------------------------------------------------------------------------
 // §7.1 probe registry

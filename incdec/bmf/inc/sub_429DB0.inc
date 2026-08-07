@@ -3,7 +3,6 @@
 
 typedef int t_sub_429DB0_argv;
 static t_sub_429DB0_argv& __sub_429DB0_argv = *(t_sub_429DB0_argv*)0x00445954;
-#define argv __sub_429DB0_argv
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -31,7 +30,7 @@ BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
   __m128i Str[8]; // [esp+0h] [ebp-90h] BYREF
   char *v12; // [esp+80h] [ebp-10h]
 
-  strcpy(Str[0].m128i_i8, *(char **)argv);
+  strcpy(Str[0].m128i_i8, *(char **)__sub_429DB0_argv);
   OldFilename_1 = OldFilename;
   Str_1 = Str;
   v12 = ini + 1;
@@ -74,4 +73,3 @@ BMF_SSE _BYTE *__sub_429DB0(_BYTE *OldFilename, char *ini)
 
 #undef FILE
 #undef __intel_sse2_strlen
-#undef argv

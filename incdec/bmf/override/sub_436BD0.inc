@@ -125,29 +125,3 @@ unsigned int __sub_436BD0(int a1)
   __bmf_sse_level = level;
   return level;
 }
-
-// __usercall thunk for sub_436BD0 @ 0x00436BD0: reads the register arguments the
-// caller passes, calls the moved body as cdecl, and lets the caller clean the
-// stack on return.
-BMF_SSE __attribute__((naked)) static void __thunk_sub_436BD0()
-{
-  __asm__ volatile(
-    "push %ebp\n"
-    "mov %esp, %ebp\n"
-    "push %ebx\n"
-    "push %esi\n"
-    "push %edi\n"
-    "and $-16, %esp\n"
-    "sub $28, %esp\n"
-    "mov %ebx, 12(%esp)\n"
-    "push 12(%esp)\n"
-    "call __sub_436BD0\n"
-    "lea -12(%ebp), %esp\n"
-    "pop %edi\n"
-    "pop %esi\n"
-    "pop %ebx\n"
-    "leave\n"
-    "ret\n"
-  );
-}
-

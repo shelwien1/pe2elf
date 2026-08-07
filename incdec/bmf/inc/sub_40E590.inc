@@ -3,22 +3,16 @@
 
 typedef int t_sub_40E590_dword_4394E0[0x10000];
 static t_sub_40E590_dword_4394E0& __sub_40E590_dword_4394E0 = *(t_sub_40E590_dword_4394E0*)0x004394E0;
-#define dword_4394E0 __sub_40E590_dword_4394E0
 typedef int t_sub_40E590_dword_4394E4[0x10000];
 static t_sub_40E590_dword_4394E4& __sub_40E590_dword_4394E4 = *(t_sub_40E590_dword_4394E4*)0x004394E4;
-#define dword_4394E4 __sub_40E590_dword_4394E4
 typedef int t_sub_40E590_dword_4394E8[0x10000];
 static t_sub_40E590_dword_4394E8& __sub_40E590_dword_4394E8 = *(t_sub_40E590_dword_4394E8*)0x004394E8;
-#define dword_4394E8 __sub_40E590_dword_4394E8
 typedef int t_sub_40E590_dword_4394EC[13];
 static t_sub_40E590_dword_4394EC& __sub_40E590_dword_4394EC = *(t_sub_40E590_dword_4394EC*)0x004394EC;
-#define dword_4394EC __sub_40E590_dword_4394EC
 typedef __int128 t_sub_40E590_xmmword_439520;
 static t_sub_40E590_xmmword_439520& __sub_40E590_xmmword_439520 = *(t_sub_40E590_xmmword_439520*)0x00439520;
-#define xmmword_439520 __sub_40E590_xmmword_439520
 typedef __int128 t_sub_40E590_xmmword_439530;
 static t_sub_40E590_xmmword_439530& __sub_40E590_xmmword_439530 = *(t_sub_40E590_xmmword_439530*)0x00439530;
-#define xmmword_439530 __sub_40E590_xmmword_439530
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -74,10 +68,10 @@ BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40E590(_DWORD *_this, int i, cha
     v36 = v4;
     this_1 = _this;
     v5 = 1040 * v4;
-    *(_DWORD *)((char *)_this + v5 + 108) = dword_4394E0[4 * v4];
-    *(_DWORD *)((char *)_this + v5 + 112) = dword_4394E4[4 * v4];
-    v6 = dword_4394EC[4 * v4];
-    *(_DWORD *)((char *)_this + v5 + 116) = dword_4394E8[4 * v4];
+    *(_DWORD *)((char *)_this + v5 + 108) = __sub_40E590_dword_4394E0[4 * v4];
+    *(_DWORD *)((char *)_this + v5 + 112) = __sub_40E590_dword_4394E4[4 * v4];
+    v6 = __sub_40E590_dword_4394EC[4 * v4];
+    *(_DWORD *)((char *)_this + v5 + 116) = __sub_40E590_dword_4394E8[4 * v4];
     *(_DWORD *)((char *)_this + v5 + 120) = v6;
     n3 = 0;
     n0x200 = 0;
@@ -134,7 +128,7 @@ BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40E590(_DWORD *_this, int i, cha
     }
     while ( n0x400_4 < n0x400_2 );
   }
-  si128 = _mm_load_si128((const __m128i *)&xmmword_439520);
+  si128 = _mm_load_si128((const __m128i *)&__sub_40E590_xmmword_439520);
   n0x400 = 1024 - (-(char)n0x400_2 & 0xF);
   v21 = _mm_unpacklo_epi64(
           _mm_unpacklo_epi32(_mm_cvtsi32_si128(1023 - n0x400_2), _mm_cvtsi32_si128(1022 - n0x400_2)),
@@ -175,7 +169,7 @@ LABEL_17:
     }
     while ( n0x400_5 < n0x400_3 );
   }
-  v28 = _mm_load_si128((const __m128i *)&xmmword_439530);
+  v28 = _mm_load_si128((const __m128i *)&__sub_40E590_xmmword_439530);
   n0x400_1 = 1024 - (-n0x400_3 & 0xF);
   v30 = _mm_unpacklo_epi64(
           _mm_unpacklo_epi32(_mm_cvtsi32_si128(n0x400_3), _mm_cvtsi32_si128(n0x400_3 + 1)),
@@ -203,9 +197,3 @@ LABEL_25:
 }
 
 #undef FILE
-#undef dword_4394E0
-#undef dword_4394E4
-#undef dword_4394E8
-#undef dword_4394EC
-#undef xmmword_439520
-#undef xmmword_439530

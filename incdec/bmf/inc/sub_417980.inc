@@ -3,10 +3,8 @@
 
 typedef char t_sub_417980_buf_0[0x10000];
 static t_sub_417980_buf_0& __sub_417980_buf_0 = *(t_sub_417980_buf_0*)0x00443440;
-#define buf_0 __sub_417980_buf_0
 typedef char t_sub_417980_byte_445700;
 static t_sub_417980_byte_445700& __sub_417980_byte_445700 = *(t_sub_417980_byte_445700*)0x00445700;
-#define byte_445700 __sub_417980_byte_445700
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
@@ -64,7 +62,7 @@ BMF_SSE __attribute__((fastcall)) int __sub_417980(int a1, int a2, int i, int a4
   int v38; // ecx
 
   i_1 = i;
-  byte_445700 = 1;
+  __sub_417980_byte_445700 = 1;
   *(_DWORD *)a1 = i;
   *(_DWORD *)(a1 + 4) = a4;
   *(_DWORD *)(a1 + 8) = a5;
@@ -187,7 +185,7 @@ LABEL_26:
   sub_4349F0((char *)(a1 + 6075824),255,385024);
   sub_4349F0((char *)(a1 + 6460848),255,217600);
   sub_4349F0((char *)(a1 + 6678448),255,1424000);
-  sub_4349F0(buf_0,0,8193);
+  sub_4349F0(__sub_417980_buf_0,0,8193);
   *(_QWORD *)(a1 + 1078216) = 0;
   *(_QWORD *)(a1 + 1078224) = 0;
   for ( n = 0; n < 0x40000; ++n )
@@ -231,6 +229,4 @@ LABEL_26:
 }
 
 #undef FILE
-#undef buf_0
-#undef byte_445700
 #undef sub_4349F0

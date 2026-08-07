@@ -3,31 +3,19 @@
 
 typedef size_t t_sub_402BD0_ElementCount;
 static t_sub_402BD0_ElementCount& __sub_402BD0_ElementCount = *(t_sub_402BD0_ElementCount*)0x00441054;
-#define ElementCount __sub_402BD0_ElementCount
 typedef int t_sub_402BD0_dword_441058;
 static t_sub_402BD0_dword_441058& __sub_402BD0_dword_441058 = *(t_sub_402BD0_dword_441058*)0x00441058;
-#define dword_441058 __sub_402BD0_dword_441058
 typedef int t_sub_402BD0_dword_44105C;
 static t_sub_402BD0_dword_44105C& __sub_402BD0_dword_44105C = *(t_sub_402BD0_dword_44105C*)0x0044105C;
-#define dword_44105C __sub_402BD0_dword_44105C
 typedef int t_sub_402BD0_dword_442BA8;
 static t_sub_402BD0_dword_442BA8& __sub_402BD0_dword_442BA8 = *(t_sub_402BD0_dword_442BA8*)0x00442BA8;
-#define dword_442BA8 __sub_402BD0_dword_442BA8
 typedef int t_sub_402BD0_dword_442BAC;
 static t_sub_402BD0_dword_442BAC& __sub_402BD0_dword_442BAC = *(t_sub_402BD0_dword_442BAC*)0x00442BAC;
-#define dword_442BAC __sub_402BD0_dword_442BAC
 typedef int t_sub_402BD0_n0xFFFF;
 static t_sub_402BD0_n0xFFFF& __sub_402BD0_n0xFFFF = *(t_sub_402BD0_n0xFFFF*)0x00441064;
-#define n0xFFFF __sub_402BD0_n0xFFFF
 typedef int t_sub_402BD0_n4_6;
 static t_sub_402BD0_n4_6& __sub_402BD0_n4_6 = *(t_sub_402BD0_n4_6*)0x00441060;
-#define n4_6 __sub_402BD0_n4_6
 
-#ifndef __PE_DECL___exit_402E40
-#define __PE_DECL___exit_402E40
-typedef __attribute__((stdcall)) void t_exit_402E40(int Code, char ArgList);
-static t_exit_402E40& __exit_402E40 = *(t_exit_402E40*)0x00402E40;
-#endif
 #define exit_402E40 __exit_402E40
 
 PROBE_DECL(__sub_402BD0)
@@ -47,11 +35,11 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
   int v11; // esi
   int v12; // ebx
   int v13; // edx
-  int n0xFFFF; // eax
+  int __sub_402BD0_n0xFFFF; // eax
   int v15; // esi
   int n0xFFFF_1; // ebx
   int v17; // edx
-  size_t ElementCount; // eax
+  size_t __sub_402BD0_ElementCount; // eax
   int v19; // esi
   int ElementCount_1; // ebx
   int v21; // edx
@@ -61,7 +49,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
   char v25; // al
 
   n45_1 = *(char *)(result + 1);
-  dword_442BAC = 1;
+  __sub_402BD0_dword_442BAC = 1;
   if ( n45_1 )
   {
     v2 = result;
@@ -72,7 +60,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
       switch ( toupper(n45) )
       {
         case '-':
-          dword_442BAC = 0;
+          __sub_402BD0_dword_442BAC = 0;
           n45 = *(char *)++v4;
           goto LABEL_34;
         case '.':
@@ -119,12 +107,12 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
           n45 = *(char *)++v4;
           if ( n45 == 45 )
           {
-            dword_442BA8 = 0;
+            __sub_402BD0_dword_442BA8 = 0;
             n45 = *(char *)++v4;
           }
           else
           {
-            dword_442BA8 = 1;
+            __sub_402BD0_dword_442BA8 = 1;
           }
           goto LABEL_34;
         case 'B':
@@ -144,12 +132,12 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
             n4 = n4_1;
             v4 = v23;
           }
-          n4_6 = n4;
+          __sub_402BD0_n4_6 = n4;
           goto LABEL_34;
         case 'H':
           n45 = *(char *)++v4;
           v17 = isdigit(n45);
-          ElementCount = 0;
+          __sub_402BD0_ElementCount = 0;
           if ( v17 )
           {
             v19 = v4;
@@ -160,15 +148,15 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
               n45 = *(char *)++v19;
             }
             while ( isdigit(n45) );
-            ElementCount = ElementCount_1;
+            __sub_402BD0_ElementCount = ElementCount_1;
             v4 = v19;
           }
-          ::ElementCount = ElementCount;
+          ::__sub_402BD0_ElementCount = __sub_402BD0_ElementCount;
           goto LABEL_34;
         case 'L':
           n45 = *(char *)++v4;
           v13 = isdigit(n45);
-          n0xFFFF = 0;
+          __sub_402BD0_n0xFFFF = 0;
           if ( v13 )
           {
             v15 = v4;
@@ -179,10 +167,10 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
               n45 = *(char *)++v15;
             }
             while ( isdigit(n45) );
-            n0xFFFF = n0xFFFF_1;
+            __sub_402BD0_n0xFFFF = n0xFFFF_1;
             v4 = v15;
           }
-          ::n0xFFFF = n0xFFFF;
+          ::__sub_402BD0_n0xFFFF = __sub_402BD0_n0xFFFF;
           goto LABEL_34;
         case 'X':
           n45 = *(char *)++v4;
@@ -201,7 +189,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
             v10 = v12;
             v4 = v11;
           }
-          dword_441058 = v10;
+          __sub_402BD0_dword_441058 = v10;
           goto LABEL_34;
         case 'Y':
           n45 = *(char *)++v4;
@@ -220,7 +208,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_402BD0(int result)
             v6 = v8;
             v4 = v7;
           }
-          dword_44105C = v6;
+          __sub_402BD0_dword_44105C = v6;
 LABEL_34:
           if ( n45 )
             continue;
@@ -234,7 +222,7 @@ LABEL_32:
       break;
     }
   }
-  if ( !dword_441058 || !dword_44105C || n4_6 <= 0 || n4_6 > 4 || ::n0xFFFF <= 0 || ::n0xFFFF > 0xFFFF )
+  if ( !__sub_402BD0_dword_441058 || !__sub_402BD0_dword_44105C || __sub_402BD0_n4_6 <= 0 || __sub_402BD0_n4_6 > 4 || ::__sub_402BD0_n0xFFFF <= 0 || ::__sub_402BD0_n0xFFFF > 0xFFFF )
     exit_402E40(2, result - 1);
   return result;
 }
@@ -264,11 +252,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_402BD0()
   );
 }
 
-#undef ElementCount
-#undef dword_441058
-#undef dword_44105C
-#undef dword_442BA8
-#undef dword_442BAC
-#undef n0xFFFF
-#undef n4_6
 #undef exit_402E40

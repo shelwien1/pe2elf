@@ -4,8 +4,9 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 84 of 132 reachable functions redirected — 53 of the 92 a round-trip
-actually executes. Gate green on all five pixel formats.**
+**Status: 89 of 132 reachable functions redirected — 54 of the 92 a round-trip
+actually executes. Gate green on all five pixel formats, and nothing left in
+`fail.txt` is a build error.**
 
 The goal is a lossless BMP codec that runs none of BMF's own code and
 compresses no worse than it does. Everything below is the state of that
@@ -241,31 +242,30 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 84 and not 132
+## Why 89 and not 132
 
-`fail.txt` records every candidate that did not make it, with the build error
-or the image it failed the gate on. At convergence — the driver is run
-repeatedly until a pass accepts nothing new, because moving a callee unblocks
-its callers — they group as:
+`fail.txt` records every candidate that did not make it, with the image it
+failed the gate on. At convergence — the driver is run repeatedly until a pass
+accepts nothing new, because moving a callee unblocks its callers — they group
+as:
 
 | | |
 |---:|---|
 | 22 | blocked on a `__usercall` callee that itself failed |
-| 16 | builds and runs, then crashes or aborts on some image |
-|  5 | build error |
-|  3 | reaches a symbol with no recoverable address or signature |
+| 15 | builds and runs, then crashes or aborts on some image |
+|  2 | builds and runs, then hangs |
 |  2 | builds and runs and compresses *worse* than the original |
+|  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
 
-The 22 are downstream of the rest — fix one blocking callee and several callers
+**There is no build-error row any more.** Everything that remains either runs
+and misbehaves, or is queued behind something that does — which is the point
+the protocol was aiming at, since only a running test can tell those apart.
+
+The 22 are downstream of the rest: fix one blocking callee and several callers
 become candidates, which is why the count moves in jumps rather than one at a
-time.
-
-The **16 runtime failures are the real remainder**. They build cleanly, run, and
-then produce wrong behaviour, so only the gate finds them; each needs its body
-read against the disassembly. `sub_413430` compresses 4.8% worse on 8bpp
-grayscale and `sub_424550` 0.7% worse on 24bpp — both round-trip losslessly, so
-*only* the no-regression size check catches them, which is what that check is
-for.
+time. `sub_413430` compresses 4.8% worse on 8bpp grayscale and `sub_424550`
+0.7% worse on 24bpp — both round-trip losslessly, so *only* the no-regression
+size check catches them, which is what that check is for.
 
 ### What stopped being a category
 
@@ -307,15 +307,16 @@ done:
   be moved, `__usercall`/`__userpurge` included, and the gate is a whole-file
   lossless round-trip over five pixel formats with a no-regression check on
   compressed size. Nothing about the remaining work needs new machinery.
-* **84 of 132** reachable functions are out, and the round-trip is green with
-  them out.
+* **89 of 132** reachable functions are out, and the round-trip is green with
+  them out. Every calling convention in the image can be moved, and no
+  candidate is blocked by a compile error any more.
 
 What is not:
 
-* **39 of the 92 functions a round-trip executes are still the PE's.** Until
-  that is 0, the binary runs BMF's code. Sixteen of them fail the gate on their
-  own merits and need their bodies read against the disassembly; the rest are
-  waiting behind those.
+* **38 of the 92 functions a round-trip executes are still the PE's.** Until
+  that is 0, the binary runs BMF's code. Nineteen of them fail the gate on
+  their own merits and need their bodies read against the disassembly; the rest
+  are waiting behind those.
 * The statically-linked CRT is untouched — moved bodies still call the PE's
   `fopen`, `fread`, `operator new`, `memcpy` (§6.5). Those should be repointed
   at glibc rather than decompiled, which is a separate and much smaller job
@@ -326,8 +327,8 @@ What is not:
 
 ## Caveats
 
-* 53 of the 84 accepted functions have a non-zero probe count over the twelve
-  runs (compress + decompress for each of the six images). The other 31 are
+* 54 of the 89 accepted functions have a non-zero probe count over the twelve
+  runs (compress + decompress for each of the six images). The other 35 are
   reachable but not executed by this corpus: they are moved so that nothing
   calls back into the PE, and §9's "was it actually called?" check cannot
   vouch for them. `run/probe.txt` says which.

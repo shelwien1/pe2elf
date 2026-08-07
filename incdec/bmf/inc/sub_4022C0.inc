@@ -3,13 +3,7 @@
 
 typedef int t_sub_4022C0_dwLowDateTime;
 static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_dwLowDateTime*)0x00442BB0;
-#define dwLowDateTime __sub_4022C0_dwLowDateTime
 
-#ifndef __PE_DECL___exit_402E40
-#define __PE_DECL___exit_402E40
-typedef __attribute__((stdcall)) void t_exit_402E40(int Code, char ArgList);
-static t_exit_402E40& __exit_402E40 = *(t_exit_402E40*)0x00402E40;
-#endif
 #define exit_402E40 __exit_402E40
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
@@ -88,7 +82,7 @@ PROBE_DECL(__sub_4022C0)
 extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
 {
   PROBE_HIT(__sub_4022C0);
-  unsigned __int16 *dwLowDateTime; // esi
+  unsigned __int16 *__sub_4022C0_dwLowDateTime; // esi
   const char *lpFileName_1; // ebp
   DWORD dwHighDateTime_1; // ebx
   int v5; // ecx
@@ -117,9 +111,9 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   size_t ElementCount; // [esp+1Ch] [ebp-18h]
   int p_i_1; // [esp+20h] [ebp-14h]
 
-  dwLowDateTime = (unsigned __int16 *)::dwLowDateTime;
-  lpFileName_1 = (char *)::dwLowDateTime + 32;
-  if ( !_access((const char *)::dwLowDateTime + 32, 0) )
+  __sub_4022C0_dwLowDateTime = (unsigned __int16 *)::__sub_4022C0_dwLowDateTime;
+  lpFileName_1 = (char *)::__sub_4022C0_dwLowDateTime + 32;
+  if ( !_access((const char *)::__sub_4022C0_dwLowDateTime + 32, 0) )
   {
     printf("\n%s already exists: (O)verwrite, (S)kip, (Q)uit?", lpFileName_1);
     while ( 1 )
@@ -137,23 +131,23 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
   }
   Stream_v = fopen(lpFileName_1, "wb");
   if ( !Stream_v
-    || fwrite((char *)::dwLowDateTime + dwLowDateTime[4] + 32, *((_DWORD *)dwLowDateTime + 5), 1u, Stream_v) != 1 )
+    || fwrite((char *)::__sub_4022C0_dwLowDateTime + __sub_4022C0_dwLowDateTime[4] + 32, *((_DWORD *)__sub_4022C0_dwLowDateTime + 5), 1u, Stream_v) != 1 )
   {
     exit_402E40(5, (char)lpFileName_1);
   }
   dwHighDateTime_1 = *(unsigned __int16 *)(p_i + 4);
-  v5 = dwLowDateTime[5];
+  v5 = __sub_4022C0_dwLowDateTime[5];
   lpFileName = lpFileName_1;
-  v6 = *((_DWORD *)dwLowDateTime + 5) + dwLowDateTime[4];
+  v6 = *((_DWORD *)__sub_4022C0_dwLowDateTime + 5) + __sub_4022C0_dwLowDateTime[4];
   FileTime.dwHighDateTime = dwHighDateTime_1;
-  v7 = v6 + *((_DWORD *)dwLowDateTime + 6) + 24;
-  ElementCount = *((_DWORD *)dwLowDateTime + 6);
+  v7 = v6 + *((_DWORD *)__sub_4022C0_dwLowDateTime + 6) + 24;
+  ElementCount = *((_DWORD *)__sub_4022C0_dwLowDateTime + 6);
   v24 = v7;
   ElementCount_2 = v5 * ((int)(dwHighDateTime_1 + v5 - 1) / v5) - dwHighDateTime_1;
   FileTime.dwLowDateTime = *(unsigned __int16 *)(p_i + 2);
-  dwLowDateTime_1 = (char *)::dwLowDateTime;
-  Buffer_2 = (char *)::dwLowDateTime + v7 - ElementCount_2 + 8;
-  if ( ((v7 + ElementCount_2 * FileTime.dwLowDateTime + 3) & 0xFFFFFFFC) != *((_DWORD *)::dwLowDateTime + 1) )
+  dwLowDateTime_1 = (char *)::__sub_4022C0_dwLowDateTime;
+  Buffer_2 = (char *)::__sub_4022C0_dwLowDateTime + v7 - ElementCount_2 + 8;
+  if ( ((v7 + ElementCount_2 * FileTime.dwLowDateTime + 3) & 0xFFFFFFFC) != *((_DWORD *)::__sub_4022C0_dwLowDateTime + 1) )
     Buffer_2 = nullptr;
   ElementCount_1 = ElementCount;
   Buffer = (void *)(p_i + 16);
@@ -167,7 +161,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
       dwHighDateTime = FileTime.dwHighDateTime;
       ElementCount = ElementCount_2;
       Buffer_1 = (char *)Buffer;
-      FileTime.dwLowDateTime = (DWORD)dwLowDateTime;
+      FileTime.dwLowDateTime = (DWORD)__sub_4022C0_dwLowDateTime;
       v16 = v13;
       p_i_1 = p_i;
       do
@@ -197,26 +191,26 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
       }
       while ( v16 >= 0 );
       lpFileName_2 = lpFileName;
-      dwLowDateTime = (unsigned __int16 *)FileTime.dwLowDateTime;
+      __sub_4022C0_dwLowDateTime = (unsigned __int16 *)FileTime.dwLowDateTime;
       ElementCount_1 = *(_DWORD *)(FileTime.dwLowDateTime + 24);
-      dwLowDateTime_1 = (char *)::dwLowDateTime;
+      dwLowDateTime_1 = (char *)::__sub_4022C0_dwLowDateTime;
     }
   }
   else
   {
     if ( fwrite(Buffer, 1u, *(_DWORD *)(p_i + 12), Stream_v) != *(_DWORD *)(p_i + 12) )
       exit_402E40(5, (char)lpFileName);
-    ElementCount_1 = *((_DWORD *)dwLowDateTime + 6);
-    dwLowDateTime_1 = (char *)::dwLowDateTime;
+    ElementCount_1 = *((_DWORD *)__sub_4022C0_dwLowDateTime + 6);
+    dwLowDateTime_1 = (char *)::__sub_4022C0_dwLowDateTime;
   }
   if ( fwrite(&dwLowDateTime_1[v24 - ElementCount_1 + 8], ElementCount_1, 1u, Stream_v) != 1 )
     exit_402E40(5, (char)lpFileName_2);
   fclose(Stream_v);
-  DosDateTimeToFileTime(dwLowDateTime[7], dwLowDateTime[6], &FileTime);
+  DosDateTimeToFileTime(__sub_4022C0_dwLowDateTime[7], __sub_4022C0_dwLowDateTime[6], &FileTime);
   FileA = CreateFileA(lpFileName_2, GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
   SetFileTime(FileA, &FileTime, nullptr, &FileTime);
   CloseHandle(FileA);
-  return SetFileAttributesA(lpFileName_2, *((_DWORD *)dwLowDateTime + 4));
+  return SetFileAttributesA(lpFileName_2, *((_DWORD *)__sub_4022C0_dwLowDateTime + 4));
 }
 
 // __usercall thunk for sub_4022C0 @ 0x004022C0: reads the register arguments the
@@ -252,5 +246,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_4022C0()
 #undef fputc
 #undef fwrite
 #undef printf
-#undef dwLowDateTime
 #undef exit_402E40

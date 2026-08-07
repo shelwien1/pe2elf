@@ -3,52 +3,36 @@
 
 typedef int t_sub_413900_Buffer_0;
 static t_sub_413900_Buffer_0& __sub_413900_Buffer_0 = *(t_sub_413900_Buffer_0*)0x00443378;
-#define Buffer_0 __sub_413900_Buffer_0
 typedef char t_sub_413900_byte_4456F0;
 static t_sub_413900_byte_4456F0& __sub_413900_byte_4456F0 = *(t_sub_413900_byte_4456F0*)0x004456F0;
-#define byte_4456F0 __sub_413900_byte_4456F0
 typedef int t_sub_413900_byte_445714[0x10000];
 static t_sub_413900_byte_445714& __sub_413900_byte_445714 = *(t_sub_413900_byte_445714*)0x00445714;
-#define byte_445714 __sub_413900_byte_445714
 typedef int t_sub_413900_byte_445715[0x10000];
 static t_sub_413900_byte_445715& __sub_413900_byte_445715 = *(t_sub_413900_byte_445715*)0x00445715;
-#define byte_445715 __sub_413900_byte_445715
 typedef int t_sub_413900_byte_445716[0x10000];
 static t_sub_413900_byte_445716& __sub_413900_byte_445716 = *(t_sub_413900_byte_445716*)0x00445716;
-#define byte_445716 __sub_413900_byte_445716
 typedef int t_sub_413900_dword_445660[32];
 static t_sub_413900_dword_445660& __sub_413900_dword_445660 = *(t_sub_413900_dword_445660*)0x00445660;
-#define dword_445660 __sub_413900_dword_445660
 typedef int t_sub_413900_dword_4456E8;
 static t_sub_413900_dword_4456E8& __sub_413900_dword_4456E8 = *(t_sub_413900_dword_4456E8*)0x004456E8;
-#define dword_4456E8 __sub_413900_dword_4456E8
 typedef int t_sub_413900_dword_4456EC;
 static t_sub_413900_dword_4456EC& __sub_413900_dword_4456EC = *(t_sub_413900_dword_4456EC*)0x004456EC;
-#define dword_4456EC __sub_413900_dword_4456EC
 typedef int t_sub_413900_n0x2000;
 static t_sub_413900_n0x2000& __sub_413900_n0x2000 = *(t_sub_413900_n0x2000*)0x004456FC;
-#define n0x2000 __sub_413900_n0x2000
 typedef int t_sub_413900_n0x2000_0;
 static t_sub_413900_n0x2000_0& __sub_413900_n0x2000_0 = *(t_sub_413900_n0x2000_0*)0x004456F8;
-#define n0x2000_0 __sub_413900_n0x2000_0
 typedef int t_sub_413900_n0x2000_1;
 static t_sub_413900_n0x2000_1& __sub_413900_n0x2000_1 = *(t_sub_413900_n0x2000_1*)0x004456F4;
-#define n0x2000_1 __sub_413900_n0x2000_1
 typedef int t_sub_413900_n0x7F800000;
 static t_sub_413900_n0x7F800000& __sub_413900_n0x7F800000 = *(t_sub_413900_n0x7F800000*)0x004456E4;
-#define n0x7F800000 __sub_413900_n0x7F800000
 typedef int t_sub_413900_n0x800000;
 static t_sub_413900_n0x800000& __sub_413900_n0x800000 = *(t_sub_413900_n0x800000*)0x004456E0;
-#define n0x800000 __sub_413900_n0x800000
 typedef int t_sub_413900_n0x88;
 static t_sub_413900_n0x88& __sub_413900_n0x88 = *(t_sub_413900_n0x88*)0x00445704;
-#define n0x88 __sub_413900_n0x88
 typedef int t_sub_413900_n8_0;
 static t_sub_413900_n8_0& __sub_413900_n8_0 = *(t_sub_413900_n8_0*)0x00445710;
-#define n8_0 __sub_413900_n8_0
 typedef int t_sub_413900_n8_1;
 static t_sub_413900_n8_1& __sub_413900_n8_1 = *(t_sub_413900_n8_1*)0x0044570C;
-#define n8_1 __sub_413900_n8_1
 
 
 PROBE_DECL(__sub_413900)
@@ -63,8 +47,8 @@ BMF_SSE __attribute__((thiscall)) int __sub_413900(unsigned __int16 *_this, int 
   __m128i v7; // xmm1
   int v8; // esi
   int v9; // edi
-  int n0x7F800000; // edi
-  unsigned int n0x800000; // ebx
+  int __sub_413900_n0x7F800000; // edi
+  unsigned int __sub_413900_n0x800000; // ebx
   int v12; // edx
   unsigned int v13; // esi
   int v14; // ebx
@@ -128,10 +112,10 @@ BMF_SSE __attribute__((thiscall)) int __sub_413900(unsigned __int16 *_this, int 
   unsigned int n0x800000_3; // [esp+30h] [ebp-14h]
   int v73; // [esp+34h] [ebp-10h]
 
-  n4 = *((unsigned __int8 *)dword_445660 + n2);
+  n4 = *((unsigned __int8 *)__sub_413900_dword_445660 + n2);
   n4_1 = n4;
   v3 = _this + 2;
-  n0x2000_1 = 0;
+  __sub_413900_n0x2000_1 = 0;
   v51 = _this + 2;
   if ( n4 )
   {
@@ -165,82 +149,82 @@ BMF_SSE __attribute__((thiscall)) int __sub_413900(unsigned __int16 *_this, int 
       while ( n4_2 < n4_1 );
       v51 = (unsigned __int16 *)v9;
     }
-    n0x2000_1 = v8;
+    __sub_413900_n0x2000_1 = v8;
   }
   else
   {
     v8 = 0;
   }
-  n0x7F800000 = ::n0x7F800000;
-  n0x800000 = ::n0x800000;
-  n0x7F800000_1 = ::n0x7F800000;
+  __sub_413900_n0x7F800000 = ::__sub_413900_n0x7F800000;
+  __sub_413900_n0x800000 = ::__sub_413900_n0x800000;
+  n0x7F800000_1 = ::__sub_413900_n0x7F800000;
   v52 = v8 + *v51;
-  n0x2000_0 = v52;
+  __sub_413900_n0x2000_0 = v52;
   v48 = *_this;
-  n0x2000 = v48;
-  if ( (unsigned int)::n0x800000 > 0x800000 )
+  __sub_413900_n0x2000 = v48;
+  if ( (unsigned int)::__sub_413900_n0x800000 > 0x800000 )
   {
-    v54 = n0x2000;
+    v54 = __sub_413900_n0x2000;
     goto LABEL_26;
   }
-  v12 = dword_4456E8;
-  n0x800000_1 = ::n0x800000;
-  v60 = dword_4456EC;
+  v12 = __sub_413900_dword_4456E8;
+  n0x800000_1 = ::__sub_413900_n0x800000;
+  v60 = __sub_413900_dword_4456EC;
   this_1 = _this;
   do
   {
     ++v60;
     v13 = v12;
     v14 = v12;
-    if ( (unsigned int)n0x7F800000 < 0x7F800000 )
+    if ( (unsigned int)__sub_413900_n0x7F800000 < 0x7F800000 )
     {
       v55 = 0;
     }
     else
     {
-      if ( n0x7F800000 >= 0 )
+      if ( __sub_413900_n0x7F800000 >= 0 )
       {
-        dword_4456E8 = ++v12;
+        __sub_413900_dword_4456E8 = ++v12;
         goto LABEL_24;
       }
       v55 = 1;
     }
-    *(_BYTE *)Buffer_0 = v55 + byte_4456F0;
-    v15 = ++Buffer_0;
+    *(_BYTE *)__sub_413900_Buffer_0 = v55 + __sub_413900_byte_4456F0;
+    v15 = ++__sub_413900_Buffer_0;
     if ( v12 )
     {
-      n0x7F800000_2 = n0x7F800000;
+      n0x7F800000_2 = __sub_413900_n0x7F800000;
       v16 = 0;
       v17 = (_BYTE *)v15;
       do
       {
         *v17 = v55 - 1;
-        v17 = (_BYTE *)++Buffer_0;
+        v17 = (_BYTE *)++__sub_413900_Buffer_0;
         v12 = v14 - v16++ - 1;
       }
       while ( v16 < v13 );
-      n0x7F800000 = n0x7F800000_2;
-      dword_4456E8 = v14 - v13;
+      __sub_413900_n0x7F800000 = n0x7F800000_2;
+      __sub_413900_dword_4456E8 = v14 - v13;
     }
-    byte_4456F0 = (unsigned int)n0x7F800000 >> 23;
+    __sub_413900_byte_4456F0 = (unsigned int)__sub_413900_n0x7F800000 >> 23;
 LABEL_24:
     n0x800000_2 = n0x800000_1 << 8;
     n0x800000_1 = n0x800000_2;
-    n0x7F800000 = (n0x7F800000 << 8) & 0x7FFFFFFF;
+    __sub_413900_n0x7F800000 = (__sub_413900_n0x7F800000 << 8) & 0x7FFFFFFF;
   }
   while ( n0x800000_2 <= 0x800000 );
-  n0x800000 = n0x800000_2;
+  __sub_413900_n0x800000 = n0x800000_2;
   _this = this_1;
-  n0x7F800000_1 = n0x7F800000;
-  dword_4456EC = v60;
-  v8 = n0x2000_1;
-  v52 = n0x2000_0;
-  v48 = n0x2000;
-  v54 = n0x2000;
+  n0x7F800000_1 = __sub_413900_n0x7F800000;
+  __sub_413900_dword_4456EC = v60;
+  v8 = __sub_413900_n0x2000_1;
+  v52 = __sub_413900_n0x2000_0;
+  v48 = __sub_413900_n0x2000;
+  v54 = __sub_413900_n0x2000;
 LABEL_26:
-  v19 = n0x800000 / v54;
-  v20 = n0x800000 / v54 * v8;
-  n0x800000_6 = n0x800000 - v20;
+  v19 = __sub_413900_n0x800000 / v54;
+  v20 = __sub_413900_n0x800000 / v54 * v8;
+  n0x800000_6 = __sub_413900_n0x800000 - v20;
   n0x7F800000_6 = n0x7F800000_1 + v20;
   n0x800000_5 = (v52 - v8) * v19;
   if ( v52 < v48 )
@@ -276,11 +260,11 @@ LABEL_26:
     v50 = v46;
     *(_this + 9) = v45;
     *_this = v44 + v45;
-    v47 = v46 <= 4 * n8_1;
+    v47 = v46 <= 4 * __sub_413900_n8_1;
     n0x7F800000_6 = n0x7F800000_7;
     if ( v47 )
     {
-      n0x800000_5 = 4 * (v50 > n8_1);
+      n0x800000_5 = 4 * (v50 > __sub_413900_n8_1);
       v24 = v50 - n0x800000_5;
       *(_this + 1) = v50 - n0x800000_5;
     }
@@ -299,24 +283,24 @@ LABEL_26:
   if ( n2 >= 2 )
   {
     n0x7F800000_5 = n0x7F800000_6;
-    v66 = (unsigned __int8)byte_445715[4 * n4_1];
-    v56 = n2 - (unsigned __int8)byte_445714[4 * n4_1];
+    v66 = (unsigned __int8)__sub_413900_byte_445715[4 * n4_1];
+    v56 = n2 - (unsigned __int8)__sub_413900_byte_445714[4 * n4_1];
     v59 = 0;
     n0x800000_3 = n0x800000_6;
     this_2 = _this;
     for ( i = 1; ; i *= 2 )
     {
-      v25 = (int)&this_2[2 * (unsigned __int8)byte_445716[4 * n4_1] + 8];
+      v25 = (int)&this_2[2 * (unsigned __int8)__sub_413900_byte_445716[4 * n4_1] + 8];
       v26 = (unsigned __int16 *)(v25 + 4 * (i + v59));
       v65 = v26[1];
       v27 = (v66 & v56) != 0;
       v28 = *v26;
       if ( n0x800000_3 > 0x800000 )
         goto LABEL_46;
-      v29 = dword_4456E8;
+      v29 = __sub_413900_dword_4456E8;
       v53 = *v26;
       n0x7F800000_3 = n0x7F800000_5;
-      v73 = dword_4456EC;
+      v73 = __sub_413900_dword_4456EC;
       v49 = (unsigned __int16 *)(v25 + 4 * (i + v59));
       do
       {
@@ -330,13 +314,13 @@ LABEL_26:
         {
           if ( n0x7F800000_3 >= 0 )
           {
-            dword_4456E8 = ++v29;
+            __sub_413900_dword_4456E8 = ++v29;
             goto LABEL_44;
           }
           v70 = 1;
         }
-        *(_BYTE *)Buffer_0 = v70 + byte_4456F0;
-        v33 = ++Buffer_0;
+        *(_BYTE *)__sub_413900_Buffer_0 = v70 + __sub_413900_byte_4456F0;
+        v33 = ++__sub_413900_Buffer_0;
         if ( v29 )
         {
           n0x7F800000_4 = n0x7F800000_3;
@@ -345,14 +329,14 @@ LABEL_26:
           do
           {
             *v35 = v70 - 1;
-            v35 = (_BYTE *)++Buffer_0;
+            v35 = (_BYTE *)++__sub_413900_Buffer_0;
             v29 = v32 - v34++ - 1;
           }
           while ( v34 < v31 );
           n0x7F800000_3 = n0x7F800000_4;
-          dword_4456E8 = v32 - v31;
+          __sub_413900_dword_4456E8 = v32 - v31;
         }
-        byte_4456F0 = (unsigned int)n0x7F800000_3 >> 23;
+        __sub_413900_byte_4456F0 = (unsigned int)n0x7F800000_3 >> 23;
 LABEL_44:
         ++v73;
         n0x800000_3 <<= 8;
@@ -363,9 +347,9 @@ LABEL_44:
       v26 = v49;
       n0x7F800000_5 = n0x7F800000_3;
       v28 = v53;
-      dword_4456EC = v73;
+      __sub_413900_dword_4456EC = v73;
 LABEL_46:
-      n0x88 = v28 + v65;
+      __sub_413900_n0x88 = v28 + v65;
       n0x800000_4 = n0x800000_3 / (v28 + v65) * v28;
       if ( v27 )
       {
@@ -386,35 +370,19 @@ LABEL_46:
         v26[1] = v38 - (v38 >> 1);
         n0x4000 = v26[v27];
       }
-      v26[v27] = n8_0 + n0x4000;
+      v26[v27] = __sub_413900_n8_0 + n0x4000;
       v66 >>= 1;
       v59 = v27 + 2 * v59;
       if ( !v66 )
       {
-        ::n0x7F800000 = n0x7F800000_5;
-        ::n0x800000 = n0x800000_5;
+        ::__sub_413900_n0x7F800000 = n0x7F800000_5;
+        ::__sub_413900_n0x800000 = n0x800000_5;
         return n0x800000_5;
       }
     }
   }
-  ::n0x7F800000 = n0x7F800000_6;
-  ::n0x800000 = n0x800000_6;
+  ::__sub_413900_n0x7F800000 = n0x7F800000_6;
+  ::__sub_413900_n0x800000 = n0x800000_6;
   return n0x800000_5;
 }
 
-#undef Buffer_0
-#undef byte_4456F0
-#undef byte_445714
-#undef byte_445715
-#undef byte_445716
-#undef dword_445660
-#undef dword_4456E8
-#undef dword_4456EC
-#undef n0x2000
-#undef n0x2000_0
-#undef n0x2000_1
-#undef n0x7F800000
-#undef n0x800000
-#undef n0x88
-#undef n8_0
-#undef n8_1

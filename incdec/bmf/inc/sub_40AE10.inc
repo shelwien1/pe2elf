@@ -3,7 +3,6 @@
 
 typedef int t_sub_40AE10_n2;
 static t_sub_40AE10_n2& __sub_40AE10_n2 = *(t_sub_40AE10_n2*)0x00443360;
-#define n2 __sub_40AE10_n2
 
 
 PROBE_DECL(__sub_40AE10)
@@ -46,7 +45,7 @@ __attribute__((thiscall)) int __sub_40AE10(_DWORD *_this, int Src)
               + *(unsigned __int8 *)(Src - 2))) >> 5)
            + 5)
          | (2 * (v8 & 1));
-  if ( n2 == 1 )
+  if ( __sub_40AE10_n2 == 1 )
   {
     v5 = result < *(_this + v8 + 5) || result < *(_this + v7 + 5) || result < *(_this + v6 + 5);
     return (v5 << 7) | (8 * (v6 & 1)) | (4 * (v7 & 1)) | result;
@@ -54,4 +53,3 @@ __attribute__((thiscall)) int __sub_40AE10(_DWORD *_this, int Src)
   return result;
 }
 
-#undef n2

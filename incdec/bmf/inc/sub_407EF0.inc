@@ -3,31 +3,22 @@
 
 typedef char t_sub_407EF0_byte_44339C[0x10000];
 static t_sub_407EF0_byte_44339C& __sub_407EF0_byte_44339C = *(t_sub_407EF0_byte_44339C*)0x0044339C;
-#define byte_44339C __sub_407EF0_byte_44339C
 typedef char t_sub_407EF0_byte_44339D[0x10000];
 static t_sub_407EF0_byte_44339D& __sub_407EF0_byte_44339D = *(t_sub_407EF0_byte_44339D*)0x0044339D;
-#define byte_44339D __sub_407EF0_byte_44339D
 typedef char t_sub_407EF0_byte_44339E[0x10000];
 static t_sub_407EF0_byte_44339E& __sub_407EF0_byte_44339E = *(t_sub_407EF0_byte_44339E*)0x0044339E;
-#define byte_44339E __sub_407EF0_byte_44339E
 typedef char t_sub_407EF0_byte_44339F[0x10000];
 static t_sub_407EF0_byte_44339F& __sub_407EF0_byte_44339F = *(t_sub_407EF0_byte_44339F*)0x0044339F;
-#define byte_44339F __sub_407EF0_byte_44339F
 typedef char t_sub_407EF0_byte_4433AD[16];
 static t_sub_407EF0_byte_4433AD& __sub_407EF0_byte_4433AD = *(t_sub_407EF0_byte_4433AD*)0x004433AD;
-#define byte_4433AD __sub_407EF0_byte_4433AD
 typedef int t_sub_407EF0_dword_4433A0[0x10000];
 static t_sub_407EF0_dword_4433A0& __sub_407EF0_dword_4433A0 = *(t_sub_407EF0_dword_4433A0*)0x004433A0;
-#define dword_4433A0 __sub_407EF0_dword_4433A0
 typedef int t_sub_407EF0_dword_4433A4[0x10000];
 static t_sub_407EF0_dword_4433A4& __sub_407EF0_dword_4433A4 = *(t_sub_407EF0_dword_4433A4*)0x004433A4;
-#define dword_4433A4 __sub_407EF0_dword_4433A4
 typedef int t_sub_407EF0_dword_4433A8[0x10000];
 static t_sub_407EF0_dword_4433A8& __sub_407EF0_dword_4433A8 = *(t_sub_407EF0_dword_4433A8*)0x004433A8;
-#define dword_4433A8 __sub_407EF0_dword_4433A8
 typedef int t_sub_407EF0_n4_5;
 static t_sub_407EF0_n4_5& __sub_407EF0_n4_5 = *(t_sub_407EF0_n4_5*)0x00443394;
-#define n4_5 __sub_407EF0_n4_5
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -77,21 +68,21 @@ extern "C" __attribute__((visibility("hidden"))) char * __sub_407EF0(char *Block
   int n4_1; // [esp+1Ch] [ebp-18h]
   int n6; // [esp+20h] [ebp-14h]
 
-  if ( (byte_44339E[16 * a3] & 8) == 0 )
+  if ( (__sub_407EF0_byte_44339E[16 * a3] & 8) == 0 )
   {
     Size = *(unsigned __int16 *)Blockb * *((unsigned __int16 *)Blockb + 1);
-    n4 = n4_5;
+    n4 = __sub_407EF0_n4_5;
     Src_1 = (unsigned int)&Blockb[a3 + 16];
-    if ( n4_5 == 1 )
+    if ( __sub_407EF0_n4_5 == 1 )
       return sub_434980(Src,&Blockb[a3 + 16],Size);
     Blockb += a3;
-    if ( Size > 6 && n4_5 > 0 )
+    if ( Size > 6 && __sub_407EF0_n4_5 > 0 )
     {
-      if ( n4_5 > 1 )
+      if ( __sub_407EF0_n4_5 > 1 )
         goto LABEL_30;
-      if ( (unsigned int)Src > Src_1 && (unsigned int)&Src[-Src_1] >= Size * n4_5 )
+      if ( (unsigned int)Src > Src_1 && (unsigned int)&Src[-Src_1] >= Size * __sub_407EF0_n4_5 )
         goto LABEL_31;
-      if ( n4_5 > 0 )
+      if ( __sub_407EF0_n4_5 > 0 )
       {
 LABEL_30:
         if ( Src_1 > (unsigned int)Src && Size <= Src_1 - (unsigned int)Src )
@@ -121,36 +112,36 @@ LABEL_31:
     while ( Size_2 < Size );
     return Blockb;
   }
-  n4_1 = n4_5;
+  n4_1 = __sub_407EF0_n4_5;
   n6 = *(unsigned __int16 *)Blockb * *((unsigned __int16 *)Blockb + 1);
-  v33 = (unsigned __int8)byte_44339D[0] - a3;
-  v35 = (unsigned __int8)byte_4433AD[0] - a3;
-  n2 = (unsigned __int8)byte_44339C[16 * a3];
-  v37 = (unsigned __int8)byte_44339F[16 * a3];
+  v33 = (unsigned __int8)__sub_407EF0_byte_44339D[0] - a3;
+  v35 = (unsigned __int8)__sub_407EF0_byte_4433AD[0] - a3;
+  n2 = (unsigned __int8)__sub_407EF0_byte_44339C[16 * a3];
+  v37 = (unsigned __int8)__sub_407EF0_byte_44339F[16 * a3];
   Src_3 = (unsigned int)&Blockb[a3 + 16];
-  v4 = dword_4433A4[4 * a3];
-  v36 = dword_4433A0[4 * a3];
-  v34 = dword_4433A8[4 * a3];
+  v4 = __sub_407EF0_dword_4433A4[4 * a3];
+  v36 = __sub_407EF0_dword_4433A0[4 * a3];
+  v34 = __sub_407EF0_dword_4433A8[4 * a3];
   if ( n2 == 2 && v36 + v4 == 128 )
   {
     if ( !v4 )
       goto LABEL_4;
     if ( !v36 )
     {
-      v33 = (unsigned __int8)byte_4433AD[0] - a3;
+      v33 = (unsigned __int8)__sub_407EF0_byte_4433AD[0] - a3;
       goto LABEL_4;
     }
   }
-  if ( byte_44339C[16 * a3] == 1 )
+  if ( __sub_407EF0_byte_44339C[16 * a3] == 1 )
   {
 LABEL_4:
     Blockb += a3;
     v29 = &Blockb[v33];
     if ( n6 <= 6
-      || (Src_2 = (unsigned int)&Blockb[v33 + 16], n4_5 <= 0)
-      || (n4_5 > 1 || (unsigned int)Src <= Src_2 || (unsigned int)&Src[-Src_2] < n6 * n4_5)
+      || (Src_2 = (unsigned int)&Blockb[v33 + 16], __sub_407EF0_n4_5 <= 0)
+      || (__sub_407EF0_n4_5 > 1 || (unsigned int)Src <= Src_2 || (unsigned int)&Src[-Src_2] < n6 * __sub_407EF0_n4_5)
       && (Src_2 <= (unsigned int)Src || Src_2 - (unsigned int)Src < n6)
-      || (n4_5 > 1 || (unsigned int)Src <= Src_3 || (unsigned int)&Src[-Src_3] < n6 * n4_5)
+      || (__sub_407EF0_n4_5 > 1 || (unsigned int)Src <= Src_3 || (unsigned int)&Src[-Src_3] < n6 * __sub_407EF0_n4_5)
       && ((unsigned int)Src >= Src_3 || Src_3 - (unsigned int)Src < n6) )
     {
       n6_1 = 0;
@@ -245,13 +236,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_407EF0()
   );
 }
 
-#undef byte_44339C
-#undef byte_44339D
-#undef byte_44339E
-#undef byte_44339F
-#undef byte_4433AD
-#undef dword_4433A0
-#undef dword_4433A4
-#undef dword_4433A8
-#undef n4_5
 #undef sub_434980

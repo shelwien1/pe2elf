@@ -49,6 +49,7 @@
 00414860 sub_414860 userpurge
 004081E0 sub_4081E0 usercall
 00407EF0 sub_407EF0 usercall
+00402E40 exit_402E40 stdcall
 00402BD0 sub_402BD0 usercall
 004149C0 sub_4149C0 usercall
 00402EB0 sub_402EB0 cdecl
@@ -82,3 +83,7 @@
 00408510 sub_408510 cdecl
 0040F450 sub_40F450 userpurge
 00428C40 sub_428C40 cdecl
+00436BD0 sub_436BD0 usercall
+004022C0 sub_4022C0 usercall
+00402590 sub_402590 cdecl
+0042C220 sub_42C220 thiscall

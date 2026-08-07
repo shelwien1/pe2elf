@@ -3,26 +3,20 @@
 
 typedef int t_sub_413430_byte_445714[0x10000];
 static t_sub_413430_byte_445714& __sub_413430_byte_445714 = *(t_sub_413430_byte_445714*)0x00445714;
-#define byte_445714 __sub_413430_byte_445714
 typedef int t_sub_413430_byte_445715[0x10000];
 static t_sub_413430_byte_445715& __sub_413430_byte_445715 = *(t_sub_413430_byte_445715*)0x00445715;
-#define byte_445715 __sub_413430_byte_445715
 typedef int t_sub_413430_byte_445716[0x10000];
 static t_sub_413430_byte_445716& __sub_413430_byte_445716 = *(t_sub_413430_byte_445716*)0x00445716;
-#define byte_445716 __sub_413430_byte_445716
 typedef int t_sub_413430_dword_445660[32];
 static t_sub_413430_dword_445660& __sub_413430_dword_445660 = *(t_sub_413430_dword_445660*)0x00445660;
-#define dword_445660 __sub_413430_dword_445660
 typedef int t_sub_413430_n2;
 static t_sub_413430_n2& __sub_413430_n2 = *(t_sub_413430_n2*)0x00443360;
-#define n2 __sub_413430_n2
 typedef int t_sub_413430_n8_0;
 static t_sub_413430_n8_0& __sub_413430_n8_0 = *(t_sub_413430_n8_0*)0x00445710;
-#define n8_0 __sub_413430_n8_0
 
 
 PROBE_DECL(__sub_413430)
-__attribute__((thiscall)) int __sub_413430(unsigned __int16 *_this, int n2)
+__attribute__((thiscall)) int __sub_413430(unsigned __int16 *_this, int __sub_413430_n2)
 {
   PROBE_HIT(__sub_413430);
   int n0x8000; // eax
@@ -41,18 +35,18 @@ __attribute__((thiscall)) int __sub_413430(unsigned __int16 *_this, int n2)
   n0x8000 = *_this;
   if ( (unsigned int)n0x8000 <= 0x8000 )
   {
-    v3 = *((unsigned __int8 *)dword_445660 + n2);
+    v3 = *((unsigned __int8 *)__sub_413430_dword_445660 + __sub_413430_n2);
     v4 = (*(_this + 1) >> 2) & 0xFFFFFFE0;
-    if ( ::n2 == 2 )
+    if ( ::__sub_413430_n2 == 2 )
       v4 = 15 * (*(_this + 1) >> 5);
     *(_this + v3 + 2) += v4 + 4;
     n0x8000 = *_this + v4 + 4;
     *_this = n0x8000;
-    if ( n2 >= 2 )
+    if ( __sub_413430_n2 >= 2 )
     {
-      n0x8000 = (unsigned __int8)byte_445715[4 * v3];
-      v11 = n2 - (unsigned __int8)byte_445714[4 * v3];
-      v5 = (int)(_this + 2 * (unsigned __int8)byte_445716[4 * v3] + 8);
+      n0x8000 = (unsigned __int8)__sub_413430_byte_445715[4 * v3];
+      v11 = __sub_413430_n2 - (unsigned __int8)__sub_413430_byte_445714[4 * v3];
+      v5 = (int)(_this + 2 * (unsigned __int8)__sub_413430_byte_445716[4 * v3] + 8);
       v6 = 0;
       v12 = v5;
       v7 = 1;
@@ -71,7 +65,7 @@ __attribute__((thiscall)) int __sub_413430(unsigned __int16 *_this, int n2)
         v7 *= 2;
         n0x8000 >>= 1;
         v6 = v13 + 2 * v6;
-        v8[v13] = n0x2000 + ((n8_0 * ((unsigned int)(::n2 == 2) + 5)) >> 3);
+        v8[v13] = n0x2000 + ((__sub_413430_n8_0 * ((unsigned int)(::__sub_413430_n2 == 2) + 5)) >> 3);
       }
       while ( n0x8000 );
     }
@@ -79,9 +73,3 @@ __attribute__((thiscall)) int __sub_413430(unsigned __int16 *_this, int n2)
   return n0x8000;
 }
 
-#undef byte_445714
-#undef byte_445715
-#undef byte_445716
-#undef dword_445660
-#undef n2
-#undef n8_0

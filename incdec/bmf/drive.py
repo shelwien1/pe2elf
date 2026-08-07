@@ -78,7 +78,12 @@ def call_graph(cands):
     for _, n, _ in cands:
         a, b = spans[n]
         body = '\n'.join(src[a - 1:b])
-        g[n] = {c for c in re.findall(r'\b(sub_[0-9A-Fa-f]{6})\s*\(', body)
+        # Any known function name, not just `sub_XXXXXX(` — Hex-Rays also
+        # names functions after what they do (`exit_402E40`), and references
+        # them as pointers as well as calling them.  A missed edge puts a
+        # callee after its caller in accepted.txt, and §6.3's bare #define
+        # then names a symbol that is not defined yet.
+        g[n] = {c for c in re.findall(r'\b([A-Za-z_]\w*)\b', body)
                 if c in names and c != n}
     return g
 

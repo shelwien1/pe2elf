@@ -3,37 +3,26 @@
 
 typedef char t_sub_4229E0_byte_439890[16];
 static t_sub_4229E0_byte_439890& __sub_4229E0_byte_439890 = *(t_sub_4229E0_byte_439890*)0x00439890;
-#define byte_439890 __sub_4229E0_byte_439890
 typedef char t_sub_4229E0_byte_4398A0[32];
 static t_sub_4229E0_byte_4398A0& __sub_4229E0_byte_4398A0 = *(t_sub_4229E0_byte_4398A0*)0x004398A0;
-#define byte_4398A0 __sub_4229E0_byte_4398A0
 typedef char t_sub_4229E0_byte_44339D[0x10000];
 static t_sub_4229E0_byte_44339D& __sub_4229E0_byte_44339D = *(t_sub_4229E0_byte_44339D*)0x0044339D;
-#define byte_44339D __sub_4229E0_byte_44339D
 typedef char t_sub_4229E0_byte_44339E[0x10000];
 static t_sub_4229E0_byte_44339E& __sub_4229E0_byte_44339E = *(t_sub_4229E0_byte_44339E*)0x0044339E;
-#define byte_44339E __sub_4229E0_byte_44339E
 typedef int t_sub_4229E0_dword_4458E0;
 static t_sub_4229E0_dword_4458E0& __sub_4229E0_dword_4458E0 = *(t_sub_4229E0_dword_4458E0*)0x004458E0;
-#define dword_4458E0 __sub_4229E0_dword_4458E0
 typedef int t_sub_4229E0_dword_4458E4;
 static t_sub_4229E0_dword_4458E4& __sub_4229E0_dword_4458E4 = *(t_sub_4229E0_dword_4458E4*)0x004458E4;
-#define dword_4458E4 __sub_4229E0_dword_4458E4
 typedef int t_sub_4229E0_dword_4458E8;
 static t_sub_4229E0_dword_4458E8& __sub_4229E0_dword_4458E8 = *(t_sub_4229E0_dword_4458E8*)0x004458E8;
-#define dword_4458E8 __sub_4229E0_dword_4458E8
 typedef int t_sub_4229E0_dword_4458EC;
 static t_sub_4229E0_dword_4458EC& __sub_4229E0_dword_4458EC = *(t_sub_4229E0_dword_4458EC*)0x004458EC;
-#define dword_4458EC __sub_4229E0_dword_4458EC
 typedef int t_sub_4229E0_dword_4458F0;
 static t_sub_4229E0_dword_4458F0& __sub_4229E0_dword_4458F0 = *(t_sub_4229E0_dword_4458F0*)0x004458F0;
-#define dword_4458F0 __sub_4229E0_dword_4458F0
 typedef int t_sub_4229E0_dword_4458F4;
 static t_sub_4229E0_dword_4458F4& __sub_4229E0_dword_4458F4 = *(t_sub_4229E0_dword_4458F4*)0x004458F4;
-#define dword_4458F4 __sub_4229E0_dword_4458F4
 typedef int t_sub_4229E0_n256_0;
 static t_sub_4229E0_n256_0& __sub_4229E0_n256_0 = *(t_sub_4229E0_n256_0*)0x00443398;
-#define n256_0 __sub_4229E0_n256_0
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
@@ -113,14 +102,14 @@ __attribute__((thiscall)) int __sub_4229E0(int _this, int i, int n4)
     *(_WORD *)(_this + v7 + 940080) = 4096;
   }
   while ( n0x1E60 < 0x1E60 );
-  v8 = 4 * n256_0 + 1;
-  v9 = 16 * n256_0;
-  *(_DWORD *)(_this + 278732) = (unsigned __int8)(byte_44339E[16
-                                                           * (unsigned __int8)byte_44339D[16
+  v8 = 4 * __sub_4229E0_n256_0 + 1;
+  v9 = 16 * __sub_4229E0_n256_0;
+  *(_DWORD *)(_this + 278732) = (unsigned __int8)(__sub_4229E0_byte_44339E[16
+                                                           * (unsigned __int8)__sub_4229E0_byte_44339D[16
                                                                                         * *(_DWORD *)(_this + 278728)]]
                                                & 8) >> 3;
-  dword_4458F0 = v8;
-  dword_4458F4 = -v8;
+  __sub_4229E0_dword_4458F0 = v8;
+  __sub_4229E0_dword_4458F4 = -v8;
   *(_DWORD *)(_this + 278720) = -v9 - 7;
   *(_DWORD *)(_this + 278724) = v9 + 8;
   *(_DWORD *)(_this + 278660) = __op_new(4 * i + 16);
@@ -159,19 +148,19 @@ __attribute__((thiscall)) int __sub_4229E0(int _this, int i, int n4)
   while ( n5 < 5 );
   sub_4349F0(*(char **)(_this + 278756),0,Size);
   v17 = *(_DWORD *)(_this + 278756);
-  dword_4458EC = 0;
+  __sub_4229E0_dword_4458EC = 0;
   v18 = 0;
-  dword_4458E8 = 0;
-  dword_4458E4 = 0;
+  __sub_4229E0_dword_4458E8 = 0;
+  __sub_4229E0_dword_4458E4 = 0;
   n0x82 = 0;
-  dword_4458E0 = 0;
+  __sub_4229E0_dword_4458E0 = 0;
   *(_DWORD *)(_this + 278736) = v17 + 144;
   do
   {
-    v20 = (unsigned __int8)byte_439890[v18];
+    v20 = (unsigned __int8)__sub_4229E0_byte_439890[v18];
     *(_DWORD *)(_this + 8 * n0x82 + 278944) = (*(_DWORD *)(_this + 278728) << 8) | (16 * v18);
     v21 = (2 * n0x82 == v20) + v18;
-    v22 = (unsigned __int8)byte_439890[v21];
+    v22 = (unsigned __int8)__sub_4229E0_byte_439890[v21];
     *(_DWORD *)(_this + 8 * n0x82 + 278948) = (*(_DWORD *)(_this + 278728) << 8) | (16 * v21);
     v23 = 2 * n0x82++ + 1 == v22;
     v18 = v23 + v21;
@@ -180,10 +169,10 @@ __attribute__((thiscall)) int __sub_4229E0(int _this, int i, int n4)
   v24 = 0;
   for ( n = 0; n < 0x3C; ++n )
   {
-    v26 = (unsigned __int8)byte_4398A0[v24];
+    v26 = (unsigned __int8)__sub_4229E0_byte_4398A0[v24];
     *(_BYTE *)(_this + 2 * n + 280752) = v24;
     v27 = (2 * n == v26) + v24;
-    v28 = (unsigned __int8)byte_4398A0[v27];
+    v28 = (unsigned __int8)__sub_4229E0_byte_4398A0[v27];
     *(_BYTE *)(_this + 2 * n + 280753) = v27;
     v29 = 2 * n + 1 == v28;
     v24 = v29 + v27;
@@ -209,16 +198,5 @@ __attribute__((thiscall)) int __sub_4229E0(int _this, int i, int n4)
 }
 
 #undef FILE
-#undef byte_439890
-#undef byte_4398A0
-#undef byte_44339D
-#undef byte_44339E
-#undef dword_4458E0
-#undef dword_4458E4
-#undef dword_4458E8
-#undef dword_4458EC
-#undef dword_4458F0
-#undef dword_4458F4
-#undef n256_0
 #undef sub_4118A0
 #undef sub_4349F0

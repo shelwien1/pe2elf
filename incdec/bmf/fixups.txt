@@ -22,3 +22,6 @@ sub_40F450	buf = ::buf;	buf = (char *)::buf;	Local `char *buf` assigned the glob
 sub_417E80	ArgList_6 = ArgList_5;	ArgList_6 = (_DWORD *)ArgList_5;	`_DWORD *ArgList_6` and `char *ArgList_5`; the instruction is a register move.
 sub_41CAB0	v502 = &v385[2 * n0x10_2 + 235020];	v502 = (_WORD *)&v385[2 * n0x10_2 + 235020];	`_WORD *v502` from a `_DWORD *` base. Hex-Rays scales the index by the base type either way, so the address is what it computed.
 sub_417E80	ArgList_7 = ArgList_5;	ArgList_7 = (_DWORD *)ArgList_5;	As above, a second copy of the same register move.
+sub_41CAB0	v488 = &v385[2 * n0x10_2 + 235020];	v488 = (_WORD *)&v385[2 * n0x10_2 + 235020];	Same as v502 above: a `_WORD *` taken from a `_DWORD *` base.
+sub_41CAB0	v477 = &v385[2 * n0x10_2 + 235020];	v477 = (_WORD *)&v385[2 * n0x10_2 + 235020];	As above.
+sub_41CAB0	v466 = &v385[2 * n0x10_2 + 235020];	v466 = (_WORD *)&v385[2 * n0x10_2 + 235020];	As above.

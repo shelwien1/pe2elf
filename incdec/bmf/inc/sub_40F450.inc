@@ -3,19 +3,14 @@
 
 typedef int t_sub_40F450_buf[0x10000];
 static t_sub_40F450_buf& __sub_40F450_buf = *(t_sub_40F450_buf*)0x00443380;
-#define buf __sub_40F450_buf
 typedef __int128 t_sub_40F450_xmmword_439590;
 static t_sub_40F450_xmmword_439590& __sub_40F450_xmmword_439590 = *(t_sub_40F450_xmmword_439590*)0x00439590;
-#define xmmword_439590 __sub_40F450_xmmword_439590
 typedef __int128 t_sub_40F450_xmmword_4395A0;
 static t_sub_40F450_xmmword_4395A0& __sub_40F450_xmmword_4395A0 = *(t_sub_40F450_xmmword_4395A0*)0x004395A0;
-#define xmmword_4395A0 __sub_40F450_xmmword_4395A0
 typedef __int128 t_sub_40F450_xmmword_4395B0;
 static t_sub_40F450_xmmword_4395B0& __sub_40F450_xmmword_4395B0 = *(t_sub_40F450_xmmword_4395B0*)0x004395B0;
-#define xmmword_4395B0 __sub_40F450_xmmword_4395B0
 typedef __int128 t_sub_40F450_xmmword_4395C0;
 static t_sub_40F450_xmmword_4395C0& __sub_40F450_xmmword_4395C0 = *(t_sub_40F450_xmmword_4395C0*)0x004395C0;
-#define xmmword_4395C0 __sub_40F450_xmmword_4395C0
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -46,7 +41,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
   int v21; // edx
   int v22; // eax
   int v23; // ecx
-  char *buf; // eax
+  char *__sub_40F450_buf; // eax
   int v25; // ecx
   _BYTE *v26; // esi
   int v27; // eax
@@ -156,8 +151,8 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
     ++n7;
   }
   while ( n7 < 7 );
-  si128 = _mm_load_si128((const __m128i *)&xmmword_439590);
-  v8 = _mm_load_si128((const __m128i *)&xmmword_4395A0);
+  si128 = _mm_load_si128((const __m128i *)&__sub_40F450_xmmword_439590);
+  v8 = _mm_load_si128((const __m128i *)&__sub_40F450_xmmword_4395A0);
   v98[15] = 30;
   for ( i = 15; i < 0x7F; i += 16 )
   {
@@ -174,8 +169,8 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
     v98[2 * n7_1++ + 130] = v12;
   }
   while ( n7_1 < 7 );
-  v13 = _mm_load_si128((const __m128i *)&xmmword_4395B0);
-  v14 = _mm_load_si128((const __m128i *)&xmmword_4395C0);
+  v13 = _mm_load_si128((const __m128i *)&__sub_40F450_xmmword_4395B0);
+  v14 = _mm_load_si128((const __m128i *)&__sub_40F450_xmmword_4395C0);
   v98[143] = -31;
   for ( j = 15; j < 0x7F; j += 16 )
   {
@@ -211,7 +206,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
   Blockb[16] = v22;
   Blockb[21] = *(_DWORD *)(v23 - 8);
   Blockb[22] = *(_DWORD *)(v23 - 4);
-  buf = sub_434980((char *)Blockb[20],(char *)Blockb[19],a4 + 2);
+  __sub_40F450_buf = sub_434980((char *)Blockb[20],(char *)Blockb[19],a4 + 2);
   v25 = a5 - 1;
   if ( a5 != 1 )
   {
@@ -249,12 +244,12 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
         Blockb[21] = -Blockb[v27 - *(unsigned __int8 *)(v33 - 1) + 2091];
         Blockb[22] = 0;
         *v26 = v98[(unsigned __int8)(*v26 - *(_BYTE *)(v33 - 1))];
-        buf = buf_1;
+        __sub_40F450_buf = buf_1;
         ++v26;
         if ( a4 != 1 )
           break;
         if ( !--v25 )
-          return buf;
+          return __sub_40F450_buf;
       }
       buf_2 = buf_1;
       v99 = v25;
@@ -420,10 +415,10 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
         buf_3 = buf_2;
         v97 = (unsigned __int8)v98[(unsigned __int8)(*v109 - v85)];
         *v109 = v97;
-        buf = (char *)::buf;
+        __sub_40F450_buf = (char *)::__sub_40F450_buf;
         v26 = v95 + 1;
         v109 = v26;
-        ++*(_DWORD *)&::buf[4 * v97];
+        ++*(_DWORD *)&::__sub_40F450_buf[4 * v97];
         buf_2 = buf_3 - 1;
       }
       while ( buf_3 != (char *)1 );
@@ -431,7 +426,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40F450(_DW
     }
     while ( v99 != 1 );
   }
-  return buf;
+  return __sub_40F450_buf;
 }
 
 // __userpurge thunk for sub_40F450 @ 0x0040F450: reads the register arguments the
@@ -465,9 +460,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40F450()
   );
 }
 
-#undef buf
-#undef xmmword_439590
-#undef xmmword_4395A0
-#undef xmmword_4395B0
-#undef xmmword_4395C0
 #undef sub_434980

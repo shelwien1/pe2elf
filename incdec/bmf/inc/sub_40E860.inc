@@ -3,28 +3,20 @@
 
 typedef int t_sub_40E860_buf[0x10000];
 static t_sub_40E860_buf& __sub_40E860_buf = *(t_sub_40E860_buf*)0x00443380;
-#define buf __sub_40E860_buf
 typedef int t_sub_40E860_n2;
 static t_sub_40E860_n2& __sub_40E860_n2 = *(t_sub_40E860_n2*)0x00443360;
-#define n2 __sub_40E860_n2
 typedef int t_sub_40E860_n256_0[0x10000];
 static t_sub_40E860_n256_0& __sub_40E860_n256_0 = *(t_sub_40E860_n256_0*)0x00443398;
-#define n256_0 __sub_40E860_n256_0
 typedef __int128 t_sub_40E860_xmmword_439540;
 static t_sub_40E860_xmmword_439540& __sub_40E860_xmmword_439540 = *(t_sub_40E860_xmmword_439540*)0x00439540;
-#define xmmword_439540 __sub_40E860_xmmword_439540
 typedef __int128 t_sub_40E860_xmmword_439550;
 static t_sub_40E860_xmmword_439550& __sub_40E860_xmmword_439550 = *(t_sub_40E860_xmmword_439550*)0x00439550;
-#define xmmword_439550 __sub_40E860_xmmword_439550
 typedef __int128 t_sub_40E860_xmmword_439560;
 static t_sub_40E860_xmmword_439560& __sub_40E860_xmmword_439560 = *(t_sub_40E860_xmmword_439560*)0x00439560;
-#define xmmword_439560 __sub_40E860_xmmword_439560
 typedef __int128 t_sub_40E860_xmmword_439570;
 static t_sub_40E860_xmmword_439570& __sub_40E860_xmmword_439570 = *(t_sub_40E860_xmmword_439570*)0x00439570;
-#define xmmword_439570 __sub_40E860_xmmword_439570
 typedef __int128 t_sub_40E860_xmmword_439580;
 static t_sub_40E860_xmmword_439580& __sub_40E860_xmmword_439580 = *(t_sub_40E860_xmmword_439580*)0x00439580;
-#define xmmword_439580 __sub_40E860_xmmword_439580
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -53,7 +45,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40E860(int
   char v19; // bl
   char v20; // cl
   char v21; // bl
-  int n2; // eax
+  int __sub_40E860_n2; // eax
   __m128i v23; // xmm1
   __m128i v24; // xmm0
   unsigned int j; // eax
@@ -208,14 +200,14 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40E860(int
   int v174; // [esp+360h] [ebp-10h]
 
   Blocka_1 = Blocka;
-  n256 = n256_0[0];
-  n128_2 = 2 * n256_0[0] + 1;
-  if ( ::n2 )
+  n256 = __sub_40E860_n256_0[0];
+  n128_2 = 2 * __sub_40E860_n256_0[0] + 1;
+  if ( ::__sub_40E860_n2 )
   {
-    si128 = _mm_load_si128((const __m128i *)&xmmword_439560);
-    v10 = _mm_load_si128((const __m128i *)&xmmword_439540);
-    v11 = _mm_load_si128((const __m128i *)&xmmword_439570);
-    v12 = _mm_load_si128((const __m128i *)&xmmword_439580);
+    si128 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439560);
+    v10 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439540);
+    v11 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439570);
+    v12 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439580);
     n0x70 = 0;
     v160[0] = 0;
     v161 = 0x80;
@@ -363,12 +355,12 @@ LABEL_21:
     while ( n128_4 < 128 );
     n128_2 = n128_3;
     Blocka_1 = Blocka_2;
-    n2 = ::n2;
+    __sub_40E860_n2 = ::__sub_40E860_n2;
   }
   else
   {
-    v23 = _mm_load_si128((const __m128i *)&xmmword_439540);
-    v24 = _mm_load_si128((const __m128i *)&xmmword_439550);
+    v23 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439540);
+    v24 = _mm_load_si128((const __m128i *)&__sub_40E860_xmmword_439550);
     for ( j = 0; j < 0x100; j += 128 )
     {
       *(__m128i *)&v160[j] = v24;
@@ -400,7 +392,7 @@ LABEL_21:
         n256 += n128_2;
       }
       while ( n256 < 256 );
-      n256_1 = n256_0[0];
+      n256_1 = __sub_40E860_n256_0[0];
     }
     if ( n256 - n256_1 < 256 )
     {
@@ -408,11 +400,11 @@ LABEL_21:
       v160[v34] = v161;
       v161 = v36;
     }
-    n2 = ::n2;
+    __sub_40E860_n2 = ::__sub_40E860_n2;
   }
-  if ( n2 )
+  if ( __sub_40E860_n2 )
   {
-    n256 = n256_0[0];
+    n256 = __sub_40E860_n256_0[0];
     goto LABEL_21;
   }
   Blocka_2 = Blocka_1;
@@ -726,7 +718,7 @@ LABEL_53:
           }
           v140 = v165;
           v141 = v164 + 1;
-          ++*(_DWORD *)&buf[4 * (unsigned __int8)*v164];
+          ++*(_DWORD *)&__sub_40E860_buf[4 * (unsigned __int8)*v164];
           v164 = v141;
           ++v163;
           v165 = v140 - 1;
@@ -775,12 +767,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40E860()
   );
 }
 
-#undef buf
-#undef n2
-#undef n256_0
-#undef xmmword_439540
-#undef xmmword_439550
-#undef xmmword_439560
-#undef xmmword_439570
-#undef xmmword_439580
 #undef sub_434980

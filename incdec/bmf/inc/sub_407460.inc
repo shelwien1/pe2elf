@@ -3,10 +3,8 @@
 
 typedef int t_sub_407460_dword_443384;
 static t_sub_407460_dword_443384& __sub_407460_dword_443384 = *(t_sub_407460_dword_443384*)0x00443384;
-#define dword_443384 __sub_407460_dword_443384
 typedef int t_sub_407460_n4_5;
 static t_sub_407460_n4_5& __sub_407460_n4_5 = *(t_sub_407460_n4_5*)0x00443394;
-#define n4_5 __sub_407460_n4_5
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
@@ -124,7 +122,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int
   v99 = a1;
   v8 = alloca(26672);
   v88 = a3;
-  n4 = n4_5;
+  n4 = __sub_407460_n4_5;
   v9 = *((unsigned __int16 *)a1 + 2);
   n2_2 = n2;
   v89 = a1;
@@ -208,9 +206,9 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int
   v92 = v10;
   v94 = v38 - 1;
   v93 = -v37;
-  v39 = -n4_5;
-  v40 = v91 - (-v37 - n4_5);
-  v101 = -v37 - n4_5;
+  v39 = -__sub_407460_n4_5;
+  v40 = v91 - (-v37 - __sub_407460_n4_5);
+  v101 = -v37 - __sub_407460_n4_5;
   v99 = (unsigned __int8 *)(v40 + 16);
   v41 = v10 + v40 + 16;
   v42 = (unsigned __int8 *)(v40 + 16);
@@ -285,7 +283,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int
   v66 = &n2_2[v95];
   *(_BYTE *)(16 * (_DWORD)v65 + v64) = 0;
   *(_BYTE *)(v64 + 1) = (_BYTE)v65;
-  v67 = dword_443384 == 0;
+  v67 = __sub_407460_dword_443384 == 0;
   *(_BYTE *)(16 * (_DWORD)v66 + v64) = 1;
   *(_BYTE *)(v64 + 17) = (_BYTE)v66;
   if ( !v67 && *((_DWORD *)v89 + 3) > 0x1000000u )
@@ -337,7 +335,5 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_407460()
   );
 }
 
-#undef dword_443384
-#undef n4_5
 #undef sub_411700
 #undef sub_4349F0

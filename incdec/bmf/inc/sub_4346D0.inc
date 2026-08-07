@@ -3,7 +3,6 @@
 
 typedef int t_sub_4346D0_n1024;
 static t_sub_4346D0_n1024& __sub_4346D0_n1024 = *(t_sub_4346D0_n1024*)0x00445B5C;
-#define n1024 __sub_4346D0_n1024
 
 #define sub_434A30 __sub_434A30
 
@@ -44,9 +43,9 @@ BMF_SSE void __sub_4346D0(char n3)
   _DWORD v8[128]; // [esp+0h] [ebp-214h] BYREF
   unsigned int v9; // [esp+200h] [ebp-14h]
 
-  while ( (n1024 & 0xFFFFF800) == 0 && (n1024 & 0x400) == 0 )
+  while ( (__sub_4346D0_n1024 & 0xFFFFF800) == 0 && (__sub_4346D0_n1024 & 0x400) == 0 )
   {
-    if ( (n1024 & 0xFFFFFE00) != 0 )
+    if ( (__sub_4346D0_n1024 & 0xFFFFFE00) != 0 )
     {
       v3 = n3 & 2;
       v4 = n3 & 4;
@@ -76,7 +75,7 @@ BMF_SSE void __sub_4346D0(char n3)
       }
       return;
     }
-    if ( n1024 )
+    if ( __sub_4346D0_n1024 )
     {
       irc__print(1, 0, 0, v8[5]);
       irc__print(1, 23, 0, v8[2]);
@@ -120,5 +119,4 @@ BMF_SSE void __sub_4346D0(char n3)
 #undef exit
 #undef irc__get_msg
 #undef irc__print
-#undef n1024
 #undef sub_434A30

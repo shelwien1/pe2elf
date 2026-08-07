@@ -3,25 +3,18 @@
 
 typedef int t_sub_40FAC0_n2;
 static t_sub_40FAC0_n2& __sub_40FAC0_n2 = *(t_sub_40FAC0_n2*)0x00443360;
-#define n2 __sub_40FAC0_n2
 typedef int t_sub_40FAC0_n256_0;
 static t_sub_40FAC0_n256_0& __sub_40FAC0_n256_0 = *(t_sub_40FAC0_n256_0*)0x00443398;
-#define n256_0 __sub_40FAC0_n256_0
 typedef __int128 t_sub_40FAC0_xmmword_4395D0;
 static t_sub_40FAC0_xmmword_4395D0& __sub_40FAC0_xmmword_4395D0 = *(t_sub_40FAC0_xmmword_4395D0*)0x004395D0;
-#define xmmword_4395D0 __sub_40FAC0_xmmword_4395D0
 typedef __int128 t_sub_40FAC0_xmmword_4395E0;
 static t_sub_40FAC0_xmmword_4395E0& __sub_40FAC0_xmmword_4395E0 = *(t_sub_40FAC0_xmmword_4395E0*)0x004395E0;
-#define xmmword_4395E0 __sub_40FAC0_xmmword_4395E0
 typedef __int128 t_sub_40FAC0_xmmword_4395F0;
 static t_sub_40FAC0_xmmword_4395F0& __sub_40FAC0_xmmword_4395F0 = *(t_sub_40FAC0_xmmword_4395F0*)0x004395F0;
-#define xmmword_4395F0 __sub_40FAC0_xmmword_4395F0
 typedef __int128 t_sub_40FAC0_xmmword_439600;
 static t_sub_40FAC0_xmmword_439600& __sub_40FAC0_xmmword_439600 = *(t_sub_40FAC0_xmmword_439600*)0x00439600;
-#define xmmword_439600 __sub_40FAC0_xmmword_439600
 typedef __int128 t_sub_40FAC0_xmmword_439610;
 static t_sub_40FAC0_xmmword_439610& __sub_40FAC0_xmmword_439610 = *(t_sub_40FAC0_xmmword_439610*)0x00439610;
-#define xmmword_439610 __sub_40FAC0_xmmword_439610
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -166,15 +159,15 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40FAC0(int
   int v135; // [esp+14Ch] [ebp-14h]
 
   Src_1 = Src;
-  n256 = n256_0;
+  n256 = __sub_40FAC0_n256_0;
   v127 = (char *)(Src + 1);
-  n128_1 = 2 * n256_0 + 1;
-  if ( n2 )
+  n128_1 = 2 * __sub_40FAC0_n256_0 + 1;
+  if ( __sub_40FAC0_n2 )
   {
-    si128 = _mm_load_si128((const __m128i *)&xmmword_4395F0);
-    v10 = _mm_load_si128((const __m128i *)&xmmword_4395D0);
-    v11 = _mm_load_si128((const __m128i *)&xmmword_439600);
-    v12 = _mm_load_si128((const __m128i *)&xmmword_439610);
+    si128 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_4395F0);
+    v10 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_4395D0);
+    v11 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_439600);
+    v12 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_439610);
     n0x70 = 0;
     v118[0] = 0;
     v119 = 0x80;
@@ -200,7 +193,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40FAC0(int
     Blockb = (int *)Blockb_1;
     v118[253] = -127;
     v118[254] = 127;
-    if ( n256_0 )
+    if ( __sub_40FAC0_n256_0 )
     {
       n128 = n128_1;
       if ( n128_1 < 128 )
@@ -227,8 +220,8 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40FAC0(int
   }
   else
   {
-    v22 = _mm_load_si128((const __m128i *)&xmmword_4395D0);
-    v23 = _mm_load_si128((const __m128i *)&xmmword_4395E0);
+    v22 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_4395D0);
+    v23 = _mm_load_si128((const __m128i *)&__sub_40FAC0_xmmword_4395E0);
     for ( k = 0; k < 0x100; k += 128 )
     {
       *(__m128i *)&v118[k] = v23;
@@ -263,7 +256,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) char * __sub_40FAC0(int
       }
       while ( n256 < 256 );
       Blockb = (int *)Blockb_1;
-      n256_1 = n256_0;
+      n256_1 = __sub_40FAC0_n256_0;
       v114 = v33;
     }
     if ( n256 - n256_1 < 256 )
@@ -573,11 +566,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40FAC0()
   );
 }
 
-#undef n2
-#undef n256_0
-#undef xmmword_4395D0
-#undef xmmword_4395E0
-#undef xmmword_4395F0
-#undef xmmword_439600
-#undef xmmword_439610
 #undef sub_434980

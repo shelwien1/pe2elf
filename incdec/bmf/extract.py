@@ -149,6 +149,10 @@ WINAPI_PROTO = {
     'SetFileTime': ('int', 'void *, const void *, const void *, const void *'),
     'DosDateTimeToFileTime': ('int', 'unsigned short, unsigned short, void *'),
     'FileTimeToDosDateTime': ('int', 'const void *, unsigned short *, unsigned short *'),
+    'GetFileTime': ('int', 'void *, void *, void *, void *'),
+    'FindFirstFileA': ('void *', 'const char *, void *'),
+    'FindNextFileA':  ('int', 'void *, void *'),
+    'FindClose':      ('int', 'void *'),
 }
 
 
@@ -365,6 +369,27 @@ def parse_signature(sig, name):
     return ret_reg, params
 
 
+MEMBER_BEFORE = re.compile(r'(?:\.|->)\s*$')
+
+
+def rename_ident(text, name, repl):
+    """Rename `name` to `repl`, but not where it is a struct member.
+
+    A `#define name repl` cannot tell `dwLowDateTime` the global from
+    `FileTime.dwLowDateTime` the member, and BMF has several globals whose
+    names collide with a field of a Win32 struct the same body uses.  The
+    qualified form `::name` is renamed — that is the global, spelled explicitly
+    because a local shadows it.
+    """
+    out, pos = [], 0
+    for m in re.finditer(r'\b' + re.escape(name) + r'\b', text):
+        if MEMBER_BEFORE.search(text[max(0, m.start() - 4):m.start()]):
+            continue
+        out.append(text[pos:m.start()]); out.append(repl); pos = m.end()
+    out.append(text[pos:])
+    return ''.join(out)
+
+
 def split_decl(decl):
     """`_DWORD *a1` -> ('_DWORD *', 'a1');  `int` -> ('int', None)."""
     m = re.match(r'^(.*?[\s\*])([A-Za-z_]\w*)$', decl.strip())
@@ -546,7 +571,18 @@ def emit(args, cache=None):
     if os.path.exists(ovr):
         dest = args.out or os.path.join(HERE, 'inc', args.name + '.inc')
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-        open(dest, 'w').write(open(ovr).read())
+        text = open(ovr).read()
+        # A __usercall override still needs its entry-point thunk, and there is
+        # no reason to hand-write that: the override supplies the body with the
+        # signature §4.2 expects, and the generated stub goes on the end.
+        lines, spans, protos, _g, _na, _f, _w, _fx = cache or load()
+        if args.name in spans and spans[args.name][3] in ('usercall', 'userpurge'):
+            a, b, va, conv = spans[args.name]
+            sig, _n = join_signature(lines[a - 1:b])
+            ret_reg, sig_params = parse_signature(sig, args.name)
+            text += '\n' + '\n'.join(make_thunk(args.name, va, conv,
+                                                 sig_params, ret_reg)) + '\n'
+        open(dest, 'w').write(text)
         print(f"{dest}: hand-written override ({ovr})")
         return
 
@@ -628,6 +664,12 @@ def emit(args, cache=None):
         if t.startswith('//'):
             continue
         m = re.match(r'^[A-Za-z_][\w\s\*]*?\b([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*;\s*(//.*)?$', t)
+        if not m:
+            # Function-pointer locals — `void (__cdecl *sub_42BB20_1)(int, int);`
+            # — do not match the plain form, and breaking here would lose every
+            # local declared after one of them.
+            m = re.match(r'^[A-Za-z_][\w\s\*]*\(\s*[\w\s]*\*\s*([A-Za-z_]\w*)\s*\)'
+                         r'\s*\([^;]*\)\s*;\s*(//.*)?$', t)
         if m:
             locals_.add(m.group(1))
         else:
@@ -668,6 +710,8 @@ def emit(args, cache=None):
     crt = {}                      # body name -> (asm name, addr)
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', body):
         n = m.group(1)
+        if n in locals_ and not re.search(r'::\s*' + re.escape(n) + r'\b', body):
+            continue          # indirect call through a local function pointer
         if INTEL_CRT.match(n):
             # Resolve here rather than falling through: INTRIN's `__` branch
             # below would otherwise swallow these before they reach the CRT
@@ -756,7 +800,8 @@ def emit(args, cache=None):
         t = f"t_{args.name}_{g}"
         out.append(f"typedef {base} {t}{ext};")
         out.append(f"static {t}& __{args.name}_{g} = *({t}*)0x{addr:08X};")
-        out.append(f"#define {g} __{args.name}_{g}")
+        # Renamed in the body below rather than with a #define: the
+        # preprocessor would also rewrite `FileTime.dwLowDateTime`.
     if refd_globals:
         out.append("")
 
@@ -955,6 +1000,8 @@ def emit(args, cache=None):
         for c in stack_only:
             text = drop_leading_args(text, c, USERCALL_STACK_ONLY[c][2])
         joined = text.split('\n')
+    for g in sorted(refd_globals):
+        joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
     joined = [wrap_intrinsic_members(l) for l in joined]
     joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
     joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]
@@ -971,8 +1018,6 @@ def emit(args, cache=None):
         out.append("#undef FILE")
     for n in sorted(crt):
         out.append(f"#undef {n}")
-    for g in sorted(refd_globals):
-        out.append(f"#undef {g}")
     for c in sorted(called):
         if c != args.name:
             out.append(f"#undef {c}")

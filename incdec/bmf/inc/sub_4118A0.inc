@@ -3,13 +3,10 @@
 
 typedef int t_sub_4118A0_n2;
 static t_sub_4118A0_n2& __sub_4118A0_n2 = *(t_sub_4118A0_n2*)0x00443360;
-#define n2 __sub_4118A0_n2
 typedef int t_sub_4118A0_n256_0[0x10000];
 static t_sub_4118A0_n256_0& __sub_4118A0_n256_0 = *(t_sub_4118A0_n256_0*)0x00443398;
-#define n256_0 __sub_4118A0_n256_0
 typedef __int128 t_sub_4118A0_xmmword_4397B0;
 static t_sub_4118A0_xmmword_4397B0& __sub_4118A0_xmmword_4397B0 = *(t_sub_4118A0_xmmword_4397B0*)0x004397B0;
-#define xmmword_4397B0 __sub_4118A0_xmmword_4397B0
 
 
 PROBE_DECL(__sub_4118A0)
@@ -71,8 +68,8 @@ BMF_SSE unsigned int __sub_4118A0(_BYTE *a1, char *a2)
   int n128_2; // [esp+2Ch] [ebp-14h]
   int n128_7; // [esp+2Ch] [ebp-14h]
 
-  n128_1 = 2 * n256_0[0] + 1;
-  if ( !n2 )
+  n128_1 = 2 * __sub_4118A0_n256_0[0] + 1;
+  if ( !__sub_4118A0_n2 )
   {
     n0x100_1 = (unsigned __int8)a2 & 0xF;
     if ( ((unsigned __int8)a2 & 0xF) != 0 )
@@ -86,7 +83,7 @@ BMF_SSE unsigned int __sub_4118A0(_BYTE *a1, char *a2)
       }
       while ( n0x100_2 < n0x100_1 );
     }
-    si128 = _mm_load_si128((const __m128i *)&xmmword_4397B0);
+    si128 = _mm_load_si128((const __m128i *)&__sub_4118A0_xmmword_4397B0);
     n0x100 = 256 - (-n0x100_1 & 0xF);
     v7 = _mm_unpacklo_epi64(
            _mm_unpacklo_epi32(
@@ -112,9 +109,9 @@ BMF_SSE unsigned int __sub_4118A0(_BYTE *a1, char *a2)
     while ( n0x100_1 < n0x100 );
     for ( ; n0x100 < 0x100; ++n0x100 )
       a2[n0x100] = n0x100;
-    v8 = n256_0[0];
-    v9 = n256_0[0];
-    if ( n256_0[0] >= 256 )
+    v8 = __sub_4118A0_n256_0[0];
+    v9 = __sub_4118A0_n256_0[0];
+    if ( __sub_4118A0_n256_0[0] >= 256 )
     {
       v11 = 0;
 LABEL_29:
@@ -126,28 +123,28 @@ LABEL_29:
       }
       goto LABEL_47;
     }
-    v44 = &a2[n256_0[0]];
+    v44 = &a2[__sub_4118A0_n256_0[0]];
     if ( n128_1 <= 0 )
     {
-      v47 = (n128_1 - (__int64)n256_0[0] + 255) / n128_1;
+      v47 = (n128_1 - (__int64)__sub_4118A0_n256_0[0] + 255) / n128_1;
       goto LABEL_26;
     }
-    v47 = (n128_1 - (__int64)n256_0[0] + 255) / n128_1;
-    if ( a2 >= v44 || n256_0[0] < (unsigned int)v47 )
+    v47 = (n128_1 - (__int64)__sub_4118A0_n256_0[0] + 255) / n128_1;
+    if ( a2 >= v44 || __sub_4118A0_n256_0[0] < (unsigned int)v47 )
     {
-      if ( n128_1 > 1 || a2 <= v44 || -n256_0[0] < (unsigned int)(v47 * n128_1) )
+      if ( n128_1 > 1 || a2 <= v44 || -__sub_4118A0_n256_0[0] < (unsigned int)(v47 * n128_1) )
         goto LABEL_26;
     }
     else if ( n128_1 > 1 || a2 <= v44 )
     {
 LABEL_20:
-      if ( a2 < v44 && n256_0[0] >= (unsigned int)v47 )
+      if ( a2 < v44 && __sub_4118A0_n256_0[0] >= (unsigned int)v47 )
         goto LABEL_22;
 LABEL_26:
       v14 = a2;
-      v45 = n256_0[0];
+      v45 = __sub_4118A0_n256_0[0];
       v11 = 0;
-      v15 = &a2[n256_0[0]];
+      v15 = &a2[__sub_4118A0_n256_0[0]];
       do
       {
         v16 = *v14;
@@ -160,13 +157,13 @@ LABEL_26:
       while ( v11 < v47 );
       goto LABEL_28;
     }
-    if ( -n256_0[0] >= (unsigned int)(v47 * n128_1) )
+    if ( -__sub_4118A0_n256_0[0] >= (unsigned int)(v47 * n128_1) )
     {
 LABEL_22:
       v10 = a2;
-      v45 = n256_0[0];
+      v45 = __sub_4118A0_n256_0[0];
       v11 = 0;
-      v12 = &a2[n256_0[0]];
+      v12 = &a2[__sub_4118A0_n256_0[0]];
       do
       {
         v13 = *v10;
@@ -179,7 +176,7 @@ LABEL_22:
       while ( v11 < v47 );
 LABEL_28:
       v9 = v45 + v11 * n128_1;
-      v8 = n256_0[0];
+      v8 = __sub_4118A0_n256_0[0];
       goto LABEL_29;
     }
     goto LABEL_20;
@@ -215,7 +212,7 @@ LABEL_28:
     }
     a2[253] = -127;
   }
-  if ( n256_0[0] )
+  if ( __sub_4118A0_n256_0[0] )
   {
     n128 = n128_1;
     if ( n128_1 < 128 )
@@ -237,12 +234,12 @@ LABEL_28:
     }
   }
 LABEL_47:
-  if ( n2 )
+  if ( __sub_4118A0_n2 )
   {
     *a1 = 0;
     n128_6 = 1;
     a1[128] = -1;
-    if ( n256_0[0] <= 0 )
+    if ( __sub_4118A0_n256_0[0] <= 0 )
       goto LABEL_52;
     v29 = -1;
     do
@@ -252,7 +249,7 @@ LABEL_47:
       --v29;
       ++n128_6;
     }
-    while ( n128_6 <= n256_0[0] );
+    while ( n128_6 <= __sub_4118A0_n256_0[0] );
     if ( n128_6 < 128 )
     {
 LABEL_52:
@@ -340,6 +337,3 @@ LABEL_52:
   return n0x80;
 }
 
-#undef n2
-#undef n256_0
-#undef xmmword_4397B0

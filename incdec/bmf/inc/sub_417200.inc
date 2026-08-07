@@ -3,7 +3,6 @@
 
 typedef int t_sub_417200_n4_4;
 static t_sub_417200_n4_4& __sub_417200_n4_4 = *(t_sub_417200_n4_4*)0x00445740;
-#define n4_4 __sub_417200_n4_4
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
@@ -329,7 +328,7 @@ extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, c
               {
                 v12 = v92;
                 v10 = v91;
-                n4_4 = n4;
+                __sub_417200_n4_4 = n4;
                 goto LABEL_12;
               }
             }
@@ -339,7 +338,7 @@ extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, c
             Block = v13;
             Blockaa_2 = Blockaa;
             v68 = *(_DWORD *)(Blockaa + 16);
-            n4_4 = n4;
+            __sub_417200_n4_4 = n4;
             v11 = (unsigned __int16)v68;
             n0x2000 = v68 + 1;
             *(_WORD *)(n0x2000_5 + 2 * n4) = v11;
@@ -566,7 +565,6 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_417200()
 }
 
 #undef FILE
-#undef n4_4
 #undef sub_412110
 #undef sub_412B10
 #undef sub_414860

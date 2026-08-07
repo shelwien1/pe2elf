@@ -3,7 +3,6 @@
 
 typedef char t_sub_417E80_byte_439860[32];
 static t_sub_417E80_byte_439860& __sub_417E80_byte_439860 = *(t_sub_417E80_byte_439860*)0x00439860;
-#define byte_439860 __sub_417E80_byte_439860
 
 #ifndef __PE_DECL___sub_418650
 #define __PE_DECL___sub_418650
@@ -159,7 +158,7 @@ __attribute__((thiscall)) void __sub_417E80(_DWORD *_this, char *Src)
   v5 = 0;
   do
   {
-    v6 = (unsigned __int8)byte_439860[v5];
+    v6 = (unsigned __int8)__sub_417E80_byte_439860[v5];
     this_2 = this_1;
     *((_BYTE *)this_1 + v6 + 1078244) = v5;
     v100 = 0;
@@ -605,7 +604,6 @@ LABEL_76:
 }
 
 #undef FILE
-#undef byte_439860
 #undef sub_414860
 #undef sub_414920
 #undef sub_4149C0

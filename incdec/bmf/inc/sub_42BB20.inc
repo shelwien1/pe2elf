@@ -3,7 +3,6 @@
 
 typedef int t_sub_42BB20_dword_44592C;
 static t_sub_42BB20_dword_44592C& __sub_42BB20_dword_44592C = *(t_sub_42BB20_dword_44592C*)0x0044592C;
-#define dword_44592C __sub_42BB20_dword_44592C
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
@@ -22,10 +21,10 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_42BB20(char a1, int a
   int n3; // eax
   int i; // edi
 
-  v5 = ((unsigned int)*(unsigned __int16 *)dword_44592C + 7) >> 3;
-  buf = (char *)(*(unsigned __int16 *)(dword_44592C + 4) * a4 + dword_44592C + 16);
-  sub_4349F0(buf,0,*(unsigned __int16 *)(dword_44592C + 4));
-  i_1 = *(unsigned __int16 *)dword_44592C;
+  v5 = ((unsigned int)*(unsigned __int16 *)__sub_42BB20_dword_44592C + 7) >> 3;
+  buf = (char *)(*(unsigned __int16 *)(__sub_42BB20_dword_44592C + 4) * a4 + __sub_42BB20_dword_44592C + 16);
+  sub_4349F0(buf,0,*(unsigned __int16 *)(__sub_42BB20_dword_44592C + 4));
+  i_1 = *(unsigned __int16 *)__sub_42BB20_dword_44592C;
   n3 = 3;
   do
   {
@@ -73,5 +72,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_42BB20()
   );
 }
 
-#undef dword_44592C
 #undef sub_4349F0

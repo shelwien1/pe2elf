@@ -3,19 +3,14 @@
 
 typedef int t_sub_40CB70_buf_1;
 static t_sub_40CB70_buf_1& __sub_40CB70_buf_1 = *(t_sub_40CB70_buf_1*)0x00443430;
-#define buf_1 __sub_40CB70_buf_1
 typedef int t_sub_40CB70_dword_442EE0[0x10000];
 static t_sub_40CB70_dword_442EE0& __sub_40CB70_dword_442EE0 = *(t_sub_40CB70_dword_442EE0*)0x00442EE0;
-#define dword_442EE0 __sub_40CB70_dword_442EE0
 typedef int t_sub_40CB70_dword_443428;
 static t_sub_40CB70_dword_443428& __sub_40CB70_dword_443428 = *(t_sub_40CB70_dword_443428*)0x00443428;
-#define dword_443428 __sub_40CB70_dword_443428
 typedef int t_sub_40CB70_dword_44342C;
 static t_sub_40CB70_dword_44342C& __sub_40CB70_dword_44342C = *(t_sub_40CB70_dword_44342C*)0x0044342C;
-#define dword_44342C __sub_40CB70_dword_44342C
 typedef __int128 t_sub_40CB70_xmmword_442EA0;
 static t_sub_40CB70_xmmword_442EA0& __sub_40CB70_xmmword_442EA0 = *(t_sub_40CB70_xmmword_442EA0*)0x00442EA0;
-#define xmmword_442EA0 __sub_40CB70_xmmword_442EA0
 
 
 PROBE_DECL(__sub_40CB70)
@@ -34,34 +29,34 @@ int __sub_40CB70()
   char v9; // [esp+Ch] [ebp-10h]
 
   v0 = 1;
-  if ( *(int *)(dword_44342C + 4) < 0 )
+  if ( *(int *)(__sub_40CB70_dword_44342C + 4) < 0 )
   {
     do
     {
       ++v0;
       n4 = 4 * v0;
-      v2 = (int *)(dword_44342C + 4 * v0);
+      v2 = (int *)(__sub_40CB70_dword_44342C + 4 * v0);
     }
     while ( *v2 < 0 );
   }
   else
   {
     n4 = 4;
-    v2 = (int *)(dword_44342C + 4);
+    v2 = (int *)(__sub_40CB70_dword_44342C + 4);
   }
   v3 = (1 << v0) - 1;
   if ( v3 >= 0 )
   {
-    v4 = buf_1;
-    v5 = dword_443428;
-    dword_44342C = (int)v2;
+    v4 = __sub_40CB70_buf_1;
+    v5 = __sub_40CB70_dword_443428;
+    __sub_40CB70_dword_44342C = (int)v2;
     v9 = v0;
     n4_1 = n4;
     do
     {
       v6 = *v2;
-      *(_WORD *)(v4 + 4 * v6) = v5 | ((_WORD)v3 << (((unsigned int)((char *)v2 - (char *)&xmmword_442EA0) >> 2) - v9));
-      v7 = dword_442EE0[v6];
+      *(_WORD *)(v4 + 4 * v6) = v5 | ((_WORD)v3 << (((unsigned int)((char *)v2 - (char *)&__sub_40CB70_xmmword_442EA0) >> 2) - v9));
+      v7 = __sub_40CB70_dword_442EE0[v6];
       *v2 = v7;
       if ( v7 < 0 )
       {
@@ -69,26 +64,21 @@ int __sub_40CB70()
         {
           do
           {
-            dword_443428 = v5 | (v3 << (((unsigned int)(dword_44342C - (_DWORD)&xmmword_442EA0) >> 2) - v9));
+            __sub_40CB70_dword_443428 = v5 | (v3 << (((unsigned int)(__sub_40CB70_dword_44342C - (_DWORD)&__sub_40CB70_xmmword_442EA0) >> 2) - v9));
             __sub_40CB70();
             --v3;
           }
           while ( v3 >= 0 );
-          v2 = (int *)dword_44342C;
+          v2 = (int *)__sub_40CB70_dword_44342C;
         }
-        dword_443428 = v5;
+        __sub_40CB70_dword_443428 = v5;
       }
       --v3;
     }
     while ( v3 >= 0 );
     n4 = n4_1;
   }
-  dword_44342C = (int)v2 - n4;
+  __sub_40CB70_dword_44342C = (int)v2 - n4;
   return n4;
 }
 
-#undef buf_1
-#undef dword_442EE0
-#undef dword_443428
-#undef dword_44342C
-#undef xmmword_442EA0

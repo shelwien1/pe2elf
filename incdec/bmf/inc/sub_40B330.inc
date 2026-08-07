@@ -3,61 +3,42 @@
 
 typedef int t_sub_40B330_Buffer_0;
 static t_sub_40B330_Buffer_0& __sub_40B330_Buffer_0 = *(t_sub_40B330_Buffer_0*)0x00443378;
-#define Buffer_0 __sub_40B330_Buffer_0
 typedef int t_sub_40B330_Buffer_1;
 static t_sub_40B330_Buffer_1& __sub_40B330_Buffer_1 = *(t_sub_40B330_Buffer_1*)0x00443374;
-#define Buffer_1 __sub_40B330_Buffer_1
 typedef int t_sub_40B330_Src;
 static t_sub_40B330_Src& __sub_40B330_Src = *(t_sub_40B330_Src*)0x00442E70;
-#define Src __sub_40B330_Src
 typedef char t_sub_40B330_byte_439418[16];
 static t_sub_40B330_byte_439418& __sub_40B330_byte_439418 = *(t_sub_40B330_byte_439418*)0x00439418;
-#define byte_439418 __sub_40B330_byte_439418
 typedef int t_sub_40B330_dword_438B00[0x10000];
 static t_sub_40B330_dword_438B00& __sub_40B330_dword_438B00 = *(t_sub_40B330_dword_438B00*)0x00438B00;
-#define dword_438B00 __sub_40B330_dword_438B00
 typedef int t_sub_40B330_dword_442E74;
 static t_sub_40B330_dword_442E74& __sub_40B330_dword_442E74 = *(t_sub_40B330_dword_442E74*)0x00442E74;
-#define dword_442E74 __sub_40B330_dword_442E74
 typedef int t_sub_40B330_dword_443388;
 static t_sub_40B330_dword_443388& __sub_40B330_dword_443388 = *(t_sub_40B330_dword_443388*)0x00443388;
-#define dword_443388 __sub_40B330_dword_443388
 typedef int t_sub_40B330_dword_44340C[0x10000];
 static t_sub_40B330_dword_44340C& __sub_40B330_dword_44340C = *(t_sub_40B330_dword_44340C*)0x0044340C;
-#define dword_44340C __sub_40B330_dword_44340C
 typedef int t_sub_40B330_dword_443420;
 static t_sub_40B330_dword_443420& __sub_40B330_dword_443420 = *(t_sub_40B330_dword_443420*)0x00443420;
-#define dword_443420 __sub_40B330_dword_443420
 typedef int t_sub_40B330_dword_443424;
 static t_sub_40B330_dword_443424& __sub_40B330_dword_443424 = *(t_sub_40B330_dword_443424*)0x00443424;
-#define dword_443424 __sub_40B330_dword_443424
 typedef int t_sub_40B330_n14;
 static t_sub_40B330_n14& __sub_40B330_n14 = *(t_sub_40B330_n14*)0x00443414;
-#define n14 __sub_40B330_n14
 typedef int t_sub_40B330_n24;
 static t_sub_40B330_n24& __sub_40B330_n24 = *(t_sub_40B330_n24*)0x00443410;
-#define n24 __sub_40B330_n24
 typedef int t_sub_40B330_n256;
 static t_sub_40B330_n256& __sub_40B330_n256 = *(t_sub_40B330_n256*)0x0044336C;
-#define n256 __sub_40B330_n256
 typedef int t_sub_40B330_n256_2[0x10000];
 static t_sub_40B330_n256_2& __sub_40B330_n256_2 = *(t_sub_40B330_n256_2*)0x0044338C;
-#define n256_2 __sub_40B330_n256_2
 typedef int t_sub_40B330_n633;
 static t_sub_40B330_n633& __sub_40B330_n633 = *(t_sub_40B330_n633*)0x00442E40;
-#define n633 __sub_40B330_n633
 typedef int t_sub_40B330_n7;
 static t_sub_40B330_n7& __sub_40B330_n7 = *(t_sub_40B330_n7*)0x0044341C;
-#define n7 __sub_40B330_n7
 typedef int t_sub_40B330_n8;
 static t_sub_40B330_n8& __sub_40B330_n8 = *(t_sub_40B330_n8*)0x00443368;
-#define n8 __sub_40B330_n8
 typedef int t_sub_40B330_n9;
 static t_sub_40B330_n9& __sub_40B330_n9 = *(t_sub_40B330_n9*)0x00443418;
-#define n9 __sub_40B330_n9
 typedef int t_sub_40B330_off_4410C0[0x10000];
 static t_sub_40B330_off_4410C0& __sub_40B330_off_4410C0 = *(t_sub_40B330_off_4410C0*)0x004410C0;
-#define off_4410C0 __sub_40B330_off_4410C0
 
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
@@ -107,7 +88,7 @@ BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWOR
   int v29; // eax
   unsigned int v30; // eax
   unsigned int n6; // eax
-  int n8; // edx
+  int __sub_40B330_n8; // edx
   int n5; // esi
   int Src_5; // ebx
   unsigned int n0x3F; // edi
@@ -169,7 +150,7 @@ BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWOR
   int v91; // [esp+8h] [ebp-868h]
   int v92; // [esp+8h] [ebp-868h]
   int v93; // [esp+8h] [ebp-868h]
-  int Src; // [esp+10h] [ebp-860h] BYREF
+  int __sub_40B330_Src; // [esp+10h] [ebp-860h] BYREF
   int Src_4; // [esp+14h] [ebp-85Ch]
   int Src_8; // [esp+18h] [ebp-858h]
   _OWORD v97[63]; // [esp+20h] [ebp-850h] BYREF
@@ -194,21 +175,21 @@ BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWOR
   this_1 = _this;
   for ( i = 0; i < 0xC; ++i )
   {
-    if ( dword_438B00[i] > 0 )
+    if ( __sub_40B330_dword_438B00[i] > 0 )
     {
-      v3 = (int)*(&n633 + i);
-      v4 = (char *)off_4410C0[i];
-      v5 = dword_438B00[i];
+      v3 = (int)*(&__sub_40B330_n633 + i);
+      v4 = (char *)__sub_40B330_off_4410C0[i];
+      v5 = __sub_40B330_dword_438B00[i];
       v6 = 0;
-      Src_4 = (unsigned __int8)byte_439418[i];
-      Src = i;
+      Src_4 = (unsigned __int8)__sub_40B330_byte_439418[i];
+      __sub_40B330_Src = i;
       do
       {
         ++v6;
         *(_DWORD *)(v3 + 4 * v6 - 4) -= 1 << (Src_4 - v4[v6 - 1]);
       }
       while ( v6 < v5 );
-      i = Src;
+      i = __sub_40B330_Src;
     }
   }
   this_2 = this_1;
@@ -245,24 +226,24 @@ BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWOR
 LABEL_16:
   while ( n0x40 < 0x40 )
     n28672 += this_1[n0x40++ + 49664];
-  dword_44340C[0] = 64;
-  dword_443424 = 0;
-  if ( n28672 < 28672 && !dword_443388 )
+  __sub_40B330_dword_44340C[0] = 64;
+  __sub_40B330_dword_443424 = 0;
+  if ( n28672 < 28672 && !__sub_40B330_dword_443388 )
   {
-    n24 = 24;
-    n14 = 14;
-    Src = 0;
-    n9 = 9;
-    n7 = 7;
-    dword_443420 = 0;
+    __sub_40B330_n24 = 24;
+    __sub_40B330_n14 = 14;
+    __sub_40B330_Src = 0;
+    __sub_40B330_n9 = 9;
+    __sub_40B330_n7 = 7;
+    __sub_40B330_dword_443420 = 0;
     do
     {
-      v14 = dword_44340C[Src];
+      v14 = __sub_40B330_dword_44340C[__sub_40B330_Src];
       Src_1 = v14 - 1;
-      if ( v14 - 1 >= *(&n24 + Src) )
+      if ( v14 - 1 >= *(&__sub_40B330_n24 + __sub_40B330_Src) )
       {
-        v16 = (&::Src)[Src];
-        Src_8 = *(&n24 + Src);
+        v16 = (&::__sub_40B330_Src)[__sub_40B330_Src];
+        Src_8 = *(&__sub_40B330_n24 + __sub_40B330_Src);
         v17 = 0;
         v18 = (int)&this_1[257 * v14 + 49471];
         do
@@ -284,18 +265,18 @@ LABEL_16:
         }
         while ( Src_1 >= Src_8 );
       }
-      v22 = sub_411700((int)(&::Src)[Src], 257);
-      Src_3 = Src;
-      v102[Src] = v22;
-      Src = Src_3 + 1;
+      v22 = sub_411700((int)(&::__sub_40B330_Src)[__sub_40B330_Src], 257);
+      Src_3 = __sub_40B330_Src;
+      v102[__sub_40B330_Src] = v22;
+      __sub_40B330_Src = Src_3 + 1;
     }
     while ( (unsigned int)(Src_3 + 1) < 6 );
-    v24 = dword_443388;
+    v24 = __sub_40B330_dword_443388;
     goto LABEL_28;
   }
   n5 = 5;
-  Src = (n28672 + 3) / 6;
-  Src_5 = Src;
+  __sub_40B330_Src = (n28672 + 3) / 6;
+  Src_5 = __sub_40B330_Src;
   n0x3F = 0;
   v36 = 0;
   do
@@ -303,9 +284,9 @@ LABEL_16:
     Src_5 -= this_2[n0x3F + 49665];
     if ( Src_5 < 0 || n5 >= v36 + 62 )
     {
-      Src_5 += Src;
+      Src_5 += __sub_40B330_Src;
       --v36;
-      dword_44340C[n5] = ++n0x3F;
+      __sub_40B330_dword_44340C[n5] = ++n0x3F;
       if ( !--n5 )
         break;
     }
@@ -318,15 +299,15 @@ LABEL_16:
   while ( n0x3F < 0x3F );
   v106 = (int)(this_2 + 49728);
   this_1 = this_2;
-  Src = 0;
+  __sub_40B330_Src = 0;
   do
   {
-    v37 = dword_44340C[Src];
+    v37 = __sub_40B330_dword_44340C[__sub_40B330_Src];
     Src_6 = v37 - 1;
-    if ( v37 - 1 >= *(&n24 + Src) )
+    if ( v37 - 1 >= *(&__sub_40B330_n24 + __sub_40B330_Src) )
     {
-      v39 = (&::Src)[Src];
-      Src_8 = *(&n24 + Src);
+      v39 = (&::__sub_40B330_Src)[__sub_40B330_Src];
+      Src_8 = *(&__sub_40B330_n24 + __sub_40B330_Src);
       v40 = 0;
       v41 = (int)&this_1[257 * v37 + 49471];
       do
@@ -348,10 +329,10 @@ LABEL_16:
       }
       while ( Src_6 >= Src_8 );
     }
-    v45 = sub_411700((int)(&::Src)[Src], 257);
-    Src_9 = Src;
-    v102[Src] = v45;
-    Src = Src_9 + 1;
+    v45 = sub_411700((int)(&::__sub_40B330_Src)[__sub_40B330_Src], 257);
+    Src_9 = __sub_40B330_Src;
+    v102[__sub_40B330_Src] = v45;
+    __sub_40B330_Src = Src_9 + 1;
   }
   while ( (unsigned int)(Src_9 + 1) < 6 );
   v48 = v106;
@@ -362,15 +343,15 @@ LABEL_16:
     v110 = 0;
     do
     {
-      v50 = *(&n24 + n5_1);
-      v111 = dword_44340C[n5_1];
+      v50 = *(&__sub_40B330_n24 + n5_1);
+      v111 = __sub_40B330_dword_44340C[n5_1];
       if ( v111 == v50 + 1 )
       {
         v52 = 0;
         goto LABEL_62;
       }
-      sub_434980((char *)&Src,(&::Src)[n5_1],1028);
-      sub_434980(v99,(&dword_442E74)[n5_1],1028);
+      sub_434980((char *)&__sub_40B330_Src,(&::__sub_40B330_Src)[n5_1],1028);
+      sub_434980(v99,(&__sub_40B330_dword_442E74)[n5_1],1028);
       v52 = 0;
       v109 = v102[n5_1 + 1] + v102[n5_1];
       if ( v50 + 1 >= v111 )
@@ -391,8 +372,8 @@ LABEL_16:
           v68 = _mm_loadu_si128((const __m128i *)&v99[4 * n0x100]);
           v69 = _mm_loadu_si128((const __m128i *)&v100[n0x100 / 4]);
           si128 = _mm_load_si128((const __m128i *)&v97[n0x100 / 4]);
-          *(__m128i *)(&Src + n0x100) = _mm_sub_epi32(
-                                          _mm_load_si128((const __m128i *)(&Src + n0x100)),
+          *(__m128i *)(&__sub_40B330_Src + n0x100) = _mm_sub_epi32(
+                                          _mm_load_si128((const __m128i *)(&__sub_40B330_Src + n0x100)),
                                           _mm_loadu_si128((const __m128i *)(v67 + 4 * n0x100 - 1028)));
           v71 = _mm_load_si128((const __m128i *)&v97[n0x100 / 4 + 1]);
           *(__m128i *)&v99[4 * n0x100] = _mm_add_epi32(v68, _mm_loadu_si128((const __m128i *)(v67 + 4 * n0x100 - 1028)));
@@ -410,15 +391,15 @@ LABEL_16:
         while ( n0x100 < 0x100 );
         v98 -= *(_DWORD *)(v67 - 4);
         v101 += *(_DWORD *)(v67 - 4);
-        v105 = sub_411700((int)&Src, 257);
+        v105 = sub_411700((int)&__sub_40B330_Src, 257);
         v104 = sub_411700((int)v99, 257);
         v103 = v105 + v104;
         if ( v105 + v104 > v109 + 4096 )
           break;
         if ( v105 + v104 < v109 )
         {
-          sub_434980((&::Src)[n5_2],(char *)&Src,1028);
-          sub_434980((&dword_442E74)[n5_2],v99,1028);
+          sub_434980((&::__sub_40B330_Src)[n5_2],(char *)&__sub_40B330_Src,1028);
+          sub_434980((&__sub_40B330_dword_442E74)[n5_2],v99,1028);
           n5_3 = n5_2;
           v77 = v104;
           v102[n5_2] = v105;
@@ -426,13 +407,13 @@ LABEL_16:
           v102[n5_3 + 1] = v77;
           v109 = v78;
           v107 = 1;
-          *(&n24 + n5_3) = ++v50;
+          *(&__sub_40B330_n24 + n5_3) = ++v50;
           goto LABEL_59;
         }
 LABEL_58:
         ++v50;
 LABEL_59:
-        if ( v50 + 1 >= dword_44340C[n5_2] )
+        if ( v50 + 1 >= __sub_40B330_dword_44340C[n5_2] )
         {
           v52 = v107;
           n5_1 = n5_2;
@@ -454,10 +435,10 @@ LABEL_62:
     v60 = sub_40BBC0(2, (int)v102, v48, v59, v81, v86, v91, v55) | v58;
     v62 = sub_40BBC0(3, (int)v102, v48, v61, v82, v87, v92, v55) | v60;
     v64 = sub_40BBC0(4, (int)v102, v48, v63, v83, v88, v93, v55);
-    v24 = dword_443388;
+    v24 = __sub_40B330_dword_443388;
     if ( v64 | v62 )
     {
-      if ( dword_443388 )
+      if ( __sub_40B330_dword_443388 )
         goto LABEL_65;
       continue;
     }
@@ -470,7 +451,7 @@ LABEL_65:
     v65 = 0;
     for ( n6 = 0; n6 < 6; ++n6 )
       v65 += v102[n6];
-    n256_2[0] = v65;
+    __sub_40B330_n256_2[0] = v65;
   }
   else
   {
@@ -493,11 +474,11 @@ LABEL_65:
     {
       v28 = v25 + 12;
       buf[v27 + 75] = v25 + 12;
-      v29 = *(&n24 + v25);
+      v29 = *(&__sub_40B330_n24 + v25);
       if ( v29 == v27 + 63 )
       {
         ++v25;
-        v29 = *(&n24 + v25);
+        v29 = *(&__sub_40B330_n24 + v25);
         v28 = v25 + 12;
       }
       buf[v27 + 74] = v28;
@@ -507,46 +488,27 @@ LABEL_65:
       ++n0x20;
     }
     while ( n0x20 < 0x20 );
-    v30 = (dword_443420 << 24) | (n7 << 18) | (n9 << 12) | n24 | (n14 << 6);
-    if ( ::n8 < 30 )
+    v30 = (__sub_40B330_dword_443420 << 24) | (__sub_40B330_n7 << 18) | (__sub_40B330_n9 << 12) | __sub_40B330_n24 | (__sub_40B330_n14 << 6);
+    if ( ::__sub_40B330_n8 < 30 )
     {
-      *(_DWORD *)Buffer_1 = n256 | (2 * (v30 << (31 - ::n8)));
-      Buffer_1 = Buffer_0;
-      n6 = v30 >> ::n8;
-      Buffer_0 += 4;
-      n256 = n6;
-      n8 = ::n8 + 2;
+      *(_DWORD *)__sub_40B330_Buffer_1 = __sub_40B330_n256 | (2 * (v30 << (31 - ::__sub_40B330_n8)));
+      __sub_40B330_Buffer_1 = __sub_40B330_Buffer_0;
+      n6 = v30 >> ::__sub_40B330_n8;
+      __sub_40B330_Buffer_0 += 4;
+      __sub_40B330_n256 = n6;
+      __sub_40B330_n8 = ::__sub_40B330_n8 + 2;
     }
     else
     {
-      n6 = v30 << -(char)::n8;
-      n8 = ::n8 - 30;
-      n256 |= n6;
+      n6 = v30 << -(char)::__sub_40B330_n8;
+      __sub_40B330_n8 = ::__sub_40B330_n8 - 30;
+      __sub_40B330_n256 |= n6;
     }
-    ::n8 = n8;
+    ::__sub_40B330_n8 = __sub_40B330_n8;
   }
   return n6;
 }
 
-#undef Buffer_0
-#undef Buffer_1
-#undef Src
-#undef byte_439418
-#undef dword_438B00
-#undef dword_442E74
-#undef dword_443388
-#undef dword_44340C
-#undef dword_443420
-#undef dword_443424
-#undef n14
-#undef n24
-#undef n256
-#undef n256_2
-#undef n633
-#undef n7
-#undef n8
-#undef n9
-#undef off_4410C0
 #undef sub_40BBC0
 #undef sub_411700
 #undef sub_434980

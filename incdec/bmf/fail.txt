@@ -1,5 +1,3 @@
-sub_4022C0	build: inc/sub_4022C0.inc:100:9: error: ‘CHAR’ does not name a type
-sub_402590	build: inc/sub_402590.inc:161:28: error: ‘FindFileData’ was not declared in this scope
 sub_417980	test: t1: COMPRESS FAILED (rc=1)
 sub_412E60	test: t1: DECOMPRESS FAILED (rc=1)
 sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
@@ -9,7 +7,7 @@ sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
 sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
 sub_41A130	test: t8g: COMPRESS FAILED (rc=1)
 sub_413430	test: t8g: LARGER THAN REFERENCE (44936 > 42896)
-sub_41CAB0	build: inc/sub_41CAB0.inc:1978:20: error: cannot convert ‘uint32*’ {aka ‘unsigned int*’} to ‘uint16*’ {aka ‘short unsigned int*
+sub_41CAB0	test: t8g: COMPRESS TIMED OUT
 sub_422DB0	extract: sub_422DB0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_422D60	extract: sub_422D60 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_423600	extract: sub_423600 calls __usercall/__userpurge functions that have not been moved yet, whose regi
@@ -17,6 +15,7 @@ sub_417DB0	extract: sub_417DB0 calls __usercall/__userpurge functions that have 
 sub_403820	extract: sub_403820 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_402EF0	extract: sub_402EF0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_40A8A0	extract: sub_40A8A0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__lib
+__svml_log2_w	extract: __svml_log2_w references unresolvable symbols (no symbol table for BMF's static CRT): ['__
 sub_436E10	extract: sub_436E10 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_414F60	test: t8g: COMPRESS FAILED (rc=1)
@@ -35,14 +34,10 @@ sub_405CF0	extract: sub_405CF0 calls __usercall/__userpurge functions that have 
 sub_407B30	extract: sub_407B30 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4043E0	extract: sub_4043E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_402FE0	extract: sub_402FE0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_42C220	extract: sub_42C220 references unresolvable symbols (no symbol table for BMF's static CRT): ['sub_4
 sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4028B0	extract: sub_4028B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_42AB20	test: t1: COMPRESS FAILED (rc=1)
 sub_4015C0	extract: sub_4015C0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_42851C	test: t24: COMPRESS TIMED OUT
+sub_42851C	test: t8g: COMPRESS TIMED OUT
 sub_4284E0	extract: sub_4284E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 main	extract: main calls __usercall/__userpurge functions that have not been moved yet, whose register a
-exit_402E40	build: inc/sub_402BD0.inc:26:21: error: ‘__exit_402E40’ was not declared in this scope
-sub_436BD0	build: inc/sub_436BD0.inc:61:3: error: ‘_EAX’ was not declared in this scope; did you mean ‘_EAX_3’?
-__svml_log2_w	extract: __svml_log2_w references unresolvable symbols (no symbol table for BMF's static CRT): ['__

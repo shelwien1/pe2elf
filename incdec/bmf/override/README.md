@@ -27,3 +27,12 @@ An override must still:
 | Function | Why |
 |---|---|
 | `sub_434A30` | Intel C++ runtime CPU dispatch init. Built from `__asm { cpuid }` / `__asm { xgetbv }` with the results read back out of `_EAX`/`_ECX`/`_EDX`, and Hex-Rays additionally mis-attributes the XGETBV result to a variable it had already used for the CPUID EDX. Rewritten from its expected results per the classification table in the file. Verified to produce the same level code as the original: `0x20000` on this host, read out of `0x00445B5C` after a run of the un-redirected binary. |
+| `sub_436BD0` | Intel cache-descriptor detection (CPUID leaf 2). Same problem: `__asm { cpuid }` plus reads of `_EAX`/`_EBX`/`_ECX`/`_EDX`. Transcribed literally otherwise, including the `> 2` in the third block-count test where every other one is `> 1`. Verified against the un-injected binary: cache size 0, line size 0, level 2 on this host — leaf 2 reports descriptor `0xFF` here, so the walk stops on the first byte. |
+
+## `__usercall` overrides
+
+An override for a `__usercall`/`__userpurge` function supplies only the body,
+with the signature `incdec.md` §4.2 expects — an ordinary cdecl function taking
+every argument, `extern "C"`, hidden visibility. `extract.py` appends the
+generated entry-point thunk, so there is no hand-written assembly to keep in
+step with the signature.

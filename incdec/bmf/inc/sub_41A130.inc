@@ -3,79 +3,54 @@
 
 typedef int t_sub_41A130_dword_4398C0[0x10000];
 static t_sub_41A130_dword_4398C0& __sub_41A130_dword_4398C0 = *(t_sub_41A130_dword_4398C0*)0x004398C0;
-#define dword_4398C0 __sub_41A130_dword_4398C0
 typedef int t_sub_41A130_dword_4398C4[0x10000];
 static t_sub_41A130_dword_4398C4& __sub_41A130_dword_4398C4 = *(t_sub_41A130_dword_4398C4*)0x004398C4;
-#define dword_4398C4 __sub_41A130_dword_4398C4
 typedef int t_sub_41A130_dword_4398C8[0x10000];
 static t_sub_41A130_dword_4398C8& __sub_41A130_dword_4398C8 = *(t_sub_41A130_dword_4398C8*)0x004398C8;
-#define dword_4398C8 __sub_41A130_dword_4398C8
 typedef int t_sub_41A130_dword_4398CC[0x10000];
 static t_sub_41A130_dword_4398CC& __sub_41A130_dword_4398CC = *(t_sub_41A130_dword_4398CC*)0x004398CC;
-#define dword_4398CC __sub_41A130_dword_4398CC
 typedef int t_sub_41A130_dword_4398D0[0x10000];
 static t_sub_41A130_dword_4398D0& __sub_41A130_dword_4398D0 = *(t_sub_41A130_dword_4398D0*)0x004398D0;
-#define dword_4398D0 __sub_41A130_dword_4398D0
 typedef int t_sub_41A130_dword_4398D4[0x10000];
 static t_sub_41A130_dword_4398D4& __sub_41A130_dword_4398D4 = *(t_sub_41A130_dword_4398D4*)0x004398D4;
-#define dword_4398D4 __sub_41A130_dword_4398D4
 typedef int t_sub_41A130_dword_4398D8[0x10000];
 static t_sub_41A130_dword_4398D8& __sub_41A130_dword_4398D8 = *(t_sub_41A130_dword_4398D8*)0x004398D8;
-#define dword_4398D8 __sub_41A130_dword_4398D8
 typedef int t_sub_41A130_dword_4398DC[0x10000];
 static t_sub_41A130_dword_4398DC& __sub_41A130_dword_4398DC = *(t_sub_41A130_dword_4398DC*)0x004398DC;
-#define dword_4398DC __sub_41A130_dword_4398DC
 typedef int t_sub_41A130_dword_4398E0[0x10000];
 static t_sub_41A130_dword_4398E0& __sub_41A130_dword_4398E0 = *(t_sub_41A130_dword_4398E0*)0x004398E0;
-#define dword_4398E0 __sub_41A130_dword_4398E0
 typedef int t_sub_41A130_dword_4398E4[0x10000];
 static t_sub_41A130_dword_4398E4& __sub_41A130_dword_4398E4 = *(t_sub_41A130_dword_4398E4*)0x004398E4;
-#define dword_4398E4 __sub_41A130_dword_4398E4
 typedef int t_sub_41A130_dword_4398E8[0x10000];
 static t_sub_41A130_dword_4398E8& __sub_41A130_dword_4398E8 = *(t_sub_41A130_dword_4398E8*)0x004398E8;
-#define dword_4398E8 __sub_41A130_dword_4398E8
 typedef int t_sub_41A130_dword_4398EC[0x10000];
 static t_sub_41A130_dword_4398EC& __sub_41A130_dword_4398EC = *(t_sub_41A130_dword_4398EC*)0x004398EC;
-#define dword_4398EC __sub_41A130_dword_4398EC
 typedef int t_sub_41A130_dword_4398F0[0x10000];
 static t_sub_41A130_dword_4398F0& __sub_41A130_dword_4398F0 = *(t_sub_41A130_dword_4398F0*)0x004398F0;
-#define dword_4398F0 __sub_41A130_dword_4398F0
 typedef int t_sub_41A130_dword_4458E0;
 static t_sub_41A130_dword_4458E0& __sub_41A130_dword_4458E0 = *(t_sub_41A130_dword_4458E0*)0x004458E0;
-#define dword_4458E0 __sub_41A130_dword_4458E0
 typedef int t_sub_41A130_dword_4458E4;
 static t_sub_41A130_dword_4458E4& __sub_41A130_dword_4458E4 = *(t_sub_41A130_dword_4458E4*)0x004458E4;
-#define dword_4458E4 __sub_41A130_dword_4458E4
 typedef int t_sub_41A130_dword_4458E8;
 static t_sub_41A130_dword_4458E8& __sub_41A130_dword_4458E8 = *(t_sub_41A130_dword_4458E8*)0x004458E8;
-#define dword_4458E8 __sub_41A130_dword_4458E8
 typedef int t_sub_41A130_dword_4458EC;
 static t_sub_41A130_dword_4458EC& __sub_41A130_dword_4458EC = *(t_sub_41A130_dword_4458EC*)0x004458EC;
-#define dword_4458EC __sub_41A130_dword_4458EC
 typedef __int128 t_sub_41A130_xmmword_439B10;
 static t_sub_41A130_xmmword_439B10& __sub_41A130_xmmword_439B10 = *(t_sub_41A130_xmmword_439B10*)0x00439B10;
-#define xmmword_439B10 __sub_41A130_xmmword_439B10
 typedef __int128 t_sub_41A130_xmmword_441190;
 static t_sub_41A130_xmmword_441190& __sub_41A130_xmmword_441190 = *(t_sub_41A130_xmmword_441190*)0x00441190;
-#define xmmword_441190 __sub_41A130_xmmword_441190
 typedef __int128 t_sub_41A130_xmmword_4411A0;
 static t_sub_41A130_xmmword_4411A0& __sub_41A130_xmmword_4411A0 = *(t_sub_41A130_xmmword_4411A0*)0x004411A0;
-#define xmmword_4411A0 __sub_41A130_xmmword_4411A0
 typedef __int128 t_sub_41A130_xmmword_4411B0;
 static t_sub_41A130_xmmword_4411B0& __sub_41A130_xmmword_4411B0 = *(t_sub_41A130_xmmword_4411B0*)0x004411B0;
-#define xmmword_4411B0 __sub_41A130_xmmword_4411B0
 typedef __int128 t_sub_41A130_xmmword_4411C0;
 static t_sub_41A130_xmmword_4411C0& __sub_41A130_xmmword_4411C0 = *(t_sub_41A130_xmmword_4411C0*)0x004411C0;
-#define xmmword_4411C0 __sub_41A130_xmmword_4411C0
 typedef __int128 t_sub_41A130_xmmword_4411D0;
 static t_sub_41A130_xmmword_4411D0& __sub_41A130_xmmword_4411D0 = *(t_sub_41A130_xmmword_4411D0*)0x004411D0;
-#define xmmword_4411D0 __sub_41A130_xmmword_4411D0
 typedef __int128 t_sub_41A130_xmmword_4411E0;
 static t_sub_41A130_xmmword_4411E0& __sub_41A130_xmmword_4411E0 = *(t_sub_41A130_xmmword_4411E0*)0x004411E0;
-#define xmmword_4411E0 __sub_41A130_xmmword_4411E0
 typedef __int128 t_sub_41A130_xmmword_4411F0;
 static t_sub_41A130_xmmword_4411F0& __sub_41A130_xmmword_4411F0 = *(t_sub_41A130_xmmword_4411F0*)0x004411F0;
-#define xmmword_4411F0 __sub_41A130_xmmword_4411F0
 
 #ifndef __PE_DECL___sub_41C4B0
 #define __PE_DECL___sub_41C4B0
@@ -413,7 +388,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
           + 22 * v7[15]
           + v9
           + 20 * v7[6]
-          + dword_4458E0
+          + __sub_41A130_dword_4458E0
           + 14 * v8;
   n1840_2 = 17 * v10
           + 21 * v7[25]
@@ -421,7 +396,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
           + 25 * v7[7]
           + 9 * *(v7 - 2)
           + 22 * *(__int16 *)(v6 - 4)
-          + dword_4458E4
+          + __sub_41A130_dword_4458E4
           + 19 * *(__int16 *)(v6 - 22);
   v11 = v6;
   v12 = 17 * v7[31]
@@ -430,14 +405,14 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
       + 18 * v7[4]
       + 16 * *(v7 - 5)
       + 22 * *(__int16 *)(v6 - 10)
-      + dword_4458E8
+      + __sub_41A130_dword_4458E8
       + 19 * *(__int16 *)(v6 - 28);
   v13 = v275->m128_i16[5];
   v14 = *(__int16 *)(v289[17421].m128_i32[3] + 10);
   v15 = *(__int16 *)(v11 - 26);
   v16 = *(__int16 *)(v11 - 8);
   v292 = v12;
-  n3536 = 14 * v268[32] + 23 * v268[14] + 19 * v268[5] + 25 * v16 + dword_4458EC + 17 * v15 + 15 * (v14 + v13);
+  n3536 = 14 * v268[32] + 23 * v268[14] + 19 * v268[5] + 25 * v16 + __sub_41A130_dword_4458EC + 17 * v15 + 15 * (v14 + v13);
   v17 = v275[-2].m128_i16[7];
   v18 = v275[2].m128_i16[2] + v275->m128_i16[0];
   v290 = v12 + n3536 + n1840_1 + n1840_2;
@@ -455,23 +430,23 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
        + (8 * v12 > 9 * n3536)
        + (8 * v12 > 5 * n3536)
        + (8 * v12 > 2 * n3536));
-  v25 = v290 > dword_4398E4[v24];
-  v26 = v290 <= dword_4398E8[v24];
+  v25 = v290 > __sub_41A130_dword_4398E4[v24];
+  v26 = v290 <= __sub_41A130_dword_4398E8[v24];
   v278 = (8 * v12 > 43 * n3536)
        + (8 * v12 > 17 * n3536)
        + (8 * v12 > 9 * n3536)
        + (8 * v12 > 5 * n3536)
        + (8 * v12 > 2 * n3536);
-  v256 = ((v290 > dword_4398F0[v24]) + (v290 > dword_4398EC[v24]) + !v26 + v25) << 6;
-  v280 = (16 * n1840_2 > n1840_1 * dword_4398D4[v24])
-       + (16 * n1840_2 > n1840_1 * dword_4398D0[v24])
-       + (16 * n1840_2 > n1840_1 * dword_4398CC[v24]);
-  v27 = dword_4398C0[v24];
-  v281 = (__int16 *)(16 * ((v277 > dword_4398E0[v24]) + (v277 > dword_4398DC[v24]) + (v277 > dword_4398D8[v24])));
+  v256 = ((v290 > __sub_41A130_dword_4398F0[v24]) + (v290 > __sub_41A130_dword_4398EC[v24]) + !v26 + v25) << 6;
+  v280 = (16 * n1840_2 > n1840_1 * __sub_41A130_dword_4398D4[v24])
+       + (16 * n1840_2 > n1840_1 * __sub_41A130_dword_4398D0[v24])
+       + (16 * n1840_2 > n1840_1 * __sub_41A130_dword_4398CC[v24]);
+  v27 = __sub_41A130_dword_4398C0[v24];
+  v281 = (__int16 *)(16 * ((v277 > __sub_41A130_dword_4398E0[v24]) + (v277 > __sub_41A130_dword_4398DC[v24]) + (v277 > __sub_41A130_dword_4398D8[v24])));
   v28 = v289;
   v257 = (char *)&v281[160 * v278 + 2 * v280]
-       + (v279 > dword_4398C8[v24] * (int)v276)
-       + (v279 > (int)v276 * dword_4398C4[v24])
+       + (v279 > __sub_41A130_dword_4398C8[v24] * (int)v276)
+       + (v279 > (int)v276 * __sub_41A130_dword_4398C4[v24])
        + (v279 > (int)v276 * v27)
        + v256;
   v29 = v289[17554].m128_i16[(_DWORD)v257 + 4];
@@ -502,48 +477,48 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128
     v36 = _mm_movelh_ps(v35, v35);
     v37 = _mm_unpacklo_ps(n0x45F20000, n0x45F20000);
     a2 = _mm_movelh_ps(v37, v37);
-    v38 = _mm_add_ps(v31[7], _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17408], v28[17408]), v31[7]), (__m128)xmmword_439B10));
+    v38 = _mm_add_ps(v31[7], _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17408], v28[17408]), v31[7]), (__m128)__sub_41A130_xmmword_439B10));
     v31[7] = v38;
     *v31 = _mm_add_ps(
-             _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_441190, v36), v28[17408]), _mm_add_ps(v38, a2)),
+             _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_441190, v36), v28[17408]), _mm_add_ps(v38, a2)),
              *v31);
-    v39 = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17409], v28[17409]), v31[8]), (__m128)xmmword_439B10), v31[8]);
+    v39 = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17409], v28[17409]), v31[8]), (__m128)__sub_41A130_xmmword_439B10), v31[8]);
     v31[8] = v39;
     v31[1] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411A0, v36), v28[17409]), _mm_add_ps(v39, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411A0, v36), v28[17409]), _mm_add_ps(v39, a2)),
                v31[1]);
-    v40 = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17410], v28[17410]), v31[9]), (__m128)xmmword_439B10), v31[9]);
+    v40 = _mm_add_ps(_mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17410], v28[17410]), v31[9]), (__m128)__sub_41A130_xmmword_439B10), v31[9]);
     v31[9] = v40;
     v31[2] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411B0, v36), v28[17410]), _mm_add_ps(v40, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411B0, v36), v28[17410]), _mm_add_ps(v40, a2)),
                v31[2]);
     v41 = _mm_add_ps(
-            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17411], v28[17411]), v31[10]), (__m128)xmmword_439B10),
+            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17411], v28[17411]), v31[10]), (__m128)__sub_41A130_xmmword_439B10),
             v31[10]);
     v31[10] = v41;
     v31[3] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411C0, v36), v28[17411]), _mm_add_ps(v41, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411C0, v36), v28[17411]), _mm_add_ps(v41, a2)),
                v31[3]);
     v42 = _mm_add_ps(
-            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17412], v28[17412]), v31[11]), (__m128)xmmword_439B10),
+            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17412], v28[17412]), v31[11]), (__m128)__sub_41A130_xmmword_439B10),
             v31[11]);
     v31[11] = v42;
     v31[4] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411D0, v36), v28[17412]), _mm_add_ps(v42, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411D0, v36), v28[17412]), _mm_add_ps(v42, a2)),
                v31[4]);
     v43 = _mm_add_ps(
-            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17413], v28[17413]), v31[12]), (__m128)xmmword_439B10),
+            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17413], v28[17413]), v31[12]), (__m128)__sub_41A130_xmmword_439B10),
             v31[12]);
     v31[12] = v43;
     v31[5] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411E0, v36), v28[17413]), _mm_add_ps(v43, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411E0, v36), v28[17413]), _mm_add_ps(v43, a2)),
                v31[5]);
     v44 = _mm_add_ps(
-            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17414], v28[17414]), v31[13]), (__m128)xmmword_439B10),
+            _mm_mul_ps(_mm_sub_ps(_mm_mul_ps(v28[17414], v28[17414]), v31[13]), (__m128)__sub_41A130_xmmword_439B10),
             v31[13]);
     v31[13] = v44;
     v31[6] = _mm_add_ps(
-               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)xmmword_4411F0, v36), v28[17414]), _mm_add_ps(v44, a2)),
+               _mm_div_ps(_mm_mul_ps(_mm_mul_ps((__m128)__sub_41A130_xmmword_4411F0, v36), v28[17414]), _mm_add_ps(v44, a2)),
                v31[6]);
   }
   else
@@ -1266,29 +1241,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_41A130()
   );
 }
 
-#undef dword_4398C0
-#undef dword_4398C4
-#undef dword_4398C8
-#undef dword_4398CC
-#undef dword_4398D0
-#undef dword_4398D4
-#undef dword_4398D8
-#undef dword_4398DC
-#undef dword_4398E0
-#undef dword_4398E4
-#undef dword_4398E8
-#undef dword_4398EC
-#undef dword_4398F0
-#undef dword_4458E0
-#undef dword_4458E4
-#undef dword_4458E8
-#undef dword_4458EC
-#undef xmmword_439B10
-#undef xmmword_441190
-#undef xmmword_4411A0
-#undef xmmword_4411B0
-#undef xmmword_4411C0
-#undef xmmword_4411D0
-#undef xmmword_4411E0
-#undef xmmword_4411F0
 #undef sub_41C4B0

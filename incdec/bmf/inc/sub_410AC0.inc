@@ -3,28 +3,20 @@
 
 typedef int t_sub_410AC0_buf[0x10000];
 static t_sub_410AC0_buf& __sub_410AC0_buf = *(t_sub_410AC0_buf*)0x00443380;
-#define buf __sub_410AC0_buf
 typedef int t_sub_410AC0_n2;
 static t_sub_410AC0_n2& __sub_410AC0_n2 = *(t_sub_410AC0_n2*)0x00443360;
-#define n2 __sub_410AC0_n2
 typedef int t_sub_410AC0_n256_0[0x10000];
 static t_sub_410AC0_n256_0& __sub_410AC0_n256_0 = *(t_sub_410AC0_n256_0*)0x00443398;
-#define n256_0 __sub_410AC0_n256_0
 typedef __int128 t_sub_410AC0_xmmword_439700;
 static t_sub_410AC0_xmmword_439700& __sub_410AC0_xmmword_439700 = *(t_sub_410AC0_xmmword_439700*)0x00439700;
-#define xmmword_439700 __sub_410AC0_xmmword_439700
 typedef __int128 t_sub_410AC0_xmmword_439710;
 static t_sub_410AC0_xmmword_439710& __sub_410AC0_xmmword_439710 = *(t_sub_410AC0_xmmword_439710*)0x00439710;
-#define xmmword_439710 __sub_410AC0_xmmword_439710
 typedef __int128 t_sub_410AC0_xmmword_439720;
 static t_sub_410AC0_xmmword_439720& __sub_410AC0_xmmword_439720 = *(t_sub_410AC0_xmmword_439720*)0x00439720;
-#define xmmword_439720 __sub_410AC0_xmmword_439720
 typedef __int128 t_sub_410AC0_xmmword_439730;
 static t_sub_410AC0_xmmword_439730& __sub_410AC0_xmmword_439730 = *(t_sub_410AC0_xmmword_439730*)0x00439730;
-#define xmmword_439730 __sub_410AC0_xmmword_439730
 typedef __int128 t_sub_410AC0_xmmword_439740;
 static t_sub_410AC0_xmmword_439740& __sub_410AC0_xmmword_439740 = *(t_sub_410AC0_xmmword_439740*)0x00439740;
-#define xmmword_439740 __sub_410AC0_xmmword_439740
 
 
 PROBE_DECL(__sub_410AC0)
@@ -46,7 +38,7 @@ BMF_SSE _BYTE *__sub_410AC0(_BYTE *Src, int i, int a3, _BYTE *a4)
   char v16; // bl
   char v17; // al
   char v18; // bl
-  int n2; // edx
+  int __sub_410AC0_n2; // edx
   __m128i v20; // xmm1
   __m128i v21; // xmm0
   unsigned int k; // edx
@@ -125,14 +117,14 @@ BMF_SSE _BYTE *__sub_410AC0(_BYTE *Src, int i, int a3, _BYTE *a4)
   _BYTE v96[255]; // [esp+230h] [ebp-110h]
   char v97; // [esp+32Fh] [ebp-11h]
 
-  n256 = n256_0[0];
-  n128_1 = 2 * n256_0[0] + 1;
-  if ( ::n2 )
+  n256 = __sub_410AC0_n256_0[0];
+  n128_1 = 2 * __sub_410AC0_n256_0[0] + 1;
+  if ( ::__sub_410AC0_n2 )
   {
-    si128 = _mm_load_si128((const __m128i *)&xmmword_439720);
-    v7 = _mm_load_si128((const __m128i *)&xmmword_439700);
-    v8 = _mm_load_si128((const __m128i *)&xmmword_439730);
-    v9 = _mm_load_si128((const __m128i *)&xmmword_439740);
+    si128 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439720);
+    v7 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439700);
+    v8 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439730);
+    v9 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439740);
     n0x70 = 0;
     v96[0] = 0;
     v97 = 0x80;
@@ -270,12 +262,12 @@ LABEL_21:
     }
     while ( n128_3 < 128 );
     n128_1 = n128_2;
-    n2 = ::n2;
+    __sub_410AC0_n2 = ::__sub_410AC0_n2;
   }
   else
   {
-    v20 = _mm_load_si128((const __m128i *)&xmmword_439700);
-    v21 = _mm_load_si128((const __m128i *)&xmmword_439710);
+    v20 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439700);
+    v21 = _mm_load_si128((const __m128i *)&__sub_410AC0_xmmword_439710);
     for ( k = 0; k < 0x100; k += 128 )
     {
       *(__m128i *)&v96[k] = v21;
@@ -307,23 +299,23 @@ LABEL_21:
         n256 += n128_1;
       }
       while ( n256 < 256 );
-      n256_1 = n256_0[0];
+      n256_1 = __sub_410AC0_n256_0[0];
     }
     if ( n256 - n256_1 < 256 )
     {
       v33 = v96[v31];
       v96[v31] = v97;
-      n2 = ::n2;
+      __sub_410AC0_n2 = ::__sub_410AC0_n2;
       v97 = v33;
     }
     else
     {
-      n2 = ::n2;
+      __sub_410AC0_n2 = ::__sub_410AC0_n2;
     }
   }
-  if ( n2 )
+  if ( __sub_410AC0_n2 )
   {
-    n256 = n256_0[0];
+    n256 = __sub_410AC0_n256_0[0];
     goto LABEL_21;
   }
   n128_6 = n128_1 + 1;
@@ -408,7 +400,7 @@ LABEL_52:
       *result++ = v87;
       ++v61;
       ++v54;
-      ++*(_DWORD *)&buf[4 * v87];
+      ++*(_DWORD *)&__sub_410AC0_buf[4 * v87];
       if ( i != 1 )
       {
         v89 = v80;
@@ -462,7 +454,7 @@ LABEL_52:
           v79 = v89;
           *result++ = v91;
           v61 = v77 + 1;
-          ++*(_DWORD *)&buf[4 * v78];
+          ++*(_DWORD *)&__sub_410AC0_buf[4 * v78];
           ++v54;
           v89 = v79 - 1;
         }
@@ -475,11 +467,3 @@ LABEL_52:
   return result;
 }
 
-#undef buf
-#undef n2
-#undef n256_0
-#undef xmmword_439700
-#undef xmmword_439710
-#undef xmmword_439720
-#undef xmmword_439730
-#undef xmmword_439740

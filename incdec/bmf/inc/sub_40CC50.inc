@@ -3,7 +3,6 @@
 
 typedef int t_sub_40CC50_dword_443408;
 static t_sub_40CC50_dword_443408& __sub_40CC50_dword_443408 = *(t_sub_40CC50_dword_443408*)0x00443408;
-#define dword_443408 __sub_40CC50_dword_443408
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
@@ -71,7 +70,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_40CC50(int j, _DWORD 
   v6 = 0;
   if ( j <= 0 )
     goto LABEL_50;
-  result = (int)dword_443408;
+  result = (int)__sub_40CC50_dword_443408;
   j_2 = 0;
   do
   {
@@ -95,7 +94,7 @@ LABEL_50:
     result = (int)sub_4349F0(bufa,0,4 * j_1);
     if ( v5 == 1 )
     {
-      v41 = v6 - (_DWORD)dword_443408;
+      v41 = v6 - (_DWORD)__sub_40CC50_dword_443408;
       bufa_1 = bufa;
       v43 = *a2 != 0;
       bufa[4 * (v41 / 24) + 2] = 1;
@@ -296,5 +295,4 @@ BMF_SSE __attribute__((naked)) static void __thunk_sub_40CC50()
   );
 }
 
-#undef dword_443408
 #undef sub_4349F0

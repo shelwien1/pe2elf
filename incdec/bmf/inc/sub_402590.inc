@@ -3,25 +3,20 @@
 
 typedef size_t t_sub_402590_ElementCount;
 static t_sub_402590_ElementCount& __sub_402590_ElementCount = *(t_sub_402590_ElementCount*)0x00441054;
-#define ElementCount __sub_402590_ElementCount
+typedef WIN32_FIND_DATAA t_sub_402590_FindFileData;
+static t_sub_402590_FindFileData& __sub_402590_FindFileData = *(t_sub_402590_FindFileData*)0x00442A60;
 typedef int t_sub_402590_dwLowDateTime;
 static t_sub_402590_dwLowDateTime& __sub_402590_dwLowDateTime = *(t_sub_402590_dwLowDateTime*)0x00442BB0;
-#define dwLowDateTime __sub_402590_dwLowDateTime
 typedef int t_sub_402590_dword_441058;
 static t_sub_402590_dword_441058& __sub_402590_dword_441058 = *(t_sub_402590_dword_441058*)0x00441058;
-#define dword_441058 __sub_402590_dword_441058
 typedef int t_sub_402590_dword_44105C;
 static t_sub_402590_dword_44105C& __sub_402590_dword_44105C = *(t_sub_402590_dword_44105C*)0x0044105C;
-#define dword_44105C __sub_402590_dword_44105C
 typedef int t_sub_402590_dword_442BA8;
 static t_sub_402590_dword_442BA8& __sub_402590_dword_442BA8 = *(t_sub_402590_dword_442BA8*)0x00442BA8;
-#define dword_442BA8 __sub_402590_dword_442BA8
 typedef int t_sub_402590_n0xFFFF;
 static t_sub_402590_n0xFFFF& __sub_402590_n0xFFFF = *(t_sub_402590_n0xFFFF*)0x00441064;
-#define n0xFFFF __sub_402590_n0xFFFF
 typedef int t_sub_402590_n4_6;
 static t_sub_402590_n4_6& __sub_402590_n4_6 = *(t_sub_402590_n4_6*)0x00441060;
-#define n4_6 __sub_402590_n4_6
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -108,11 +103,11 @@ BMF_SSE int *__sub_402590(char *FileName)
   int v19; // ecx
   int Stra_1; // eax
   size_t ElementCount_1; // edx
-  char *dwLowDateTime; // eax
+  char *__sub_402590_dwLowDateTime; // eax
   char v24; // fps
   char *Str; // [esp+0h] [ebp-28h]
   char *Stra; // [esp+0h] [ebp-28h]
-  size_t ElementCount; // [esp+4h] [ebp-24h]
+  size_t __sub_402590_ElementCount; // [esp+4h] [ebp-24h]
   char *ElementCounta; // [esp+4h] [ebp-24h]
   size_t Offset; // [esp+8h] [ebp-20h]
   char *Offseta; // [esp+8h] [ebp-20h]
@@ -122,23 +117,23 @@ BMF_SSE int *__sub_402590(char *FileName)
   int v34; // [esp+14h] [ebp-14h]
 
   Stream_v = fopen(FileName, "rb");
-  v2 = sub_42B830(dword_441058, dword_44105C, 8 * n4_6, 0, 1);
+  v2 = sub_42B830(__sub_402590_dword_441058, __sub_402590_dword_44105C, 8 * __sub_402590_n4_6, 0, 1);
   FileHandle = _fileno(Stream_v);
   v4 = _filelength(FileHandle);
   v5 = *((unsigned __int16 *)v2 + 2);
-  v6 = (n0xFFFF + v5 - 1) / n0xFFFF * n0xFFFF;
-  Offset = ::ElementCount;
+  v6 = (__sub_402590_n0xFFFF + v5 - 1) / __sub_402590_n0xFFFF * __sub_402590_n0xFFFF;
+  Offset = ::__sub_402590_ElementCount;
   ElementCount_2 = v6 - v5;
-  v8 = ElementCount_2 * dword_44105C;
-  ElementCount_4 = v4 - dword_44105C * v6 - ::ElementCount;
+  v8 = ElementCount_2 * __sub_402590_dword_44105C;
+  ElementCount_4 = v4 - __sub_402590_dword_44105C * v6 - ::__sub_402590_ElementCount;
   if ( ElementCount_4 < 0 )
     return nullptr;
-  if ( n4_6 == 1 )
+  if ( __sub_402590_n4_6 == 1 )
   {
     *((_BYTE *)v2 + 10) |= 0x40u;
-    Offset = ::ElementCount;
+    Offset = ::__sub_402590_ElementCount;
   }
-  if ( dword_442BA8 )
+  if ( __sub_402590_dword_442BA8 )
   {
     v15 = strrchr(FileName, 92);
     FileName_1 = v15 + 1;
@@ -155,19 +150,19 @@ BMF_SSE int *__sub_402590(char *FileName)
     Stra = (char *)Stra_1;
     Size = Stra_1 + 1;
     Offsetb = (WORD *)sub_402EB0(256, Offset + ElementCount_4 + v8 + Stra_1 + 25);
-    ::dwLowDateTime = Offsetb;
+    ::__sub_402590_dwLowDateTime = Offsetb;
     Offsetb[4] = Size;
-    Offsetb[5] = n0xFFFF;
-    FileTimeToDosDateTime(&FindFileData.ftLastWriteTime, Offsetb + 7, Offsetb + 6);
-    *((_DWORD *)Offsetb + 4) = FindFileData.dwFileAttributes;
-    ElementCount_1 = ::ElementCount;
-    dwLowDateTime = (char *)::dwLowDateTime;
+    Offsetb[5] = __sub_402590_n0xFFFF;
+    FileTimeToDosDateTime(&__sub_402590_FindFileData.ftLastWriteTime, Offsetb + 7, Offsetb + 6);
+    *((_DWORD *)Offsetb + 4) = __sub_402590_FindFileData.dwFileAttributes;
+    ElementCount_1 = ::__sub_402590_ElementCount;
+    __sub_402590_dwLowDateTime = (char *)::__sub_402590_dwLowDateTime;
     *((_DWORD *)Offsetb + 7) = 0;
     *((_DWORD *)Offsetb + 5) = ElementCount_1;
     *((_DWORD *)Offsetb + 6) = ElementCount_4;
-    sub_434980(dwLowDateTime + 32,ElementCounta,Size);
-    fread(&Stra[(_DWORD)::dwLowDateTime + 33], 1u, ::ElementCount, Stream_v);
-    Offseta = &Stra[(_DWORD)::dwLowDateTime + ::ElementCount + ElementCount_4 + 33];
+    sub_434980(__sub_402590_dwLowDateTime + 32,ElementCounta,Size);
+    fread(&Stra[(_DWORD)::__sub_402590_dwLowDateTime + 33], 1u, ::__sub_402590_ElementCount, Stream_v);
+    Offseta = &Stra[(_DWORD)::__sub_402590_dwLowDateTime + ::__sub_402590_ElementCount + ElementCount_4 + 33];
   }
   else
   {
@@ -179,38 +174,38 @@ BMF_SSE int *__sub_402590(char *FileName)
   {
     if ( fread(v2 + 4, 1u, v2[3], Stream_v) == v2[3] )
     {
-      v9 = dword_442BA8;
+      v9 = __sub_402590_dword_442BA8;
       Str = nullptr;
       goto LABEL_17;
     }
     return nullptr;
   }
-  v9 = dword_442BA8;
-  v10 = dword_44105C - 1;
+  v9 = __sub_402590_dword_442BA8;
+  v10 = __sub_402590_dword_44105C - 1;
   Str = &Offseta[-ElementCount_2];
-  if ( dword_44105C - 1 >= 0 )
+  if ( __sub_402590_dword_44105C - 1 >= 0 )
   {
     ElementCount_3 = *((unsigned __int16 *)v2 + 2);
-    v34 = dword_442BA8;
-    ElementCount = ElementCount_2;
+    v34 = __sub_402590_dword_442BA8;
+    __sub_402590_ElementCount = ElementCount_2;
     Buffer = (char *)(v2 + 4);
     while ( fread(Buffer, 1u, ElementCount_3, Stream_v) == *((unsigned __int16 *)v2 + 2) )
     {
       if ( v34 )
       {
-        Str += ElementCount;
-        fread(Str, 1u, ElementCount, Stream_v);
+        Str += __sub_402590_ElementCount;
+        fread(Str, 1u, __sub_402590_ElementCount, Stream_v);
       }
       else
       {
-        fseek(Stream_v, ElementCount, 1);
+        fseek(Stream_v, __sub_402590_ElementCount, 1);
       }
       ElementCount_3 = *((unsigned __int16 *)v2 + 2);
       Buffer += ElementCount_3;
       if ( --v10 < 0 )
       {
         v9 = v34;
-        ElementCount_2 = ElementCount;
+        ElementCount_2 = __sub_402590_ElementCount;
         goto LABEL_17;
       }
     }
@@ -219,7 +214,7 @@ BMF_SSE int *__sub_402590(char *FileName)
 LABEL_17:
   if ( v9 )
   {
-    fread((char *)::dwLowDateTime + ::ElementCount + Size + 32, 1u, ElementCount_4, Stream_v);
+    fread((char *)::__sub_402590_dwLowDateTime + ::__sub_402590_ElementCount + Size + 32, 1u, ElementCount_4, Stream_v);
     if ( ElementCount_2 )
     {
       for ( i = &Str[ElementCount_2 - 1]; i >= Offseta; --i )
@@ -228,7 +223,7 @@ LABEL_17:
           break;
       }
       if ( i < Offseta )
-        *((_DWORD *)::dwLowDateTime + 1) = (ElementCount_4 + ::ElementCount + Size + 27) & 0xFFFFFFFC;
+        *((_DWORD *)::__sub_402590_dwLowDateTime + 1) = (ElementCount_4 + ::__sub_402590_ElementCount + Size + 27) & 0xFFFFFFFC;
     }
   }
   fclose(Stream_v);
@@ -243,13 +238,6 @@ LABEL_17:
 #undef fopen
 #undef fread
 #undef fseek
-#undef ElementCount
-#undef dwLowDateTime
-#undef dword_441058
-#undef dword_44105C
-#undef dword_442BA8
-#undef n0xFFFF
-#undef n4_6
 #undef sub_402EB0
 #undef sub_42B830
 #undef sub_434980

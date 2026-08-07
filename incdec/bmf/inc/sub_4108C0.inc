@@ -3,19 +3,14 @@
 
 typedef int t_sub_4108C0_buf[0x10000];
 static t_sub_4108C0_buf& __sub_4108C0_buf = *(t_sub_4108C0_buf*)0x00443380;
-#define buf __sub_4108C0_buf
 typedef __int128 t_sub_4108C0_xmmword_4396C0;
 static t_sub_4108C0_xmmword_4396C0& __sub_4108C0_xmmword_4396C0 = *(t_sub_4108C0_xmmword_4396C0*)0x004396C0;
-#define xmmword_4396C0 __sub_4108C0_xmmword_4396C0
 typedef __int128 t_sub_4108C0_xmmword_4396D0;
 static t_sub_4108C0_xmmword_4396D0& __sub_4108C0_xmmword_4396D0 = *(t_sub_4108C0_xmmword_4396D0*)0x004396D0;
-#define xmmword_4396D0 __sub_4108C0_xmmword_4396D0
 typedef __int128 t_sub_4108C0_xmmword_4396E0;
 static t_sub_4108C0_xmmword_4396E0& __sub_4108C0_xmmword_4396E0 = *(t_sub_4108C0_xmmword_4396E0*)0x004396E0;
-#define xmmword_4396E0 __sub_4108C0_xmmword_4396E0
 typedef __int128 t_sub_4108C0_xmmword_4396F0;
 static t_sub_4108C0_xmmword_4396F0& __sub_4108C0_xmmword_4396F0 = *(t_sub_4108C0_xmmword_4396F0*)0x004396F0;
-#define xmmword_4396F0 __sub_4108C0_xmmword_4396F0
 
 
 PROBE_DECL(__sub_4108C0)
@@ -61,8 +56,8 @@ BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
     v31[2 * j + 1] = 4 * j + 2;
     v31[2 * j + 2] = 4 * j + 4;
   }
-  si128 = _mm_load_si128((const __m128i *)&xmmword_4396C0);
-  v7 = _mm_load_si128((const __m128i *)&xmmword_4396D0);
+  si128 = _mm_load_si128((const __m128i *)&__sub_4108C0_xmmword_4396C0);
+  v7 = _mm_load_si128((const __m128i *)&__sub_4108C0_xmmword_4396D0);
   v31[15] = 30;
   for ( k = 15; k < 0x7F; k += 16 )
   {
@@ -78,8 +73,8 @@ BMF_SSE unsigned int __sub_4108C0(int Src, int i, int a3)
     v31[2 * m + 130] = v11;
   }
   i_1 = i;
-  v13 = _mm_load_si128((const __m128i *)&xmmword_4396E0);
-  v14 = _mm_load_si128((const __m128i *)&xmmword_4396F0);
+  v13 = _mm_load_si128((const __m128i *)&__sub_4108C0_xmmword_4396E0);
+  v14 = _mm_load_si128((const __m128i *)&__sub_4108C0_xmmword_4396F0);
   n15 = 15;
   v31[143] = -31;
   do
@@ -127,7 +122,7 @@ LABEL_20:
 LABEL_21:
       v21 = (unsigned __int8)v31[(unsigned __int8)(*v3 - v19)];
       *v3 = v21;
-      ++*(_DWORD *)&buf[4 * v21];
+      ++*(_DWORD *)&__sub_4108C0_buf[4 * v21];
       --v17;
     }
     while ( v17 );
@@ -138,7 +133,7 @@ LABEL_23:
     --v3;
     n15 = (unsigned __int8)v31[(unsigned __int8)(*v3 - v3[-i_1])];
     *v3 = n15;
-    ++*(_DWORD *)&buf[4 * n15];
+    ++*(_DWORD *)&__sub_4108C0_buf[4 * n15];
     --v16;
   }
   while ( v16 );
@@ -179,8 +174,3 @@ LABEL_24:
   return n15;
 }
 
-#undef buf
-#undef xmmword_4396C0
-#undef xmmword_4396D0
-#undef xmmword_4396E0
-#undef xmmword_4396F0
