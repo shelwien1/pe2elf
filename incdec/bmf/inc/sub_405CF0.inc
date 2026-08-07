@@ -38,12 +38,6 @@ static t_sub_405CF0_n4_5& __sub_405CF0_n4_5 = *(t_sub_405CF0_n4_5*)0x00443394;
 typedef int t_sub_405CF0_n7_0;
 static t_sub_405CF0_n7_0& __sub_405CF0_n7_0 = *(t_sub_405CF0_n7_0*)0x0044109C;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
 typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments only
@@ -52,6 +46,7 @@ static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #define sub_4349F0 __sub_4349F0
 static inline int __fwd_sub_405CF0_sub_407460(void *a0, void *a1, int a2, char a3, int a4, int a5, int a6, int a7) { return __sub_407460((unsigned __int8 *)a0, (unsigned __int8 *)a1, a2, a3, a4, a5, a6, a7); }
 #define sub_407460 __fwd_sub_405CF0_sub_407460
+#define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_405CF0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_405CF0(int a1, int n3, char a3)

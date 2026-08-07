@@ -48,15 +48,10 @@ static t_sub_40BEE0_xmmword_442EC0& __sub_40BEE0_xmmword_442EC0 = *(t_sub_40BEE0
 typedef __int128 t_sub_40BEE0_xmmword_442ED0;
 static t_sub_40BEE0_xmmword_442ED0& __sub_40BEE0_xmmword_442ED0 = *(t_sub_40BEE0_xmmword_442ED0*)0x00442ED0;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #define sub_40CB70 __sub_40CB70
 static inline int __fwd_sub_40BEE0_sub_40CC50(int a0, void *a1, void *a2, char a3) { return __sub_40CC50(a0, (_DWORD *)a1, (char *)a2, a3); }
 #define sub_40CC50 __fwd_sub_40BEE0_sub_40CC50
+#define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_40BEE0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BEE0(char a1)

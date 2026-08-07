@@ -1,4 +1,4 @@
-// sub_402EF0 @ 0x00402EF0 — __stdcall
+// sub_402EF0 @ 0x00402EF0 — __userpurge
 // Extracted from BMF.cpp:2517-2569 by extract.py per incdec.md.
 
 #define exit_402E40 __exit_402E40
@@ -29,10 +29,10 @@ static t_fseek& __fseek = *(t_fseek*)0x0042D0DD;
 #define FILE FILE1
 
 PROBE_DECL(__sub_402EF0)
-__attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((stdcall)) int __sub_402EF0(char *FileName, int a2)
+extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_402EF0(_DWORD *v2, char *FileName, int a2)
 {
   PROBE_HIT(__sub_402EF0);
-  _DWORD *v2; // ecx
+
   __m128 v3; // xmm1
   __m128 v4; // xmm3
   int v5; // edi
@@ -79,6 +79,33 @@ LABEL_11:
     }
   }
   return v5;
+}
+
+// __userpurge thunk for sub_402EF0 @ 0x00402EF0: reads the register arguments the
+// caller passes, calls the moved body as cdecl, and pops 8 bytes of
+// stack on return.
+BMF_SSE __attribute__((naked)) static void __thunk_sub_402EF0()
+{
+  __asm__ volatile(
+    "push %ebp\n"
+    "mov %esp, %ebp\n"
+    "push %ebx\n"
+    "push %esi\n"
+    "push %edi\n"
+    "and $-16, %esp\n"
+    "sub $20, %esp\n"
+    "mov %ecx, 4(%esp)\n"
+    "push 12(%ebp)\n"
+    "push 8(%ebp)\n"
+    "push 12(%esp)\n"
+    "call __sub_402EF0\n"
+    "lea -12(%ebp), %esp\n"
+    "pop %edi\n"
+    "pop %esi\n"
+    "pop %ebx\n"
+    "leave\n"
+    "ret $8\n"
+  );
 }
 
 #undef FILE

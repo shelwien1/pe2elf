@@ -1151,6 +1151,74 @@ function, and it took a segfault a thousand lines away to find. The shapes to
 cover are `--p; ++p; p--; p++;` as standalone statements, `p += e; p -= e;`,
 and `p = (T *)((char *)p ± e);`. Seven sites across four functions here.
 
+### 8.2.4.1 When IDA gets the calling convention wrong
+
+The convention comes from IDA, and IDA can be wrong. `sub_402EF0` is typed
+`__stdcall(char *FileName, int a2)`, and its first instruction is
+`mov edi, ecx` — a third argument, in a register, that the signature does not
+mention. Hex-Rays says so itself, in a comment after the body:
+
+```
+// 402EF4: variable 'v2' is possibly undefined
+```
+
+with `_DWORD *v2; // ecx` among the locals. Together with `mov eax, edi;
+retn 8` at the end, the real signature is
+`__userpurge sub_402EF0@<eax>(_DWORD *v2@<ecx>, char *FileName, int a2)`.
+
+**Grep the whole donor for "is possibly undefined" once**, and check any
+warning whose variable is declared in a register *at the top of the body*.
+Mid-function ones are ordinary decompiler noise; one at the entry point means
+the signature is missing an argument. Three of the 31 here were at an entry;
+one of them was real.
+
+Correcting it is a `fixups.txt` row on the signature line plus one deleting the
+now-duplicate local. But a corrected signature has to reach **everything that
+reads one**, and there turn out to be four such places:
+
+1. **The convention table.** Here that is `sites.txt` (which `extract.py`
+   reads), and from there `targets.txt` and `accepted.txt` (which `build.sh`
+   reads to decide whether the patched entry point goes to the moved body or to
+   its §4.2 thunk). A stale copy is not a cosmetic mismatch: it sends PE
+   callers straight into a cdecl body that expects its register argument on the
+   stack, so every argument is off by one slot — which presents as a null
+   filename and an exit code from a completely different error path. Have one
+   authority and rewrite the copies from it.
+2. **The §4.2 thunk**, which is built from the signature.
+3. **The §6.3 forwarder** in every moved caller, which is built from the
+   *callee's* signature. Read that through the callee's own fixups, or the
+   forwarder gets the wrong arity.
+4. **Every call site.** Hex-Rays dropped the argument at the call as well as at
+   the definition, and it dropped the expression that produced it: all seven
+   calls read `if ( operator new(8u) ) sub_402EF0(FileName, 0);`, and the
+   pointer that `new` returned is the missing ecx argument (`mov ecx, eax`).
+   `if ( void *__nb = operator new(8u) )` names it and each call passes it.
+
+Points 2-4 are the reason a signature fixup is not like the others: it is the
+only kind whose effect leaves the body it is attached to.
+
+### 8.2.4.2 The greedy `\x` escape
+
+Hex-Rays merges adjacent `.rdata` strings into one literal and prints
+non-printable bytes as `\x`. Where the next byte is an ASCII hex digit the two
+run together, and C's `\x` escape has no length limit — it eats every hex digit
+it can reach:
+
+```c
+fwrite("\x81\x8A20\x81\x9020a+b", 4u, 1u, f)
+```
+
+`\x8A20` is *one* escape with the value 0x8A20, which does not fit in a char.
+g++ warns and truncates, so the four bytes written are `81 20 81 0a` instead of
+the `81 8A 32 30` that is the compressor's file-header magic. The compressed
+file is the right length and every byte of the payload is correct; it just
+cannot be read back.
+
+Terminate the escape with an empty string literal — `"\x81\x8A""20…"` — which
+concatenates away and changes nothing else. One occurrence in this donor, and
+it is the sort of thing that only ever has one occurrence, which is why it is
+worth grepping for rather than waiting to hit.
+
 ### 8.2.5 A callee whose arguments the decompiler did not recover at all
 
 `__libm_sse2_log` and `__svml_log2` are inside the statically-linked Intel

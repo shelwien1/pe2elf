@@ -40,12 +40,6 @@ static t_sub_40B330_n9& __sub_40B330_n9 = *(t_sub_40B330_n9*)0x00443418;
 typedef void * t_sub_40B330_off_4410C0[0x10000];
 static t_sub_40B330_off_4410C0& __sub_40B330_off_4410C0 = *(t_sub_40B330_off_4410C0*)0x004410C0;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
@@ -53,6 +47,7 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 #endif
 #define sub_434980 __sub_434980
 #define sub_40BBC0 __sub_40BBC0
+#define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_40B330)
 __attribute__((force_align_arg_pointer)) BMF_SSE __attribute__((thiscall)) unsigned int __sub_40B330(_DWORD *_this, _DWORD *buf)

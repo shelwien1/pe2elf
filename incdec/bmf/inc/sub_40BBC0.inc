@@ -10,18 +10,13 @@ static t_sub_40BBC0_n14& __sub_40BBC0_n14 = *(t_sub_40BBC0_n14*)0x00443414;
 typedef int t_sub_40BBC0_n24;
 static t_sub_40BBC0_n24& __sub_40BBC0_n24 = *(t_sub_40BBC0_n24*)0x00443410;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
 static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 #endif
 #define sub_434980 __sub_434980
+#define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_40BBC0)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_40BBC0(int n2, int a2, int a3, char a4, int a5, int a6, int a7, int a8)

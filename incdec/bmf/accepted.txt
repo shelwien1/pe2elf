@@ -69,6 +69,9 @@
 0040FAC0 sub_40FAC0 userpurge
 00410310 sub_410310 cdecl
 0040AE10 sub_40AE10 thiscall
+00436DC0 __svml_log2_w usercall
+00436E10 sub_436E10 usercall
+00411700 sub_411700 cdecl
 0040BBC0 sub_40BBC0 usercall
 0040B330 sub_40B330 thiscall
 0040CB70 sub_40CB70 cdecl
@@ -121,4 +124,6 @@
 00407B30 sub_407B30 usercall
 00403820 sub_403820 userpurge
 004043E0 sub_4043E0 usercall
-00436DC0 __svml_log2_w usercall
+00402EF0 sub_402EF0 userpurge
+00402FE0 sub_402FE0 userpurge
+004028B0 sub_4028B0 usercall

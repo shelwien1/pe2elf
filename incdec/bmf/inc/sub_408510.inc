@@ -98,12 +98,6 @@ static t_sub_408510_off_4410C0& __sub_408510_off_4410C0 = *(t_sub_408510_off_441
 typedef int t_sub_408510_p_n2;
 static t_sub_408510_p_n2& __sub_408510_p_n2 = *(t_sub_408510_p_n2*)0x004433F4;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
 typedef void * t_sub_434980(void *, const void *, unsigned int);   // stack arguments only
@@ -125,6 +119,7 @@ static inline _DWORD * __fwd_sub_408510_sub_40AF40(void *a0, int a1, int a2, int
 static inline unsigned int __fwd_sub_408510_sub_40B330(void *a0, void *a1) { return __sub_40B330((_DWORD *)a0, (_DWORD *)a1); }
 #define sub_40B330 __fwd_sub_408510_sub_40B330
 #define sub_40BEE0 __sub_40BEE0
+#define sub_411700 __sub_411700
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

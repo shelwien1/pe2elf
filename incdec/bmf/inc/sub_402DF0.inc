@@ -1,7 +1,7 @@
 // sub_402DF0 @ 0x00402DF0 — __thiscall
 // Extracted from BMF.cpp:2463-2469 by extract.py per incdec.md.
 
-static inline Stream * __fwd_sub_402DF0_sub_402FB0(void *a0) { return __sub_402FB0((FILE1 **)a0); }
+static inline FILE1 * __fwd_sub_402DF0_sub_402FB0(void *a0) { return __sub_402FB0((FILE1 **)a0); }
 #define sub_402FB0 __fwd_sub_402DF0_sub_402FB0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

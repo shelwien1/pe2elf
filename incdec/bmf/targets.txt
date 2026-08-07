@@ -9,7 +9,7 @@
 00402E40	exit_402E40	stdcall
 00402E70	sub_402E70	thiscall
 00402EB0	sub_402EB0	cdecl
-00402EF0	sub_402EF0	stdcall
+00402EF0	sub_402EF0	userpurge
 00402FB0	sub_402FB0	thiscall
 00402FE0	sub_402FE0	userpurge
 00403820	sub_403820	userpurge

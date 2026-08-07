@@ -561,6 +561,36 @@ def build_frame(locs):
 
 
 
+def fix_hex_escapes(line):
+    r"""Terminate a `\xHH` escape that is followed by another hex digit.
+
+    Hex-Rays merges adjacent .rdata strings into one literal and prints
+    non-printable bytes as `\x`.  Where the next byte happens to be an ASCII
+    hex digit the two run together, and C's `\x` escape is *greedy* — it eats
+    every hex digit it can reach:
+
+        fwrite("\x81\x8A20\x81\x9020a+b", 4u, 1u, f)
+
+    is `\x8A20`, one escape with the value 0x8A20, which does not fit in a
+    char.  g++ warns and truncates, so the four bytes written are `81 20 81 0a`
+    rather than the `81 8A 32 30` the compressor's file header needs — and the
+    only symptom is that nothing can read the archive back.
+
+    An empty string literal ends the escape and concatenates away.
+    """
+    lit = [(m.start(), m.end()) for m in
+           re.finditer(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'", line)]
+    if not lit:
+        return line
+    out, pos = [], 0
+    for m in re.finditer(r'\\x[0-9A-Fa-f]{2}(?=[0-9A-Fa-f])', line):
+        if not any(a <= m.start() < b for a, b in lit):
+            continue
+        out.append(line[pos:m.end()]); out.append('""'); pos = m.end()
+    out.append(line[pos:])
+    return ''.join(out)
+
+
 PTR_LOCAL = re.compile(r'^\s*([A-Za-z_][\w\s]*?\*)\s*(\w+)\s*;')
 
 
@@ -742,6 +772,22 @@ def split_decl(decl):
     return (m.group(1).strip(), m.group(2)) if m else (decl.strip(), None)
 
 
+def callee_signature(lines, spans, fixups, name):
+    """A callee's own signature, with that callee's fixups applied.
+
+    A fixup can correct the *signature* — sub_402EF0 is typed `__stdcall` by
+    IDA and actually takes a third argument in ecx (§8.2.4.1) — and every
+    reader of that signature has to see the correction, not just the body it
+    is emitted into.  Reading the raw donor line here builds a forwarder with
+    the wrong arity and the call goes out one slot short.
+    """
+    a, b = spans[name][0], spans[name][1]
+    src = '\n'.join(lines[a - 1:b])
+    for find, repl in fixups.get(name, []):
+        src = src.replace(find, repl)
+    return join_signature(src.split('\n'))
+
+
 def moved_callee_wrapper(caller, callee, sig, ret_reg, params):
     """A `void *`-taking forwarder for a call to an already-moved function.
 
@@ -757,6 +803,10 @@ def moved_callee_wrapper(caller, callee, sig, ret_reg, params):
               '__fastcall', '__thiscall', '__noreturn'):
         ret = ret.replace(k, '')
     ret = ' '.join(ret.split()) or 'int'
+    # Same rewrite as the parameters below: the moved callee is declared with
+    # FILE1, so a forwarder returning `FILE **` does not match it.
+    ret = re.sub(r'\bFILE\b', 'FILE1', ret)
+    ret = re.sub(r'\bStream\b', 'FILE1', ret)
     args, casts = [], []
     for i, (decl, nm, reg) in enumerate(params):
         t, _ = split_decl(decl)
@@ -926,10 +976,13 @@ def emit(args, cache=None):
         # A __usercall override still needs its entry-point thunk, and there is
         # no reason to hand-write that: the override supplies the body with the
         # signature §4.2 expects, and the generated stub goes on the end.
-        lines, spans, protos, _g, _na, _f, _w, _fx = cache or load()
+        lines, spans, protos, _g, _na, _f, _w, fixups = cache or load()
         if args.name in spans and spans[args.name][3] in ('usercall', 'userpurge'):
             a, b, va, conv = spans[args.name]
-            sig, _n = join_signature(lines[a - 1:b])
+            # Through fixups.txt like any other body: a corrected *signature*
+            # is exactly what an override is often for, and the thunk has to
+            # be built from the corrected one.
+            sig, _n = callee_signature(lines, spans, fixups, args.name)
             ret_reg, sig_params = parse_signature(sig, args.name)
             text += '\n' + '\n'.join(make_thunk(args.name, va, conv,
                                                  sig_params, ret_reg)) + '\n'
@@ -1063,7 +1116,10 @@ def emit(args, cache=None):
         n = m.group(1)
         if n in locals_ and not re.search(r'::\s*' + re.escape(n) + r'\b', body):
             continue          # indirect call through a local function pointer
-        if INTEL_CRT.match(n):
+        if INTEL_CRT.match(n) and n not in spans:
+            # `n in spans` means it is a real BMF function with a decompiled
+            # body — __svml_log2_w is `call ___svml_log2; retn`, and once moved
+            # it is an ordinary moved callee, not a CRT entry to declare.
             # Resolve here rather than falling through: INTRIN's `__` branch
             # below would otherwise swallow these before they reach the CRT
             # lookup.
@@ -1201,8 +1257,7 @@ def emit(args, cache=None):
         # away from the call before it was found.
         ret = argl = None
         if c in spans and spans[c][3] not in ('usercall', 'userpurge'):
-            ca, cb = spans[c][0], spans[c][1]
-            csig, _n = join_signature(lines[ca - 1:cb])
+            csig, _n = callee_signature(lines, spans, fixups, c)
             mm = re.match(r'^(.*?)\b' + re.escape(c) + r'\s*\((.*)\)\s*$', csig, re.S)
             if mm:
                 ret, argl = mm.group(1).strip(), mm.group(2).strip()
@@ -1256,8 +1311,7 @@ def emit(args, cache=None):
         # is that a vector argument is by reference there, and stays that way
         # here rather than being relaxed to `void *`.
         if c in spans:
-            ca, cb = spans[c][0], spans[c][1]
-            csig, _n = join_signature(lines[ca - 1:cb])
+            csig, _n = callee_signature(lines, spans, fixups, c)
             try:
                 cret, cparams = parse_signature(csig, c)
             except Exception:
@@ -1464,6 +1518,7 @@ def emit(args, cache=None):
         joined = text.split('\n')
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
+    joined = [fix_hex_escapes(l) for l in joined]
     joined = launder_pointer_counters(joined)
     joined = [mask_shift_counts(l) for l in joined]
     if single_precision(args.name):

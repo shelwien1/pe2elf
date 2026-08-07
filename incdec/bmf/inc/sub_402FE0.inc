@@ -204,7 +204,7 @@ extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_402FE0(int a1
   Buffera_1 = Buffera_5;
   v64 = v11;
   ::__sub_402FE0_n4_5 = ((v12 & 0x3Fu) + 7) >> 3;
-  if ( fwrite("\x81\x8A20\x81\x9020a+b", 4u, 1u, *(FILE **)(v5 + 4)) != 1 )
+  if ( fwrite("\x81\x8A""20\x81\x90""20a+b", 4u, 1u, *(FILE **)(v5 + 4)) != 1 )
     return 0;
   v15 = *((_BYTE *)p_i + 10);
   ++*(_DWORD *)v5;

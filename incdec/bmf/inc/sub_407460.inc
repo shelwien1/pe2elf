@@ -6,18 +6,13 @@ static t_sub_407460_dword_443384& __sub_407460_dword_443384 = *(t_sub_407460_dwo
 typedef int t_sub_407460_n4_5;
 static t_sub_407460_n4_5& __sub_407460_n4_5 = *(t_sub_407460_n4_5*)0x00443394;
 
-#ifndef __PE_DECL___sub_411700
-#define __PE_DECL___sub_411700
-typedef int t_sub_411700(int a1, int n2);
-static t_sub_411700& __sub_411700 = *(t_sub_411700*)0x00411700;
-#endif
-#define sub_411700 __sub_411700
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
 typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments only
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
+#define sub_411700 __sub_411700
 
 PROBE_DECL(__sub_407460)
 extern "C" __attribute__((visibility("hidden"))) int __sub_407460(unsigned __int8 *a1, unsigned __int8 *n2, int a3, char a4, int a5, int a6, int a7, int a8)

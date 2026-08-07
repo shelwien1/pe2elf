@@ -1,8 +1,3 @@
-sub_402EF0	test: t1: COMPRESS FAILED (rc=1)
-sub_436E10	extract: sub_436E10 references unresolvable symbols (no symbol table for BMF's static CRT): ['__svm
-sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_402FE0	test: t1: DECOMPRESS FAILED (rc=4)
 sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_4028B0	extract: sub_4028B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_4015C0	extract: sub_4015C0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_4015C0	extract: sub_4015C0 references globals with no recoverable address (declared in BMF.cpp but absent 
 main	extract: main calls __usercall/__userpurge functions that have not been moved yet, whose register a
