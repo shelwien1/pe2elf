@@ -42,7 +42,8 @@ PURE_LIBC = {'strcpy', 'strncpy', 'strrchr', 'strchr', 'memset', 'memcpy',
              'isdigit', 'abs', 'fminf', 'fmaxf', 'sqrtf', 'atoi'}
 
 INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
-                    r'|BYTE\d|WORD\d|SLOBYTE|SLOWORD|SHIDWORD|COERCE_|abs32'
+                    r'|BYTE\d+|WORD\d+|DWORD\d+|SBYTE\d+|SWORD\d+|SDWORD\d+'
+                    r'|SLOBYTE|SLOWORD|SLODWORD|SHIBYTE|SHIWORD|SHIDWORD|COERCE_|abs\d+'
                     r'|alloca|qmemcpy|memset32|sizeof|_BitScanForward|_fxsave)')
 # Checked *before* INTRIN, whose `__` branch would otherwise swallow these.
 # They are real functions in the image, not compiler helpers.  The ones with a
@@ -52,7 +53,13 @@ INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
 # no arguments at all, at call sites that plainly compute one — so a redirect
 # built on that signature would pass garbage.  Refuse those.
 INTEL_CRT = re.compile(r'^(__svml_|__intel_|__libm_)')
-CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof'}
+CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof',
+        # Type names, which appear followed by '(' in casts to function
+        # pointers — `(void (__cdecl *)(int))` reads as a call to `void`.
+        'void', 'int', 'char', 'short', 'long', 'float', 'double', 'signed',
+        'unsigned', 'bool', 'struct', 'union', 'enum', 'const', 'static',
+        '_BYTE', '_WORD', '_DWORD', '_QWORD', '_OWORD', '_UNKNOWN', '_BOOL1',
+        '_BOOL2', '_BOOL4', 'size_t', 'FILE', 'Stream'}
 
 # Callees Hex-Rays prints as __usercall/__userpurge whose "register arguments"
 # are not arguments at all.
@@ -101,6 +108,16 @@ CRT_PROTO = {
     'exit':   ('void', 'int'),
     'memcpy_0': ('void *', 'void *, const void *, unsigned int'),
     'irc__print':   ('int', 'const char *, ...'),
+    # The rest of the statically-linked CRT the file-handling paths reach.
+    'fputc':       ('int', 'int, FILE1 *'),
+    'fputs':       ('int', 'const char *, FILE1 *'),
+    'remove':      ('int', 'const char *'),
+    'rename':      ('int', 'const char *, const char *'),
+    'tmpnam':      ('char *', 'char *'),
+    '_access':     ('int', 'const char *, int'),
+    '_filelength': ('long', 'int'),
+    '_fileno':     ('int', 'FILE1 *'),
+    '_getch':      ('int', 'void'),
     # Intel CRT, __fastcall — the one register-argument helper whose signature
     # Hex-Rays does recover, and whose call sites agree with it.
     '__intel_sse2_strlen': ('int', 'unsigned int, const void *', 'fastcall'),
@@ -110,7 +127,10 @@ CRT_PROTO = {
 # Variadic CRT entries: declared with ... so the call sites type-check.
 CRT_VARIADIC = {'printf': ('int', 'const char *, ...'),
                 'sprintf': ('int', 'char *, const char *, ...'),
-                'sscanf': ('int', 'const char *, const char *, ...')}
+                'sscanf': ('int', 'const char *, const char *, ...'),
+                'fprintf': ('int', 'FILE1 *, const char *, ...'),
+                'fscanf': ('int', 'FILE1 *, const char *, ...'),
+                'vprintf': ('int', 'const char *, void *')}
 CRT_PROTO.update(CRT_VARIADIC)
 
 # WinAPI imports live behind a 4-byte IAT slot, not at an entry point, and
@@ -124,6 +144,11 @@ WINAPI_PROTO = {
     'MoveFileA':    ('int', 'const char *, const char *'),
     'SetFileAttributesA': ('int', 'const char *, unsigned int'),
     'GetFileAttributesA': ('unsigned int', 'const char *'),
+    'CreateFileA': ('void *', 'const char *, unsigned int, unsigned int, void *, '
+                              'unsigned int, unsigned int, void *'),
+    'SetFileTime': ('int', 'void *, const void *, const void *, const void *'),
+    'DosDateTimeToFileTime': ('int', 'unsigned short, unsigned short, void *'),
+    'FileTimeToDosDateTime': ('int', 'const void *, unsigned short *, unsigned short *'),
 }
 
 
@@ -262,6 +287,169 @@ def wrap_intrinsic_members(line):
         pos += len(wrapper) + 2
 
 
+# --- __usercall / __userpurge -----------------------------------------------
+# Hex-Rays prints these with an explicit register for the return value and for
+# some of the arguments:
+#
+#     unsigned int __userpurge sub_414860@<eax>(int *a1@<ecx>, int a2@<ebx>, int a3, int a4)
+#
+# g++ has no attribute for that, and §4's advice — leave it alone — stops being
+# an option once the goal is a binary that runs none of the original code.  So
+# generate the thunk §4 mentions instead: the body is moved out as an ordinary
+# cdecl function taking *all* of the arguments, and the original entry point is
+# patched to a naked stub that reads the register arguments, lays them out as a
+# cdecl call, and puts the result back where the caller expects it.
+#
+# This needs no judgement about which register arguments are "real".  If one is
+# genuine the thunk forwards the caller's value; if Hex-Rays invented it (it
+# does — see the memset dispatcher in USERCALL_STACK_ONLY) the thunk forwards
+# whatever was in the register, which is exactly what the original body read.
+
+GPR = {'eax': '%eax', 'ebx': '%ebx', 'ecx': '%ecx', 'edx': '%edx',
+       'esi': '%esi', 'edi': '%edi', 'ebp': '%ebp'}
+# 8- and 16-bit names Hex-Rays uses; the callee takes the low byte/word of the
+# 4-byte slot either way, so the whole register is forwarded.
+SUBREG = {'al': 'eax', 'ah': 'eax', 'ax': 'eax', 'bl': 'ebx', 'bh': 'ebx',
+          'bx': 'ebx', 'cl': 'ecx', 'ch': 'ecx', 'cx': 'ecx', 'dl': 'edx',
+          'dh': 'edx', 'dx': 'edx', 'si': 'esi', 'di': 'edi',
+          # There is no SIL on i386; IDA means the low byte of ESI.
+          'sil': 'esi', 'dil': 'edi'}
+XMM = {f'xmm{i}': i for i in range(8)}
+VEC_TYPES = ('__m128i', '__m128d', '__m128', '__m64', '_OWORD', '__int128')
+
+
+def join_signature(body_lines):
+    """Return (signature text, number of lines it spans).  Hex-Rays wraps long
+    parameter lists, and every __usercall signature here is a candidate."""
+    sig, n = '', 0
+    for l in body_lines:
+        sig += (' ' if sig else '') + l.strip()
+        n += 1
+        if sig.count('(') and sig.count('(') == sig.count(')'):
+            return sig, n
+    return body_lines[0], 1
+
+
+def split_params(inner):
+    """Split a parameter list on top-level commas."""
+    out, depth, start = [], 0, 0
+    for i, ch in enumerate(inner):
+        if ch in '([':
+            depth += 1
+        elif ch in ')]':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            out.append(inner[start:i]); start = i + 1
+    if inner[start:].strip():
+        out.append(inner[start:])
+    return [p.strip() for p in out]
+
+
+def parse_signature(sig, name):
+    """-> (ret_reg or None, [(decl_without_annotation, argname, reg or None)])."""
+    m = re.search(r'\b' + re.escape(name) + r'\s*(?:@<(\w+)>)?\s*\(', sig)
+    ret_reg = m.group(1) if m else None
+    inner = sig[m.end():sig.rindex(')')]
+    params = []
+    if inner.strip() and inner.strip() != 'void':
+        for i, p in enumerate(split_params(inner)):
+            rm = re.search(r'@<(\w+)>', p)
+            reg = rm.group(1) if rm else None
+            decl = re.sub(r'@<\w+>', '', p).strip()
+            nm = re.search(r'([A-Za-z_]\w*)\s*(\[[^\]]*\])?$', decl)
+            nm = nm.group(1) if nm else None
+            if nm is None or nm in ('void',):
+                nm = f'reg_arg_{i}'
+                decl = decl + ' ' + nm
+            params.append((decl, nm, reg))
+    return ret_reg, params
+
+
+def make_thunk(name, va, conv, params, ret_reg):
+    """Emit the naked stub that goes at the original entry point."""
+    stack = [p for p in params if p[2] is None]
+    pop = 4 * len(stack) if conv == 'userpurge' else 0
+
+    # Scratch frame: one 4-byte slot per register argument, 16 per vector.
+    slot, size = {}, 0
+    for decl, nm, reg in params:
+        if reg is None:
+            continue
+        if reg in XMM:
+            size = (size + 15) & ~15
+            slot[nm] = size; size += 16
+        else:
+            slot[nm] = size; size += 4
+    size = (size + 15) & ~15
+    # The i386 ABI wants esp 16-byte aligned at the call, and code compiled for
+    # it assumes that — a moved body that spills an __m128 to the stack uses an
+    # aligned store.  Nothing in the PE maintains that, so the thunk imposes it
+    # with `and $-16` and then pads so the argument pushes land back on 16.
+    pad = (-4 * len(params)) % 16
+    frame = size + pad          # both multiples of 4; `and` already aligned esp
+
+    a = ["push %ebp", "mov %esp, %ebp", "push %ebx", "push %esi", "push %edi",
+         "and $-16, %esp"]
+    if frame:
+        a.append(f"sub ${frame}, %esp")
+
+    # Scratch is esp-relative, so every offset has to account for the pushes
+    # made since: `at(nm, p)` is where slot nm sits after p pushes.
+    def at(nm, p):
+        return f"{pad + slot[nm] + 4 * p}(%esp)"
+
+    # Capture before anything is clobbered.  EAX goes first because fnstsw
+    # needs it, and the XMM captures come after the general registers.
+    caps = [(nm, reg) for _, nm, reg in params if reg]
+    for nm, reg in sorted(caps, key=lambda t: (t[1] != 'eax', t[1] in XMM,
+                                               t[1] == 'fpstat')):
+        g = GPR.get(SUBREG.get(reg, reg))
+        if g:
+            a.append(f"mov {g}, {at(nm, 0)}")
+        elif reg in XMM:
+            a.append(f"movups %xmm{XMM[reg]}, {at(nm, 0)}")
+        elif reg == 'fpstat':
+            a.append("fnstsw %ax")
+            a.append(f"mov %eax, {at(nm, 0)}")
+        else:
+            raise SystemExit(f"{name}: no way to read argument register @<{reg}>")
+
+    # Push right to left.  Stack arguments are still in the caller's frame at
+    # [ebp+8+4i] and are reached through ebp, which the pushes do not move.
+    # A vector argument is passed by reference, so every slot stays four bytes
+    # and the 16-byte alignment __m128-by-value would need never arises.
+    si, p = len(stack) - 1, 0
+    for decl, nm, reg in reversed(params):
+        if reg is None:
+            a.append(f"push {8 + 4 * si}(%ebp)"); si -= 1
+        elif reg in XMM:
+            a.append(f"lea {at(nm, p)}, %eax")
+            a.append("push %eax")
+        else:
+            a.append(f"push {at(nm, p)}")
+        p += 1
+    a.append(f"call __{name}")
+    a.append("lea -12(%ebp), %esp")
+    a.append("pop %edi"); a.append("pop %esi"); a.append("pop %ebx")
+    a.append("leave")
+    a.append(f"ret ${pop}" if pop else "ret")
+
+    body = '\n'.join(f'    "{i}\\n"' for i in a)
+    return [
+        f"// __{conv} thunk for {name} @ 0x{va}: reads the register arguments the",
+        f"// caller passes, calls the moved body as cdecl, "
+        + (f"and pops {pop} bytes of" if pop else "and lets the caller clean the"),
+        f"// stack on return.",
+        f"BMF_SSE __attribute__((naked)) static void __thunk_{name}()",
+        "{",
+        "  __asm__ volatile(",
+        body,
+        "  );",
+        "}",
+        "",
+    ]
+
+
 def drop_leading_args(text, name, n):
     """`sub_4349F0(a, b, X, Y, Z)` -> `sub_4349F0(X, Y, Z)`, calls may span lines."""
     out, pos = [], 0
@@ -328,8 +516,6 @@ def emit(args, cache=None):
     if args.name not in spans:
         sys.exit(f"no such function: {args.name}")
     a, b, va, conv = spans[args.name]
-    if conv in ('usercall', 'userpurge'):
-        sys.exit(f"{args.name} is __{conv}: no g++ equivalent (incdec.md §4)")
 
     body_lines = lines[a - 1:b]
     # Hex-Rays closes each body with its own per-function view of the globals it
@@ -368,6 +554,10 @@ def emit(args, cache=None):
     # comment-only mention would otherwise register as a real reference —
     # and, for an address-less name, wrongly refuse the whole function.
     body = re.sub(r'//[^\n]*', '', body_raw)
+    # Drop string and character literals too — BMF's messages contain things
+    # like "function(" and the scan below would read them as calls.
+    body = re.sub(r'"(?:[^"\\\\]|\\\\.)*"', '""', body)
+    body = re.sub(r"'(?:[^'\\\\]|\\\\.)*'", "' '", body)
 
     already = set()
     if os.path.exists(args.accepted):
@@ -387,13 +577,11 @@ def emit(args, cache=None):
     # Without this, `#define Destination __Destination` rewrites the parameter
     # in the signature and the function is redefined against a global instead.
     locals_ = set()
-    msig = re.match(r'^[^(]*\(([^)]*)\)', body_lines[0])
-    if msig and msig.group(1).strip() not in ('', 'void'):
-        for prm in msig.group(1).split(','):
-            mp = re.search(r'([A-Za-z_]\w*)\s*(\[[^\]]*\])?\s*$', prm.strip())
-            if mp:
-                locals_.add(mp.group(1))
-    for l in body_lines[1:]:
+    sig_text, nsig = join_signature(body_lines)
+    ret_reg, sig_params = parse_signature(sig_text, args.name)
+    for _decl, _nm, _reg in sig_params:
+        locals_.add(_nm)
+    for l in body_lines[nsig:]:
         t = l.strip()
         if not t or t == '{':
             continue
@@ -464,14 +652,19 @@ def emit(args, cache=None):
     uses_del = re.search(r'\boperator delete\b', body) is not None
     if (uses_new and '??2@YAPAXI@Z' not in funcs) or (uses_del and '??3@YAXPAX@Z' not in funcs):
         unresolved.add('operator new/delete')
+    # A __usercall callee is fine once it has been moved: the call then goes to
+    # the cdecl body directly (§6.3) and the thunk at the original entry point
+    # is only there for callers still living in the PE.  Until then it is not,
+    # and g++ gives no warning that would tell you.
     bad_conv = sorted(c for c in called
-                      if spans.get(c, (0, 0, 0, ''))[3] in ('usercall', 'userpurge')
+                      if c != args.name and c not in already
+                      and spans.get(c, (0, 0, 0, ''))[3] in ('usercall', 'userpurge')
                       and c not in USERCALL_STACK_ONLY)
     if bad_conv:
-        sys.exit(f"{args.name} calls __usercall/__userpurge functions whose "
-                 f"register arguments g++ cannot target (the attribute is "
-                 f"silently ignored and everything goes on the stack): "
-                 f"{bad_conv}")
+        sys.exit(f"{args.name} calls __usercall/__userpurge functions that have "
+                 f"not been moved yet, whose register arguments g++ cannot "
+                 f"target (the attribute is silently ignored and everything "
+                 f"goes on the stack): {bad_conv}")
     if hit_noaddr:
         sys.exit(f"{args.name} references globals with no recoverable address "
                  f"(declared in BMF.c but absent from the 'using guessed type' "
@@ -603,12 +796,46 @@ def emit(args, cache=None):
 
     # --- the body -----------------------------------------------------------
     out.append(f"PROBE_DECL(__{args.name})")
-    sig_line = body_lines[0]
+    if conv in ('usercall', 'userpurge'):
+        # Ordinary cdecl taking every argument, register ones included; a
+        # vector register argument becomes a reference so that each argument
+        # stays one four-byte slot and the thunk needs no 16-byte alignment
+        # dance (the i386 ABI passes __m128 by value on a 16-byte boundary).
+        decls = []
+        for decl, nm, reg in sig_params:
+            if reg in XMM and any(t in decl for t in VEC_TYPES):
+                decl = re.sub(r'\b' + re.escape(nm) + r'\s*$', '&' + nm, decl)
+            decls.append(decl)
+        ret = sig_text[:sig_text.index(args.name)]
+        for k in ('__usercall', '__userpurge', '__noreturn'):
+            ret = ret.replace(k, '')
+        ret = ' '.join(ret.split()) or 'int'
+        # extern "C" so the thunk's `call __<name>` in inline asm names the
+        # same symbol the compiler emits; a mangled name would leave the call
+        # referencing an undefined symbol, which in a shared object links
+        # quietly and becomes a text relocation.
+        # extern "C" so the thunk's `call __<name>` in inline asm names the
+        # symbol the compiler actually emits — a mangled name would leave the
+        # call referencing an undefined one, which in a shared object links
+        # quietly and turns into a text relocation.  hidden visibility on the
+        # same declaration keeps that call from needing a PLT entry, which is
+        # the other half of the same problem.  Per function, not
+        # -fvisibility=hidden: the flag applied to the whole translation unit
+        # breaks the round-trip.
+        sig_line = (f'extern "C" __attribute__((visibility("hidden"))) '
+                    f'{ret} __{args.name}'
+                    f"({', '.join(decls) if decls else 'void'})")
+        rest = body_lines[nsig:]
+        joined = [sig_line] + rest
+        thunk = make_thunk(args.name, va, conv, sig_params, ret_reg)
+    else:
+        sig_line = body_lines[0]
+        thunk = None
     for k, attr in (('__thiscall', '__attribute__((thiscall)) '),
                     ('__fastcall', '__attribute__((fastcall)) '),
                     ('__stdcall', '__attribute__((stdcall)) '),
                     ('__cdecl', '')):
-        if k in sig_line:
+        if thunk is None and k in sig_line:
             sig_line = sig_line.replace(k + ' ', '').replace(k, '')
             sig_line = attr + sig_line.lstrip()
             break
@@ -618,11 +845,20 @@ def emit(args, cache=None):
     # any other.  A body that uses the intrinsics or the register types asks
     # for it here instead.
     if re.search(r'\b_mm_|\b__m128|\b__m64\b|\b_fxsave\b|\b_fxrstor\b', body_raw):
-        sig_line = 'BMF_SSE ' + sig_line
-    sig_line = re.sub(r'\b' + re.escape(args.name) + r'\b', f'__{args.name}', sig_line, count=1)
-    rest = body_lines[1:]
+        # After the linkage specifier, not before it: an attribute ahead of
+        # `extern "C"` attaches to nothing, and the only symptom is g++
+        # complaining that it could not inline an always_inline intrinsic.
+        if sig_line.startswith('extern "C" '):
+            sig_line = 'extern "C" BMF_SSE ' + sig_line[len('extern "C" '):]
+        else:
+            sig_line = 'BMF_SSE ' + sig_line
+    if thunk is None:
+        sig_line = re.sub(r'\b' + re.escape(args.name) + r'\b',
+                          f'__{args.name}', sig_line, count=1)
+        joined = [sig_line] + body_lines[1:]
+    else:
+        joined[0] = sig_line
     # PROBE_HIT goes after the opening brace of the function.
-    joined = [sig_line] + rest
     for i, l in enumerate(joined):
         if l.strip() == '{':
             joined.insert(i + 1, f"  PROBE_HIT(__{args.name});")
@@ -655,6 +891,8 @@ def emit(args, cache=None):
     # is what the MOVD/MOVQ behind them does.
     out.extend(joined)
     out.append("")
+    if thunk:
+        out.extend(thunk)
 
     # --- close the macro scope (§6.5) ---------------------------------------
     if crt or uses_new or uses_del:

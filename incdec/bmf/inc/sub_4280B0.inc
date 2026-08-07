@@ -1,10 +1,6 @@
 // sub_4280B0 @ 0x004280B0 — __cdecl
 // Extracted from BMF.c:32480-32721 by extract.py per incdec.md.
 
-typedef int t_sub_4280B0_ini;
-static t_sub_4280B0_ini& __sub_4280B0_ini = *(t_sub_4280B0_ini*)0x00439C28;
-#define ini __sub_4280B0_ini
-
 #ifndef __PE_DECL___sub_42CAD0
 #define __PE_DECL___sub_42CAD0
 typedef int t_sub_42CAD0(...);
@@ -297,6 +293,5 @@ LABEL_22:
 #undef feof
 #undef fgets
 #undef fopen
-#undef ini
 #undef sub_429DB0
 #undef sub_42CAD0

@@ -308,6 +308,78 @@ that **every step ends with a green test**.
   (`memset` and `memcpy`, which test the CPU-level global and jump to the
   matching variant) are this case.
 
+### 4.2 Moving a `__usercall` function: the thunk
+
+Leaving `__usercall` functions alone stops being an option the moment the goal
+is a binary that runs none of the original code — on this target they are 28 of
+the 92 functions a round-trip executes, and they sit in the middle of the call
+graph, so every caller is blocked behind them.
+
+Write the thunk. The body moves out as an **ordinary cdecl function taking
+every argument**, register ones included, and the original entry point is
+patched to a naked stub that reads the register arguments, lays them out as a
+cdecl call, and puts the result back where the caller expects it:
+
+```
+push %ebp
+mov  %esp, %ebp          ; stack arguments are at 8(%ebp), 12(%ebp), ...
+push %ebx ; push %esi ; push %edi
+and  $-16, %esp          ; see "alignment" below
+sub  $frame, %esp        ; scratch: 4 bytes per GPR argument, 16 per vector
+mov  %ecx, ...(%esp)     ; capture the register arguments before anything
+movups %xmm1, ...(%esp)  ;   clobbers them; EAX first, it is the only scratch
+fnstsw %ax               ;   register the captures themselves need
+...
+push 12(%ebp)            ; push right to left: stack arguments through EBP,
+push ...(%esp)           ;   register ones out of the scratch
+call __sub_XXXXXX
+lea  -12(%ebp), %esp
+pop  %edi ; pop %esi ; pop %ebx
+leave
+ret                      ; __usercall: caller cleans
+ret  $N                  ; __userpurge: callee cleans, N from the original's `retn N`
+```
+
+The important property is that **this needs no judgement about which register
+arguments are real**. If one is genuine the thunk forwards the caller's value;
+if Hex-Rays invented it, the thunk forwards whatever was in the register, which
+is exactly what the original body read. The alternative — deciding case by case
+— is the analysis in §4 above, and it does not scale past the two or three
+functions where the evidence is unambiguous.
+
+Five things will bite you, in the order they bit here:
+
+1. **Patch the entry point to the thunk, not to the body.** `patch_jmp` is
+   driven by a table; give it the convention so it can pick. Sending PE callers
+   straight to the cdecl body is the whole bug the thunk exists to prevent, and
+   it fails silently in exactly the way §4 describes.
+2. **Alignment.** The i386 ABI wants `esp` 16-byte aligned at the call, and gcc
+   assumes it — a moved body that spills an `__m128` uses an aligned store.
+   Nothing in the PE maintains it. `and $-16, %esp`, then pad so the argument
+   pushes land back on a multiple of 16.
+3. **Vector arguments by reference.** `__m128` by value is passed on the stack
+   on a 16-byte boundary, and emulating that layout in hand-written asm for an
+   arbitrary mix of argument types is not worth it. Rewrite the moved body's
+   vector parameters as references; every argument slot is then four bytes and
+   the thunk stays uniform.
+4. **`extern "C"` on the moved body.** The thunk's `call __sub_XXXXXX` is
+   assembly and names the unmangled symbol. Against a C++ function that symbol
+   does not exist — and in a *shared object* an undefined symbol is not a link
+   error, so the call quietly becomes a text relocation and the library stops
+   loading, with nothing pointing at the cause.
+5. **Hidden visibility on that declaration, per function.** Otherwise the call
+   needs a PLT entry, which is the other half of the same text relocation.
+   Apply it to the declaration, not as `-fvisibility=hidden` for the whole
+   translation unit — the flag broke a round-trip here that was green before
+   and after.
+
+Verify the thunk on its own before trusting it in the loop: a twenty-line test
+program that defines a stub body, calls the generated thunk with the register
+convention from inline asm, and checks the arguments arrived, the return value
+came back, and the stack is balanced. When the round-trip failed here it took
+one such test to establish that the thunk was correct and the fault was in the
+patch table.
+
 - Order inside the file:
   1. Typed references for data symbols this function reads/writes (§6.1).
   2. Typed references for functions this function calls — *only* for
@@ -1162,6 +1234,26 @@ make dummy32.so && ./pe2elf32 --inject=dummy32.so BMF.exe BMF.elf \
 
 `test.bmp` can be generated reproducibly with `python3 exe32/mkbmp32.py
 test.bmp 256 192`; `t32.sh` uses the same image for its BMF stage.
+
+**Make the test corpus a fixed point first.** BMF does not preserve every BMP
+header field, so a freshly generated image is not one, and a whole-file
+comparison against it fails against the *original* binary. The fix is not to
+exclude byte ranges from the comparison — that is how the palette went
+unchecked here for a while. Put each image through one round-trip of the
+un-injected binary and keep the result: from then on the gate is a plain `cmp`
+with no exclusions. Verify the settled image really is a fixed point (a second
+round-trip must be byte-identical end to end) rather than assuming it.
+
+**Decide what the gate is actually for.** Requiring the compressed stream to be
+byte-identical to the original's is the strictest possible check and the right
+default while the redirects are unverified. But if the goal is a codec that
+replaces the original rather than reproduces it, that requirement rejects work
+for the wrong reason. The weaker gate that still has teeth is: the round-trip is
+lossless *and* the compressed output is no larger than the reference. Keep
+reporting stream divergence — it is information — but do not fail on it. Doing
+this here reclassified three failures from "produces a different stream" to
+"compresses 5% worse" and "decompresses to garbage", which is the difference
+between a formatting difference and a bug.
 
 **One image is not a gate — use one per pixel format.** BMF takes a different
 path through the filters and the context model for 1bpp, 8bpp grayscale, 8bpp

@@ -1,12 +1,56 @@
+sub_4022C0	build: inc/sub_4022C0.inc:88:9: error: ‘CHAR’ does not name a type
+sub_402590	build: inc/sub_402590.inc:161:28: error: ‘FindFileData’ was not declared in this scope
+sub_40DEB0	build: inc/sub_40DEB0.inc:225:12: error: ‘SDWORD1’ was not declared in this scope; did you mean ‘SWORD1’?
+sub_417980	test: t1: COMPRESS FAILED (rc=1)
 sub_412E60	test: t1: DECOMPRESS FAILED (rc=1)
-sub_413430	test: t8g: STREAM DIFFERS from reference
-sub_413900	test: t8g: STREAM DIFFERS from reference
+sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
+sub_419430	build: inc/sub_419430.inc:140:28: error: cannot convert ‘uint64*’ {aka ‘long long unsigned int*’} to ‘uint32*’ {aka ‘unsigned i
+sub_417E80	build: inc/sub_417E80.inc:435:21: error: cannot convert ‘char*’ to ‘uint32*’ {aka ‘unsigned int*’} in assignment
 sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
+sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
+sub_41A130	test: t8g: COMPRESS FAILED (rc=1)
+sub_413430	test: t8g: LARGER THAN REFERENCE (44936 > 42896)
+sub_41CAB0	build: inc/sub_41CAB0.inc:1860:20: error: cannot convert ‘uint32*’ {aka ‘unsigned int*’} to ‘uint16*’ {aka ‘short unsigned int*
+sub_422DB0	extract: sub_422DB0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_422D60	extract: sub_422D60 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_423600	extract: sub_423600 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_4273F0	build: inc/sub_4273F0.inc:155:22: error: cannot convert ‘uint32*’ {aka ‘unsigned int*’} to ‘unsigned char**’
+sub_427740	build: inc/sub_427740.inc:302:28: error: cannot convert ‘uint32*’ {aka ‘unsigned int*’} to ‘uint16*’ {aka ‘short unsigned int*’
+sub_417DB0	extract: sub_417DB0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_403820	extract: sub_403820 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_402EF0	extract: sub_402EF0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_40A8A0	extract: sub_40A8A0 references unresolvable symbols (no symbol table for BMF's static CRT): ['__lib
+sub_436E10	extract: sub_436E10 references unresolvable symbols (no symbol table for BMF's static CRT): ['__svm
+sub_411700	extract: sub_411700 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_40BEE0	build: inc/sub_40BEE0.inc:504:10: error: ‘SDWORD1’ was not declared in this scope; did you mean ‘SWORD1’?
+sub_408510	extract: sub_408510 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_40F450	build: inc/sub_40F450.inc:6:13: error: cannot convert ‘t_sub_40F450_buf’ {aka ‘int [65536]’} to ‘char*’ in assignment
 sub_414F60	test: t8g: COMPRESS FAILED (rc=1)
 sub_4159E0	test: t1: COMPRESS FAILED (rc=1)
-sub_417980	test: t1: COMPRESS FAILED (rc=1)
-sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
-sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
-sub_424550	test: t24: STREAM DIFFERS from reference
+sub_417200	test: t1: COMPRESS FAILED (rc=1)
+sub_413900	test: t8g: DECOMPRESS FAILED (rc=3)
+sub_419800	extract: sub_419800 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_4197A0	extract: sub_4197A0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_421930	extract: sub_421930 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_424550	test: t24: LARGER THAN REFERENCE (54276 > 53924)
 sub_424D90	test: t24: COMPRESS FAILED (rc=1)
+sub_415380	extract: sub_415380 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_405840	extract: sub_405840 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_407460	test: t24: COMPRESS FAILED (rc=1)
+sub_405CF0	extract: sub_405CF0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_407B30	extract: sub_407B30 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_4043E0	extract: sub_4043E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_402FE0	extract: sub_402FE0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_42C220	extract: sub_42C220 references unresolvable symbols (no symbol table for BMF's static CRT): ['sub_4
+sub_42C0B0	build: inc/sub_42C0B0.inc:53:9: error: ‘__cdecl’ was not declared in this scope; did you mean ‘__ceil’?
+sub_4028B0	extract: sub_4028B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_428C40	build: inc/sub_428C40.inc:238:24: error: ‘::sub_428BE0’ has not been declared
 sub_42AB20	test: t1: COMPRESS FAILED (rc=1)
+sub_4015C0	extract: sub_4015C0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+sub_42CAD0	build: inc/sub_4280B0.inc:175:22: error: cannot convert ‘M128I*’ to ‘uint8*’ {aka ‘unsigned char*’}
+sub_42851C	build: inc/sub_42851C.inc:142:11: error: ‘__intel_sse2_strlen’ was not declared in this scope; did you mean ‘t___intel_sse2_str
+sub_4284E0	extract: sub_4284E0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
+main	extract: main references unresolvable symbols (no symbol table for BMF's static CRT): ['FindNextFil
+exit_402E40	build: inc/sub_402BD0.inc:26:21: error: ‘__exit_402E40’ was not declared in this scope
+sub_436BD0	build: inc/sub_436BD0.inc:61:3: error: ‘_EAX’ was not declared in this scope; did you mean ‘_EAX_3’?
+__svml_log2_w	extract: __svml_log2_w references unresolvable symbols (no symbol table for BMF's static CRT): ['__

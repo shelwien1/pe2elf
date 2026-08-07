@@ -1,5 +1,0 @@
-main	calls __usercall/__userpurge functions whose register arguments g++ cannot target (the attribute is silently ignored and everything goes on the stack): ['sub_4015C0', 'sub_402BD0']
-sub_402EF0	calls __usercall/__userpurge functions whose register arguments g++ cannot target (the attribute is silently ignored and everything goes on the stack): ['sub_403820']
-sub_411700	calls __usercall/__userpurge functions whose register arguments g++ cannot target (the attribute is silently ignored and everything goes on the stack): ['sub_436E10']
-sub_417E80	calls __usercall/__userpurge functions whose register arguments g++ cannot target (the attribute is silently ignored and everything goes on the stack): ['sub_414860', 'sub_4149C0']
-sub_419430	calls __usercall/__userpurge functions whose register arguments g++ cannot target (the attribute is silently ignored and everything goes on the stack): ['sub_414860']

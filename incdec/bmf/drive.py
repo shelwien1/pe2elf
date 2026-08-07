@@ -105,7 +105,7 @@ def toposort(cands, g):
 
 
 def main():
-    cands = load_candidates(sys.argv[1] if len(sys.argv) > 1 else 'extractable.txt')
+    cands = load_candidates(sys.argv[1] if len(sys.argv) > 1 else 'targets.txt')
     order = toposort(cands, call_graph(cands))
     print(f"{len(order)} candidates, callees-first order\n")
 

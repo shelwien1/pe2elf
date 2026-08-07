@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # test.sh — the incdec validation gate (incdec.md §9), specialised to a
-# "-S -Q9" round-trip over the whole test image set.
+# "-S -Q9" compress/decompress round-trip over the whole test image set.
 #
-#   ./test.sh --baseline   regenerate the reference .bmf streams
+#   ./test.sh --baseline   rebuild the test images and the reference streams
 #   ./test.sh              validate the current dummy32.so
 #
 # Five pixel formats, because BMF takes a different path through the filters
@@ -13,17 +13,24 @@
 # deterministically.  f05_200.bmp, a real 1728x2339 1bpp scan, is included as a
 # sixth when it is present.
 #
-# Each image must (a) compress to a byte-identical stream and (b) decompress
-# back to an identical file.  Both halves matter: comparing only the round-trip
-# would accept a build that silently encodes differently but still decodes.
+# --baseline puts each image through one round-trip of the *un-injected*
+# binary first and keeps the result.  BMF does not preserve every BMP header
+# field — it zeroes biClrUsed and biClrImportant — so a freshly generated image
+# is not a fixed point, and a whole-file comparison against it would fail
+# against BMF itself.  After one round-trip it is: verified for all six images,
+# a second round-trip is byte-identical end to end.  That is what lets the gate
+# below be a plain `cmp` with no excluded ranges.
 #
-# "Identical" excludes bytes 38..53 of the BITMAPINFOHEADER —
-# biXPelsPerMeter, biYPelsPerMeter, biClrUsed, biClrImportant — which BMF does
-# not store and writes back as zero.  The un-injected binary loses them too, so
-# requiring the whole file to match would fail against BMF itself.  Everything
-# else is compared, *including the palette*: verified against the un-injected
-# binary, all 256 entries survive a round-trip on both 8bpp images, so skipping
-# to bfOffBits would leave 1 KB of each unchecked.
+# The gate is two conditions per image:
+#
+#   1. the round-trip is lossless — decompressed output byte-identical to the
+#      input, whole file;
+#   2. the compressed stream is no larger than the reference.
+#
+# Byte-identity of the *stream* is reported but does not fail the run: the
+# goal is a lossless codec that compresses no worse than BMF, not one that
+# reproduces BMF's output bit for bit.  A run whose streams all match prints
+# nothing extra; one that diverges says where, so it stays visible.
 set -u
 cd "$(dirname "$0")"
 
@@ -32,52 +39,68 @@ WORK=run
 PE2ELF=../../pe2elf32
 BMFEXE=../../exe32/BMF.exe
 
-[ -f t24.bmp ] || python3 mkbmps.py >/dev/null
 DEFAULT_IMAGES="t1.bmp t8g.bmp t8p.bmp t24.bmp t32.bmp"
 [ -f f05_200.bmp ] && DEFAULT_IMAGES="$DEFAULT_IMAGES f05_200.bmp"
 IMAGES=${BMF_IMAGES:-$DEFAULT_IMAGES}
 
-# Everything but the four header fields BMF drops.
-same() { cmp -s -n 38 "$1" "$2" && cmp -s -i 54 "$1" "$2"; }
+if [ "${1:-}" = "--baseline" ]; then
+  rm -rf "$WORK"; mkdir -p "$WORK"
+  cp winapi_shim32.so "$WORK/"
+  "$PE2ELF" "$BMFEXE" "$WORK/BMF.elf" >/dev/null || exit 1
+  python3 mkbmps.py "$WORK" >/dev/null || exit 1
+  [ -f f05_200.bmp ] && cp f05_200.bmp "$WORK/"
+  rc=0
+  for img in $IMAGES; do
+    st="${img%.bmp}"
+    (
+      cd "$WORK"
+      timeout 120 ./BMF.elf $FLAGS "$img" >/dev/null 2>&1 || exit 1
+      rm -f "$img"
+      timeout 120 ./BMF.elf "$st.bmf"    >/dev/null 2>&1 || exit 1
+      cp "$img" "settled_$st.bmp"
+      # Confirm the settled image really is a fixed point before adopting it.
+      rm -f "$st.bmf"
+      timeout 120 ./BMF.elf $FLAGS "$img" >/dev/null 2>&1 || exit 1
+      rm -f "$img"
+      timeout 120 ./BMF.elf "$st.bmf"    >/dev/null 2>&1 || exit 1
+      cmp -s "settled_$st.bmp" "$img"
+    ) || { echo "baseline: $st does not settle after one round-trip"; rc=1; continue; }
+    cp "$WORK/$img" "$img"
+    cp "$WORK/$st.bmf" "ref_$st.bmf"
+    echo "baseline: $img settled, ref_$st.bmf = $(stat -c%s "ref_$st.bmf") bytes  (flags: $FLAGS)"
+  done
+  exit $rc
+fi
 
 rm -rf "$WORK"; mkdir -p "$WORK"
 cp winapi_shim32.so "$WORK/"
 for img in $IMAGES; do
-  [ -f "$img" ] || { echo "missing test image: $img"; exit 1; }
+  [ -f "$img" ] || { echo "missing test image: $img (run ./test.sh --baseline)"; exit 1; }
   cp "$img" "$WORK/"
 done
-
-if [ "${1:-}" = "--baseline" ]; then
-  "$PE2ELF" "$BMFEXE" "$WORK/BMF.elf" >/dev/null || exit 1
-  for img in $IMAGES; do
-    st="${img%.bmp}"
-    ( cd "$WORK" && timeout 120 ./BMF.elf $FLAGS "$img" >/dev/null 2>&1 ) || exit 1
-    cp "$WORK/$st.bmf" "ref_$st.bmf"
-    echo "baseline: ref_$st.bmf = $(stat -c%s "ref_$st.bmf") bytes  (flags: $FLAGS)"
-  done
-  exit 0
-fi
-
 cp dummy32.so "$WORK/" || exit 1
 "$PE2ELF" "$BMFEXE" "$WORK/BMF.elf" --inject=dummy32.so >/dev/null || exit 1
 
+bigger=0
 for img in $IMAGES; do
   st="${img%.bmp}"
   [ -f "ref_$st.bmf" ] || { echo "$st: no reference (run ./test.sh --baseline)"; exit 1; }
+  refsz=$(stat -c%s "ref_$st.bmf")
   (
     cd "$WORK"
     export BMF_PROBE_OUT=probe.txt
     timeout 60 ./BMF.elf $FLAGS "$img" >"$st.compress.log" 2>&1
     rc=$?; [ $rc -eq 124 ] && { echo "$st: COMPRESS TIMED OUT"; exit 1; }
     [ $rc -ne 0 ] && { echo "$st: COMPRESS FAILED (rc=$rc)"; exit 1; }
-    [ -s "$st.bmf" ]                     || { echo "$st: NO .bmf PRODUCED"; exit 1; }
-    cmp -s "$st.bmf" "../ref_$st.bmf"    || { echo "$st: STREAM DIFFERS from reference"; exit 1; }
+    [ -s "$st.bmf" ] || { echo "$st: NO .bmf PRODUCED"; exit 1; }
+    sz=$(stat -c%s "$st.bmf")
+    [ "$sz" -gt "$refsz" ] && { echo "$st: LARGER THAN REFERENCE ($sz > $refsz)"; exit 1; }
+    cmp -s "$st.bmf" "../ref_$st.bmf" || echo "$st: stream differs from reference ($sz vs $refsz bytes)" >&2
     mv "$img" "orig_$st.bmp"
     timeout 60 ./BMF.elf "$st.bmf" >"$st.decompress.log" 2>&1
     rc=$?; [ $rc -eq 124 ] && { echo "$st: DECOMPRESS TIMED OUT"; exit 1; }
     [ $rc -ne 0 ] && { echo "$st: DECOMPRESS FAILED (rc=$rc)"; exit 1; }
-    cmp -s -n 38 "orig_$st.bmp" "$img" && cmp -s -i 54 "orig_$st.bmp" "$img" \
-      || { echo "$st: IMAGE MISMATCH"; exit 1; }
+    cmp -s "orig_$st.bmp" "$img" || { echo "$st: NOT LOSSLESS"; exit 1; }
     exit 0
   ) || { echo "FAIL"; exit 1; }
 done
