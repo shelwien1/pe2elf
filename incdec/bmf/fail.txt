@@ -4,7 +4,6 @@ sub_418650	test: t1: DECOMPRESS FAILED (rc=1)
 sub_419430	test: t1: DECOMPRESS FAILED (rc=1)
 sub_417E80	test: t1: DECOMPRESS FAILED (rc=1)
 sub_414060	test: t8g: DECOMPRESS FAILED (rc=3)
-sub_41C4B0	test: t8g: COMPRESS FAILED (rc=1)
 sub_413430	test: t8g: LARGER THAN REFERENCE (44936 > 42896)
 sub_41CAB0	test: t8g: LARGER THAN REFERENCE (42916 > 42896)
 sub_422DB0	extract: sub_422DB0 calls __usercall/__userpurge functions that have not been moved yet, whose regi

@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 96 of 132 reachable functions redirected — 59 of the 92 a round-trip
+**Status: 97 of 132 reachable functions redirected — 60 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats, and nothing left in
 `fail.txt` is a build error.**
 
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 96 and not 132
+## Why 97 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -252,7 +252,7 @@ as:
 | | |
 |---:|---|
 | 20 | blocked on a `__usercall` callee that itself failed |
-| 12 | builds and runs, then crashes or aborts on some image |
+| 11 | builds and runs, then crashes or aborts on some image |
 |  2 | builds and runs and compresses *worse* than the original |
 |  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
 
@@ -290,6 +290,28 @@ stack local are left alone.
 
 Worth knowing about because nothing points at the cause: the build is clean,
 the moved function looks right, and the crash is in code you did not change.
+
+### Finding the next one
+
+That class of failure is why the harness has a fault locator. Build with
+`-DBMF_TRAP_SEGV` and the first probe hit installs a `SIGSEGV`/`SIGBUS` handler
+that prints the faulting address and the EIP with the module it belongs to:
+
+```
+[segv] addr=(nil) eip=300134b1  .../dummy32.so+0x134b1
+  -> __sub_418650(unsigned int*, int) inc/sub_418650.inc:617
+```
+
+It arms on a probe hit rather than from a constructor because the shim installs
+its own handler when it loads and would otherwise win — and without it the
+shim's SEH turns the fault into a bare `exit(1)` with no output at all. Add
+`-g` and `addr2line` takes it the rest of the way; an EIP inside `BMF.elf`
+instead means the fault is in code that was never touched, and the moved
+function corrupted something on its way past.
+
+`sub_412E60`, `sub_417E80`, `sub_418650` and `sub_419430` are all located this
+way in `fail.txt` — they compress to a byte-identical stream and then fault
+during *decompression*, which narrows it to a path only the decoder takes.
 
 ### What stopped being a category
 

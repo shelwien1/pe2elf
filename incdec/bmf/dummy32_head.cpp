@@ -346,7 +346,51 @@ static Probe* g_probes = nullptr;
 Probe::Probe(const char* n) : next(g_probes), name(n), count(0) { g_probes = this; }
 
 #define PROBE_DECL(sym) static Probe sym##_probe(#sym);
-#define PROBE_HIT(sym)  __sync_fetch_and_add(&sym##_probe.count, 1ULL)
+
+// ---------------------------------------------------------------------------
+// Fault locator (build with -DBMF_TRAP_SEGV).
+//
+// A moved function that corrupts something usually does not fault where the
+// mistake is — it faults later, often inside PE code that was never touched,
+// and the shim's SEH turns that into a bare exit(1) with no output.  This
+// prints the faulting address and the EIP with the module it belongs to, which
+// is enough to point at the instruction in BMF.asm.
+//
+// It installs on the first probe hit rather than from a constructor, because
+// the shim installs its own SIGSEGV handler when it loads and would otherwise
+// win.
+// ---------------------------------------------------------------------------
+#ifdef BMF_TRAP_SEGV
+#include <csignal>
+#include <ucontext.h>
+#include <dlfcn.h>
+static void bmf_segv(int, siginfo_t *si, void *uc) {
+  unsigned eip = (unsigned)((ucontext_t *)uc)->uc_mcontext.gregs[REG_EIP];
+  Dl_info di; const char *who = "?"; unsigned off = 0;
+  if (dladdr((void *)eip, &di) && di.dli_fbase) {
+    who = di.dli_fname; off = eip - (unsigned)di.dli_fbase;
+  }
+  fprintf(stderr, "[segv] addr=%p eip=%08x  %s+0x%x\n", si->si_addr, eip, who, off);
+  fflush(stderr);
+  _exit(9);
+}
+static void bmf_trap_arm() {
+  static int armed = 0;
+  if (armed) return;
+  armed = 1;
+  struct sigaction sa;
+  memset(&sa, 0, sizeof sa);
+  sa.sa_sigaction = bmf_segv;
+  sa.sa_flags = SA_SIGINFO;
+  sigaction(SIGSEGV, &sa, nullptr);
+  sigaction(SIGBUS, &sa, nullptr);
+}
+#define PROBE_TRAP() bmf_trap_arm()
+#else
+#define PROBE_TRAP() ((void)0)
+#endif
+
+#define PROBE_HIT(sym)  (PROBE_TRAP(), __sync_fetch_and_add(&sym##_probe.count, 1ULL))
 
 // ---------------------------------------------------------------------------
 // §5 patch helpers

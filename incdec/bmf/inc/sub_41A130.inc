@@ -52,12 +52,8 @@ static t_sub_41A130_xmmword_4411E0& __sub_41A130_xmmword_4411E0 = *(t_sub_41A130
 typedef __int128 t_sub_41A130_xmmword_4411F0;
 static t_sub_41A130_xmmword_4411F0& __sub_41A130_xmmword_4411F0 = *(t_sub_41A130_xmmword_4411F0*)0x004411F0;
 
-#ifndef __PE_DECL___sub_41C4B0
-#define __PE_DECL___sub_41C4B0
-typedef __attribute__((thiscall)) int t_sub_41C4B0(void *, void *, void *, int n2);
-static t_sub_41C4B0& __sub_41C4B0 = *(t_sub_41C4B0*)0x0041C4B0;
-#endif
-#define sub_41C4B0 __sub_41C4B0
+static inline int __fwd_sub_41A130_sub_41C4B0(void *a0, void *a1, void *a2, int a3) { return __sub_41C4B0((__m128 *)a0, (__m128 *)a1, (__m128 **)a2, a3); }
+#define sub_41C4B0 __fwd_sub_41A130_sub_41C4B0
 
 PROBE_DECL(__sub_41A130)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128 *a1, __m128 &a2__ref, __m128 &a3__ref, _DWORD *a4, _DWORD *a5)
