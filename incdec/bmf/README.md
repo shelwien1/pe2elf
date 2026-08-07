@@ -20,6 +20,11 @@ Two builds share one `.inc` tree:
 | kernel32 | `winapi_shim32.so` | POSIX, in `standalone/crt.cpp` |
 | Startup | the PE's `start` at `0x0042D53A` | `standalone/main.cpp` |
 | Data | `blob1` points at the loaded image | `blob1` is an array; PIE, no fixed address |
+
+The standalone build is also packaged as a source tree of its own:
+[`../../BMFC`](../../BMFC), assembled by `standalone/mkbmfc.py`, which builds
+for Linux *and* for Windows through mingw. That is where to look for the
+program; this directory is the workshop it came out of.
 | What it is for | moving one function at a time with a reference to compare against | the actual deliverable |
 
 The hybrid is not obsolete: it is the only place a *single* substitution can be
@@ -53,7 +58,7 @@ differs" below).
 | `extract.py` | `.inc` generator, BMF/i386-targeted. |
 | `drive.py` | The incremental loop: extract → build → test → keep or revert. |
 | `build.sh` / `test.sh` | Assemble+compile `dummy32.so`; run the gate. |
-| `standalone/` | The second build. `mkdata.py` carves BMF's data out of the PE, `crt.cpp` replaces the runtime, `main.cpp` is the entry point, `build.sh`/`test.sh` mirror the hybrid's. |
+| `standalone/` | The second build. `mkdata.py` carves BMF's data out of the PE, `crt.cpp` replaces the runtime, `main.cpp` is the entry point, `build.sh`/`test.sh` mirror the hybrid's. `mkbmfc.py` packages the lot as `../../BMFC`. |
 
 ## Running it
 

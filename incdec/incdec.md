@@ -1900,6 +1900,25 @@ such caller and the cdecl body is entered directly. Both are best spelled as a
 macro and an `#ifdef` in the shared head rather than a second generated tree.
 The probes are worth keeping behind a flag, for the reason above.
 
+**Going back to the platform it came from is the cheap case.** Once the runtime
+is behind the `__PE_DECL_` seam, retargeting is a matter of which side of an
+`#ifdef` fills it in — and a Windows build fills it in with the very things the
+donor was linked against. For BMF that is ten import declarations and six
+one-line CRT wrappers: `_access`, `_filelength`, `_fileno`, `_getch`, `_stricmp`
+and `_flushall` are msvcrt's under those names, and the ten kernel32 functions
+are the real ones, so the POSIX reimplementations of `FindFirstFileA` and the
+FAT timestamp conversions simply do not compile in. Cross-compiling with mingw
+and running under Wine is then a five-minute check that pays for itself: it
+exercises the *original's* runtime semantics rather than an approximation of
+them, so a place where the POSIX version guessed wrong shows up as a
+difference between the two builds.
+
+Do not include `<windows.h>` to get there. The bodies are typed against the
+structures the disassembler recovered, and the current SDK's declarations of
+the same names will not agree with them; declare the imports by hand with the
+signatures the call sites were checked against. (The `_WINDOWS_` trick of §8.2
+also means that header would silently do nothing.)
+
 **Verification is the same gate.** Run it against the standalone binary
 unchanged. BMF's is lossless on all six images and byte-identical to the
 donor's own compressed streams — which is a stronger statement than the gate

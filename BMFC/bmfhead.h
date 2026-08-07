@@ -1,7 +1,8 @@
-// dummy32.cpp head — incdec infrastructure for BMF.exe (incdec.md §7).
+// bmfhead.h — the vocabulary the decompiled bodies are written in.
 //
-// The full dummy32.cpp is assembled by build.sh: this head, then one
-// #include per accepted .inc, then the generated dummy_init() tail.
+// Generated from incdec/bmf/dummy32_head.cpp by incdec/bmf/standalone/
+// mkbmfc.py, with the conditionals for the injected build evaluated out.
+// Do not edit: change the original and re-run the generator.
 
 #include <cstdio>
 #include <cstdlib>
@@ -11,17 +12,6 @@
 #include <cctype>     // isspace/isdigit/toupper — §6.5 lets these fall through
 #include <cstdarg>
 #include <immintrin.h>
-#ifndef BMF_STANDALONE
-// Wanted only by the parts below that edit the loaded PE: mprotect for the
-// redirects, dladdr/ucontext for the fault locator, getenv for the probe dump.
-// The standalone build has none of that, and on a non-POSIX host they do not
-// exist at all.
-#include <csignal>
-#include <ucontext.h>
-#include <dlfcn.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#endif
 
 // ---------------------------------------------------------------------------
 // Hex-Rays type vocabulary.
@@ -53,7 +43,7 @@ typedef unsigned long  DWORD;
 typedef long           LONG;
 typedef int            BOOL;
 
-#include "defs.h"
+#include "bmfdefs.h"
 
 typedef void*         HANDLE;
 typedef unsigned int  UINT;
@@ -81,9 +71,6 @@ typedef unsigned int  UINT;
 // ---------------------------------------------------------------------------
 #ifndef BMF_BLOB_BASE
 #define BMF_BLOB_BASE 0x00438000u
-#endif
-#ifndef BMF_STANDALONE
-static unsigned char *const blob1 = (unsigned char *)BMF_BLOB_BASE;
 #endif
 
 // The same rebasing for an address Hex-Rays baked into an *expression* rather
@@ -143,7 +130,6 @@ typedef struct _WIN32_FIND_DATAA {
 } WIN32_FIND_DATAA;
 static_assert(sizeof(WIN32_FIND_DATAA) == 320, "Win32 WIN32_FIND_DATAA is 320 bytes");
 
-#ifdef BMF_STANDALONE
 // The standalone build has no PE runtime to hand out _iobufs: every stdio
 // call goes to the host's C library, so `FILE1` is its FILE — glibc's on
 // POSIX, msvcrt's (which is this layout) on Windows.  No body reads a field of
@@ -151,25 +137,6 @@ static_assert(sizeof(WIN32_FIND_DATAA) == 320, "Win32 WIN32_FIND_DATAA is 320 by
 // fopen's result reaching fread unchanged.  The name has to survive because
 // the bodies still say `#define FILE FILE1`.
 typedef FILE FILE1;
-#else
-// incdec.md §8.3 — MSVC's _iobuf, which is what BMF's statically-linked CRT
-// hands out.  32 bytes on Win32 (the Win64 form is 48), and nothing like
-// glibc's FILE.  Bodies that touch stdio are compiled with `#define FILE
-// FILE1` so their FILE* is this, and every stdio call is routed to the PE's
-// own implementation (§6.5) — a glibc FILE* reaching BMF's fread would be
-// read with this layout.
-struct FILE1 {
-  char* _ptr;      // +0x00
-  int   _cnt;      // +0x04
-  char* _base;     // +0x08
-  int   _flag;     // +0x0C
-  int   _file;     // +0x10
-  int   _charbuf;  // +0x14
-  int   _bufsiz;   // +0x18
-  char* _tmpfname; // +0x1C
-};
-static_assert(sizeof(FILE1) == 32, "Win32 _iobuf is 32 bytes");
-#endif
 
 // Hex-Rays invented a struct type named `Stream` for the thing fopen returns
 // (`Stream *Stream; ... Stream = fopen(...)`), so bodies use it as a type
@@ -199,11 +166,7 @@ typedef FILE1 Stream;
 // no more — while g++ assumes 16 and spills SSE locals with `movaps`, so the
 // prologue has to realign (§8.2.3).  Standalone there is no such caller: every
 // call comes from g++, which has already done the work, and the macro is empty.
-#ifdef BMF_STANDALONE
 #define BMF_REALIGN
-#else
-#define BMF_REALIGN __attribute__((force_align_arg_pointer))
-#endif
 
 // main splits argv[] on '\' to separate the directory from the file name,
 // because BMF is a Windows program.  Under the shim that works — it translates
@@ -371,7 +334,6 @@ BMF_SSE static inline void _mm_stream_pi   (M64   *p, __gnu_m64   a) { _mm_strea
 typedef M128I _OWORD;
 #define __int128 M128I
 
-#ifdef BMF_STANDALONE
 // The standalone build has no Intel runtime to call, so the three
 // register-convention entries below become ordinary C.  Each is a plain
 // library function underneath — Intel's own documentation for the first two
@@ -393,99 +355,6 @@ BMF_SSE static inline M128D __svml_log2(const M128I &a) {
 }
 
 BMF_SSE static inline double __libm_sse2_log(double d) { return log(d); }
-#else
-// ---------------------------------------------------------------------------
-// Intel CRT maths entries, which take and return their argument in xmm0.
-//
-// `___libm_sse2_log` and `___svml_log2` live in the statically-linked Intel
-// runtime and use its own register convention: the argument arrives in xmm0
-// and the result comes back in xmm0, with nothing on the stack at all.  i386
-// C has no spelling for that, and Hex-Rays did not try — it decompiled every
-// call as `__libm_sse2_log()`, taking no argument.
-//
-// The trampoline is `naked` so that the `and $-16, %esp` is ours: these are
-// ICC output and spill SSE registers with aligned stores, while the moved
-// caller's esp is whatever g++ left.  `extern "C"` and hidden visibility for
-// the same reason as §4.2's thunks — the `call` below is assembly, so it names
-// the unmangled symbol, and without hidden visibility it would want a PLT
-// entry and become a text relocation.
-// ---------------------------------------------------------------------------
-#define BMF_XMM0_TRAMP(name, va)                                              \
-  extern "C" __attribute__((naked, visibility("hidden"))) void name();        \
-  extern "C" __attribute__((naked, visibility("hidden"))) void name() {       \
-    __asm__ volatile("push %ebp\n\t"                                          \
-                     "mov  %esp, %ebp\n\t"                                    \
-                     "and  $-16, %esp\n\t"                                    \
-                     "mov  $" #va ", %eax\n\t"                                \
-                     "call *%eax\n\t"                                         \
-                     "mov  %ebp, %esp\n\t"                                    \
-                     "pop  %ebp\n\t"                                          \
-                     "ret");                                                  \
-  }
-
-// Intel's inlined strlen tail, which is not `fastcall` either: it takes the
-// *aligned* 16-byte block in eax and the string start in edx, and returns the
-// length in eax.  Hex-Rays typed it `__fastcall(unsigned int, const void *)`,
-// which puts the offset in ecx and never sets eax at all — so the fallback
-// path of every inlined strlen in the image returns garbage.  `-S` then parsed
-// as `-` and `-Q9` as quality 1.
-//
-// The call sites all spell the arguments as (offset, block + offset), so the
-// aligned base is the difference.
-extern "C" __attribute__((naked, visibility("hidden")))
-void __bmf_pe_intel_sse2_strlen() {
-  __asm__ volatile("mov $0x00434930, %ecx\n\t"
-                   "jmp *%ecx");          // tail jump: eax/edx are the arguments
-}
-
-BMF_SSE static inline unsigned __intel_sse2_strlen(unsigned off, const void *p) {
-  unsigned r;
-  const char *base = (const char *)p - off;
-  __asm__ volatile("call __bmf_pe_intel_sse2_strlen"
-                   : "=a"(r)
-                   : "a"(base), "d"(p)
-                   : "ecx", "cc", "memory", "xmm0", "xmm1");
-  return r;
-}
-
-BMF_XMM0_TRAMP(__bmf_pe_libm_sse2_log, 0x00434460)
-BMF_XMM0_TRAMP(__bmf_pe_svml_log2,     0x00436DD0)
-
-// "Yz" is xmm0.  Tying the input to the output puts the argument there and
-// reads the result back from it.  eax/ecx/edx and xmm1-7 are caller-saved and
-// the callee uses them; ebx/esi/edi/ebp it preserves, which is what lets the
-// trampoline above keep the old esp in ebp across the call.
-#define BMF_XMM0_CALL(tramp, in, out)                                         \
-  do {                                                                        \
-    __gnu_##out __r;                                                          \
-    __asm__ volatile("call " #tramp                                           \
-                     : "=Yz"(__r)                                             \
-                     : "0"(__x)                                               \
-                     : "eax", "ecx", "edx", "cc", "memory",                   \
-                       "xmm1", "xmm2", "xmm3", "xmm4",                        \
-                       "xmm5", "xmm6", "xmm7");                               \
-    return __r;                                                               \
-  } while (0)
-
-BMF_SSE static inline M128D __svml_log2(const M128I &a) {
-  __gnu_m128d __x = (__gnu_m128d)a.v;
-  BMF_XMM0_CALL(__bmf_pe_svml_log2, m128d, m128d);
-}
-
-// Returns the double rather than the register: Hex-Rays wrote every call site
-// as `*(double *)__libm_sse2_log().m128_u64`, i.e. the low lane, and the
-// fixups that put the lost argument back drop that wrapping with it.
-BMF_SSE static inline double __libm_sse2_log(double d) {
-  __gnu_m128d __x = __extension__(__gnu_m128d){d, 0.0};
-  __gnu_m128d __y;
-  __asm__ volatile("call __bmf_pe_libm_sse2_log"
-                   : "=Yz"(__y)
-                   : "0"(__x)
-                   : "eax", "ecx", "edx", "cc", "memory",
-                     "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7");
-  return __y[0];
-}
-#endif
 
 // ---------------------------------------------------------------------------
 // CPUID, for the routines that override/ rewrites from their expected
@@ -531,154 +400,12 @@ static unsigned bmf_xgetbv0()
   return lo;
 }
 
-#if defined(BMF_STANDALONE) && !defined(BMF_PROBES)
-// §7.1's probes answered "did this body actually run inside the PE?".  In the
-// standalone build there is no PE and nothing to compare against, so they
-// compile away — including the trap-arming, which existed to get ahead of the
-// shim's own SIGSEGV handler.
-//
-// -DBMF_PROBES brings them back, and standalone/main.cpp dumps the counters
-// from an atexit handler.  That is how a standalone stream that differs from
-// the hybrid's gets pinned down: run both over the same image and the first
-// function whose call count diverges is where the two builds part company.
+// Every body opens with PROBE_DECL/PROBE_HIT.  Those were the instrument that
+// answered "did this function actually run inside the original binary?" while
+// the decompilation was being migrated one function at a time; here there is
+// nothing to compare against and they compile away.  The calls stay in the
+// bodies so that those files remain byte-identical to the extractor's output.
 #define PROBE_DECL(sym)
 #define PROBE_HIT(sym)  ((void)0)
-#else
-// ---------------------------------------------------------------------------
-// §7.1 probe registry
-// ---------------------------------------------------------------------------
-struct Probe {
-  Probe* next;
-  const char* name;
-  // alignas(8): i386 aligns `long long` to 4, so without this the counter can
-  // straddle a cache line — and a `lock`ed read-modify-write on a split line
-  // is a bus lock, which the kernel's split-lock detector turns into a trap
-  // costing on the order of a millisecond.  At 76800 calls that was 70 seconds
-  // of a run that otherwise takes a quarter of one, with *identical* generated
-  // code either way: adding one more Probe to the array moved a hot counter
-  // onto a boundary.  Not atomic any more (below), but the alignment stays —
-  // the failure was invisible and cost a day.
-  alignas(8) unsigned long long count;
-  Probe(const char* n);
-};
-static Probe* g_probes = nullptr;
-Probe::Probe(const char* n) : next(g_probes), name(n), count(0) { g_probes = this; }
 
-#define PROBE_DECL(sym) static Probe sym##_probe(#sym);
 
-// ---------------------------------------------------------------------------
-// Fault locator (build with -DBMF_TRAP_SEGV).
-//
-// A moved function that corrupts something usually does not fault where the
-// mistake is — it faults later, often inside PE code that was never touched,
-// and the shim's SEH turns that into a bare exit(1) with no output.  This
-// prints the faulting address and the EIP with the module it belongs to, which
-// is enough to point at the instruction in BMF.asm.
-//
-// It installs on the first probe hit rather than from a constructor, because
-// the shim installs its own SIGSEGV handler when it loads and would otherwise
-// win.
-// ---------------------------------------------------------------------------
-#ifdef BMF_TRAP_SEGV
-#include <csignal>
-#include <ucontext.h>
-#include <dlfcn.h>
-static void bmf_segv(int sig, siginfo_t *si, void *uc) {
-  (void)sig;
-  unsigned eip = (unsigned)((ucontext_t *)uc)->uc_mcontext.gregs[REG_EIP];
-  Dl_info di; const char *who = "?"; unsigned off = 0;
-  if (dladdr((void *)eip, &di) && di.dli_fbase) {
-    who = di.dli_fname; off = eip - (unsigned)di.dli_fbase;
-  }
-  unsigned esp = (unsigned)((ucontext_t *)uc)->uc_mcontext.gregs[REG_ESP];
-  fprintf(stderr, "[fault] sig=%d addr=%p eip=%08x esp=%08x  %s+0x%x\n",
-          si->si_signo, si->si_addr, eip, esp, who, off);
-  fflush(stderr);
-  _exit(9);
-}
-static char bmf_sigstack[65536];
-static void bmf_trap_arm() {
-  static int armed = 0;
-  if (armed) return;
-  armed = 1;
-  // On an alternate stack, so a fault that leaves %esp unusable — a stack
-  // overflow, or a moved function returning with the stack unbalanced — still
-  // gets reported instead of killing the process a second time inside the
-  // handler, silently and with stdout unflushed.
-  stack_t ss;
-  memset(&ss, 0, sizeof ss);
-  ss.ss_sp = bmf_sigstack;
-  ss.ss_size = sizeof bmf_sigstack;
-  sigaltstack(&ss, nullptr);
-  struct sigaction sa;
-  memset(&sa, 0, sizeof sa);
-  sa.sa_sigaction = bmf_segv;
-  sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
-  sigaction(SIGSEGV, &sa, nullptr);
-  sigaction(SIGBUS, &sa, nullptr);
-  sigaction(SIGFPE, &sa, nullptr);   // integer divide by zero lands here too
-  sigaction(SIGILL, &sa, nullptr);   // a wild jump usually lands on garbage
-}
-#define PROBE_TRAP() bmf_trap_arm()
-#else
-#define PROBE_TRAP() ((void)0)
-#endif
-
-// A plain increment: BMF is single-threaded and this is a diagnostic counter,
-// so the atomic bought nothing and cost a `lock cmpxchg8b` per call.
-#define PROBE_HIT(sym)  (PROBE_TRAP(), ++sym##_probe.count)
-#endif   // standalone without -DBMF_PROBES
-
-#ifndef BMF_STANDALONE
-
-// ---------------------------------------------------------------------------
-// §5 patch helpers
-//
-// Both of these edit the loaded PE, and the ExitProcess hook below dumps the
-// probe counters on the way out of it.  Nothing in the standalone build has a
-// PE to edit or an ExitProcess to hook.
-// ---------------------------------------------------------------------------
-static void make_writable(void* addr, size_t len) {
-  uintptr_t pg = (uintptr_t)sysconf(_SC_PAGESIZE);
-  uintptr_t lo = (uintptr_t)addr & ~(pg - 1);
-  uintptr_t hi = ((uintptr_t)addr + len + pg - 1) & ~(pg - 1);
-  if (mprotect((void*)lo, hi - lo, PROT_READ | PROT_WRITE | PROT_EXEC) != 0) {
-    perror("[incdec] mprotect");
-    abort();
-  }
-}
-
-// On i386 the address space is 32 bits and the CPU computes EIP+rel32 mod
-// 2^32, so any target is reachable from any origin — no range check (§5).
-static void patch_jmp(void* orig, void* repl) {
-  uint32_t disp = (uint32_t)((uintptr_t)repl - ((uintptr_t)orig + 5));
-  make_writable(orig, 5);
-  uint8_t* p = (uint8_t*)orig;
-  p[0] = 0xE9;
-  memcpy(p + 1, &disp, 4);
-  __builtin___clear_cache((char*)orig, (char*)orig + 5);
-}
-
-static void patch_iat_slot(void* slot, void* repl) {
-  make_writable(slot, 4);
-  *(void**)slot = repl;   // 4-byte slot on PE32 (§6.4)
-}
-
-// ---------------------------------------------------------------------------
-// §7.2 ExitProcess IAT hook — the shim's ExitProcess ends in _exit(), which
-// bypasses both DT_FINI and atexit, so the counters have to be dumped here.
-// ---------------------------------------------------------------------------
-#define IAT_ExitProcess 0x00438030
-
-static __attribute__((stdcall)) void my_ExitProcess(unsigned int code) {
-  const char* path = getenv("BMF_PROBE_OUT");
-  FILE* out = stderr;
-  if (path && *path) { FILE* f = fopen(path, "a"); if (f) out = f; }
-  fprintf(out, "[probe] ExitProcess(%u), call counts:\n", code);
-  for (Probe* p = g_probes; p; p = p->next)
-    fprintf(out, "[probe]   %-24s %llu\n", p->name, p->count);
-  fflush(out);
-  if (out != stderr) fclose(out);
-  _exit((int)code);
-}
-#endif   // !BMF_STANDALONE
