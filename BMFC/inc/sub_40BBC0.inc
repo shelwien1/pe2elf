@@ -1,7 +1,7 @@
 // sub_40BBC0 @ 0x0040BBC0 — __usercall
 // Extracted from BMF.cpp:9677-9816 by extract.py per incdec.md.
 
-typedef int t_sub_40BBC0_Src;
+typedef char * t_sub_40BBC0_Src;
 static t_sub_40BBC0_Src& __sub_40BBC0_Src = *(t_sub_40BBC0_Src*)(blob1 + 0x00442E70 - BMF_BLOB_BASE);
 typedef int t_sub_40BBC0_dword_442E74;
 static t_sub_40BBC0_dword_442E74& __sub_40BBC0_dword_442E74 = *(t_sub_40BBC0_dword_442E74*)(blob1 + 0x00442E74 - BMF_BLOB_BASE);

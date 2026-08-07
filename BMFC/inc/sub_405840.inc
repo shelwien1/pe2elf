@@ -3,7 +3,7 @@
 
 typedef int t_sub_405840_Buffer_0;
 static t_sub_405840_Buffer_0& __sub_405840_Buffer_0 = *(t_sub_405840_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
-typedef int t_sub_405840_buf;
+typedef char * t_sub_405840_buf;
 static t_sub_405840_buf& __sub_405840_buf = *(t_sub_405840_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_405840_byte_44339C[0x10000];
 static t_sub_405840_byte_44339C& __sub_405840_byte_44339C = *(t_sub_405840_byte_44339C*)(blob1 + 0x0044339C - BMF_BLOB_BASE);

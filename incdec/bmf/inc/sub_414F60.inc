@@ -47,7 +47,7 @@ typedef int t_sub_414F60_n2;
 static t_sub_414F60_n2& __sub_414F60_n2 = *(t_sub_414F60_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_414F60_n256;
 static t_sub_414F60_n256& __sub_414F60_n256 = *(t_sub_414F60_n256*)(blob1 + 0x0044336C - BMF_BLOB_BASE);
-typedef int t_sub_414F60_n256_1;
+typedef void * t_sub_414F60_n256_1;
 static t_sub_414F60_n256_1& __sub_414F60_n256_1 = *(t_sub_414F60_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef char t_sub_414F60_n2_0;
 static t_sub_414F60_n2_0& __sub_414F60_n2_0 = *(t_sub_414F60_n2_0*)(blob1 + 0x0044571C - BMF_BLOB_BASE);

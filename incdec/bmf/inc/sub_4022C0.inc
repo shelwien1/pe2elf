@@ -1,7 +1,7 @@
 // sub_4022C0 @ 0x004022C0 — __usercall
 // Extracted from BMF.cpp:1779-1910 by extract.py per incdec.md.
 
-typedef int t_sub_4022C0_dwLowDateTime;
+typedef void * t_sub_4022C0_dwLowDateTime;
 static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40

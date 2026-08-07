@@ -1,7 +1,7 @@
 // sub_40E860 @ 0x0040E860 — __userpurge
 // Extracted from BMF.cpp:12539-13252 by extract.py per incdec.md.
 
-typedef int t_sub_40E860_buf[0x10000];
+typedef char * t_sub_40E860_buf;
 static t_sub_40E860_buf& __sub_40E860_buf = *(t_sub_40E860_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef int t_sub_40E860_n2;
 static t_sub_40E860_n2& __sub_40E860_n2 = *(t_sub_40E860_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);

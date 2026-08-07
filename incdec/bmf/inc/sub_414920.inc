@@ -15,7 +15,7 @@ typedef int t_sub_414920_n0x800000;
 static t_sub_414920_n0x800000& __sub_414920_n0x800000 = *(t_sub_414920_n0x800000*)(blob1 + 0x004456E0 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n256;
 static t_sub_414920_n256& __sub_414920_n256 = *(t_sub_414920_n256*)(blob1 + 0x0044336C - BMF_BLOB_BASE);
-typedef int t_sub_414920_n256_1;
+typedef void * t_sub_414920_n256_1;
 static t_sub_414920_n256_1& __sub_414920_n256_1 = *(t_sub_414920_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n8;
 static t_sub_414920_n8& __sub_414920_n8 = *(t_sub_414920_n8*)(blob1 + 0x00443368 - BMF_BLOB_BASE);

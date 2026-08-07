@@ -1,7 +1,7 @@
 // sub_414CE0 @ 0x00414CE0 — __cdecl
 // Extracted from BMF.cpp:19253-19394 by extract.py per incdec.md.
 
-typedef int t_sub_414CE0_Buffer;
+typedef void * t_sub_414CE0_Buffer;
 static t_sub_414CE0_Buffer& __sub_414CE0_Buffer = *(t_sub_414CE0_Buffer*)(blob1 + 0x0044337C - BMF_BLOB_BASE);
 typedef int t_sub_414CE0_Buffer_0;
 static t_sub_414CE0_Buffer_0& __sub_414CE0_Buffer_0 = *(t_sub_414CE0_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
@@ -21,7 +21,7 @@ typedef int t_sub_414CE0_n0x800000;
 static t_sub_414CE0_n0x800000& __sub_414CE0_n0x800000 = *(t_sub_414CE0_n0x800000*)(blob1 + 0x004456E0 - BMF_BLOB_BASE);
 typedef int t_sub_414CE0_n256;
 static t_sub_414CE0_n256& __sub_414CE0_n256 = *(t_sub_414CE0_n256*)(blob1 + 0x0044336C - BMF_BLOB_BASE);
-typedef int t_sub_414CE0_n256_1;
+typedef void * t_sub_414CE0_n256_1;
 static t_sub_414CE0_n256_1& __sub_414CE0_n256_1 = *(t_sub_414CE0_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef int t_sub_414CE0_n8;
 static t_sub_414CE0_n8& __sub_414CE0_n8 = *(t_sub_414CE0_n8*)(blob1 + 0x00443368 - BMF_BLOB_BASE);

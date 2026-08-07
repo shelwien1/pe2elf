@@ -1,9 +1,9 @@
 // sub_407B30 @ 0x00407B30 — __usercall
 // Extracted from BMF.cpp:6241-6440 by extract.py per incdec.md.
 
-typedef int t_sub_407B30_Buffer;
+typedef void * t_sub_407B30_Buffer;
 static t_sub_407B30_Buffer& __sub_407B30_Buffer = *(t_sub_407B30_Buffer*)(blob1 + 0x0044337C - BMF_BLOB_BASE);
-typedef int t_sub_407B30_buf;
+typedef char * t_sub_407B30_buf;
 static t_sub_407B30_buf& __sub_407B30_buf = *(t_sub_407B30_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_407B30_byte_44339E[0x10000];
 static t_sub_407B30_byte_44339E& __sub_407B30_byte_44339E = *(t_sub_407B30_byte_44339E*)(blob1 + 0x0044339E - BMF_BLOB_BASE);

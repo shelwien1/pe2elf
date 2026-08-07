@@ -1,7 +1,7 @@
 // sub_4043E0 @ 0x004043E0 — __usercall
 // Extracted from BMF.cpp:3574-4720 by extract.py per incdec.md.
 
-typedef int t_sub_4043E0_Buffer;
+typedef void * t_sub_4043E0_Buffer;
 static t_sub_4043E0_Buffer& __sub_4043E0_Buffer = *(t_sub_4043E0_Buffer*)(blob1 + 0x0044337C - BMF_BLOB_BASE);
 typedef int t_sub_4043E0_Buffer_0;
 static t_sub_4043E0_Buffer_0& __sub_4043E0_Buffer_0 = *(t_sub_4043E0_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
@@ -9,7 +9,7 @@ typedef int t_sub_4043E0_Buffer_1;
 static t_sub_4043E0_Buffer_1& __sub_4043E0_Buffer_1 = *(t_sub_4043E0_Buffer_1*)(blob1 + 0x00443374 - BMF_BLOB_BASE);
 typedef int t_sub_4043E0_ElementCount_0;
 static t_sub_4043E0_ElementCount_0& __sub_4043E0_ElementCount_0 = *(t_sub_4043E0_ElementCount_0*)(blob1 + 0x00443370 - BMF_BLOB_BASE);
-typedef int t_sub_4043E0_buf;
+typedef char * t_sub_4043E0_buf;
 static t_sub_4043E0_buf& __sub_4043E0_buf = *(t_sub_4043E0_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4043E0_byte_44339C[0x10000];
 static t_sub_4043E0_byte_44339C& __sub_4043E0_byte_44339C = *(t_sub_4043E0_byte_44339C*)(blob1 + 0x0044339C - BMF_BLOB_BASE);

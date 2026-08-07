@@ -3,7 +3,7 @@
 
 typedef char t_sub_4028B0_Destination_;
 static t_sub_4028B0_Destination_& __sub_4028B0_Destination_ = *(t_sub_4028B0_Destination_*)(blob1 + 0x00442960 - BMF_BLOB_BASE);
-typedef int t_sub_4028B0_dwLowDateTime;
+typedef void * t_sub_4028B0_dwLowDateTime;
 static t_sub_4028B0_dwLowDateTime& __sub_4028B0_dwLowDateTime = *(t_sub_4028B0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40

@@ -487,7 +487,7 @@
 00441060	n4_6	int	
 00441064	dword_441064	int	
 00441064	n0xFFFF	int	
-00441068	off_441068	int	
+00441068	off_441068	char *	
 0044108C	dword_44108C	int	
 00441090	dword_441090	int	
 00441094	n2_4	int	
@@ -515,7 +515,7 @@
 00441208	off_441208	int	
 00441220	off_441220	int	
 00441224	dword_441224	int	
-00441230	Str	int	
+00441230	Str	char *	
 00441234	off_441234	int	
 00441238	off_441238	int	
 00441248	qword_441248	int	
@@ -572,7 +572,7 @@
 00442BA4	n2_5	int	
 00442BA8	dword_442BA8	int	
 00442BAC	dword_442BAC	int	
-00442BB0	dwLowDateTime	int	
+00442BB0	dwLowDateTime	void *	
 00442BB8	dword_442BB8	int	
 00442BBC	dword_442BBC	int	
 00442BC0	m	int	[]
@@ -584,18 +584,18 @@
 00442DB8	dword_442DB8	int	[3]
 00442DC4	dword_442DC4	int	[6]
 00442DDC	dword_442DDC	int	[]
-00442DE0	dword_442DE0	int	
+00442DE0	dword_442DE0	void *	
 00442DE4	dword_442DE4	int	[]
 00442DE8	dword_442DE8	int	[21]
 00442E3C	dword_442E3C	int	[]
-00442E40	n633	int	
+00442E40	n633	void *	
 00442E44	dword_442E44	int	[]
 00442E48	dword_442E48	int	[3]
 00442E54	dword_442E54	int	[5]
 00442E68	dword_442E68	int	
 00442E6C	dword_442E6C	int	
-00442E70	Src	int	
-00442E74	dword_442E74	int	
+00442E70	Src	char *	
+00442E74	dword_442E74	char *	
 00442E88	dword_442E88	int	
 00442EA0	xmmword_442EA0	__int128	
 00442EB0	xmmword_442EB0	__int128	
@@ -620,8 +620,8 @@
 00443374	dword_443374	int	
 00443378	Buffer_0	int	
 00443378	dword_443378	int	
-0044337C	Buffer	int	
-00443380	buf	int	
+0044337C	Buffer	void *	
+00443380	buf	char *	
 00443384	dword_443384	int	
 00443388	dword_443388	int	
 0044338C	n256_2	int	[]
@@ -654,10 +654,10 @@
 004433F0	n5	int	
 004433F4	p_n2	int	
 004433F8	dword_4433F8	int	
-004433FC	buf_2	int	
+004433FC	buf_2	void *	
 00443400	Src_0	int	
 00443404	Src_1	int	
-00443408	dword_443408	int	
+00443408	dword_443408	void *	
 0044340C	dword_44340C	int	[]
 00443410	n24	int	
 00443414	n14	int	
@@ -689,7 +689,7 @@
 00445700	byte_445700	char	
 00445704	dword_445704	int	
 00445704	n0x88	int	
-00445708	n256_1	int	
+00445708	n256_1	void *	
 0044570C	dword_44570C	int	
 0044570C	n8_1	int	
 00445710	dword_445710	int	
@@ -770,15 +770,15 @@
 00445948	dword_445948	int	
 0044594C	dword_44594C	int	
 00445950	argc	int	
-00445954	argv	int	
-0044595C	envp	int	
+00445954	argv	char **	
+0044595C	envp	char **	
 00445960	dword_445960	int	
 0044596C	dword_44596C	int	
 00445974	byte_445974	int	
 00445978	dword_445978	int	
 0044597C	dword_44597C	int	
 00445984	dword_445984	int	
-00445988	Block	int	
+00445988	Block	char *	
 00445990	dword_445990	int	
 00445994	byte_445994	int	
 004459A4	byte_4459A4	int	
@@ -829,7 +829,7 @@
 004463A8	dword_4463A8	int	
 004463AC	dword_4463AC	int	
 004463B0	dword_4463B0	int	
-004463B4	dword_4463B4	int	
+004463B4	dword_4463B4	void *	
 004463B8	dword_4463B8	int	
 004463BC	lpMem	int	
 004463C0	hHeap	int	

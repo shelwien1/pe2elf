@@ -11,7 +11,7 @@ typedef int t_sub_4015C0_bmp__0;
 static t_sub_4015C0_bmp__0& __sub_4015C0_bmp__0 = *(t_sub_4015C0_bmp__0*)(blob1 + 0x00441048 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_bmp__1;
 static t_sub_4015C0_bmp__1& __sub_4015C0_bmp__1 = *(t_sub_4015C0_bmp__1*)(blob1 + 0x00441044 - BMF_BLOB_BASE);
-typedef int t_sub_4015C0_dwLowDateTime;
+typedef void * t_sub_4015C0_dwLowDateTime;
 static t_sub_4015C0_dwLowDateTime& __sub_4015C0_dwLowDateTime = *(t_sub_4015C0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_dword_441098;
 static t_sub_4015C0_dword_441098& __sub_4015C0_dword_441098 = *(t_sub_4015C0_dword_441098*)(blob1 + 0x00441098 - BMF_BLOB_BASE);

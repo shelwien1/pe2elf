@@ -5,7 +5,7 @@ typedef size_t t_sub_402590_ElementCount;
 static t_sub_402590_ElementCount& __sub_402590_ElementCount = *(t_sub_402590_ElementCount*)(blob1 + 0x00441054 - BMF_BLOB_BASE);
 typedef WIN32_FIND_DATAA t_sub_402590_FindFileData;
 static t_sub_402590_FindFileData& __sub_402590_FindFileData = *(t_sub_402590_FindFileData*)(blob1 + 0x00442A60 - BMF_BLOB_BASE);
-typedef int t_sub_402590_dwLowDateTime;
+typedef void * t_sub_402590_dwLowDateTime;
 static t_sub_402590_dwLowDateTime& __sub_402590_dwLowDateTime = *(t_sub_402590_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 typedef int t_sub_402590_dword_441058;
 static t_sub_402590_dword_441058& __sub_402590_dword_441058 = *(t_sub_402590_dword_441058*)(blob1 + 0x00441058 - BMF_BLOB_BASE);

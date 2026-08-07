@@ -1,7 +1,7 @@
 // sub_40A8A0 @ 0x0040A8A0 — __thiscall
 // Extracted from BMF.cpp:8703-8913 by extract.py per incdec.md.
 
-typedef int t_sub_40A8A0_buf_2;
+typedef void * t_sub_40A8A0_buf_2;
 static t_sub_40A8A0_buf_2& __sub_40A8A0_buf_2 = *(t_sub_40A8A0_buf_2*)(blob1 + 0x004433FC - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_442E3C[0x10000];
 static t_sub_40A8A0_dword_442E3C& __sub_40A8A0_dword_442E3C = *(t_sub_40A8A0_dword_442E3C*)(blob1 + 0x00442E3C - BMF_BLOB_BASE);

@@ -1,7 +1,7 @@
 // sub_410AC0 @ 0x00410AC0 — __cdecl
 // Extracted from BMF.cpp:14787-15238 by extract.py per incdec.md.
 
-typedef int t_sub_410AC0_buf[0x10000];
+typedef char * t_sub_410AC0_buf;
 static t_sub_410AC0_buf& __sub_410AC0_buf = *(t_sub_410AC0_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef int t_sub_410AC0_n2;
 static t_sub_410AC0_n2& __sub_410AC0_n2 = *(t_sub_410AC0_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);

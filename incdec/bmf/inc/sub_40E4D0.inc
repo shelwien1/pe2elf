@@ -80,7 +80,7 @@ BMF_REALIGN int *__sub_40E4D0()
     while ( v6 >= 0 );
   }
   __sub_40E4D0_dword_443434 = (int)v3;
-  __sub_40E4D0_dword_44342C = (int)&v2[n4 / 0xFFFFFFFC];
+  __sub_40E4D0_dword_44342C = (int)&v2[n4 / -4];
   return result;
 }
 

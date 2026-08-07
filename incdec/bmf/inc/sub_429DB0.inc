@@ -1,7 +1,7 @@
 // sub_429DB0 @ 0x00429DB0 — __cdecl
 // Extracted from BMF.cpp:34379-34431 by extract.py per incdec.md.
 
-typedef int t_sub_429DB0_argv;
+typedef char ** t_sub_429DB0_argv;
 static t_sub_429DB0_argv& __sub_429DB0_argv = *(t_sub_429DB0_argv*)(blob1 + 0x00445954 - BMF_BLOB_BASE);
 
 

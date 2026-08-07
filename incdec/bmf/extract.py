@@ -602,6 +602,32 @@ def fix_hex_escapes(line):
 BLOB_LO, BLOB_HI = 0x00438000, 0x00448164
 
 
+def sign_negative_divisors(line):
+    """`n / 0xFFFFFFFC` -> `n / -4`.
+
+    Hex-Rays prints a negative 32-bit constant as unsigned hex.  Everywhere
+    else that is harmless — `x & 0xFFFFFFF0` means the same thing either way —
+    but as a *divisor* it decides the operation: `0xFFFFFFFCu` makes C convert
+    the dividend to unsigned too, and `(unsigned)n / 4294967292u` is 0 for
+    every n below the divisor.  The donor is doing signed division by -4.
+
+    Both sites here are pointer arithmetic the decompiler chose to express as a
+    scaled index: `&v2[n4 / 0xFFFFFFFC]` on an `int *`, where the instruction is
+    a plain `sub edx, ebx` — back up by n4 bytes.  With the unsigned divisor the
+    index is 0, the pointer does not move, and the traversal it walks never
+    terminates.  That is what a whole broken compression mode looked like: the
+    decoder recursed until the stack died.
+
+    Restricted to `/` and `%`.  A divisor at or above 0x80000000 read as
+    unsigned yields 0 or 1 for any plausible dividend, so there is no case
+    where the unsigned reading is the intended one.
+    """
+    def repl(m):
+        v = int(m.group(2), 16)
+        return '%s %d' % (m.group(1), v - (1 << 32)) if v >= 0x80000000 else m.group(0)
+    return re.sub(r'([/%])\s*(0[xX][0-9A-Fa-f]{8})\b', repl, line)
+
+
 def rebase_data_literals(line):
     """Rewrite an absolute data address baked into an *expression*.
 
@@ -1256,6 +1282,11 @@ def emit(args, cache=None):
         # scalar on the strength of "this body never wrote a [": `buf = buf_0;`
         # is the array decaying to a pointer, and as a scalar it silently reads
         # one byte of image instead.
+        # Whether the *declaration* says pointer, as opposed to the name
+        # prefix guessing it below: `off_4410C0` is an array of pointers that
+        # symbols.txt types `int`, and PREFIX_TYPE turning it into `void *`
+        # must not stop it from being widened to an array.
+        declared_ptr = base.rstrip().endswith('*') and not re.fullmatch(GLOBAL_RE, g)
         if re.fullmatch(GLOBAL_RE, g):
             # An auto-generated name states its own width, and Hex-Rays picks
             # the name by how *this* body accesses the address: `byte_445714`
@@ -1268,12 +1299,22 @@ def emit(args, cache=None):
             base = PREFIX_TYPE.get(g.split('_')[0], base)
         if g in per_body:
             base, ext = per_body[g]
+            declared_ptr = base.rstrip().endswith('*')
         if array_used(body, g, g in locals_):
             # An unspecified bound cannot be used as *(T*)addr; pick one large
             # enough to leave indexing unconstrained.  No storage is created —
             # the type only reinterprets the PE image.
+            #
+            # Unless the global is a *pointer* with no declared extent, where
+            # inventing one is the wrong answer entirely: `buf[4 * v21]` on
+            # `char *buf` reads through the stored pointer, which is what `mov
+            # ebx, buf; inc [ebx+ecx*4]` does.  Widened to `char
+            # *buf[0x10000]` the same spelling indexes an array *at* buf's own
+            # address, over unrelated memory.  A pointer that does carry an
+            # extent (`char *off_44104C[2]`, an array of pointers) keeps it —
+            # only the invented bound is suppressed.
             if ext in ('', '[]'):
-                ext = '[0x10000]'
+                ext = '' if declared_ptr else '[0x10000]'
         elif ext == '[]':
             ext = '[0x10000]'
         elif ext and g not in per_body:
@@ -1602,6 +1643,7 @@ def emit(args, cache=None):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
     joined = [fix_hex_escapes(l) for l in joined]
     joined = [rebase_data_literals(l) for l in joined]
+    joined = [sign_negative_divisors(l) for l in joined]
     joined = launder_pointer_counters(joined)
     joined = [mask_shift_counts(l) for l in joined]
     if single_precision(args.name):

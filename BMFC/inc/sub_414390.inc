@@ -19,7 +19,7 @@ typedef int t_sub_414390_n0x7F800000;
 static t_sub_414390_n0x7F800000& __sub_414390_n0x7F800000 = *(t_sub_414390_n0x7F800000*)(blob1 + 0x004456E4 - BMF_BLOB_BASE);
 typedef int t_sub_414390_n0x800000;
 static t_sub_414390_n0x800000& __sub_414390_n0x800000 = *(t_sub_414390_n0x800000*)(blob1 + 0x004456E0 - BMF_BLOB_BASE);
-typedef int t_sub_414390_n256_1;
+typedef void * t_sub_414390_n256_1;
 static t_sub_414390_n256_1& __sub_414390_n256_1 = *(t_sub_414390_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 
 static inline int __fwd_sub_414390_sub_413900(void *a0, int a1) { return __sub_413900((unsigned __int16 *)a0, a1); }

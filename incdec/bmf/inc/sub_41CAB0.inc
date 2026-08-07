@@ -11,7 +11,7 @@ typedef int t_sub_41CAB0_dword_4458F0;
 static t_sub_41CAB0_dword_4458F0& __sub_41CAB0_dword_4458F0 = *(t_sub_41CAB0_dword_4458F0*)(blob1 + 0x004458F0 - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_dword_4458F4;
 static t_sub_41CAB0_dword_4458F4& __sub_41CAB0_dword_4458F4 = *(t_sub_41CAB0_dword_4458F4*)(blob1 + 0x004458F4 - BMF_BLOB_BASE);
-typedef int t_sub_41CAB0_n256_1;
+typedef void * t_sub_41CAB0_n256_1;
 static t_sub_41CAB0_n256_1& __sub_41CAB0_n256_1 = *(t_sub_41CAB0_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_439B40;
 static t_sub_41CAB0_xmmword_439B40& __sub_41CAB0_xmmword_439B40 = *(t_sub_41CAB0_xmmword_439B40*)(blob1 + 0x00439B40 - BMF_BLOB_BASE);

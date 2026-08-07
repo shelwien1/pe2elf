@@ -478,7 +478,7 @@ BMF_REALIGN int *__sub_40DEB0()
         v19 = v72;
         v4 = v69;
       }
-      v36 = (int)&v30[v74 / 0xFFFFFFFC];
+      v36 = (int)&v30[v74 / -4];
       v4 >>= 1;
       ++v19;
     }
