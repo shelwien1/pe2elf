@@ -2,15 +2,15 @@
 // Extracted from BMF.cpp:10575-10645 by extract.py per incdec.md.
 
 typedef int t_sub_40CB70_buf_1;
-static t_sub_40CB70_buf_1& __sub_40CB70_buf_1 = *(t_sub_40CB70_buf_1*)0x00443430;
+static t_sub_40CB70_buf_1& __sub_40CB70_buf_1 = *(t_sub_40CB70_buf_1*)(blob1 + 0x00443430 - BMF_BLOB_BASE);
 typedef int t_sub_40CB70_dword_442EE0[0x10000];
-static t_sub_40CB70_dword_442EE0& __sub_40CB70_dword_442EE0 = *(t_sub_40CB70_dword_442EE0*)0x00442EE0;
+static t_sub_40CB70_dword_442EE0& __sub_40CB70_dword_442EE0 = *(t_sub_40CB70_dword_442EE0*)(blob1 + 0x00442EE0 - BMF_BLOB_BASE);
 typedef int t_sub_40CB70_dword_443428;
-static t_sub_40CB70_dword_443428& __sub_40CB70_dword_443428 = *(t_sub_40CB70_dword_443428*)0x00443428;
+static t_sub_40CB70_dword_443428& __sub_40CB70_dword_443428 = *(t_sub_40CB70_dword_443428*)(blob1 + 0x00443428 - BMF_BLOB_BASE);
 typedef int t_sub_40CB70_dword_44342C;
-static t_sub_40CB70_dword_44342C& __sub_40CB70_dword_44342C = *(t_sub_40CB70_dword_44342C*)0x0044342C;
+static t_sub_40CB70_dword_44342C& __sub_40CB70_dword_44342C = *(t_sub_40CB70_dword_44342C*)(blob1 + 0x0044342C - BMF_BLOB_BASE);
 typedef __int128 t_sub_40CB70_xmmword_442EA0;
-static t_sub_40CB70_xmmword_442EA0& __sub_40CB70_xmmword_442EA0 = *(t_sub_40CB70_xmmword_442EA0*)0x00442EA0;
+static t_sub_40CB70_xmmword_442EA0& __sub_40CB70_xmmword_442EA0 = *(t_sub_40CB70_xmmword_442EA0*)(blob1 + 0x00442EA0 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_40CB70)

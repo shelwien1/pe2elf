@@ -2,51 +2,51 @@
 // Extracted from BMF.cpp:29400-30095 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_423600_byte_44339D[0x10000];
-static t_sub_423600_byte_44339D& __sub_423600_byte_44339D = *(t_sub_423600_byte_44339D*)0x0044339D;
+static t_sub_423600_byte_44339D& __sub_423600_byte_44339D = *(t_sub_423600_byte_44339D*)(blob1 + 0x0044339D - BMF_BLOB_BASE);
 typedef unsigned char t_sub_423600_byte_44339E[0x10000];
-static t_sub_423600_byte_44339E& __sub_423600_byte_44339E = *(t_sub_423600_byte_44339E*)0x0044339E;
+static t_sub_423600_byte_44339E& __sub_423600_byte_44339E = *(t_sub_423600_byte_44339E*)(blob1 + 0x0044339E - BMF_BLOB_BASE);
 typedef unsigned char t_sub_423600_byte_4433AD[16];
-static t_sub_423600_byte_4433AD& __sub_423600_byte_4433AD = *(t_sub_423600_byte_4433AD*)0x004433AD;
+static t_sub_423600_byte_4433AD& __sub_423600_byte_4433AD = *(t_sub_423600_byte_4433AD*)(blob1 + 0x004433AD - BMF_BLOB_BASE);
 typedef unsigned char t_sub_423600_byte_4433BD[15];
-static t_sub_423600_byte_4433BD& __sub_423600_byte_4433BD = *(t_sub_423600_byte_4433BD*)0x004433BD;
+static t_sub_423600_byte_4433BD& __sub_423600_byte_4433BD = *(t_sub_423600_byte_4433BD*)(blob1 + 0x004433BD - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4433A0[0x10000];
-static t_sub_423600_dword_4433A0& __sub_423600_dword_4433A0 = *(t_sub_423600_dword_4433A0*)0x004433A0;
+static t_sub_423600_dword_4433A0& __sub_423600_dword_4433A0 = *(t_sub_423600_dword_4433A0*)(blob1 + 0x004433A0 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4433A4[0x10000];
-static t_sub_423600_dword_4433A4& __sub_423600_dword_4433A4 = *(t_sub_423600_dword_4433A4*)0x004433A4;
+static t_sub_423600_dword_4433A4& __sub_423600_dword_4433A4 = *(t_sub_423600_dword_4433A4*)(blob1 + 0x004433A4 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4433A8[0x10000];
-static t_sub_423600_dword_4433A8& __sub_423600_dword_4433A8 = *(t_sub_423600_dword_4433A8*)0x004433A8;
+static t_sub_423600_dword_4433A8& __sub_423600_dword_4433A8 = *(t_sub_423600_dword_4433A8*)(blob1 + 0x004433A8 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4458E0;
-static t_sub_423600_dword_4458E0& __sub_423600_dword_4458E0 = *(t_sub_423600_dword_4458E0*)0x004458E0;
+static t_sub_423600_dword_4458E0& __sub_423600_dword_4458E0 = *(t_sub_423600_dword_4458E0*)(blob1 + 0x004458E0 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4458E4;
-static t_sub_423600_dword_4458E4& __sub_423600_dword_4458E4 = *(t_sub_423600_dword_4458E4*)0x004458E4;
+static t_sub_423600_dword_4458E4& __sub_423600_dword_4458E4 = *(t_sub_423600_dword_4458E4*)(blob1 + 0x004458E4 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4458E8;
-static t_sub_423600_dword_4458E8& __sub_423600_dword_4458E8 = *(t_sub_423600_dword_4458E8*)0x004458E8;
+static t_sub_423600_dword_4458E8& __sub_423600_dword_4458E8 = *(t_sub_423600_dword_4458E8*)(blob1 + 0x004458E8 - BMF_BLOB_BASE);
 typedef int t_sub_423600_dword_4458EC;
-static t_sub_423600_dword_4458EC& __sub_423600_dword_4458EC = *(t_sub_423600_dword_4458EC*)0x004458EC;
+static t_sub_423600_dword_4458EC& __sub_423600_dword_4458EC = *(t_sub_423600_dword_4458EC*)(blob1 + 0x004458EC - BMF_BLOB_BASE);
 typedef char t_sub_423600_n3_0;
-static t_sub_423600_n3_0& __sub_423600_n3_0 = *(t_sub_423600_n3_0*)0x004433CD;
+static t_sub_423600_n3_0& __sub_423600_n3_0 = *(t_sub_423600_n3_0*)(blob1 + 0x004433CD - BMF_BLOB_BASE);
 typedef int t_sub_423600_n4_5;
-static t_sub_423600_n4_5& __sub_423600_n4_5 = *(t_sub_423600_n4_5*)0x00443394;
+static t_sub_423600_n4_5& __sub_423600_n4_5 = *(t_sub_423600_n4_5*)(blob1 + 0x00443394 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_439B60;
-static t_sub_423600_xmmword_439B60& __sub_423600_xmmword_439B60 = *(t_sub_423600_xmmword_439B60*)0x00439B60;
+static t_sub_423600_xmmword_439B60& __sub_423600_xmmword_439B60 = *(t_sub_423600_xmmword_439B60*)(blob1 + 0x00439B60 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441120;
-static t_sub_423600_xmmword_441120& __sub_423600_xmmword_441120 = *(t_sub_423600_xmmword_441120*)0x00441120;
+static t_sub_423600_xmmword_441120& __sub_423600_xmmword_441120 = *(t_sub_423600_xmmword_441120*)(blob1 + 0x00441120 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441130;
-static t_sub_423600_xmmword_441130& __sub_423600_xmmword_441130 = *(t_sub_423600_xmmword_441130*)0x00441130;
+static t_sub_423600_xmmword_441130& __sub_423600_xmmword_441130 = *(t_sub_423600_xmmword_441130*)(blob1 + 0x00441130 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441140;
-static t_sub_423600_xmmword_441140& __sub_423600_xmmword_441140 = *(t_sub_423600_xmmword_441140*)0x00441140;
+static t_sub_423600_xmmword_441140& __sub_423600_xmmword_441140 = *(t_sub_423600_xmmword_441140*)(blob1 + 0x00441140 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441160;
-static t_sub_423600_xmmword_441160& __sub_423600_xmmword_441160 = *(t_sub_423600_xmmword_441160*)0x00441160;
+static t_sub_423600_xmmword_441160& __sub_423600_xmmword_441160 = *(t_sub_423600_xmmword_441160*)(blob1 + 0x00441160 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441170;
-static t_sub_423600_xmmword_441170& __sub_423600_xmmword_441170 = *(t_sub_423600_xmmword_441170*)0x00441170;
+static t_sub_423600_xmmword_441170& __sub_423600_xmmword_441170 = *(t_sub_423600_xmmword_441170*)(blob1 + 0x00441170 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_441180;
-static t_sub_423600_xmmword_441180& __sub_423600_xmmword_441180 = *(t_sub_423600_xmmword_441180*)0x00441180;
+static t_sub_423600_xmmword_441180& __sub_423600_xmmword_441180 = *(t_sub_423600_xmmword_441180*)(blob1 + 0x00441180 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_4411D0;
-static t_sub_423600_xmmword_4411D0& __sub_423600_xmmword_4411D0 = *(t_sub_423600_xmmword_4411D0*)0x004411D0;
+static t_sub_423600_xmmword_4411D0& __sub_423600_xmmword_4411D0 = *(t_sub_423600_xmmword_4411D0*)(blob1 + 0x004411D0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_4411E0;
-static t_sub_423600_xmmword_4411E0& __sub_423600_xmmword_4411E0 = *(t_sub_423600_xmmword_4411E0*)0x004411E0;
+static t_sub_423600_xmmword_4411E0& __sub_423600_xmmword_4411E0 = *(t_sub_423600_xmmword_4411E0*)(blob1 + 0x004411E0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_423600_xmmword_4411F0;
-static t_sub_423600_xmmword_4411F0& __sub_423600_xmmword_4411F0 = *(t_sub_423600_xmmword_4411F0*)0x004411F0;
+static t_sub_423600_xmmword_4411F0& __sub_423600_xmmword_4411F0 = *(t_sub_423600_xmmword_4411F0*)(blob1 + 0x004411F0 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -71,7 +71,7 @@ static inline int __fwd_sub_423600_sub_41A130(void *a0, const __m128 &a1, const 
 #ifndef __PE_DECL___VirtualAlloc
 #define __PE_DECL___VirtualAlloc
 typedef __attribute__((stdcall)) void * (*pfn_VirtualAlloc)(void *, unsigned int, unsigned int, unsigned int);
-static pfn_VirtualAlloc& VirtualAlloc = *(pfn_VirtualAlloc*)0x00438024;   // IAT slot
+static pfn_VirtualAlloc& VirtualAlloc = *(pfn_VirtualAlloc*)(blob1 + 0x00438024 - BMF_BLOB_BASE);   // IAT slot
 #endif
 PROBE_DECL(__sub_423600)
 BMF_REALIGN BMF_SSE int __sub_423600(unsigned __int16 *p_i, unsigned __int8 *Src)

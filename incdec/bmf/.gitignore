@@ -13,12 +13,11 @@ trace.out
 run/
 tr/
 
-# standalone/: bmfdata.S is 65 KB of .byte directives carved out of BMF.exe by
+# standalone/: blob.inc is 65 KB of BMF.exe's data segment carved out by
 # mkdata.py, and build.sh regenerates it if it is missing.
 standalone/bmf
 standalone/bmf_standalone.cpp
-standalone/bmfdata.S
-standalone/bmfdata.mk
+standalone/blob.inc
 standalone/run/
 standalone/p/
 standalone/w/

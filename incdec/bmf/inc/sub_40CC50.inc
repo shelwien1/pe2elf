@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:10648-10896 by extract.py per incdec.md.
 
 typedef int t_sub_40CC50_dword_443408;
-static t_sub_40CC50_dword_443408& __sub_40CC50_dword_443408 = *(t_sub_40CC50_dword_443408*)0x00443408;
+static t_sub_40CC50_dword_443408& __sub_40CC50_dword_443408 = *(t_sub_40CC50_dword_443408*)(blob1 + 0x00443408 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

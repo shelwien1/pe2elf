@@ -8,7 +8,7 @@
 #ifndef __PE_DECL___VirtualFree
 #define __PE_DECL___VirtualFree
 typedef __attribute__((stdcall)) int (*pfn_VirtualFree)(void *, unsigned int, unsigned int);
-static pfn_VirtualFree& VirtualFree = *(pfn_VirtualFree*)0x00438020;   // IAT slot
+static pfn_VirtualFree& VirtualFree = *(pfn_VirtualFree*)(blob1 + 0x00438020 - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL___op_delete
 #define __PE_DECL___op_delete

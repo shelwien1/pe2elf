@@ -2,21 +2,21 @@
 // Extracted from BMF.cpp:12539-13252 by extract.py per incdec.md.
 
 typedef int t_sub_40E860_buf[0x10000];
-static t_sub_40E860_buf& __sub_40E860_buf = *(t_sub_40E860_buf*)0x00443380;
+static t_sub_40E860_buf& __sub_40E860_buf = *(t_sub_40E860_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef int t_sub_40E860_n2;
-static t_sub_40E860_n2& __sub_40E860_n2 = *(t_sub_40E860_n2*)0x00443360;
+static t_sub_40E860_n2& __sub_40E860_n2 = *(t_sub_40E860_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_40E860_n256_0[0x10000];
-static t_sub_40E860_n256_0& __sub_40E860_n256_0 = *(t_sub_40E860_n256_0*)0x00443398;
+static t_sub_40E860_n256_0& __sub_40E860_n256_0 = *(t_sub_40E860_n256_0*)(blob1 + 0x00443398 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E860_xmmword_439540;
-static t_sub_40E860_xmmword_439540& __sub_40E860_xmmword_439540 = *(t_sub_40E860_xmmword_439540*)0x00439540;
+static t_sub_40E860_xmmword_439540& __sub_40E860_xmmword_439540 = *(t_sub_40E860_xmmword_439540*)(blob1 + 0x00439540 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E860_xmmword_439550;
-static t_sub_40E860_xmmword_439550& __sub_40E860_xmmword_439550 = *(t_sub_40E860_xmmword_439550*)0x00439550;
+static t_sub_40E860_xmmword_439550& __sub_40E860_xmmword_439550 = *(t_sub_40E860_xmmword_439550*)(blob1 + 0x00439550 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E860_xmmword_439560;
-static t_sub_40E860_xmmword_439560& __sub_40E860_xmmword_439560 = *(t_sub_40E860_xmmword_439560*)0x00439560;
+static t_sub_40E860_xmmword_439560& __sub_40E860_xmmword_439560 = *(t_sub_40E860_xmmword_439560*)(blob1 + 0x00439560 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E860_xmmword_439570;
-static t_sub_40E860_xmmword_439570& __sub_40E860_xmmword_439570 = *(t_sub_40E860_xmmword_439570*)0x00439570;
+static t_sub_40E860_xmmword_439570& __sub_40E860_xmmword_439570 = *(t_sub_40E860_xmmword_439570*)(blob1 + 0x00439570 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E860_xmmword_439580;
-static t_sub_40E860_xmmword_439580& __sub_40E860_xmmword_439580 = *(t_sub_40E860_xmmword_439580*)0x00439580;
+static t_sub_40E860_xmmword_439580& __sub_40E860_xmmword_439580 = *(t_sub_40E860_xmmword_439580*)(blob1 + 0x00439580 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

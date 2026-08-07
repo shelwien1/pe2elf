@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:1779-1910 by extract.py per incdec.md.
 
 typedef int t_sub_4022C0_dwLowDateTime;
-static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_dwLowDateTime*)0x00442BB0;
+static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40
 
@@ -12,27 +12,27 @@ static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_d
 #ifndef __PE_DECL___CloseHandle
 #define __PE_DECL___CloseHandle
 typedef __attribute__((stdcall)) int (*pfn_CloseHandle)(void *);
-static pfn_CloseHandle& CloseHandle = *(pfn_CloseHandle*)0x00438014;   // IAT slot
+static pfn_CloseHandle& CloseHandle = *(pfn_CloseHandle*)(blob1 + 0x00438014 - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL___CreateFileA
 #define __PE_DECL___CreateFileA
 typedef __attribute__((stdcall)) void * (*pfn_CreateFileA)(const char *, unsigned int, unsigned int, void *, unsigned int, unsigned int, void *);
-static pfn_CreateFileA& CreateFileA = *(pfn_CreateFileA*)0x0043800C;   // IAT slot
+static pfn_CreateFileA& CreateFileA = *(pfn_CreateFileA*)(blob1 + 0x0043800C - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL___DosDateTimeToFileTime
 #define __PE_DECL___DosDateTimeToFileTime
 typedef __attribute__((stdcall)) int (*pfn_DosDateTimeToFileTime)(unsigned short, unsigned short, void *);
-static pfn_DosDateTimeToFileTime& DosDateTimeToFileTime = *(pfn_DosDateTimeToFileTime*)0x00438008;   // IAT slot
+static pfn_DosDateTimeToFileTime& DosDateTimeToFileTime = *(pfn_DosDateTimeToFileTime*)(blob1 + 0x00438008 - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL___SetFileAttributesA
 #define __PE_DECL___SetFileAttributesA
 typedef __attribute__((stdcall)) int (*pfn_SetFileAttributesA)(const char *, unsigned int);
-static pfn_SetFileAttributesA& SetFileAttributesA = *(pfn_SetFileAttributesA*)0x00438018;   // IAT slot
+static pfn_SetFileAttributesA& SetFileAttributesA = *(pfn_SetFileAttributesA*)(blob1 + 0x00438018 - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL___SetFileTime
 #define __PE_DECL___SetFileTime
 typedef __attribute__((stdcall)) int (*pfn_SetFileTime)(void *, const void *, const void *, const void *);
-static pfn_SetFileTime& SetFileTime = *(pfn_SetFileTime*)0x00438010;   // IAT slot
+static pfn_SetFileTime& SetFileTime = *(pfn_SetFileTime*)(blob1 + 0x00438010 - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL____access
 #define __PE_DECL____access

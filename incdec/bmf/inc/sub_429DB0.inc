@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:34379-34431 by extract.py per incdec.md.
 
 typedef int t_sub_429DB0_argv;
-static t_sub_429DB0_argv& __sub_429DB0_argv = *(t_sub_429DB0_argv*)0x00445954;
+static t_sub_429DB0_argv& __sub_429DB0_argv = *(t_sub_429DB0_argv*)(blob1 + 0x00445954 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_429DB0)

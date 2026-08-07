@@ -2,19 +2,19 @@
 // Extracted from BMF.cpp:13668-14183 by extract.py per incdec.md.
 
 typedef int t_sub_40FAC0_n2;
-static t_sub_40FAC0_n2& __sub_40FAC0_n2 = *(t_sub_40FAC0_n2*)0x00443360;
+static t_sub_40FAC0_n2& __sub_40FAC0_n2 = *(t_sub_40FAC0_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_40FAC0_n256_0;
-static t_sub_40FAC0_n256_0& __sub_40FAC0_n256_0 = *(t_sub_40FAC0_n256_0*)0x00443398;
+static t_sub_40FAC0_n256_0& __sub_40FAC0_n256_0 = *(t_sub_40FAC0_n256_0*)(blob1 + 0x00443398 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40FAC0_xmmword_4395D0;
-static t_sub_40FAC0_xmmword_4395D0& __sub_40FAC0_xmmword_4395D0 = *(t_sub_40FAC0_xmmword_4395D0*)0x004395D0;
+static t_sub_40FAC0_xmmword_4395D0& __sub_40FAC0_xmmword_4395D0 = *(t_sub_40FAC0_xmmword_4395D0*)(blob1 + 0x004395D0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40FAC0_xmmword_4395E0;
-static t_sub_40FAC0_xmmword_4395E0& __sub_40FAC0_xmmword_4395E0 = *(t_sub_40FAC0_xmmword_4395E0*)0x004395E0;
+static t_sub_40FAC0_xmmword_4395E0& __sub_40FAC0_xmmword_4395E0 = *(t_sub_40FAC0_xmmword_4395E0*)(blob1 + 0x004395E0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40FAC0_xmmword_4395F0;
-static t_sub_40FAC0_xmmword_4395F0& __sub_40FAC0_xmmword_4395F0 = *(t_sub_40FAC0_xmmword_4395F0*)0x004395F0;
+static t_sub_40FAC0_xmmword_4395F0& __sub_40FAC0_xmmword_4395F0 = *(t_sub_40FAC0_xmmword_4395F0*)(blob1 + 0x004395F0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40FAC0_xmmword_439600;
-static t_sub_40FAC0_xmmword_439600& __sub_40FAC0_xmmword_439600 = *(t_sub_40FAC0_xmmword_439600*)0x00439600;
+static t_sub_40FAC0_xmmword_439600& __sub_40FAC0_xmmword_439600 = *(t_sub_40FAC0_xmmword_439600*)(blob1 + 0x00439600 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40FAC0_xmmword_439610;
-static t_sub_40FAC0_xmmword_439610& __sub_40FAC0_xmmword_439610 = *(t_sub_40FAC0_xmmword_439610*)0x00439610;
+static t_sub_40FAC0_xmmword_439610& __sub_40FAC0_xmmword_439610 = *(t_sub_40FAC0_xmmword_439610*)(blob1 + 0x00439610 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

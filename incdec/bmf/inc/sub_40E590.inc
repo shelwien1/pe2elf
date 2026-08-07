@@ -2,17 +2,17 @@
 // Extracted from BMF.cpp:12363-12536 by extract.py per incdec.md.
 
 typedef int t_sub_40E590_dword_4394E0[0x10000];
-static t_sub_40E590_dword_4394E0& __sub_40E590_dword_4394E0 = *(t_sub_40E590_dword_4394E0*)0x004394E0;
+static t_sub_40E590_dword_4394E0& __sub_40E590_dword_4394E0 = *(t_sub_40E590_dword_4394E0*)(blob1 + 0x004394E0 - BMF_BLOB_BASE);
 typedef int t_sub_40E590_dword_4394E4[0x10000];
-static t_sub_40E590_dword_4394E4& __sub_40E590_dword_4394E4 = *(t_sub_40E590_dword_4394E4*)0x004394E4;
+static t_sub_40E590_dword_4394E4& __sub_40E590_dword_4394E4 = *(t_sub_40E590_dword_4394E4*)(blob1 + 0x004394E4 - BMF_BLOB_BASE);
 typedef int t_sub_40E590_dword_4394E8[0x10000];
-static t_sub_40E590_dword_4394E8& __sub_40E590_dword_4394E8 = *(t_sub_40E590_dword_4394E8*)0x004394E8;
+static t_sub_40E590_dword_4394E8& __sub_40E590_dword_4394E8 = *(t_sub_40E590_dword_4394E8*)(blob1 + 0x004394E8 - BMF_BLOB_BASE);
 typedef int t_sub_40E590_dword_4394EC[13];
-static t_sub_40E590_dword_4394EC& __sub_40E590_dword_4394EC = *(t_sub_40E590_dword_4394EC*)0x004394EC;
+static t_sub_40E590_dword_4394EC& __sub_40E590_dword_4394EC = *(t_sub_40E590_dword_4394EC*)(blob1 + 0x004394EC - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E590_xmmword_439520;
-static t_sub_40E590_xmmword_439520& __sub_40E590_xmmword_439520 = *(t_sub_40E590_xmmword_439520*)0x00439520;
+static t_sub_40E590_xmmword_439520& __sub_40E590_xmmword_439520 = *(t_sub_40E590_xmmword_439520*)(blob1 + 0x00439520 - BMF_BLOB_BASE);
 typedef __int128 t_sub_40E590_xmmword_439530;
-static t_sub_40E590_xmmword_439530& __sub_40E590_xmmword_439530 = *(t_sub_40E590_xmmword_439530*)0x00439530;
+static t_sub_40E590_xmmword_439530& __sub_40E590_xmmword_439530 = *(t_sub_40E590_xmmword_439530*)(blob1 + 0x00439530 - BMF_BLOB_BASE);
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

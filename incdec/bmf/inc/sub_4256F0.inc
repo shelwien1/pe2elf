@@ -2,11 +2,11 @@
 // Extracted from BMF.cpp:30966-31095 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_4256F0_byte_439BC0[8];
-static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)0x00439BC0;
+static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)(blob1 + 0x00439BC0 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4256F0_byte_439BC8[8];
-static t_sub_4256F0_byte_439BC8& __sub_4256F0_byte_439BC8 = *(t_sub_4256F0_byte_439BC8*)0x00439BC8;
+static t_sub_4256F0_byte_439BC8& __sub_4256F0_byte_439BC8 = *(t_sub_4256F0_byte_439BC8*)(blob1 + 0x00439BC8 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4256F0_byte_439BD0[8];
-static t_sub_4256F0_byte_439BD0& __sub_4256F0_byte_439BD0 = *(t_sub_4256F0_byte_439BD0*)0x00439BD0;
+static t_sub_4256F0_byte_439BD0& __sub_4256F0_byte_439BD0 = *(t_sub_4256F0_byte_439BD0*)(blob1 + 0x00439BD0 - BMF_BLOB_BASE);
 
 static inline unsigned int __fwd_sub_4256F0_sub_4118A0(void *a0, void *a1) { return __sub_4118A0((_BYTE *)a0, (char *)a1); }
 #define sub_4118A0 __fwd_sub_4256F0_sub_4118A0

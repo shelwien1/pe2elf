@@ -2,15 +2,15 @@
 // Extracted from BMF.cpp:20974-21078 by extract.py per incdec.md.
 
 typedef char t_sub_416860_buf_0[0x10000];
-static t_sub_416860_buf_0& __sub_416860_buf_0 = *(t_sub_416860_buf_0*)0x00443440;
+static t_sub_416860_buf_0& __sub_416860_buf_0 = *(t_sub_416860_buf_0*)(blob1 + 0x00443440 - BMF_BLOB_BASE);
 typedef char t_sub_416860_byte_445700;
-static t_sub_416860_byte_445700& __sub_416860_byte_445700 = *(t_sub_416860_byte_445700*)0x00445700;
+static t_sub_416860_byte_445700& __sub_416860_byte_445700 = *(t_sub_416860_byte_445700*)(blob1 + 0x00445700 - BMF_BLOB_BASE);
 typedef int t_sub_416860_n15;
-static t_sub_416860_n15& __sub_416860_n15 = *(t_sub_416860_n15*)0x00445748;
+static t_sub_416860_n15& __sub_416860_n15 = *(t_sub_416860_n15*)(blob1 + 0x00445748 - BMF_BLOB_BASE);
 typedef int t_sub_416860_n4_3;
-static t_sub_416860_n4_3& __sub_416860_n4_3 = *(t_sub_416860_n4_3*)0x00445744;
+static t_sub_416860_n4_3& __sub_416860_n4_3 = *(t_sub_416860_n4_3*)(blob1 + 0x00445744 - BMF_BLOB_BASE);
 typedef int t_sub_416860_n4_4;
-static t_sub_416860_n4_4& __sub_416860_n4_4 = *(t_sub_416860_n4_4*)0x00445740;
+static t_sub_416860_n4_4& __sub_416860_n4_4 = *(t_sub_416860_n4_4*)(blob1 + 0x00445740 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_416860)

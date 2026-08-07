@@ -2,35 +2,35 @@
 // Extracted from BMF.cpp:25451-25678 by extract.py per incdec.md.
 
 typedef __int128 t_sub_41C4B0_xmmword_439B20;
-static t_sub_41C4B0_xmmword_439B20& __sub_41C4B0_xmmword_439B20 = *(t_sub_41C4B0_xmmword_439B20*)0x00439B20;
+static t_sub_41C4B0_xmmword_439B20& __sub_41C4B0_xmmword_439B20 = *(t_sub_41C4B0_xmmword_439B20*)(blob1 + 0x00439B20 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_439B30;
-static t_sub_41C4B0_xmmword_439B30& __sub_41C4B0_xmmword_439B30 = *(t_sub_41C4B0_xmmword_439B30*)0x00439B30;
+static t_sub_41C4B0_xmmword_439B30& __sub_41C4B0_xmmword_439B30 = *(t_sub_41C4B0_xmmword_439B30*)(blob1 + 0x00439B30 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441120;
-static t_sub_41C4B0_xmmword_441120& __sub_41C4B0_xmmword_441120 = *(t_sub_41C4B0_xmmword_441120*)0x00441120;
+static t_sub_41C4B0_xmmword_441120& __sub_41C4B0_xmmword_441120 = *(t_sub_41C4B0_xmmword_441120*)(blob1 + 0x00441120 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441130;
-static t_sub_41C4B0_xmmword_441130& __sub_41C4B0_xmmword_441130 = *(t_sub_41C4B0_xmmword_441130*)0x00441130;
+static t_sub_41C4B0_xmmword_441130& __sub_41C4B0_xmmword_441130 = *(t_sub_41C4B0_xmmword_441130*)(blob1 + 0x00441130 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441140;
-static t_sub_41C4B0_xmmword_441140& __sub_41C4B0_xmmword_441140 = *(t_sub_41C4B0_xmmword_441140*)0x00441140;
+static t_sub_41C4B0_xmmword_441140& __sub_41C4B0_xmmword_441140 = *(t_sub_41C4B0_xmmword_441140*)(blob1 + 0x00441140 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441150;
-static t_sub_41C4B0_xmmword_441150& __sub_41C4B0_xmmword_441150 = *(t_sub_41C4B0_xmmword_441150*)0x00441150;
+static t_sub_41C4B0_xmmword_441150& __sub_41C4B0_xmmword_441150 = *(t_sub_41C4B0_xmmword_441150*)(blob1 + 0x00441150 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441160;
-static t_sub_41C4B0_xmmword_441160& __sub_41C4B0_xmmword_441160 = *(t_sub_41C4B0_xmmword_441160*)0x00441160;
+static t_sub_41C4B0_xmmword_441160& __sub_41C4B0_xmmword_441160 = *(t_sub_41C4B0_xmmword_441160*)(blob1 + 0x00441160 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441170;
-static t_sub_41C4B0_xmmword_441170& __sub_41C4B0_xmmword_441170 = *(t_sub_41C4B0_xmmword_441170*)0x00441170;
+static t_sub_41C4B0_xmmword_441170& __sub_41C4B0_xmmword_441170 = *(t_sub_41C4B0_xmmword_441170*)(blob1 + 0x00441170 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_441180;
-static t_sub_41C4B0_xmmword_441180& __sub_41C4B0_xmmword_441180 = *(t_sub_41C4B0_xmmword_441180*)0x00441180;
+static t_sub_41C4B0_xmmword_441180& __sub_41C4B0_xmmword_441180 = *(t_sub_41C4B0_xmmword_441180*)(blob1 + 0x00441180 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_445760[0x10000];
-static t_sub_41C4B0_xmmword_445760& __sub_41C4B0_xmmword_445760 = *(t_sub_41C4B0_xmmword_445760*)0x00445760;
+static t_sub_41C4B0_xmmword_445760& __sub_41C4B0_xmmword_445760 = *(t_sub_41C4B0_xmmword_445760*)(blob1 + 0x00445760 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_445770[0x10000];
-static t_sub_41C4B0_xmmword_445770& __sub_41C4B0_xmmword_445770 = *(t_sub_41C4B0_xmmword_445770*)0x00445770;
+static t_sub_41C4B0_xmmword_445770& __sub_41C4B0_xmmword_445770 = *(t_sub_41C4B0_xmmword_445770*)(blob1 + 0x00445770 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_445780[0x10000];
-static t_sub_41C4B0_xmmword_445780& __sub_41C4B0_xmmword_445780 = *(t_sub_41C4B0_xmmword_445780*)0x00445780;
+static t_sub_41C4B0_xmmword_445780& __sub_41C4B0_xmmword_445780 = *(t_sub_41C4B0_xmmword_445780*)(blob1 + 0x00445780 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_445790[0x10000];
-static t_sub_41C4B0_xmmword_445790& __sub_41C4B0_xmmword_445790 = *(t_sub_41C4B0_xmmword_445790*)0x00445790;
+static t_sub_41C4B0_xmmword_445790& __sub_41C4B0_xmmword_445790 = *(t_sub_41C4B0_xmmword_445790*)(blob1 + 0x00445790 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_4457A0[0x10000];
-static t_sub_41C4B0_xmmword_4457A0& __sub_41C4B0_xmmword_4457A0 = *(t_sub_41C4B0_xmmword_4457A0*)0x004457A0;
+static t_sub_41C4B0_xmmword_4457A0& __sub_41C4B0_xmmword_4457A0 = *(t_sub_41C4B0_xmmword_4457A0*)(blob1 + 0x004457A0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41C4B0_xmmword_4457B0[0x10000];
-static t_sub_41C4B0_xmmword_4457B0& __sub_41C4B0_xmmword_4457B0 = *(t_sub_41C4B0_xmmword_4457B0*)0x004457B0;
+static t_sub_41C4B0_xmmword_4457B0& __sub_41C4B0_xmmword_4457B0 = *(t_sub_41C4B0_xmmword_4457B0*)(blob1 + 0x004457B0 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_41C4B0)

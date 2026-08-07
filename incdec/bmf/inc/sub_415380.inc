@@ -2,11 +2,11 @@
 // Extracted from BMF.cpp:19645-20060 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_415380_byte_439860[32];
-static t_sub_415380_byte_439860& __sub_415380_byte_439860 = *(t_sub_415380_byte_439860*)0x00439860;
+static t_sub_415380_byte_439860& __sub_415380_byte_439860 = *(t_sub_415380_byte_439860*)(blob1 + 0x00439860 - BMF_BLOB_BASE);
 typedef int t_sub_415380_dword_443364;
-static t_sub_415380_dword_443364& __sub_415380_dword_443364 = *(t_sub_415380_dword_443364*)0x00443364;
+static t_sub_415380_dword_443364& __sub_415380_dword_443364 = *(t_sub_415380_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_415380_n2;
-static t_sub_415380_n2& __sub_415380_n2 = *(t_sub_415380_n2*)0x00443360;
+static t_sub_415380_n2& __sub_415380_n2 = *(t_sub_415380_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

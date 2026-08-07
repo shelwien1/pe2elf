@@ -2,21 +2,21 @@
 // Extracted from BMF.cpp:1913-2064 by extract.py per incdec.md.
 
 typedef size_t t_sub_402590_ElementCount;
-static t_sub_402590_ElementCount& __sub_402590_ElementCount = *(t_sub_402590_ElementCount*)0x00441054;
+static t_sub_402590_ElementCount& __sub_402590_ElementCount = *(t_sub_402590_ElementCount*)(blob1 + 0x00441054 - BMF_BLOB_BASE);
 typedef WIN32_FIND_DATAA t_sub_402590_FindFileData;
-static t_sub_402590_FindFileData& __sub_402590_FindFileData = *(t_sub_402590_FindFileData*)0x00442A60;
+static t_sub_402590_FindFileData& __sub_402590_FindFileData = *(t_sub_402590_FindFileData*)(blob1 + 0x00442A60 - BMF_BLOB_BASE);
 typedef int t_sub_402590_dwLowDateTime;
-static t_sub_402590_dwLowDateTime& __sub_402590_dwLowDateTime = *(t_sub_402590_dwLowDateTime*)0x00442BB0;
+static t_sub_402590_dwLowDateTime& __sub_402590_dwLowDateTime = *(t_sub_402590_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 typedef int t_sub_402590_dword_441058;
-static t_sub_402590_dword_441058& __sub_402590_dword_441058 = *(t_sub_402590_dword_441058*)0x00441058;
+static t_sub_402590_dword_441058& __sub_402590_dword_441058 = *(t_sub_402590_dword_441058*)(blob1 + 0x00441058 - BMF_BLOB_BASE);
 typedef int t_sub_402590_dword_44105C;
-static t_sub_402590_dword_44105C& __sub_402590_dword_44105C = *(t_sub_402590_dword_44105C*)0x0044105C;
+static t_sub_402590_dword_44105C& __sub_402590_dword_44105C = *(t_sub_402590_dword_44105C*)(blob1 + 0x0044105C - BMF_BLOB_BASE);
 typedef int t_sub_402590_dword_442BA8;
-static t_sub_402590_dword_442BA8& __sub_402590_dword_442BA8 = *(t_sub_402590_dword_442BA8*)0x00442BA8;
+static t_sub_402590_dword_442BA8& __sub_402590_dword_442BA8 = *(t_sub_402590_dword_442BA8*)(blob1 + 0x00442BA8 - BMF_BLOB_BASE);
 typedef int t_sub_402590_n0xFFFF;
-static t_sub_402590_n0xFFFF& __sub_402590_n0xFFFF = *(t_sub_402590_n0xFFFF*)0x00441064;
+static t_sub_402590_n0xFFFF& __sub_402590_n0xFFFF = *(t_sub_402590_n0xFFFF*)(blob1 + 0x00441064 - BMF_BLOB_BASE);
 typedef int t_sub_402590_n4_6;
-static t_sub_402590_n4_6& __sub_402590_n4_6 = *(t_sub_402590_n4_6*)0x00441060;
+static t_sub_402590_n4_6& __sub_402590_n4_6 = *(t_sub_402590_n4_6*)(blob1 + 0x00441060 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980
@@ -33,7 +33,7 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 #ifndef __PE_DECL___FileTimeToDosDateTime
 #define __PE_DECL___FileTimeToDosDateTime
 typedef __attribute__((stdcall)) int (*pfn_FileTimeToDosDateTime)(const void *, unsigned short *, unsigned short *);
-static pfn_FileTimeToDosDateTime& FileTimeToDosDateTime = *(pfn_FileTimeToDosDateTime*)0x0043801C;   // IAT slot
+static pfn_FileTimeToDosDateTime& FileTimeToDosDateTime = *(pfn_FileTimeToDosDateTime*)(blob1 + 0x0043801C - BMF_BLOB_BASE);   // IAT slot
 #endif
 #ifndef __PE_DECL____filelength
 #define __PE_DECL____filelength

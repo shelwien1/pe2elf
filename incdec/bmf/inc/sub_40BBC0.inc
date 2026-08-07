@@ -2,13 +2,13 @@
 // Extracted from BMF.cpp:9677-9816 by extract.py per incdec.md.
 
 typedef int t_sub_40BBC0_Src;
-static t_sub_40BBC0_Src& __sub_40BBC0_Src = *(t_sub_40BBC0_Src*)0x00442E70;
+static t_sub_40BBC0_Src& __sub_40BBC0_Src = *(t_sub_40BBC0_Src*)(blob1 + 0x00442E70 - BMF_BLOB_BASE);
 typedef int t_sub_40BBC0_dword_442E74;
-static t_sub_40BBC0_dword_442E74& __sub_40BBC0_dword_442E74 = *(t_sub_40BBC0_dword_442E74*)0x00442E74;
+static t_sub_40BBC0_dword_442E74& __sub_40BBC0_dword_442E74 = *(t_sub_40BBC0_dword_442E74*)(blob1 + 0x00442E74 - BMF_BLOB_BASE);
 typedef int t_sub_40BBC0_n14;
-static t_sub_40BBC0_n14& __sub_40BBC0_n14 = *(t_sub_40BBC0_n14*)0x00443414;
+static t_sub_40BBC0_n14& __sub_40BBC0_n14 = *(t_sub_40BBC0_n14*)(blob1 + 0x00443414 - BMF_BLOB_BASE);
 typedef int t_sub_40BBC0_n24;
-static t_sub_40BBC0_n24& __sub_40BBC0_n24 = *(t_sub_40BBC0_n24*)0x00443410;
+static t_sub_40BBC0_n24& __sub_40BBC0_n24 = *(t_sub_40BBC0_n24*)(blob1 + 0x00443410 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

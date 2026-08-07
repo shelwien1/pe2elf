@@ -2,17 +2,17 @@
 // Extracted from BMF.cpp:21081-21320 by extract.py per incdec.md.
 
 typedef char t_sub_416C90_buf_0[0x10000];
-static t_sub_416C90_buf_0& __sub_416C90_buf_0 = *(t_sub_416C90_buf_0*)0x00443440;
+static t_sub_416C90_buf_0& __sub_416C90_buf_0 = *(t_sub_416C90_buf_0*)(blob1 + 0x00443440 - BMF_BLOB_BASE);
 typedef char t_sub_416C90_byte_445700;
-static t_sub_416C90_byte_445700& __sub_416C90_byte_445700 = *(t_sub_416C90_byte_445700*)0x00445700;
+static t_sub_416C90_byte_445700& __sub_416C90_byte_445700 = *(t_sub_416C90_byte_445700*)(blob1 + 0x00445700 - BMF_BLOB_BASE);
 typedef int t_sub_416C90_n15;
-static t_sub_416C90_n15& __sub_416C90_n15 = *(t_sub_416C90_n15*)0x00445748;
+static t_sub_416C90_n15& __sub_416C90_n15 = *(t_sub_416C90_n15*)(blob1 + 0x00445748 - BMF_BLOB_BASE);
 typedef int t_sub_416C90_n15_0;
-static t_sub_416C90_n15_0& __sub_416C90_n15_0 = *(t_sub_416C90_n15_0*)0x0044574C;
+static t_sub_416C90_n15_0& __sub_416C90_n15_0 = *(t_sub_416C90_n15_0*)(blob1 + 0x0044574C - BMF_BLOB_BASE);
 typedef int t_sub_416C90_n4_3;
-static t_sub_416C90_n4_3& __sub_416C90_n4_3 = *(t_sub_416C90_n4_3*)0x00445744;
+static t_sub_416C90_n4_3& __sub_416C90_n4_3 = *(t_sub_416C90_n4_3*)(blob1 + 0x00445744 - BMF_BLOB_BASE);
 typedef int t_sub_416C90_n4_4;
-static t_sub_416C90_n4_4& __sub_416C90_n4_4 = *(t_sub_416C90_n4_4*)0x00445740;
+static t_sub_416C90_n4_4& __sub_416C90_n4_4 = *(t_sub_416C90_n4_4*)(blob1 + 0x00445740 - BMF_BLOB_BASE);
 
 static inline int __fwd_sub_416C90_sub_413230(void *a0, int a1, unsigned int a2) { return __sub_413230((unsigned int *)a0, a1, a2); }
 #define sub_413230 __fwd_sub_416C90_sub_413230

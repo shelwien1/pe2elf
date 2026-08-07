@@ -2,23 +2,23 @@
 // Extracted from BMF.cpp:19021-19068 by extract.py per incdec.md.
 
 typedef int t_sub_414920_Buffer_0;
-static t_sub_414920_Buffer_0& __sub_414920_Buffer_0 = *(t_sub_414920_Buffer_0*)0x00443378;
+static t_sub_414920_Buffer_0& __sub_414920_Buffer_0 = *(t_sub_414920_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
 typedef int t_sub_414920_Buffer_1;
-static t_sub_414920_Buffer_1& __sub_414920_Buffer_1 = *(t_sub_414920_Buffer_1*)0x00443374;
+static t_sub_414920_Buffer_1& __sub_414920_Buffer_1 = *(t_sub_414920_Buffer_1*)(blob1 + 0x00443374 - BMF_BLOB_BASE);
 typedef char t_sub_414920_byte_4456F0;
-static t_sub_414920_byte_4456F0& __sub_414920_byte_4456F0 = *(t_sub_414920_byte_4456F0*)0x004456F0;
+static t_sub_414920_byte_4456F0& __sub_414920_byte_4456F0 = *(t_sub_414920_byte_4456F0*)(blob1 + 0x004456F0 - BMF_BLOB_BASE);
 typedef int t_sub_414920_dword_443364;
-static t_sub_414920_dword_443364& __sub_414920_dword_443364 = *(t_sub_414920_dword_443364*)0x00443364;
+static t_sub_414920_dword_443364& __sub_414920_dword_443364 = *(t_sub_414920_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n0x7F800000;
-static t_sub_414920_n0x7F800000& __sub_414920_n0x7F800000 = *(t_sub_414920_n0x7F800000*)0x004456E4;
+static t_sub_414920_n0x7F800000& __sub_414920_n0x7F800000 = *(t_sub_414920_n0x7F800000*)(blob1 + 0x004456E4 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n0x800000;
-static t_sub_414920_n0x800000& __sub_414920_n0x800000 = *(t_sub_414920_n0x800000*)0x004456E0;
+static t_sub_414920_n0x800000& __sub_414920_n0x800000 = *(t_sub_414920_n0x800000*)(blob1 + 0x004456E0 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n256;
-static t_sub_414920_n256& __sub_414920_n256 = *(t_sub_414920_n256*)0x0044336C;
+static t_sub_414920_n256& __sub_414920_n256 = *(t_sub_414920_n256*)(blob1 + 0x0044336C - BMF_BLOB_BASE);
 typedef int t_sub_414920_n256_1;
-static t_sub_414920_n256_1& __sub_414920_n256_1 = *(t_sub_414920_n256_1*)0x00445708;
+static t_sub_414920_n256_1& __sub_414920_n256_1 = *(t_sub_414920_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef int t_sub_414920_n8;
-static t_sub_414920_n8& __sub_414920_n8 = *(t_sub_414920_n8*)0x00443368;
+static t_sub_414920_n8& __sub_414920_n8 = *(t_sub_414920_n8*)(blob1 + 0x00443368 - BMF_BLOB_BASE);
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

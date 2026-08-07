@@ -39,7 +39,7 @@
 #ifndef __PE_DECL___n1024
 #define __PE_DECL___n1024
 typedef int t_n1024;
-static t_n1024& __n1024 = *(t_n1024*)0x00445B5C;
+static t_n1024& __n1024 = *(t_n1024*)(blob1 + 0x00445B5C - BMF_BLOB_BASE);
 #endif
 #define n1024 __n1024
 

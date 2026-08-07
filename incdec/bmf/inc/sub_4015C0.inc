@@ -2,25 +2,25 @@
 // Extracted from BMF.cpp:1163-1776 by extract.py per incdec.md.
 
 typedef char t_sub_4015C0_Destination_;
-static t_sub_4015C0_Destination_& __sub_4015C0_Destination_ = *(t_sub_4015C0_Destination_*)0x00442960;
+static t_sub_4015C0_Destination_& __sub_4015C0_Destination_ = *(t_sub_4015C0_Destination_*)(blob1 + 0x00442960 - BMF_BLOB_BASE);
 typedef const WCHAR t_sub_4015C0_SrcStr;
-static t_sub_4015C0_SrcStr& __sub_4015C0_SrcStr = *(t_sub_4015C0_SrcStr*)0x00439D64;
+static t_sub_4015C0_SrcStr& __sub_4015C0_SrcStr = *(t_sub_4015C0_SrcStr*)(blob1 + 0x00439D64 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_bmp_;
-static t_sub_4015C0_bmp_& __sub_4015C0_bmp_ = *(t_sub_4015C0_bmp_*)0x00441040;
+static t_sub_4015C0_bmp_& __sub_4015C0_bmp_ = *(t_sub_4015C0_bmp_*)(blob1 + 0x00441040 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_bmp__0;
-static t_sub_4015C0_bmp__0& __sub_4015C0_bmp__0 = *(t_sub_4015C0_bmp__0*)0x00441048;
+static t_sub_4015C0_bmp__0& __sub_4015C0_bmp__0 = *(t_sub_4015C0_bmp__0*)(blob1 + 0x00441048 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_bmp__1;
-static t_sub_4015C0_bmp__1& __sub_4015C0_bmp__1 = *(t_sub_4015C0_bmp__1*)0x00441044;
+static t_sub_4015C0_bmp__1& __sub_4015C0_bmp__1 = *(t_sub_4015C0_bmp__1*)(blob1 + 0x00441044 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_dwLowDateTime;
-static t_sub_4015C0_dwLowDateTime& __sub_4015C0_dwLowDateTime = *(t_sub_4015C0_dwLowDateTime*)0x00442BB0;
+static t_sub_4015C0_dwLowDateTime& __sub_4015C0_dwLowDateTime = *(t_sub_4015C0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_dword_441098;
-static t_sub_4015C0_dword_441098& __sub_4015C0_dword_441098 = *(t_sub_4015C0_dword_441098*)0x00441098;
+static t_sub_4015C0_dword_441098& __sub_4015C0_dword_441098 = *(t_sub_4015C0_dword_441098*)(blob1 + 0x00441098 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_dword_442BA0;
-static t_sub_4015C0_dword_442BA0& __sub_4015C0_dword_442BA0 = *(t_sub_4015C0_dword_442BA0*)0x00442BA0;
+static t_sub_4015C0_dword_442BA0& __sub_4015C0_dword_442BA0 = *(t_sub_4015C0_dword_442BA0*)(blob1 + 0x00442BA0 - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_dword_442BAC;
-static t_sub_4015C0_dword_442BAC& __sub_4015C0_dword_442BAC = *(t_sub_4015C0_dword_442BAC*)0x00442BAC;
+static t_sub_4015C0_dword_442BAC& __sub_4015C0_dword_442BAC = *(t_sub_4015C0_dword_442BAC*)(blob1 + 0x00442BAC - BMF_BLOB_BASE);
 typedef int t_sub_4015C0_n2_5;
-static t_sub_4015C0_n2_5& __sub_4015C0_n2_5 = *(t_sub_4015C0_n2_5*)0x00442BA4;
+static t_sub_4015C0_n2_5& __sub_4015C0_n2_5 = *(t_sub_4015C0_n2_5*)(blob1 + 0x00442BA4 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40
 #define sub_4022C0 __sub_4022C0

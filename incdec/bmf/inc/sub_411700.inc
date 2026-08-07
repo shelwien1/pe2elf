@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:15571-15653 by extract.py per incdec.md.
 
 typedef __int128 t_sub_411700_xmmword_4397A0;
-static t_sub_411700_xmmword_4397A0& __sub_411700_xmmword_4397A0 = *(t_sub_411700_xmmword_4397A0*)0x004397A0;
+static t_sub_411700_xmmword_4397A0& __sub_411700_xmmword_4397A0 = *(t_sub_411700_xmmword_4397A0*)(blob1 + 0x004397A0 - BMF_BLOB_BASE);
 
 #define sub_436E10 __sub_436E10
 

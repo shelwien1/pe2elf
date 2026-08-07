@@ -2,33 +2,33 @@
 // Extracted from BMF.cpp:25681-28011 by extract.py per incdec.md.
 
 typedef int t_sub_41CAB0_dword_439880[4];
-static t_sub_41CAB0_dword_439880& __sub_41CAB0_dword_439880 = *(t_sub_41CAB0_dword_439880*)0x00439880;
+static t_sub_41CAB0_dword_439880& __sub_41CAB0_dword_439880 = *(t_sub_41CAB0_dword_439880*)(blob1 + 0x00439880 - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_dword_439B7C;
-static t_sub_41CAB0_dword_439B7C& __sub_41CAB0_dword_439B7C = *(t_sub_41CAB0_dword_439B7C*)0x00439B7C;
+static t_sub_41CAB0_dword_439B7C& __sub_41CAB0_dword_439B7C = *(t_sub_41CAB0_dword_439B7C*)(blob1 + 0x00439B7C - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_dword_443388;
-static t_sub_41CAB0_dword_443388& __sub_41CAB0_dword_443388 = *(t_sub_41CAB0_dword_443388*)0x00443388;
+static t_sub_41CAB0_dword_443388& __sub_41CAB0_dword_443388 = *(t_sub_41CAB0_dword_443388*)(blob1 + 0x00443388 - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_dword_4458F0;
-static t_sub_41CAB0_dword_4458F0& __sub_41CAB0_dword_4458F0 = *(t_sub_41CAB0_dword_4458F0*)0x004458F0;
+static t_sub_41CAB0_dword_4458F0& __sub_41CAB0_dword_4458F0 = *(t_sub_41CAB0_dword_4458F0*)(blob1 + 0x004458F0 - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_dword_4458F4;
-static t_sub_41CAB0_dword_4458F4& __sub_41CAB0_dword_4458F4 = *(t_sub_41CAB0_dword_4458F4*)0x004458F4;
+static t_sub_41CAB0_dword_4458F4& __sub_41CAB0_dword_4458F4 = *(t_sub_41CAB0_dword_4458F4*)(blob1 + 0x004458F4 - BMF_BLOB_BASE);
 typedef int t_sub_41CAB0_n256_1;
-static t_sub_41CAB0_n256_1& __sub_41CAB0_n256_1 = *(t_sub_41CAB0_n256_1*)0x00445708;
+static t_sub_41CAB0_n256_1& __sub_41CAB0_n256_1 = *(t_sub_41CAB0_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_439B40;
-static t_sub_41CAB0_xmmword_439B40& __sub_41CAB0_xmmword_439B40 = *(t_sub_41CAB0_xmmword_439B40*)0x00439B40;
+static t_sub_41CAB0_xmmword_439B40& __sub_41CAB0_xmmword_439B40 = *(t_sub_41CAB0_xmmword_439B40*)(blob1 + 0x00439B40 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_441190;
-static t_sub_41CAB0_xmmword_441190& __sub_41CAB0_xmmword_441190 = *(t_sub_41CAB0_xmmword_441190*)0x00441190;
+static t_sub_41CAB0_xmmword_441190& __sub_41CAB0_xmmword_441190 = *(t_sub_41CAB0_xmmword_441190*)(blob1 + 0x00441190 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411A0;
-static t_sub_41CAB0_xmmword_4411A0& __sub_41CAB0_xmmword_4411A0 = *(t_sub_41CAB0_xmmword_4411A0*)0x004411A0;
+static t_sub_41CAB0_xmmword_4411A0& __sub_41CAB0_xmmword_4411A0 = *(t_sub_41CAB0_xmmword_4411A0*)(blob1 + 0x004411A0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411B0;
-static t_sub_41CAB0_xmmword_4411B0& __sub_41CAB0_xmmword_4411B0 = *(t_sub_41CAB0_xmmword_4411B0*)0x004411B0;
+static t_sub_41CAB0_xmmword_4411B0& __sub_41CAB0_xmmword_4411B0 = *(t_sub_41CAB0_xmmword_4411B0*)(blob1 + 0x004411B0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411C0;
-static t_sub_41CAB0_xmmword_4411C0& __sub_41CAB0_xmmword_4411C0 = *(t_sub_41CAB0_xmmword_4411C0*)0x004411C0;
+static t_sub_41CAB0_xmmword_4411C0& __sub_41CAB0_xmmword_4411C0 = *(t_sub_41CAB0_xmmword_4411C0*)(blob1 + 0x004411C0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411D0;
-static t_sub_41CAB0_xmmword_4411D0& __sub_41CAB0_xmmword_4411D0 = *(t_sub_41CAB0_xmmword_4411D0*)0x004411D0;
+static t_sub_41CAB0_xmmword_4411D0& __sub_41CAB0_xmmword_4411D0 = *(t_sub_41CAB0_xmmword_4411D0*)(blob1 + 0x004411D0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411E0;
-static t_sub_41CAB0_xmmword_4411E0& __sub_41CAB0_xmmword_4411E0 = *(t_sub_41CAB0_xmmword_4411E0*)0x004411E0;
+static t_sub_41CAB0_xmmword_4411E0& __sub_41CAB0_xmmword_4411E0 = *(t_sub_41CAB0_xmmword_4411E0*)(blob1 + 0x004411E0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_41CAB0_xmmword_4411F0;
-static t_sub_41CAB0_xmmword_4411F0& __sub_41CAB0_xmmword_4411F0 = *(t_sub_41CAB0_xmmword_4411F0*)0x004411F0;
+static t_sub_41CAB0_xmmword_4411F0& __sub_41CAB0_xmmword_4411F0 = *(t_sub_41CAB0_xmmword_4411F0*)(blob1 + 0x004411F0 - BMF_BLOB_BASE);
 
 static inline int __fwd_sub_41CAB0_sub_413430(void *a0, int a1) { return __sub_413430((unsigned __int16 *)a0, a1); }
 #define sub_413430 __fwd_sub_41CAB0_sub_413430

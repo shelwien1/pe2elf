@@ -2,19 +2,19 @@
 // Extracted from BMF.cpp:8964-9192 by extract.py per incdec.md.
 
 typedef int t_sub_40AF40_Buffer_0;
-static t_sub_40AF40_Buffer_0& __sub_40AF40_Buffer_0 = *(t_sub_40AF40_Buffer_0*)0x00443378;
+static t_sub_40AF40_Buffer_0& __sub_40AF40_Buffer_0 = *(t_sub_40AF40_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_Buffer_1;
-static t_sub_40AF40_Buffer_1& __sub_40AF40_Buffer_1 = *(t_sub_40AF40_Buffer_1*)0x00443374;
+static t_sub_40AF40_Buffer_1& __sub_40AF40_Buffer_1 = *(t_sub_40AF40_Buffer_1*)(blob1 + 0x00443374 - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_buf[0x10000];
-static t_sub_40AF40_buf& __sub_40AF40_buf = *(t_sub_40AF40_buf*)0x00443380;
+static t_sub_40AF40_buf& __sub_40AF40_buf = *(t_sub_40AF40_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_dword_443364;
-static t_sub_40AF40_dword_443364& __sub_40AF40_dword_443364 = *(t_sub_40AF40_dword_443364*)0x00443364;
+static t_sub_40AF40_dword_443364& __sub_40AF40_dword_443364 = *(t_sub_40AF40_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_n2;
-static t_sub_40AF40_n2& __sub_40AF40_n2 = *(t_sub_40AF40_n2*)0x00443360;
+static t_sub_40AF40_n2& __sub_40AF40_n2 = *(t_sub_40AF40_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_n256;
-static t_sub_40AF40_n256& __sub_40AF40_n256 = *(t_sub_40AF40_n256*)0x0044336C;
+static t_sub_40AF40_n256& __sub_40AF40_n256 = *(t_sub_40AF40_n256*)(blob1 + 0x0044336C - BMF_BLOB_BASE);
 typedef int t_sub_40AF40_n8;
-static t_sub_40AF40_n8& __sub_40AF40_n8 = *(t_sub_40AF40_n8*)0x00443368;
+static t_sub_40AF40_n8& __sub_40AF40_n8 = *(t_sub_40AF40_n8*)(blob1 + 0x00443368 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_40AF40)

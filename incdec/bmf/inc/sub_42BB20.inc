@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:36192-36220 by extract.py per incdec.md.
 
 typedef int t_sub_42BB20_dword_44592C;
-static t_sub_42BB20_dword_44592C& __sub_42BB20_dword_44592C = *(t_sub_42BB20_dword_44592C*)0x0044592C;
+static t_sub_42BB20_dword_44592C& __sub_42BB20_dword_44592C = *(t_sub_42BB20_dword_44592C*)(blob1 + 0x0044592C - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

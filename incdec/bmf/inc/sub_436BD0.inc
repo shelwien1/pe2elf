@@ -33,13 +33,13 @@
 // spells that as four separate arrays 4 bytes apart, indexed by the same
 // counter): descriptor byte, unused, size in KB, line size, and a flag that
 // doubles the line size.
-static int *const __bmf_cache_desc = (int *)0x00441DC0;
-static int *const __bmf_cache_size = (int *)0x00441DC8;
-static int *const __bmf_cache_line = (int *)0x00441DCC;
-static int *const __bmf_cache_flag = (int *)0x00441DD0;
-static int &__bmf_cache_bytes = *(int *)0x00446180;   // "Size"
-static int &__bmf_line_bytes  = *(int *)0x00446184;   // dword_446184
-static int &__bmf_sse_level   = *(int *)0x004425F4;   // "n2_2"
+static int *const __bmf_cache_desc = (int *)(blob1 + 0x00441DC0 - BMF_BLOB_BASE);
+static int *const __bmf_cache_size = (int *)(blob1 + 0x00441DC8 - BMF_BLOB_BASE);
+static int *const __bmf_cache_line = (int *)(blob1 + 0x00441DCC - BMF_BLOB_BASE);
+static int *const __bmf_cache_flag = (int *)(blob1 + 0x00441DD0 - BMF_BLOB_BASE);
+static int &__bmf_cache_bytes = *(int *)(blob1 + 0x00446180 - BMF_BLOB_BASE);   // "Size"
+static int &__bmf_line_bytes  = *(int *)(blob1 + 0x00446184 - BMF_BLOB_BASE);   // dword_446184
+static int &__bmf_sse_level   = *(int *)(blob1 + 0x004425F4 - BMF_BLOB_BASE);   // "n2_2"
 #endif
 
 PROBE_DECL(__sub_436BD0)

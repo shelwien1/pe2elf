@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:31098-31862 by extract.py per incdec.md.
 
 typedef int t_sub_4259F0_n256_1;
-static t_sub_4259F0_n256_1& __sub_4259F0_n256_1 = *(t_sub_4259F0_n256_1*)0x00445708;
+static t_sub_4259F0_n256_1& __sub_4259F0_n256_1 = *(t_sub_4259F0_n256_1*)(blob1 + 0x00445708 - BMF_BLOB_BASE);
 
 static inline int __fwd_sub_4259F0_sub_413430(void *a0, int a1) { return __sub_413430((unsigned __int16 *)a0, a1); }
 #define sub_413430 __fwd_sub_4259F0_sub_413430

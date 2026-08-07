@@ -2,37 +2,37 @@
 // Extracted from BMF.cpp:17935-18295 by extract.py per incdec.md.
 
 typedef int t_sub_413900_Buffer_0;
-static t_sub_413900_Buffer_0& __sub_413900_Buffer_0 = *(t_sub_413900_Buffer_0*)0x00443378;
+static t_sub_413900_Buffer_0& __sub_413900_Buffer_0 = *(t_sub_413900_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
 typedef char t_sub_413900_byte_4456F0;
-static t_sub_413900_byte_4456F0& __sub_413900_byte_4456F0 = *(t_sub_413900_byte_4456F0*)0x004456F0;
+static t_sub_413900_byte_4456F0& __sub_413900_byte_4456F0 = *(t_sub_413900_byte_4456F0*)(blob1 + 0x004456F0 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_413900_byte_445714[0x10000];
-static t_sub_413900_byte_445714& __sub_413900_byte_445714 = *(t_sub_413900_byte_445714*)0x00445714;
+static t_sub_413900_byte_445714& __sub_413900_byte_445714 = *(t_sub_413900_byte_445714*)(blob1 + 0x00445714 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_413900_byte_445715[0x10000];
-static t_sub_413900_byte_445715& __sub_413900_byte_445715 = *(t_sub_413900_byte_445715*)0x00445715;
+static t_sub_413900_byte_445715& __sub_413900_byte_445715 = *(t_sub_413900_byte_445715*)(blob1 + 0x00445715 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_413900_byte_445716[0x10000];
-static t_sub_413900_byte_445716& __sub_413900_byte_445716 = *(t_sub_413900_byte_445716*)0x00445716;
+static t_sub_413900_byte_445716& __sub_413900_byte_445716 = *(t_sub_413900_byte_445716*)(blob1 + 0x00445716 - BMF_BLOB_BASE);
 typedef int t_sub_413900_dword_445660[32];
-static t_sub_413900_dword_445660& __sub_413900_dword_445660 = *(t_sub_413900_dword_445660*)0x00445660;
+static t_sub_413900_dword_445660& __sub_413900_dword_445660 = *(t_sub_413900_dword_445660*)(blob1 + 0x00445660 - BMF_BLOB_BASE);
 typedef int t_sub_413900_dword_4456E8;
-static t_sub_413900_dword_4456E8& __sub_413900_dword_4456E8 = *(t_sub_413900_dword_4456E8*)0x004456E8;
+static t_sub_413900_dword_4456E8& __sub_413900_dword_4456E8 = *(t_sub_413900_dword_4456E8*)(blob1 + 0x004456E8 - BMF_BLOB_BASE);
 typedef int t_sub_413900_dword_4456EC;
-static t_sub_413900_dword_4456EC& __sub_413900_dword_4456EC = *(t_sub_413900_dword_4456EC*)0x004456EC;
+static t_sub_413900_dword_4456EC& __sub_413900_dword_4456EC = *(t_sub_413900_dword_4456EC*)(blob1 + 0x004456EC - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x2000;
-static t_sub_413900_n0x2000& __sub_413900_n0x2000 = *(t_sub_413900_n0x2000*)0x004456FC;
+static t_sub_413900_n0x2000& __sub_413900_n0x2000 = *(t_sub_413900_n0x2000*)(blob1 + 0x004456FC - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x2000_0;
-static t_sub_413900_n0x2000_0& __sub_413900_n0x2000_0 = *(t_sub_413900_n0x2000_0*)0x004456F8;
+static t_sub_413900_n0x2000_0& __sub_413900_n0x2000_0 = *(t_sub_413900_n0x2000_0*)(blob1 + 0x004456F8 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x2000_1;
-static t_sub_413900_n0x2000_1& __sub_413900_n0x2000_1 = *(t_sub_413900_n0x2000_1*)0x004456F4;
+static t_sub_413900_n0x2000_1& __sub_413900_n0x2000_1 = *(t_sub_413900_n0x2000_1*)(blob1 + 0x004456F4 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x7F800000;
-static t_sub_413900_n0x7F800000& __sub_413900_n0x7F800000 = *(t_sub_413900_n0x7F800000*)0x004456E4;
+static t_sub_413900_n0x7F800000& __sub_413900_n0x7F800000 = *(t_sub_413900_n0x7F800000*)(blob1 + 0x004456E4 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x800000;
-static t_sub_413900_n0x800000& __sub_413900_n0x800000 = *(t_sub_413900_n0x800000*)0x004456E0;
+static t_sub_413900_n0x800000& __sub_413900_n0x800000 = *(t_sub_413900_n0x800000*)(blob1 + 0x004456E0 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n0x88;
-static t_sub_413900_n0x88& __sub_413900_n0x88 = *(t_sub_413900_n0x88*)0x00445704;
+static t_sub_413900_n0x88& __sub_413900_n0x88 = *(t_sub_413900_n0x88*)(blob1 + 0x00445704 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n8_0;
-static t_sub_413900_n8_0& __sub_413900_n8_0 = *(t_sub_413900_n8_0*)0x00445710;
+static t_sub_413900_n8_0& __sub_413900_n8_0 = *(t_sub_413900_n8_0*)(blob1 + 0x00445710 - BMF_BLOB_BASE);
 typedef int t_sub_413900_n8_1;
-static t_sub_413900_n8_1& __sub_413900_n8_1 = *(t_sub_413900_n8_1*)0x0044570C;
+static t_sub_413900_n8_1& __sub_413900_n8_1 = *(t_sub_413900_n8_1*)(blob1 + 0x0044570C - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_413900)

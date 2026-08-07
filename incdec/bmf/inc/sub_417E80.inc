@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:22076-22633 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_417E80_byte_439860[32];
-static t_sub_417E80_byte_439860& __sub_417E80_byte_439860 = *(t_sub_417E80_byte_439860*)0x00439860;
+static t_sub_417E80_byte_439860& __sub_417E80_byte_439860 = *(t_sub_417E80_byte_439860*)(blob1 + 0x00439860 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

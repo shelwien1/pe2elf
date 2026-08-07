@@ -2,11 +2,11 @@
 // Extracted from BMF.cpp:36522-36630 by extract.py per incdec.md.
 
 typedef int t_sub_42C0B0_dword_445924;
-static t_sub_42C0B0_dword_445924& __sub_42C0B0_dword_445924 = *(t_sub_42C0B0_dword_445924*)0x00445924;
+static t_sub_42C0B0_dword_445924& __sub_42C0B0_dword_445924 = *(t_sub_42C0B0_dword_445924*)(blob1 + 0x00445924 - BMF_BLOB_BASE);
 typedef int t_sub_42C0B0_dword_445928;
-static t_sub_42C0B0_dword_445928& __sub_42C0B0_dword_445928 = *(t_sub_42C0B0_dword_445928*)0x00445928;
+static t_sub_42C0B0_dword_445928& __sub_42C0B0_dword_445928 = *(t_sub_42C0B0_dword_445928*)(blob1 + 0x00445928 - BMF_BLOB_BASE);
 typedef int t_sub_42C0B0_dword_44592C;
-static t_sub_42C0B0_dword_44592C& __sub_42C0B0_dword_44592C = *(t_sub_42C0B0_dword_44592C*)0x0044592C;
+static t_sub_42C0B0_dword_44592C& __sub_42C0B0_dword_44592C = *(t_sub_42C0B0_dword_44592C*)(blob1 + 0x0044592C - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

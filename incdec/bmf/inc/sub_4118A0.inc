@@ -2,11 +2,11 @@
 // Extracted from BMF.cpp:15656-15985 by extract.py per incdec.md.
 
 typedef int t_sub_4118A0_n2;
-static t_sub_4118A0_n2& __sub_4118A0_n2 = *(t_sub_4118A0_n2*)0x00443360;
+static t_sub_4118A0_n2& __sub_4118A0_n2 = *(t_sub_4118A0_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_4118A0_n256_0[0x10000];
-static t_sub_4118A0_n256_0& __sub_4118A0_n256_0 = *(t_sub_4118A0_n256_0*)0x00443398;
+static t_sub_4118A0_n256_0& __sub_4118A0_n256_0 = *(t_sub_4118A0_n256_0*)(blob1 + 0x00443398 - BMF_BLOB_BASE);
 typedef __int128 t_sub_4118A0_xmmword_4397B0;
-static t_sub_4118A0_xmmword_4397B0& __sub_4118A0_xmmword_4397B0 = *(t_sub_4118A0_xmmword_4397B0*)0x004397B0;
+static t_sub_4118A0_xmmword_4397B0& __sub_4118A0_xmmword_4397B0 = *(t_sub_4118A0_xmmword_4397B0*)(blob1 + 0x004397B0 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_4118A0)

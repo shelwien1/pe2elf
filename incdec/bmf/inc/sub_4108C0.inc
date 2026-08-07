@@ -2,15 +2,15 @@
 // Extracted from BMF.cpp:14623-14784 by extract.py per incdec.md.
 
 typedef int t_sub_4108C0_buf[0x10000];
-static t_sub_4108C0_buf& __sub_4108C0_buf = *(t_sub_4108C0_buf*)0x00443380;
+static t_sub_4108C0_buf& __sub_4108C0_buf = *(t_sub_4108C0_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef __int128 t_sub_4108C0_xmmword_4396C0;
-static t_sub_4108C0_xmmword_4396C0& __sub_4108C0_xmmword_4396C0 = *(t_sub_4108C0_xmmword_4396C0*)0x004396C0;
+static t_sub_4108C0_xmmword_4396C0& __sub_4108C0_xmmword_4396C0 = *(t_sub_4108C0_xmmword_4396C0*)(blob1 + 0x004396C0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_4108C0_xmmword_4396D0;
-static t_sub_4108C0_xmmword_4396D0& __sub_4108C0_xmmword_4396D0 = *(t_sub_4108C0_xmmword_4396D0*)0x004396D0;
+static t_sub_4108C0_xmmword_4396D0& __sub_4108C0_xmmword_4396D0 = *(t_sub_4108C0_xmmword_4396D0*)(blob1 + 0x004396D0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_4108C0_xmmword_4396E0;
-static t_sub_4108C0_xmmword_4396E0& __sub_4108C0_xmmword_4396E0 = *(t_sub_4108C0_xmmword_4396E0*)0x004396E0;
+static t_sub_4108C0_xmmword_4396E0& __sub_4108C0_xmmword_4396E0 = *(t_sub_4108C0_xmmword_4396E0*)(blob1 + 0x004396E0 - BMF_BLOB_BASE);
 typedef __int128 t_sub_4108C0_xmmword_4396F0;
-static t_sub_4108C0_xmmword_4396F0& __sub_4108C0_xmmword_4396F0 = *(t_sub_4108C0_xmmword_4396F0*)0x004396F0;
+static t_sub_4108C0_xmmword_4396F0& __sub_4108C0_xmmword_4396F0 = *(t_sub_4108C0_xmmword_4396F0*)(blob1 + 0x004396F0 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_4108C0)

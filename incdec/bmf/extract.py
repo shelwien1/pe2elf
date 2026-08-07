@@ -68,8 +68,9 @@ CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof',
         '_BYTE', '_WORD', '_DWORD', '_QWORD', '_OWORD', '_UNKNOWN', '_BOOL1',
         '_BOOL2', '_BOOL4', 'size_t', 'FILE', 'Stream',
         # Helpers dummy32_head.cpp supplies, which a fixup can substitute into
-        # a body (bmf_path_sep replaces main's backslash-only strrchr).
-        'bmf_path_sep'}
+        # a body (bmf_path_sep replaces main's backslash-only strrchr,
+        # BMF_BLOB rebases an address Hex-Rays baked into an expression).
+        'bmf_path_sep', 'BMF_BLOB'}
 
 # Callees Hex-Rays prints as __usercall/__userpurge whose "register arguments"
 # are not arguments at all.
@@ -592,6 +593,54 @@ def fix_hex_escapes(line):
         if not any(a <= m.start() < b for a, b in lit):
             continue
         out.append(line[pos:m.end()]); out.append('""'); pos = m.end()
+    out.append(line[pos:])
+    return ''.join(out)
+
+
+# The blob's VA range, from mkdata.py's three sections.  Kept here rather than
+# imported because extract.py has to run without the standalone build present.
+BLOB_LO, BLOB_HI = 0x00438000, 0x00448164
+
+
+def rebase_data_literals(line):
+    """Rewrite an absolute data address baked into an *expression*.
+
+    §6.1 has every global emitted as a reference into `blob1`, but that only
+    covers the ones Hex-Rays gave a name.  Where the index came from a runtime
+    variable it did not:
+
+        *(_QWORD *)(n64 + 4469652) = ...          ; 0x00443394
+        v51 = (char *)(4 * v49 + 4468384);        ; 0x00442EA0
+
+    — the address is a decimal literal in the arithmetic.  Those are real
+    addresses, not constants: every one is dereferenced or stored as a pointer,
+    and every value lands on a global the same file already declares.  Left
+    alone they pin the data to 0x00438000; rewritten they follow `blob1`
+    wherever it goes.  BMF_BLOB expands to the same number in the hybrid build,
+    where blob1 *is* 0x00438000.
+
+    Not covered here, because the scale factor makes it a type question rather
+    than a lexical one: an address hidden in a *scaled index*, `v4[559820]` on
+    a `_QWORD *`.  There are eight of those and fixups.txt has them.
+    """
+    if 'BMF_BLOB' in line:
+        return line
+    code = line.split('//')[0]
+    lit = [(m.start(), m.end()) for m in
+           re.finditer(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'", code)]
+    out, pos = [], 0
+    for m in re.finditer(r'\b(0[xX][0-9A-Fa-f]+|\d+)\b', code):
+        if any(a <= m.start() < b for a, b in lit):
+            continue
+        t = m.group(1)
+        v = int(t, 16) if t[:2].lower() == '0x' else int(t)
+        if not BLOB_LO <= v < BLOB_HI:
+            continue
+        out.append(code[pos:m.start()])
+        out.append('BMF_BLOB(0x%08X)' % v)
+        pos = m.end()
+    if not out:
+        return line
     out.append(line[pos:])
     return ''.join(out)
 
@@ -1246,7 +1295,8 @@ def emit(args, cache=None):
         # and `xmmword_445760` is a scalar in one body and an array in another.
         t = f"t_{args.name}_{g}"
         out.append(f"typedef {base} {t}{ext};")
-        out.append(f"static {t}& __{args.name}_{g} = *({t}*)0x{addr:08X};")
+        out.append(f"static {t}& __{args.name}_{g} = "
+                   f"*({t}*)(blob1 + 0x{addr:08X} - BMF_BLOB_BASE);")
         # Renamed in the body below rather than with a #define: the
         # preprocessor would also rewrite `FileTime.dwLowDateTime`.
     if refd_globals:
@@ -1362,7 +1412,8 @@ def emit(args, cache=None):
         out.append(f"#ifndef __PE_DECL___{n}")
         out.append(f"#define __PE_DECL___{n}")
         out.append(f"typedef __attribute__((stdcall)) {ret} (*pfn_{n})({argl});")
-        out.append(f"static pfn_{n}& {n} = *(pfn_{n}*)0x{win[n]:08X};   // IAT slot")
+        out.append(f"static pfn_{n}& {n} = "
+                   f"*(pfn_{n}*)(blob1 + 0x{win[n]:08X} - BMF_BLOB_BASE);   // IAT slot")
         out.append("#endif")
     for n in sorted(crt):
         asm_name, addr = crt[n]
@@ -1550,6 +1601,7 @@ def emit(args, cache=None):
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
     joined = [fix_hex_escapes(l) for l in joined]
+    joined = [rebase_data_literals(l) for l in joined]
     joined = launder_pointer_counters(joined)
     joined = [mask_shift_counts(l) for l in joined]
     if single_precision(args.name):

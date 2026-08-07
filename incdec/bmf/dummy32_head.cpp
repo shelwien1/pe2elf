@@ -46,6 +46,40 @@ typedef int            BOOL;
 typedef void*         HANDLE;
 typedef unsigned int  UINT;
 
+// ---------------------------------------------------------------------------
+// The data segment, as one object.
+//
+// Every global a moved body touches is a reference into `blob1` at its
+// original offset — `*(int*)(blob1 + 0x00441040 - BMF_BLOB_BASE)` — rather
+// than a bare `*(int *)0x00441040`.  Same address, same layout, but the data
+// has a definition instead of being 845 scattered constants, and the two
+// builds can put it in different places:
+//
+//   hybrid      blob1 *is* the loaded PE's data.  The moved bodies share their
+//               globals with the code still running in the image, so there is
+//               nothing to copy and the pointer is the load address.
+//   standalone  blob1 is an array, defined in standalone/blob.inc, which
+//               build.sh includes ahead of this file.  The linker puts it
+//               wherever it likes; the absolute pointers *inside* the data are
+//               rebased once at startup.
+//
+// incdec.md §6.1 is why the offsets stay: naming the globals is a much larger
+// job than moving them, because the same address is an `int` to one function
+// and a `char[]` to the next.
+// ---------------------------------------------------------------------------
+#ifndef BMF_BLOB_BASE
+#define BMF_BLOB_BASE 0x00438000u
+#endif
+#ifndef BMF_STANDALONE
+static unsigned char *const blob1 = (unsigned char *)BMF_BLOB_BASE;
+#endif
+
+// The same rebasing for an address Hex-Rays baked into an *expression* rather
+// than into a named global — `*(_QWORD *)(n64 + 4469652)`, where 4469652 is
+// 0x00443394.  extract.py rewrites those to BMF_BLOB(0x00443394); in the
+// hybrid build it is the identity, since blob1 is 0x00438000 there.
+#define BMF_BLOB(va) ((int)(blob1 + ((va) - BMF_BLOB_BASE)))
+
 // Win32 manifest constants the bodies spell out; windows.h is not available
 // here (see above) and these are the only ones referenced.
 #define MEM_COMMIT      0x00001000

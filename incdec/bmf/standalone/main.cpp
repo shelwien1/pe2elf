@@ -13,11 +13,18 @@
 void __sub_402E30() { __exit_402E40(7); }
 
 int main(int argc, char **argv) {
+  // The data holds absolute pointers into itself — the message table at
+  // 0x00441068, the "disabled"/"enabled" pair at 0x0044104C, the filter tables
+  // at 0x004410C0 — written for a load address of 0x00400000.  blob1 is
+  // wherever the linker put it, so rebase them before anything reads one.
+  // Nothing above this line may touch the blob.
+  bmf_blob_relocate();
+
   // MSVC's CRT startup publishes argv at 0x00445954 — IDA even recovered the
   // name — and sub_429DB0 reads argv[0] through it to build the .ini file name
   // next to the executable.  Nothing else in the moved set touches a CRT
   // global, so this one assignment is the whole of the startup BMF lost.
-  *(char ***)0x00445954 = argv;
+  *(char ***)(blob1 + 0x00445954 - BMF_BLOB_BASE) = argv;
 
   // BMF's static initialisers.  MSVC puts the C++ constructor pointers in
   // .data between __xc_a and __xc_z, and _cinit walks them before main; here

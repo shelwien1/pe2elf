@@ -2,9 +2,9 @@
 // Extracted from BMF.cpp:2067-2248 by extract.py per incdec.md.
 
 typedef char t_sub_4028B0_Destination_;
-static t_sub_4028B0_Destination_& __sub_4028B0_Destination_ = *(t_sub_4028B0_Destination_*)0x00442960;
+static t_sub_4028B0_Destination_& __sub_4028B0_Destination_ = *(t_sub_4028B0_Destination_*)(blob1 + 0x00442960 - BMF_BLOB_BASE);
 typedef int t_sub_4028B0_dwLowDateTime;
-static t_sub_4028B0_dwLowDateTime& __sub_4028B0_dwLowDateTime = *(t_sub_4028B0_dwLowDateTime*)0x00442BB0;
+static t_sub_4028B0_dwLowDateTime& __sub_4028B0_dwLowDateTime = *(t_sub_4028B0_dwLowDateTime*)(blob1 + 0x00442BB0 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40
 static inline FILE1 ** __fwd_sub_4028B0_sub_402DF0(void *a0, char a1) { return __sub_402DF0((FILE1 **)a0, a1); }

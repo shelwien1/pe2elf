@@ -40,7 +40,7 @@
 
 #ifndef __PE_DECL___bmf_half_half
 #define __PE_DECL___bmf_half_half
-static __m128d &__bmf_half_half = *(__m128d *)0x0043B480;   // {0.5, 0.5}
+static __m128d &__bmf_half_half = *(__m128d *)(blob1 + 0x0043B480 - BMF_BLOB_BASE);   // {0.5, 0.5}
 #endif
 
 PROBE_DECL(__sub_436E10)

@@ -520,9 +520,19 @@ emit in the `.inc`, with the alias **scoped to the function**:
 ```cpp
 typedef int t_sub_412B10_dword_441A20[16];
 static t_sub_412B10_dword_441A20& __sub_412B10_dword_441A20 =
-    *(t_sub_412B10_dword_441A20*)0x00441A20;
+    *(t_sub_412B10_dword_441A20*)(blob1 + 0x00441A20 - BMF_BLOB_BASE);
 #define dword_441A20 __sub_412B10_dword_441A20
 ```
+
+**Through `blob1`, not at a bare address.** `*(T *)0x00441A20` would work and is
+what the decompilation says, but it leaves the data with no definition — 845
+constants that only mean something if the process happens to have that address
+mapped. One object holding the donor's data segment, with every global a
+reference into it at its original offset, says the same thing and can be
+*placed*: the injected build points `blob1` at the loaded image, and a
+standalone build makes it an array (§11). The offsets are still the
+decompiler's, which is the point — naming the globals is a separate and much
+larger job, for the reasons below.
 
 All `.inc` files are textually included into one translation unit
 (`dummy32.cpp`), so two functions referencing the same PE global would
@@ -1769,17 +1779,63 @@ The end state is a binary that contains no code from the original image and
 does not load it. Getting there from a complete `.inc` set is a smaller job
 than it looks, and it is almost entirely *not* more decompilation.
 
-**Keep the data, drop the code.** §6.1 has every moved body reaching its
-globals by absolute address — `*(int *)0x00441040` — because that is what the
-decompilation says and because the same address is an `int` to one function and
-a `char[]` to the next. Rewriting 845 of those into named objects would be a
-far bigger change than replacing the runtime around them. So carve the donor's
-initialised data out of the image and have the linker put it back at the
-original virtual addresses (`--section-start`), and the bodies do not change at
-all. For BMF that is 64 KB — `.rdata`, `.data`, `.trace` — as one contiguous
-writable section; `.text` is not included, and the absence is the point. A
-surviving call into the donor's code range then faults immediately instead of
-quietly working.
+**Keep the data, drop the code.** Carve the donor's data segment out of the
+image and make it one object — `blob1` — with every global a reference into it
+at its original offset (§6.1). For BMF that is 64 KB: `.rdata`, `.data`,
+`.trace`, gaps zero-filled. `.text` is not included, and the absence is the
+point: a surviving call into the donor's code range faults immediately instead
+of quietly working.
+
+Two ways to make the offsets resolve, and it is worth being deliberate about
+which one you are relying on:
+
+1. **Place `blob1` at the original base** (`--section-start`, `-no-pie`). Costs
+   nothing and always works, because every address in the donor — whether you
+   found it or not — still means what it meant.
+2. **Let the linker put it anywhere** and fix up what points into it. This is
+   the one worth having: the program stops depending on a magic load address
+   and becomes an ordinary PIE. It needs two things that (1) hides.
+
+**Fixing up the data.** The data segment holds absolute pointers into itself —
+message tables, string-pointer arrays. On a non-relocatable EXE there is no
+`.reloc` directory to read them from, and scanning for words whose *value*
+lands in range does not work: for BMF that finds 107 candidates where 39 are
+real. The disassembler's own `dd offset` annotations are the only record of
+which words are addresses. Generate a table of their offsets and rebase them
+once at startup. Pointers into `.text` — switch jump tables — are the residue:
+they cannot be rebased and do not need to be, because the decompiler turned
+those switches back into C and nothing reads them.
+
+**Fixing up the code, which is the part that surprises.** Emitting the *named*
+globals through `blob1` is not sufficient, because the decompiler only names an
+address when the index is static. Where it was not, the address is a literal in
+the arithmetic:
+
+```c
+*(_QWORD *)(n64 + 4469652) = ...;      // 0x00443394
+v51 = (char *)(4 * v49 + 4468384);     // 0x00442EA0
+```
+
+Those are addresses, not constants, and they are invisible to a scan for
+`0x00...`-looking text because Hex-Rays printed them in decimal. Rewriting
+every integer literal that falls inside the data segment's VA range is a
+systemic pass, not a fixup — for BMF, 34 sites across six functions, each one
+dereferenced or stored as a pointer. Print what the pass rewrote and read the
+list: a genuine constant of that magnitude would be a silent corruption, and
+nothing else in the build would catch it.
+
+Worse, an address can hide in a *scaled index*: `v4[559820]` on a `_QWORD *`
+is 0x00445660, and no lexical rule finds it, because the number in the source
+is the address divided by eight. There were eight of those. They need fixups,
+and finding them needs a second scan — for large constant subscripts whose
+product with a plausible element size lands in range.
+
+**Why this is safe to chase.** A site you miss keeps its original value, which
+is unmapped once the data moves, so the first access is a fault at a named
+function rather than a wrong answer. That makes the gate a real test of
+coverage for the paths it exercises, and it makes the failure mode of being
+wrong here loud instead of quiet. It is the one place in this whole exercise
+where that is true; do not generalise it.
 
 **The `__PE_DECL_` guards are the seam.** Every reference a generated `.inc`
 makes to something outside the moved set is wrapped in `#ifndef

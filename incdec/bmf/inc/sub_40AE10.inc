@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:8916-8961 by extract.py per incdec.md.
 
 typedef int t_sub_40AE10_n2;
-static t_sub_40AE10_n2& __sub_40AE10_n2 = *(t_sub_40AE10_n2*)0x00443360;
+static t_sub_40AE10_n2& __sub_40AE10_n2 = *(t_sub_40AE10_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_40AE10)

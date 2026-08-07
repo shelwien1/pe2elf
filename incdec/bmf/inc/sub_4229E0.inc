@@ -2,27 +2,27 @@
 // Extracted from BMF.cpp:28782-28939 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_4229E0_byte_439890[16];
-static t_sub_4229E0_byte_439890& __sub_4229E0_byte_439890 = *(t_sub_4229E0_byte_439890*)0x00439890;
+static t_sub_4229E0_byte_439890& __sub_4229E0_byte_439890 = *(t_sub_4229E0_byte_439890*)(blob1 + 0x00439890 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4229E0_byte_4398A0[32];
-static t_sub_4229E0_byte_4398A0& __sub_4229E0_byte_4398A0 = *(t_sub_4229E0_byte_4398A0*)0x004398A0;
+static t_sub_4229E0_byte_4398A0& __sub_4229E0_byte_4398A0 = *(t_sub_4229E0_byte_4398A0*)(blob1 + 0x004398A0 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4229E0_byte_44339D[0x10000];
-static t_sub_4229E0_byte_44339D& __sub_4229E0_byte_44339D = *(t_sub_4229E0_byte_44339D*)0x0044339D;
+static t_sub_4229E0_byte_44339D& __sub_4229E0_byte_44339D = *(t_sub_4229E0_byte_44339D*)(blob1 + 0x0044339D - BMF_BLOB_BASE);
 typedef unsigned char t_sub_4229E0_byte_44339E[0x10000];
-static t_sub_4229E0_byte_44339E& __sub_4229E0_byte_44339E = *(t_sub_4229E0_byte_44339E*)0x0044339E;
+static t_sub_4229E0_byte_44339E& __sub_4229E0_byte_44339E = *(t_sub_4229E0_byte_44339E*)(blob1 + 0x0044339E - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458E0;
-static t_sub_4229E0_dword_4458E0& __sub_4229E0_dword_4458E0 = *(t_sub_4229E0_dword_4458E0*)0x004458E0;
+static t_sub_4229E0_dword_4458E0& __sub_4229E0_dword_4458E0 = *(t_sub_4229E0_dword_4458E0*)(blob1 + 0x004458E0 - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458E4;
-static t_sub_4229E0_dword_4458E4& __sub_4229E0_dword_4458E4 = *(t_sub_4229E0_dword_4458E4*)0x004458E4;
+static t_sub_4229E0_dword_4458E4& __sub_4229E0_dword_4458E4 = *(t_sub_4229E0_dword_4458E4*)(blob1 + 0x004458E4 - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458E8;
-static t_sub_4229E0_dword_4458E8& __sub_4229E0_dword_4458E8 = *(t_sub_4229E0_dword_4458E8*)0x004458E8;
+static t_sub_4229E0_dword_4458E8& __sub_4229E0_dword_4458E8 = *(t_sub_4229E0_dword_4458E8*)(blob1 + 0x004458E8 - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458EC;
-static t_sub_4229E0_dword_4458EC& __sub_4229E0_dword_4458EC = *(t_sub_4229E0_dword_4458EC*)0x004458EC;
+static t_sub_4229E0_dword_4458EC& __sub_4229E0_dword_4458EC = *(t_sub_4229E0_dword_4458EC*)(blob1 + 0x004458EC - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458F0;
-static t_sub_4229E0_dword_4458F0& __sub_4229E0_dword_4458F0 = *(t_sub_4229E0_dword_4458F0*)0x004458F0;
+static t_sub_4229E0_dword_4458F0& __sub_4229E0_dword_4458F0 = *(t_sub_4229E0_dword_4458F0*)(blob1 + 0x004458F0 - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_dword_4458F4;
-static t_sub_4229E0_dword_4458F4& __sub_4229E0_dword_4458F4 = *(t_sub_4229E0_dword_4458F4*)0x004458F4;
+static t_sub_4229E0_dword_4458F4& __sub_4229E0_dword_4458F4 = *(t_sub_4229E0_dword_4458F4*)(blob1 + 0x004458F4 - BMF_BLOB_BASE);
 typedef int t_sub_4229E0_n256_0;
-static t_sub_4229E0_n256_0& __sub_4229E0_n256_0 = *(t_sub_4229E0_n256_0*)0x00443398;
+static t_sub_4229E0_n256_0& __sub_4229E0_n256_0 = *(t_sub_4229E0_n256_0*)(blob1 + 0x00443398 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

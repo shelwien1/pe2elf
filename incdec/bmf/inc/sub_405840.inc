@@ -2,23 +2,23 @@
 // Extracted from BMF.cpp:4723-4983 by extract.py per incdec.md.
 
 typedef int t_sub_405840_Buffer_0;
-static t_sub_405840_Buffer_0& __sub_405840_Buffer_0 = *(t_sub_405840_Buffer_0*)0x00443378;
+static t_sub_405840_Buffer_0& __sub_405840_Buffer_0 = *(t_sub_405840_Buffer_0*)(blob1 + 0x00443378 - BMF_BLOB_BASE);
 typedef int t_sub_405840_buf;
-static t_sub_405840_buf& __sub_405840_buf = *(t_sub_405840_buf*)0x00443380;
+static t_sub_405840_buf& __sub_405840_buf = *(t_sub_405840_buf*)(blob1 + 0x00443380 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_405840_byte_44339C[0x10000];
-static t_sub_405840_byte_44339C& __sub_405840_byte_44339C = *(t_sub_405840_byte_44339C*)0x0044339C;
+static t_sub_405840_byte_44339C& __sub_405840_byte_44339C = *(t_sub_405840_byte_44339C*)(blob1 + 0x0044339C - BMF_BLOB_BASE);
 typedef unsigned char t_sub_405840_byte_44339E[0x10000];
-static t_sub_405840_byte_44339E& __sub_405840_byte_44339E = *(t_sub_405840_byte_44339E*)0x0044339E;
+static t_sub_405840_byte_44339E& __sub_405840_byte_44339E = *(t_sub_405840_byte_44339E*)(blob1 + 0x0044339E - BMF_BLOB_BASE);
 typedef int t_sub_405840_dword_443364;
-static t_sub_405840_dword_443364& __sub_405840_dword_443364 = *(t_sub_405840_dword_443364*)0x00443364;
+static t_sub_405840_dword_443364& __sub_405840_dword_443364 = *(t_sub_405840_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_405840_dword_443384;
-static t_sub_405840_dword_443384& __sub_405840_dword_443384 = *(t_sub_405840_dword_443384*)0x00443384;
+static t_sub_405840_dword_443384& __sub_405840_dword_443384 = *(t_sub_405840_dword_443384*)(blob1 + 0x00443384 - BMF_BLOB_BASE);
 typedef int t_sub_405840_n2;
-static t_sub_405840_n2& __sub_405840_n2 = *(t_sub_405840_n2*)0x00443360;
+static t_sub_405840_n2& __sub_405840_n2 = *(t_sub_405840_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_405840_n256_0[0x10000];
-static t_sub_405840_n256_0& __sub_405840_n256_0 = *(t_sub_405840_n256_0*)0x00443398;
+static t_sub_405840_n256_0& __sub_405840_n256_0 = *(t_sub_405840_n256_0*)(blob1 + 0x00443398 - BMF_BLOB_BASE);
 typedef int t_sub_405840_n4_5;
-static t_sub_405840_n4_5& __sub_405840_n4_5 = *(t_sub_405840_n4_5*)0x00443394;
+static t_sub_405840_n4_5& __sub_405840_n4_5 = *(t_sub_405840_n4_5*)(blob1 + 0x00443394 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

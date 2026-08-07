@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:30309-30482 by extract.py per incdec.md.
 
 typedef int t_sub_4248D0_dword_439BD8[8];
-static t_sub_4248D0_dword_439BD8& __sub_4248D0_dword_439BD8 = *(t_sub_4248D0_dword_439BD8*)0x00439BD8;
+static t_sub_4248D0_dword_439BD8& __sub_4248D0_dword_439BD8 = *(t_sub_4248D0_dword_439BD8*)(blob1 + 0x00439BD8 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_4248D0)

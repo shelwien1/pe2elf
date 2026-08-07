@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:37231-37316 by extract.py per incdec.md.
 
 typedef int t_sub_4346D0_n1024;
-static t_sub_4346D0_n1024& __sub_4346D0_n1024 = *(t_sub_4346D0_n1024*)0x00445B5C;
+static t_sub_4346D0_n1024& __sub_4346D0_n1024 = *(t_sub_4346D0_n1024*)(blob1 + 0x00445B5C - BMF_BLOB_BASE);
 
 #define sub_434A30 __sub_434A30
 

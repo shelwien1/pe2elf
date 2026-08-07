@@ -2,7 +2,7 @@
 // Extracted from BMF.cpp:37179-37187 by extract.py per incdec.md.
 
 typedef int t_sub_42CBB0_psub_402E30;
-static t_sub_42CBB0_psub_402E30& __sub_42CBB0_psub_402E30 = *(t_sub_42CBB0_psub_402E30*)0x00445930;
+static t_sub_42CBB0_psub_402E30& __sub_42CBB0_psub_402E30 = *(t_sub_42CBB0_psub_402E30*)(blob1 + 0x00445930 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_402E30
 #define __PE_DECL___sub_402E30

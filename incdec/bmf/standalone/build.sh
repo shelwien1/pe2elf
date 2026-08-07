@@ -8,24 +8,27 @@
 # supply:
 #
 #   crt.cpp       the MSVC CRT and the ten kernel32 imports, on POSIX
-#   bmfdata.S     BMF's .rdata/.data/.trace, at their original addresses
+#   blob.inc      BMF's .rdata/.data/.trace, as one array
 #   main.cpp      a real main(), plus sub_402E30
 #
-# The data image is the part that cannot be dropped.  The bodies reach their
-# globals by absolute address — `*(int *)0x00441040` — because that is what the
-# decompilation says (see mkdata.py); so the linker is told to put those 64 KB
-# exactly where BMF.exe had them and the bodies do not have to change at all.
+# The data is the part that cannot be dropped: the bodies reach their globals
+# at the offsets the decompilation gives them, as references into `blob1` (see
+# mkdata.py).  It goes in first, so the array is defined before the head and
+# the bodies that name it.  Where the linker puts it does not matter — the
+# absolute pointers inside it are rebased at startup — so this needs no
+# --section-start and no fixed load address.
 set -eu
 cd "$(dirname "$0")"
 
 ACCEPTED=${ACCEPTED:-../accepted.txt}
 OUT=${OUT:-bmf}
 
-[ -f bmfdata.S ] || python3 mkdata.py
-. ./bmfdata.mk
+[ -f blob.inc ] || python3 mkdata.py
 
 {
   echo "#define BMF_STANDALONE 1"
+  cat blob.inc
+  echo
   sed 's#"defs.h"#"../defs.h"#' ../dummy32_head.cpp
   echo
   cat crt.cpp
@@ -45,15 +48,13 @@ OUT=${OUT:-bmf}
 # same storage through several types.  Dropped here: -fPIC and -shared, which
 # were for an injected .so; -fvisibility=hidden, which was for the thunks'
 # text relocations, and the thunks are gone.
-#
-# -no-pie and --section-start put .bmfdata at 0x00438000.  It is far below the
-# i386 default text base, so it lands in its own PT_LOAD; nothing else in the
-# image wants that range.  -Wl,-z,noexecstack because the file has no
+# No link-time placement either: an ordinary executable at whatever address
+# the toolchain defaults to, because nothing depends on the data landing at
+# 0x00438000 any more.  -Wl,-z,noexecstack because the file has no
 # executable-stack marking of its own once the naked asm is gone.
 g++ ${CXXEXTRA:-} ${CXXABI:--msse2 -mfpmath=sse} -O2 -m32 -std=c++17 -fpermissive \
     ${CXXALIAS:--fno-strict-aliasing} \
     -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 \
     -Wno-narrowing -Wno-write-strings -Wno-unused-variable \
     -Wno-unused-but-set-variable -Wno-parentheses \
-    -no-pie -o "$OUT" bmf_standalone.cpp bmfdata.S \
-    -Wl,--section-start=.bmfdata="$BMFDATA_START" -Wl,-z,noexecstack -lm
+    -o "$OUT" bmf_standalone.cpp -Wl,-z,noexecstack -lm

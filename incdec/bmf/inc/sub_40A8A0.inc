@@ -2,21 +2,21 @@
 // Extracted from BMF.cpp:8703-8913 by extract.py per incdec.md.
 
 typedef int t_sub_40A8A0_buf_2;
-static t_sub_40A8A0_buf_2& __sub_40A8A0_buf_2 = *(t_sub_40A8A0_buf_2*)0x004433FC;
+static t_sub_40A8A0_buf_2& __sub_40A8A0_buf_2 = *(t_sub_40A8A0_buf_2*)(blob1 + 0x004433FC - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_442E3C[0x10000];
-static t_sub_40A8A0_dword_442E3C& __sub_40A8A0_dword_442E3C = *(t_sub_40A8A0_dword_442E3C*)0x00442E3C;
+static t_sub_40A8A0_dword_442E3C& __sub_40A8A0_dword_442E3C = *(t_sub_40A8A0_dword_442E3C*)(blob1 + 0x00442E3C - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_442E54[5];
-static t_sub_40A8A0_dword_442E54& __sub_40A8A0_dword_442E54 = *(t_sub_40A8A0_dword_442E54*)0x00442E54;
+static t_sub_40A8A0_dword_442E54& __sub_40A8A0_dword_442E54 = *(t_sub_40A8A0_dword_442E54*)(blob1 + 0x00442E54 - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_442E68;
-static t_sub_40A8A0_dword_442E68& __sub_40A8A0_dword_442E68 = *(t_sub_40A8A0_dword_442E68*)0x00442E68;
+static t_sub_40A8A0_dword_442E68& __sub_40A8A0_dword_442E68 = *(t_sub_40A8A0_dword_442E68*)(blob1 + 0x00442E68 - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_442E6C;
-static t_sub_40A8A0_dword_442E6C& __sub_40A8A0_dword_442E6C = *(t_sub_40A8A0_dword_442E6C*)0x00442E6C;
+static t_sub_40A8A0_dword_442E6C& __sub_40A8A0_dword_442E6C = *(t_sub_40A8A0_dword_442E6C*)(blob1 + 0x00442E6C - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_dword_443364;
-static t_sub_40A8A0_dword_443364& __sub_40A8A0_dword_443364 = *(t_sub_40A8A0_dword_443364*)0x00443364;
+static t_sub_40A8A0_dword_443364& __sub_40A8A0_dword_443364 = *(t_sub_40A8A0_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_n2;
-static t_sub_40A8A0_n2& __sub_40A8A0_n2 = *(t_sub_40A8A0_n2*)0x00443360;
+static t_sub_40A8A0_n2& __sub_40A8A0_n2 = *(t_sub_40A8A0_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_40A8A0_n4_1;
-static t_sub_40A8A0_n4_1& __sub_40A8A0_n4_1 = *(t_sub_40A8A0_n4_1*)0x004433DC;
+static t_sub_40A8A0_n4_1& __sub_40A8A0_n4_1 = *(t_sub_40A8A0_n4_1*)(blob1 + 0x004433DC - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_40A8A0)

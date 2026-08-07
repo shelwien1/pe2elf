@@ -2,9 +2,9 @@
 // Extracted from BMF.cpp:22033-22073 by extract.py per incdec.md.
 
 typedef int t_sub_417DB0_dword_443364;
-static t_sub_417DB0_dword_443364& __sub_417DB0_dword_443364 = *(t_sub_417DB0_dword_443364*)0x00443364;
+static t_sub_417DB0_dword_443364& __sub_417DB0_dword_443364 = *(t_sub_417DB0_dword_443364*)(blob1 + 0x00443364 - BMF_BLOB_BASE);
 typedef int t_sub_417DB0_n2;
-static t_sub_417DB0_n2& __sub_417DB0_n2 = *(t_sub_417DB0_n2*)0x00443360;
+static t_sub_417DB0_n2& __sub_417DB0_n2 = *(t_sub_417DB0_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 
 static inline void ** __fwd_sub_417DB0_sub_415270(void *a0, char a1) { return __sub_415270((void **)a0, a1); }
 #define sub_415270 __fwd_sub_417DB0_sub_415270

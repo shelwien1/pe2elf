@@ -13,7 +13,7 @@ static inline void __fwd_sub_422D60_sub_422DB0(int a0, char a1, const __m128 &a2
 #ifndef __PE_DECL___VirtualAlloc
 #define __PE_DECL___VirtualAlloc
 typedef __attribute__((stdcall)) void * (*pfn_VirtualAlloc)(void *, unsigned int, unsigned int, unsigned int);
-static pfn_VirtualAlloc& VirtualAlloc = *(pfn_VirtualAlloc*)0x00438024;   // IAT slot
+static pfn_VirtualAlloc& VirtualAlloc = *(pfn_VirtualAlloc*)(blob1 + 0x00438024 - BMF_BLOB_BASE);   // IAT slot
 #endif
 PROBE_DECL(__sub_422D60)
 extern "C" BMF_SSE __attribute__((visibility("hidden"))) void __sub_422D60(const __m128 &a1__ref, const __m128 &a2__ref, _BYTE *Src, int i, int a5)

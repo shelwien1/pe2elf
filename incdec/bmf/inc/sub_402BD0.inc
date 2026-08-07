@@ -2,19 +2,19 @@
 // Extracted from BMF.cpp:2251-2460 by extract.py per incdec.md.
 
 typedef size_t t_sub_402BD0_ElementCount;
-static t_sub_402BD0_ElementCount& __sub_402BD0_ElementCount = *(t_sub_402BD0_ElementCount*)0x00441054;
+static t_sub_402BD0_ElementCount& __sub_402BD0_ElementCount = *(t_sub_402BD0_ElementCount*)(blob1 + 0x00441054 - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_dword_441058;
-static t_sub_402BD0_dword_441058& __sub_402BD0_dword_441058 = *(t_sub_402BD0_dword_441058*)0x00441058;
+static t_sub_402BD0_dword_441058& __sub_402BD0_dword_441058 = *(t_sub_402BD0_dword_441058*)(blob1 + 0x00441058 - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_dword_44105C;
-static t_sub_402BD0_dword_44105C& __sub_402BD0_dword_44105C = *(t_sub_402BD0_dword_44105C*)0x0044105C;
+static t_sub_402BD0_dword_44105C& __sub_402BD0_dword_44105C = *(t_sub_402BD0_dword_44105C*)(blob1 + 0x0044105C - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_dword_442BA8;
-static t_sub_402BD0_dword_442BA8& __sub_402BD0_dword_442BA8 = *(t_sub_402BD0_dword_442BA8*)0x00442BA8;
+static t_sub_402BD0_dword_442BA8& __sub_402BD0_dword_442BA8 = *(t_sub_402BD0_dword_442BA8*)(blob1 + 0x00442BA8 - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_dword_442BAC;
-static t_sub_402BD0_dword_442BAC& __sub_402BD0_dword_442BAC = *(t_sub_402BD0_dword_442BAC*)0x00442BAC;
+static t_sub_402BD0_dword_442BAC& __sub_402BD0_dword_442BAC = *(t_sub_402BD0_dword_442BAC*)(blob1 + 0x00442BAC - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_n0xFFFF;
-static t_sub_402BD0_n0xFFFF& __sub_402BD0_n0xFFFF = *(t_sub_402BD0_n0xFFFF*)0x00441064;
+static t_sub_402BD0_n0xFFFF& __sub_402BD0_n0xFFFF = *(t_sub_402BD0_n0xFFFF*)(blob1 + 0x00441064 - BMF_BLOB_BASE);
 typedef int t_sub_402BD0_n4_6;
-static t_sub_402BD0_n4_6& __sub_402BD0_n4_6 = *(t_sub_402BD0_n4_6*)0x00441060;
+static t_sub_402BD0_n4_6& __sub_402BD0_n4_6 = *(t_sub_402BD0_n4_6*)(blob1 + 0x00441060 - BMF_BLOB_BASE);
 
 #define exit_402E40 __exit_402E40
 

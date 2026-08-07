@@ -56,7 +56,7 @@ static t_vprintf& __vprintf = *(t_vprintf*)0x0042D1B9;
 #ifndef __PE_DECL___exit_402E40_off_441068
 #define __PE_DECL___exit_402E40_off_441068
 typedef const char *t_exit_402E40_off_441068;
-static t_exit_402E40_off_441068& __exit_402E40_off_441068 = *(t_exit_402E40_off_441068*)0x00441068;
+static t_exit_402E40_off_441068& __exit_402E40_off_441068 = *(t_exit_402E40_off_441068*)(blob1 + 0x00441068 - BMF_BLOB_BASE);
 #endif
 
 PROBE_DECL(__exit_402E40)

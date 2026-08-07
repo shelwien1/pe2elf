@@ -1,33 +1,59 @@
 #!/usr/bin/env python3
-"""mkdata.py — carve BMF.exe's *data* out of the PE, for the standalone build.
+"""mkdata.py — carve BMF.exe's *data* out of the PE into blob.inc.
 
-The moved bodies reach their globals by absolute address — `*(int *)0x00441040`
-— because that is what the decompilation says and rewriting 845 of them into
-named objects would be a much bigger change than it sounds: the same address is
-an `int` to one function and a `char[]` to the next (incdec.md §6.1), several
-are read at offsets Hex-Rays never named, and some are only reachable as
-`&x + n`.  Keeping the addresses means the bodies do not have to change at all.
+The moved bodies reach their globals through one object.  extract.py emits
 
-So the standalone binary carries BMF's initialised data, mapped at the original
-virtual addresses, and runs none of its code.  Three sections matter:
+    static int& __main_bmp_ = *(int*)(blob1 + 0x00441040 - BMF_BLOB_BASE);
+
+rather than `*(int *)0x00441040`, so the 845 globals are references into a
+single array instead of 845 bare addresses.  Rewriting them into *named*
+objects is a different and much larger job (incdec.md §6.1: the same address is
+an `int` to one function and a `char[]` to the next, several are read at
+offsets Hex-Rays never named, and some are only reachable as `&x + n`) — this
+keeps every offset exactly as the decompilation has it while giving the data a
+name and a definition.
+
+`blob1` is the whole of three sections, gaps zero-filled:
 
     .rdata  0x00438000  0x8554   constants, string literals, the IAT
     .data   0x00441000  0x6518   mutable state (raw is 0x1A00; the rest is bss)
     .trace  0x00448000  0x164
 
-.text is *not* included.  The two places that need something from it are
-handled in crt.cpp: sub_402E30, which is `push 7; call exit_402E40` and is
-reimplemented in C, and the statically-linked CRT, which is replaced wholesale.
+The hybrid build defines `blob1` as `(unsigned char *)0x00438000` — it shares
+its globals with the PE, so the object *is* the loaded image and this file is
+not used.  The standalone build defines it as the array below.
 
-Output is one assembler file with the bytes and a linker-placed section, plus
-a header of the extents so build.sh can pass --section-start.
+.text is not included, and that absence is load-bearing: with the data at an
+address of the linker's choosing, anything that still reaches for BMF's code
+range faults instead of quietly working.
+
+**Relocations.** The data holds absolute pointers into itself — the message
+table at 0x00441068, the "disabled"/"enabled" pair at 0x0044104C, the filter
+tables at 0x004410C0 — written for a load address of 0x00400000.  BMF.exe has
+no .reloc directory (it is a non-relocatable EXE), so the sites come from IDA's
+`dd offset` annotations in BMF.asm, which is the only record of which words are
+addresses.  Scanning for dwords that happen to land inside the range finds 107
+of them where only 39 are real, so the annotations are not optional.
+
+A site IDA missed would not corrupt anything: the pointer would keep its
+0x0043xxxx value, which is unmapped in the standalone binary, and the first
+dereference is a fault.  The 80 pointers into .text — switch jump tables —
+cannot be relocated and are not: Hex-Rays turned those switches into C, so
+nothing reads them.
+
+The *code* needs the same treatment and does not get it here: where the index
+was a runtime value Hex-Rays never named the global, and the address is a
+decimal literal in the arithmetic.  extract.py's rebase_data_literals rewrites
+those, and fixups.txt covers the eight that hide in a scaled subscript.
 """
 import os
+import re
 import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXE = os.path.join(HERE, '..', '..', '..', 'exe32', 'BMF.exe')
+ASM = os.path.join(HERE, '..', 'BMF.asm')
 WANT = ('.rdata', '.data', '.trace')
 
 
@@ -45,6 +71,32 @@ def sections(d):
     return out
 
 
+def reloc_sites(lo, hi, img):
+    """Byte offsets into the image holding an absolute address inside it.
+
+    From BMF.asm's `dd offset ...` lines, which is IDA's record of "this word
+    is an address".  The *value* comes from the image rather than from the
+    symbol name, so a name IDA invented does not have to be resolvable here.
+    """
+    if not os.path.exists(ASM):
+        sys.exit('BMF.asm is missing: the relocation sites cannot be recovered '
+                 'from the exe alone (it has no .reloc directory)')
+    sites, into_text = [], 0
+    for line in open(ASM, errors='replace'):
+        m = re.match(r'^(00[0-9A-F]{6})\s', line)
+        if not m or not re.search(r'\bdd\s+offset\b', line):
+            continue
+        a = int(m.group(1), 16)
+        if not lo <= a < hi - 3:
+            continue
+        v = struct.unpack_from('<I', img, a - lo)[0]
+        if lo <= v < hi:
+            sites.append(a - lo)
+        else:
+            into_text += 1
+    return sorted(set(sites)), into_text
+
+
 def main():
     exe = sys.argv[1] if len(sys.argv) > 1 else EXE
     d = open(exe, 'rb').read()
@@ -55,36 +107,61 @@ def main():
 
     lo = secs[0][1]
     hi = max(va + vsize for _n, va, vsize, _r in secs)
-    # One contiguous image, gaps zero-filled: the sections are page-aligned in
-    # the PE and the holes between them are never referenced, but a single
-    # section is one --section-start instead of three and cannot drift.
     img = bytearray(hi - lo)
-    for name, va, vsize, raw in secs:
+    for _name, va, vsize, raw in secs:
         img[va - lo:va - lo + min(len(raw), vsize)] = raw[:vsize]
 
-    out = os.path.join(HERE, 'bmfdata.S')
+    sites, into_text = reloc_sites(lo, hi, img)
+
+    out = os.path.join(HERE, 'blob.inc')
     with open(out, 'w') as f:
         f.write('/* Generated by mkdata.py from BMF.exe.  Do not edit.\n'
                 ' *\n'
-                ' * BMF\'s .rdata/.data/.trace, to be placed at %08X by the\n'
-                ' * linker.  Writable: the PE\'s .rdata holds the import table,\n'
-                ' * whose slots the standalone build fills in at startup, and\n'
-                ' * marking one section rather than three keeps the placement to\n'
-                ' * a single --section-start.\n'
-                ' */\n' % lo)
-        f.write('\t.section .bmfdata,"aw",@progbits\n')
-        f.write('\t.globl __bmf_data_start\n__bmf_data_start:\n')
-        for i in range(0, len(img), 32):
-            f.write('\t.byte ' + ','.join(str(b) for b in img[i:i + 32]) + '\n')
-        f.write('\t.globl __bmf_data_end\n__bmf_data_end:\n')
+                ' * BMF\'s .rdata/.data/.trace as one object.  Every global the\n'
+                ' * moved bodies touch is a reference into this array at its\n'
+                ' * original offset: `*(T*)(blob1 + VA - BMF_BLOB_BASE)`.\n'
+                ' *\n'
+                ' * Writable, and not const: .data is mutable state, and the\n'
+                ' * pointers listed at the bottom are rewritten at startup.\n'
+                ' * The whole range is initialised — .trace sits above .data\'s\n'
+                ' * bss, so there is no zero tail to split off into a separate\n'
+                ' * uninitialised array.\n'
+                ' */\n')
+        f.write('#define BMF_BLOB_BASE 0x%08Xu\n' % lo)
+        f.write('#define BMF_BLOB_LEN  0x%Xu   /* %d bytes, %08X..%08X */\n\n'
+                % (hi - lo, hi - lo, lo, hi))
+        f.write('alignas(16) unsigned char blob1[BMF_BLOB_LEN] = {\n')
+        for i in range(0, len(img), 16):
+            f.write('  ' + ','.join('0x%02x' % b for b in img[i:i + 16]) + ',\n')
+        f.write('};\n\n')
+        f.write('/* Absolute pointers into the blob, as byte offsets of the words\n'
+                ' * holding them.  From IDA\'s `dd offset` annotations: BMF.exe has\n'
+                ' * no .reloc directory, and scanning for values that land in range\n'
+                ' * finds far more matches than there are pointers.  %d more point\n'
+                ' * into .text (switch jump tables) and are deliberately left alone\n'
+                ' * — .text is not in this image and nothing reads them, because\n'
+                ' * Hex-Rays turned those switches back into C.\n'
+                ' */\n' % into_text)
+        f.write('static const unsigned int blob1_relocs[] = {\n')
+        for i in range(0, len(sites), 8):
+            f.write('  ' + ' '.join('0x%05X,' % s for s in sites[i:i + 8]) + '\n')
+        f.write('};\n\n')
+        f.write('/* Rebase them onto wherever the linker put blob1.  Idempotent is\n'
+                ' * not required and not provided: call once, before any body runs.\n'
+                ' */\n'
+                'static void bmf_blob_relocate() {\n'
+                '  for (unsigned i = 0; i < sizeof blob1_relocs / sizeof *blob1_relocs; i++) {\n'
+                '    unsigned char *slot = blob1 + blob1_relocs[i];\n'
+                '    unsigned va;\n'
+                '    __builtin_memcpy(&va, slot, 4);\n'
+                '    unsigned char *p = blob1 + (va - BMF_BLOB_BASE);\n'
+                '    __builtin_memcpy(slot, &p, 4);\n'
+                '  }\n'
+                '}\n')
 
-    with open(os.path.join(HERE, 'bmfdata.mk'), 'w') as f:
-        # No spaces around '=': build.sh dots this in as shell, and make
-        # accepts the same form.
-        f.write('BMFDATA_START=0x%08X\n' % lo)
-        f.write('BMFDATA_END=0x%08X\n' % hi)
-    print('bmfdata.S: %08X..%08X (%d bytes) from %s'
-          % (lo, hi, hi - lo, ', '.join(s[0] for s in secs)))
+    print('blob.inc: %08X..%08X (%d bytes) from %s; %d relocations, %d skipped '
+          '(into .text)' % (lo, hi, hi - lo, ', '.join(s[0] for s in secs),
+                            len(sites), into_text))
 
 
 if __name__ == '__main__':

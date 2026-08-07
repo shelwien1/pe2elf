@@ -19,6 +19,7 @@ Two builds share one `.inc` tree:
 | CRT | the PE's statically-linked MSVC runtime | glibc |
 | kernel32 | `winapi_shim32.so` | POSIX, in `standalone/crt.cpp` |
 | Startup | the PE's `start` at `0x0042D53A` | `standalone/main.cpp` |
+| Data | `blob1` points at the loaded image | `blob1` is an array; PIE, no fixed address |
 | What it is for | moving one function at a time with a reference to compare against | the actual deliverable |
 
 The hybrid is not obsolete: it is the only place a *single* substitution can be
@@ -511,15 +512,40 @@ cd standalone && ./build.sh && ./test.sh
 `BMF_STANDALONE` defined, then `crt.cpp`, then the same `../inc/*.inc` in
 `accepted.txt` order, then `main.cpp` — and links it with `bmfdata.S`.
 
-**The data stays, the code goes.** Every moved body reaches its globals by
-absolute address (`incdec.md` §6.1): `*(int *)0x00441040`. Rewriting 845 of
-those into named objects would be a much larger change than replacing the
-runtime around them — the same address is an `int` to one function and a
-`char[]` to the next. So `mkdata.py` carves `.rdata`/`.data`/`.trace` out of
-`BMF.exe` into one 64 KB section and `--section-start` puts it back at
-`0x00438000`. `.text` is not included, and that absence is the point: a
-surviving call into BMF's code range faults instead of quietly working.
-`objdump` confirms there are none.
+**The data stays, the code goes.** `mkdata.py` carves `.rdata`/`.data`/`.trace`
+out of `BMF.exe` into `blob1`, one 64 KB array, and every global is a reference
+into it at its original offset (`incdec.md` §6.1):
+
+```cpp
+static t_main_bmp_& __main_bmp_ = *(t_main_bmp_*)(blob1 + 0x00441040 - BMF_BLOB_BASE);
+```
+
+The offsets are still the decompiler's — naming the globals is a separate and
+much larger job, since the same address is an `int` to one function and a
+`char[]` to the next — but the data now has a definition, and the two builds
+can put it in different places. The hybrid sets `blob1` to `0x00438000`, where
+the loaded PE's data already is; the standalone lets the linker choose, so it
+is an ordinary PIE with no fixed load address.
+
+`.text` is not included, and that absence is the point: a surviving reference
+into BMF's code range faults instead of quietly working. `objdump` confirms
+there are none.
+
+Moving the data needs two sets of fixups, and the second is the interesting
+one. **In the data:** absolute pointers into itself — the message table at
+`0x00441068`, the filter tables at `0x004410C0`. BMF.exe has no `.reloc`
+directory, and scanning for values that land in range finds 107 candidates
+where 39 are real, so the sites come from IDA's `dd offset` annotations and are
+rebased once at startup. **In the code:** where the index was a runtime value,
+Hex-Rays did not name the global at all — it left the address as a decimal
+literal in the arithmetic (`*(_QWORD *)(n64 + 4469652)` is `0x00443394`). That
+is a pass in `extract.py`, not a fixup: 34 sites across six functions. Eight
+more hide in a *scaled* index (`v4[559820]` on a `_QWORD *` is `0x00445660`),
+which no lexical rule finds, and those are in `fixups.txt`.
+
+A missed site keeps its `0x0044xxxx` value, which is unmapped once the data
+moves — so it faults at a named function rather than producing a wrong answer.
+That is what makes the gate meaningful evidence here.
 
 **`__PE_DECL_` is the seam.** Every reference a generated `.inc` makes to
 something outside the moved set is wrapped in `#ifndef __PE_DECL___x`. That is
@@ -618,9 +644,9 @@ What is still worth knowing:
   two writers that install them, and four integer-formatting helpers. A corpus
   that never asks for TGA output never calls any of them.
 * 43 of the 143 are moved without probe coverage. See Caveats.
-* The globals are still absolute addresses. Naming them is the next real piece
-  of work, and it is a large one — `incdec.md` §6.1 explains why it cannot be
-  done mechanically.
+* The globals are references into `blob1` at the decompiler's offsets, not
+  named objects. Naming them is the next real piece of work, and it is a large
+  one — `incdec.md` §6.1 explains why it cannot be done mechanically.
 
 ## Caveats
 

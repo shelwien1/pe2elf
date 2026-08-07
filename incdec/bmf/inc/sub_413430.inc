@@ -2,17 +2,17 @@
 // Extracted from BMF.cpp:17642-17699 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_413430_byte_445714[0x10000];
-static t_sub_413430_byte_445714& __sub_413430_byte_445714 = *(t_sub_413430_byte_445714*)0x00445714;
+static t_sub_413430_byte_445714& __sub_413430_byte_445714 = *(t_sub_413430_byte_445714*)(blob1 + 0x00445714 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_413430_byte_445715[0x10000];
-static t_sub_413430_byte_445715& __sub_413430_byte_445715 = *(t_sub_413430_byte_445715*)0x00445715;
+static t_sub_413430_byte_445715& __sub_413430_byte_445715 = *(t_sub_413430_byte_445715*)(blob1 + 0x00445715 - BMF_BLOB_BASE);
 typedef unsigned char t_sub_413430_byte_445716[0x10000];
-static t_sub_413430_byte_445716& __sub_413430_byte_445716 = *(t_sub_413430_byte_445716*)0x00445716;
+static t_sub_413430_byte_445716& __sub_413430_byte_445716 = *(t_sub_413430_byte_445716*)(blob1 + 0x00445716 - BMF_BLOB_BASE);
 typedef int t_sub_413430_dword_445660[32];
-static t_sub_413430_dword_445660& __sub_413430_dword_445660 = *(t_sub_413430_dword_445660*)0x00445660;
+static t_sub_413430_dword_445660& __sub_413430_dword_445660 = *(t_sub_413430_dword_445660*)(blob1 + 0x00445660 - BMF_BLOB_BASE);
 typedef int t_sub_413430_n2;
-static t_sub_413430_n2& __sub_413430_n2 = *(t_sub_413430_n2*)0x00443360;
+static t_sub_413430_n2& __sub_413430_n2 = *(t_sub_413430_n2*)(blob1 + 0x00443360 - BMF_BLOB_BASE);
 typedef int t_sub_413430_n8_0;
-static t_sub_413430_n8_0& __sub_413430_n8_0 = *(t_sub_413430_n8_0*)0x00445710;
+static t_sub_413430_n8_0& __sub_413430_n8_0 = *(t_sub_413430_n8_0*)(blob1 + 0x00445710 - BMF_BLOB_BASE);
 
 
 PROBE_DECL(__sub_413430)

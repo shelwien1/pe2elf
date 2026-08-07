@@ -2,9 +2,9 @@
 // Extracted from BMF.cpp:21828-22030 by extract.py per incdec.md.
 
 typedef char t_sub_417980_buf_0[0x10000];
-static t_sub_417980_buf_0& __sub_417980_buf_0 = *(t_sub_417980_buf_0*)0x00443440;
+static t_sub_417980_buf_0& __sub_417980_buf_0 = *(t_sub_417980_buf_0*)(blob1 + 0x00443440 - BMF_BLOB_BASE);
 typedef char t_sub_417980_byte_445700;
-static t_sub_417980_byte_445700& __sub_417980_byte_445700 = *(t_sub_417980_byte_445700*)0x00445700;
+static t_sub_417980_byte_445700& __sub_417980_byte_445700 = *(t_sub_417980_byte_445700*)(blob1 + 0x00445700 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

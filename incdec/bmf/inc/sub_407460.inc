@@ -2,9 +2,9 @@
 // Extracted from BMF.cpp:5953-6238 by extract.py per incdec.md.
 
 typedef int t_sub_407460_dword_443384;
-static t_sub_407460_dword_443384& __sub_407460_dword_443384 = *(t_sub_407460_dword_443384*)0x00443384;
+static t_sub_407460_dword_443384& __sub_407460_dword_443384 = *(t_sub_407460_dword_443384*)(blob1 + 0x00443384 - BMF_BLOB_BASE);
 typedef int t_sub_407460_n4_5;
-static t_sub_407460_n4_5& __sub_407460_n4_5 = *(t_sub_407460_n4_5*)0x00443394;
+static t_sub_407460_n4_5& __sub_407460_n4_5 = *(t_sub_407460_n4_5*)(blob1 + 0x00443394 - BMF_BLOB_BASE);
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0
