@@ -1197,6 +1197,35 @@ reads one**, and there turn out to be four such places:
 Points 2-4 are the reason a signature fixup is not like the others: it is the
 only kind whose effect leaves the body it is attached to.
 
+And point 4 has a tail. A value the decompiler never recovered does not just go
+missing at the call — everything downstream of it is *also* fabricated, and
+plausibly. `sub_402EF0` returns the same pointer in `eax`, so each caller keeps
+it in a register, spills it to a stack slot before reusing that register as a
+scratch pointer, and restores it afterwards. Hex-Rays, having nothing for the
+register, wrote the **spill** as a constant:
+
+```c
+if ( operator new(8u) )            //  the pointer went here
+  sub_402EF0(FileName_1, 0);       //  …and here
+v56 = 0;                           //  the else branch, flattened
+...
+    v83 = 0;                       //  `mov [esp+…], ebp` — the spill
+    ... palette scan ...
+    v56 = v83;                     //  the restore, now restoring 0
+v63 = sub_402FE0(v56, …);          //  null, three hundred lines later
+```
+
+Five branches, four different spill variables, and two of them share a source
+line so they cannot be told apart by a textual fixup. The way out is to notice
+that in the *decompilation* the scratch is a separate variable — the register
+reuse is an artefact of the machine code — so the block variable is untouched
+between spill and restore and **the restore is a no-op**. Deleting it is
+uniform across all five branches and provably equivalent; correcting each spill
+is neither.
+
+Expect this shape whenever a recovered argument turns out to be a value the
+decompiler had lost. Fixing the call is the start of the work, not the end.
+
 ### 8.2.4.2 The greedy `\x` escape
 
 Hex-Rays merges adjacent `.rdata` strings into one literal and prints

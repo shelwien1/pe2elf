@@ -37,7 +37,7 @@ PREFIX_TYPE = {
 }
 
 # Stateless libc that incdec.md §6.5 permits falling through to glibc.
-PURE_LIBC = {'strcpy', 'strncpy', 'strrchr', 'strchr', 'memset', 'memcpy',
+PURE_LIBC = {'strcpy', 'strncpy', 'strcat', 'strrchr', 'strchr', 'memset', 'memcpy',
              'memcmp', 'strlen', 'strcmp', 'toupper', 'tolower', 'isspace',
              'isdigit', 'abs', 'fminf', 'fmaxf', 'sqrtf', 'atoi'}
 
@@ -59,7 +59,7 @@ INTEL_CRT = re.compile(r'^(__svml_|__intel_|__libm_)')
 # wrapper and nothing has to be declared here.  Hex-Rays printed both with an
 # empty argument list, so a body that calls one has to have the argument put
 # back by hand (fixups.txt) — see sub_40A8A0.
-XMM0_CRT = {'__svml_log2', '__libm_sse2_log'}
+XMM0_CRT = {'__svml_log2', '__libm_sse2_log', '__intel_sse2_strlen'}
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof',
         # Type names, which appear followed by '(' in casts to function
         # pointers — `(void (__cdecl *)(int))` reads as a call to `void`.
@@ -127,7 +127,6 @@ CRT_PROTO = {
     '_getch':      ('int', 'void'),
     # Intel CRT, __fastcall — the one register-argument helper whose signature
     # Hex-Rays does recover, and whose call sites agree with it.
-    '__intel_sse2_strlen': ('int', 'unsigned int, const void *', 'fastcall'),
     'irc__get_msg': ('char *', 'int, int, void *'),
     '_strcmpi': ('int', 'const char *, const char *'),
 }
@@ -1098,6 +1097,13 @@ def emit(args, cache=None):
     # the qualified form to resolve.
     called |= {c for c in re.findall(r'\b([A-Za-z_]\w*)\b', body)
                if c in spans and c != args.name}
+    # And a function IDA could not decompile at all still has to be declared:
+    # sub_402E30 is `push 7; call exit_402E40` — two instructions, the
+    # out-of-memory handler — and Hex-Rays emitted `#error "call analysis
+    # failed"` in place of a body, so it is in funcs.txt but not in sites.txt.
+    # main hands its address to the CRT's set_new_handler.
+    no_body = sorted(c for c in set(re.findall(r'\b(' + SUB_RE + r')\b', body))
+                     if c not in spans and c != args.name and c in funcs)
     refd_globals = {g for g in globals_
                     if re.search(r'\b' + re.escape(g) + r'\b', body) and is_global_ref(g)}
     for g in set(re.findall(r'\b(' + GLOBAL_RE + r')\b', body)):
@@ -1114,6 +1120,8 @@ def emit(args, cache=None):
     crt = {}                      # body name -> (asm name, addr)
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', body):
         n = m.group(1)
+        if n == args.name:
+            continue          # the definition line itself, or a recursive call
         if n in locals_ and not re.search(r'::\s*' + re.escape(n) + r'\b', body):
             continue          # indirect call through a local function pointer
         if INTEL_CRT.match(n) and n not in spans:
@@ -1234,6 +1242,15 @@ def emit(args, cache=None):
         out.append("")
 
     # --- callees still living in the PE (§6.2) ------------------------------
+    for c in no_body:
+        out.append(f"#ifndef __PE_DECL___{c}")
+        out.append(f"#define __PE_DECL___{c}")
+        out.append(f"// No decompiled body — IDA's call analysis failed on it. "
+                   f"Only its address is used.")
+        out.append(f"typedef void t_{c}();")
+        out.append(f"static t_{c}& __{c} = *(t_{c}*)0x{funcs[c]:08X};")
+        out.append("#endif")
+        out.append(f"#define {c} __{c}")
     ext_calls = sorted(c for c in called if c != args.name and c not in already)
     for c in ext_calls:
         addr = int(c.split('_')[-1], 16)
@@ -1539,7 +1556,7 @@ def emit(args, cache=None):
         out.append("#undef FILE")
     for n in sorted(crt):
         out.append(f"#undef {n}")
-    for c in sorted(called):
+    for c in sorted(set(called) | set(no_body)):
         if c != args.name:
             out.append(f"#undef {c}")
 

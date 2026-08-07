@@ -9,12 +9,6 @@ static inline int __fwd_sub_4280B0_sub_42CAD0(void *a0, int a1) { return __sub_4
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to
 // that private runtime, not to glibc (§6.5).
-#ifndef __PE_DECL_____intel_sse2_strlen
-#define __PE_DECL_____intel_sse2_strlen
-typedef __attribute__((fastcall)) int t___intel_sse2_strlen(unsigned int, const void *);   // ___intel_sse2_strlen
-static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0x00434930;
-#endif
-#define __intel_sse2_strlen ____intel_sse2_strlen
 #ifndef __PE_DECL___fclose
 #define __PE_DECL___fclose
 typedef int t_fclose(FILE1 *);   // _fclose
@@ -286,7 +280,6 @@ LABEL_22:
 }
 
 #undef FILE
-#undef __intel_sse2_strlen
 #undef fclose
 #undef feof
 #undef fgets

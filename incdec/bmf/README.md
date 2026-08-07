@@ -4,9 +4,10 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 120 of 132 reachable functions redirected — 81 of the 92 a round-trip
-actually executes. Gate green on all five pixel formats, and every image
-compresses to a stream byte-identical to the original's.**
+**Status: 131 of 132 reachable functions redirected — including `main`. 90 of
+the 92 a round-trip executes; the two that are left are the Intel CRT's
+`memcpy`/`memset` dispatchers. Gate green on all five pixel formats, and every
+image compresses to a stream byte-identical to the original's.**
 
 The goal is a lossless BMP codec that runs none of BMF's own code and
 compresses no worse than it does. Everything below is the state of that

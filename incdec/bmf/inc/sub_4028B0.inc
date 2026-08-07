@@ -125,8 +125,8 @@ LABEL_41:
     Destination = FileName;
   sub_429C80(Destination, (int)FileNamea, "bmf");
   if ( void *__nb = __op_new(8u) )
-    sub_402EF0((_DWORD *)__nb, FileNamea, 0);
-  v18 = nullptr;
+    v18 = (FILE **)sub_402EF0((_DWORD *)__nb, FileNamea, 0);
+  else v18 = nullptr;
   if ( !*(_DWORD *)(v8 + 1564) )
   {
     v19 = *(_BYTE *)(v8 + 25);

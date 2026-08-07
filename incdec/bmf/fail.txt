@@ -1,3 +1,1 @@
 sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_4015C0	extract: sub_4015C0 references globals with no recoverable address (declared in BMF.cpp but absent 
-main	extract: main calls __usercall/__userpurge functions that have not been moved yet, whose register a

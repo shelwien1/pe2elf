@@ -4,6 +4,13 @@
 typedef int t_sub_42CBB0_psub_402E30;
 static t_sub_42CBB0_psub_402E30& __sub_42CBB0_psub_402E30 = *(t_sub_42CBB0_psub_402E30*)0x00445930;
 
+#ifndef __PE_DECL___sub_402E30
+#define __PE_DECL___sub_402E30
+// No decompiled body — IDA's call analysis failed on it. Only its address is used.
+typedef void t_sub_402E30();
+static t_sub_402E30& __sub_402E30 = *(t_sub_402E30*)0x00402E30;
+#endif
+#define sub_402E30 __sub_402E30
 
 PROBE_DECL(__sub_42CBB0)
 __attribute__((force_align_arg_pointer)) int __sub_42CBB0(int sub_402E30)
@@ -16,3 +23,4 @@ __attribute__((force_align_arg_pointer)) int __sub_42CBB0(int sub_402E30)
   return __sub_42CBB0_psub_402E30;
 }
 
+#undef sub_402E30

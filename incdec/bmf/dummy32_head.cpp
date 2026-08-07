@@ -73,6 +73,7 @@ typedef unsigned int  UINT;
 // windows.h gives them — the structs are read and written by real Win32 calls
 // through the shim, so the field offsets have to match.
 typedef char           CHAR;
+typedef unsigned short WCHAR;   // `const WCHAR SrcStr = 0u;` — an empty string
 typedef char *         LPSTR;
 typedef const char *   LPCSTR;
 typedef void *         LPVOID;
@@ -318,6 +319,31 @@ typedef M128I _OWORD;
                      "ret");                                                  \
   }
 
+// Intel's inlined strlen tail, which is not `fastcall` either: it takes the
+// *aligned* 16-byte block in eax and the string start in edx, and returns the
+// length in eax.  Hex-Rays typed it `__fastcall(unsigned int, const void *)`,
+// which puts the offset in ecx and never sets eax at all — so the fallback
+// path of every inlined strlen in the image returns garbage.  `-S` then parsed
+// as `-` and `-Q9` as quality 1.
+//
+// The call sites all spell the arguments as (offset, block + offset), so the
+// aligned base is the difference.
+extern "C" __attribute__((naked, visibility("hidden")))
+void __bmf_pe_intel_sse2_strlen() {
+  __asm__ volatile("mov $0x00434930, %ecx\n\t"
+                   "jmp *%ecx");          // tail jump: eax/edx are the arguments
+}
+
+BMF_SSE static inline unsigned __intel_sse2_strlen(unsigned off, const void *p) {
+  unsigned r;
+  const char *base = (const char *)p - off;
+  __asm__ volatile("call __bmf_pe_intel_sse2_strlen"
+                   : "=a"(r)
+                   : "a"(base), "d"(p)
+                   : "ecx", "cc", "memory", "xmm0", "xmm1");
+  return r;
+}
+
 BMF_XMM0_TRAMP(__bmf_pe_libm_sse2_log, 0x00434460)
 BMF_XMM0_TRAMP(__bmf_pe_svml_log2,     0x00436DD0)
 
@@ -406,7 +432,15 @@ static unsigned bmf_xgetbv0()
 struct Probe {
   Probe* next;
   const char* name;
-  unsigned long long count;
+  // alignas(8): i386 aligns `long long` to 4, so without this the counter can
+  // straddle a cache line — and a `lock`ed read-modify-write on a split line
+  // is a bus lock, which the kernel's split-lock detector turns into a trap
+  // costing on the order of a millisecond.  At 76800 calls that was 70 seconds
+  // of a run that otherwise takes a quarter of one, with *identical* generated
+  // code either way: adding one more Probe to the array moved a hot counter
+  // onto a boundary.  Not atomic any more (below), but the alignment stays —
+  // the failure was invisible and cost a day.
+  alignas(8) unsigned long long count;
   Probe(const char* n);
 };
 static Probe* g_probes = nullptr;
@@ -472,7 +506,9 @@ static void bmf_trap_arm() {
 #define PROBE_TRAP() ((void)0)
 #endif
 
-#define PROBE_HIT(sym)  (PROBE_TRAP(), __sync_fetch_and_add(&sym##_probe.count, 1ULL))
+// A plain increment: BMF is single-threaded and this is a diagnostic counter,
+// so the atomic bought nothing and cost a `lock cmpxchg8b` per call.
+#define PROBE_HIT(sym)  (PROBE_TRAP(), ++sym##_probe.count)
 
 // ---------------------------------------------------------------------------
 // §5 patch helpers

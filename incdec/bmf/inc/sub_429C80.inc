@@ -2,17 +2,6 @@
 // Extracted from BMF.cpp:34290-34376 by extract.py per incdec.md.
 
 
-// BMF links the MSVC CRT into the image, so these route to the PE's
-// own implementations — its FILE* objects and heap blocks belong to
-// that private runtime, not to glibc (§6.5).
-#ifndef __PE_DECL_____intel_sse2_strlen
-#define __PE_DECL_____intel_sse2_strlen
-typedef __attribute__((fastcall)) int t___intel_sse2_strlen(unsigned int, const void *);   // ___intel_sse2_strlen
-static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0x00434930;
-#endif
-#define __intel_sse2_strlen ____intel_sse2_strlen
-#define FILE FILE1
-
 PROBE_DECL(__sub_429C80)
 __attribute__((force_align_arg_pointer)) BMF_SSE int __sub_429C80(char *Str, int a2, char *a3)
 {
@@ -102,5 +91,3 @@ __attribute__((force_align_arg_pointer)) BMF_SSE int __sub_429C80(char *Str, int
   return a2;
 }
 
-#undef FILE
-#undef __intel_sse2_strlen

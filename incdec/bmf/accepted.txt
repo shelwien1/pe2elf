@@ -127,3 +127,5 @@
 00402EF0 sub_402EF0 userpurge
 00402FE0 sub_402FE0 userpurge
 004028B0 sub_4028B0 usercall
+004015C0 sub_4015C0 usercall
+00401000 main cdecl

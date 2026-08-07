@@ -35,12 +35,6 @@ static t_sub_434980& __sub_434980 = *(t_sub_434980*)0x00434980;
 typedef __attribute__((stdcall)) int (*pfn_FileTimeToDosDateTime)(const void *, unsigned short *, unsigned short *);
 static pfn_FileTimeToDosDateTime& FileTimeToDosDateTime = *(pfn_FileTimeToDosDateTime*)0x0043801C;   // IAT slot
 #endif
-#ifndef __PE_DECL_____intel_sse2_strlen
-#define __PE_DECL_____intel_sse2_strlen
-typedef __attribute__((fastcall)) int t___intel_sse2_strlen(unsigned int, const void *);   // ___intel_sse2_strlen
-static t___intel_sse2_strlen& ____intel_sse2_strlen = *(t___intel_sse2_strlen*)0x00434930;
-#endif
-#define __intel_sse2_strlen ____intel_sse2_strlen
 #ifndef __PE_DECL____filelength
 #define __PE_DECL____filelength
 typedef long t__filelength(int);   // __filelength
@@ -232,7 +226,6 @@ LABEL_17:
 }
 
 #undef FILE
-#undef __intel_sse2_strlen
 #undef _filelength
 #undef _fileno
 #undef fclose
