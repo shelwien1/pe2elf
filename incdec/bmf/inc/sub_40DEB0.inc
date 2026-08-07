@@ -3,9 +3,9 @@
 
 typedef int t_sub_40DEB0_Buffer_0;
 static t_sub_40DEB0_Buffer_0& __sub_40DEB0_Buffer_0 = *(t_sub_40DEB0_Buffer_0*)0x00443378;
-typedef int t_sub_40DEB0_byte_43945C[0x10000];
+typedef unsigned char t_sub_40DEB0_byte_43945C[0x10000];
 static t_sub_40DEB0_byte_43945C& __sub_40DEB0_byte_43945C = *(t_sub_40DEB0_byte_43945C*)0x0043945C;
-typedef int t_sub_40DEB0_byte_439470[0x10000];
+typedef unsigned char t_sub_40DEB0_byte_439470[0x10000];
 static t_sub_40DEB0_byte_439470& __sub_40DEB0_byte_439470 = *(t_sub_40DEB0_byte_439470*)0x00439470;
 typedef int t_sub_40DEB0_dword_438B00[0x10000];
 static t_sub_40DEB0_dword_438B00& __sub_40DEB0_dword_438B00 = *(t_sub_40DEB0_dword_438B00*)0x00438B00;
@@ -29,7 +29,7 @@ typedef int t_sub_40DEB0_n256;
 static t_sub_40DEB0_n256& __sub_40DEB0_n256 = *(t_sub_40DEB0_n256*)0x0044336C;
 typedef int t_sub_40DEB0_n8;
 static t_sub_40DEB0_n8& __sub_40DEB0_n8 = *(t_sub_40DEB0_n8*)0x00443368;
-typedef int t_sub_40DEB0_off_4410C0[0x10000];
+typedef void * t_sub_40DEB0_off_4410C0[0x10000];
 static t_sub_40DEB0_off_4410C0& __sub_40DEB0_off_4410C0 = *(t_sub_40DEB0_off_4410C0*)0x004410C0;
 typedef __int128 t_sub_40DEB0_xmmword_442EA0;
 static t_sub_40DEB0_xmmword_442EA0& __sub_40DEB0_xmmword_442EA0 = *(t_sub_40DEB0_xmmword_442EA0*)0x00442EA0;

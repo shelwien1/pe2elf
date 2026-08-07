@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 99 of 132 reachable functions redirected — 61 of the 92 a round-trip
+**Status: 102 of 132 reachable functions redirected — 65 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats, and nothing left in
 `fail.txt` is a build error.**
 
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 99 and not 132
+## Why 102 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -251,10 +251,10 @@ as:
 
 | | |
 |---:|---|
-| 19 | blocked on a `__usercall` callee that itself failed |
-| 10 | builds and runs, then crashes or aborts on some image |
-|  2 | builds and runs and compresses *worse* than the original |
+| 20 | queued behind one of the eight below |
+|  7 | builds and runs, then crashes or aborts on some image |
 |  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
+|  1 | builds and runs and compresses *worse* than the original |
 
 No build errors. The 20 are downstream of the rest: fix one blocking callee and
 several callers become candidates, which is why the count moves in jumps.
@@ -340,6 +340,14 @@ initialisation rather than drift.
 Four buckets that used to dominate this list are gone, and the fixes are worth
 naming because each was systemic rather than per-function:
 
+* **The width in an auto-generated name.** `byte_445714` is a *byte* at that
+  address — Hex-Rays picks the name by how the body accesses it, and the
+  disassembly agrees (`movzx eax, byte_445714[esi*4]`). `symbols.txt`, which is
+  harvested from the disassembly, types all 369 such globals `int`, and it was
+  winning. `byte_445714[4 * v3]` declared `int[]` reads four bytes at four
+  times the stride: no crash, just wrong data, and a compressed stream 4.8%
+  too large. The name's prefix is now authoritative for auto-named globals,
+  below only the body's own `using guessed type` comment.
 * **Strict aliasing.** Hex-Rays output reinterprets memory through pointers of
   different types on nearly every line (`*(_DWORD *)(a + 4)`, `*(_WORD *)&x`),
   which is exactly what `-fstrict-aliasing` — on by default at `-O2` — assumes

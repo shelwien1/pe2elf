@@ -4,12 +4,8 @@
 typedef int t_sub_4259F0_n256_1;
 static t_sub_4259F0_n256_1& __sub_4259F0_n256_1 = *(t_sub_4259F0_n256_1*)0x00445708;
 
-#ifndef __PE_DECL___sub_413430
-#define __PE_DECL___sub_413430
-typedef __attribute__((thiscall)) int t_sub_413430(void *, int n2);
-static t_sub_413430& __sub_413430 = *(t_sub_413430*)0x00413430;
-#endif
-#define sub_413430 __sub_413430
+static inline int __fwd_sub_4259F0_sub_413430(void *a0, int a1) { return __sub_413430((unsigned __int16 *)a0, a1); }
+#define sub_413430 __fwd_sub_4259F0_sub_413430
 
 PROBE_DECL(__sub_4259F0)
 __attribute__((thiscall)) int __sub_4259F0(int _this)

@@ -20,12 +20,8 @@ static t_sub_414620_n0x800000& __sub_414620_n0x800000 = *(t_sub_414620_n0x800000
 typedef int t_sub_414620_n256_1;
 static t_sub_414620_n256_1& __sub_414620_n256_1 = *(t_sub_414620_n256_1*)0x00445708;
 
-#ifndef __PE_DECL___sub_414060
-#define __PE_DECL___sub_414060
-typedef __attribute__((thiscall)) int t_sub_414060(void *);
-static t_sub_414060& __sub_414060 = *(t_sub_414060*)0x00414060;
-#endif
-#define sub_414060 __sub_414060
+static inline int __fwd_sub_414620_sub_414060(void *a0) { return __sub_414060((unsigned __int16 *)a0); }
+#define sub_414060 __fwd_sub_414620_sub_414060
 
 PROBE_DECL(__sub_414620)
 __attribute__((thiscall)) int __sub_414620(unsigned __int16 *_this, int a2)

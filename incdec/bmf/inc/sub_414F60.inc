@@ -27,7 +27,7 @@ typedef char t_sub_414F60_byte_44572E;
 static t_sub_414F60_byte_44572E& __sub_414F60_byte_44572E = *(t_sub_414F60_byte_44572E*)0x0044572E;
 typedef char t_sub_414F60_byte_445730;
 static t_sub_414F60_byte_445730& __sub_414F60_byte_445730 = *(t_sub_414F60_byte_445730*)0x00445730;
-typedef char t_sub_414F60_byte_445732[10];
+typedef unsigned char t_sub_414F60_byte_445732[10];
 static t_sub_414F60_byte_445732& __sub_414F60_byte_445732 = *(t_sub_414F60_byte_445732*)0x00445732;
 typedef int t_sub_414F60_dword_443364;
 static t_sub_414F60_dword_443364& __sub_414F60_dword_443364 = *(t_sub_414F60_dword_443364*)0x00443364;

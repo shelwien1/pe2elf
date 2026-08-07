@@ -866,6 +866,16 @@ def emit(args, cache=None):
         # scalar on the strength of "this body never wrote a [": `buf = buf_0;`
         # is the array decaying to a pointer, and as a scalar it silently reads
         # one byte of image instead.
+        if re.fullmatch(GLOBAL_RE, g):
+            # An auto-generated name states its own width, and Hex-Rays picks
+            # the name by how *this* body accesses the address: `byte_445714`
+            # is a byte load even where the declaration section calls the same
+            # address an int.  symbols.txt, harvested from the disassembly,
+            # types every one of these `int` — 369 of them — so it must not
+            # win.  Getting this wrong is silent: `byte_445714[4 * v3]` typed
+            # `int[]` reads four bytes at four times the stride, which is not a
+            # crash, just wrong data.
+            base = PREFIX_TYPE.get(g.split('_')[0], base)
         if g in per_body:
             base, ext = per_body[g]
         if array_used(body, g, g in locals_):

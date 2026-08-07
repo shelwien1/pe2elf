@@ -1,7 +1,7 @@
 // exit_402E40 @ 0x00402E40 — __stdcall
 // Extracted from BMF.c:2484-2489 by extract.py per incdec.md.
 
-typedef int t_exit_402E40_off_441068;
+typedef void * t_exit_402E40_off_441068;
 static t_exit_402E40_off_441068& __exit_402E40_off_441068 = *(t_exit_402E40_off_441068*)0x00441068;
 
 

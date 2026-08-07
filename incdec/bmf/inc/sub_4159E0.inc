@@ -3,7 +3,7 @@
 
 typedef char t_sub_4159E0_buf_0[0x10000];
 static t_sub_4159E0_buf_0& __sub_4159E0_buf_0 = *(t_sub_4159E0_buf_0*)0x00443440;
-typedef char t_sub_4159E0_byte_445440[544];
+typedef unsigned char t_sub_4159E0_byte_445440[544];
 static t_sub_4159E0_byte_445440& __sub_4159E0_byte_445440 = *(t_sub_4159E0_byte_445440*)0x00445440;
 typedef char t_sub_4159E0_byte_445700;
 static t_sub_4159E0_byte_445700& __sub_4159E0_byte_445700 = *(t_sub_4159E0_byte_445700*)0x00445700;

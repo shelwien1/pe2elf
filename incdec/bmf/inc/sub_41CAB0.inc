@@ -30,12 +30,8 @@ static t_sub_41CAB0_xmmword_4411E0& __sub_41CAB0_xmmword_4411E0 = *(t_sub_41CAB0
 typedef __int128 t_sub_41CAB0_xmmword_4411F0;
 static t_sub_41CAB0_xmmword_4411F0& __sub_41CAB0_xmmword_4411F0 = *(t_sub_41CAB0_xmmword_4411F0*)0x004411F0;
 
-#ifndef __PE_DECL___sub_413430
-#define __PE_DECL___sub_413430
-typedef __attribute__((thiscall)) int t_sub_413430(void *, int n2);
-static t_sub_413430& __sub_413430 = *(t_sub_413430*)0x00413430;
-#endif
-#define sub_413430 __sub_413430
+static inline int __fwd_sub_41CAB0_sub_413430(void *a0, int a1) { return __sub_413430((unsigned __int16 *)a0, a1); }
+#define sub_413430 __fwd_sub_41CAB0_sub_413430
 static inline unsigned int __fwd_sub_41CAB0_sub_414800(void *a0) { return __sub_414800((unsigned __int16 *)a0); }
 #define sub_414800 __fwd_sub_41CAB0_sub_414800
 

@@ -1,15 +1,15 @@
 // sub_424D90 @ 0x00424D90 — __cdecl
 // Extracted from BMF.c:30485-30963 by extract.py per incdec.md.
 
-typedef char t_sub_424D90_byte_44339D[0x10000];
+typedef unsigned char t_sub_424D90_byte_44339D[0x10000];
 static t_sub_424D90_byte_44339D& __sub_424D90_byte_44339D = *(t_sub_424D90_byte_44339D*)0x0044339D;
-typedef char t_sub_424D90_byte_44339E[0x10000];
+typedef unsigned char t_sub_424D90_byte_44339E[0x10000];
 static t_sub_424D90_byte_44339E& __sub_424D90_byte_44339E = *(t_sub_424D90_byte_44339E*)0x0044339E;
-typedef char t_sub_424D90_byte_44339F[0x10000];
+typedef unsigned char t_sub_424D90_byte_44339F[0x10000];
 static t_sub_424D90_byte_44339F& __sub_424D90_byte_44339F = *(t_sub_424D90_byte_44339F*)0x0044339F;
-typedef char t_sub_424D90_byte_4433AD[16];
+typedef unsigned char t_sub_424D90_byte_4433AD[16];
 static t_sub_424D90_byte_4433AD& __sub_424D90_byte_4433AD = *(t_sub_424D90_byte_4433AD*)0x004433AD;
-typedef char t_sub_424D90_byte_4433BD[15];
+typedef unsigned char t_sub_424D90_byte_4433BD[15];
 static t_sub_424D90_byte_4433BD& __sub_424D90_byte_4433BD = *(t_sub_424D90_byte_4433BD*)0x004433BD;
 typedef int t_sub_424D90_dword_4433A0[0x10000];
 static t_sub_424D90_dword_4433A0& __sub_424D90_dword_4433A0 = *(t_sub_424D90_dword_4433A0*)0x004433A0;

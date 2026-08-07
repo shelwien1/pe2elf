@@ -1,11 +1,11 @@
 // sub_4256F0 @ 0x004256F0 — __thiscall
 // Extracted from BMF.c:30966-31095 by extract.py per incdec.md.
 
-typedef char t_sub_4256F0_byte_439BC0[8];
+typedef unsigned char t_sub_4256F0_byte_439BC0[8];
 static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)0x00439BC0;
-typedef char t_sub_4256F0_byte_439BC8[8];
+typedef unsigned char t_sub_4256F0_byte_439BC8[8];
 static t_sub_4256F0_byte_439BC8& __sub_4256F0_byte_439BC8 = *(t_sub_4256F0_byte_439BC8*)0x00439BC8;
-typedef char t_sub_4256F0_byte_439BD0[8];
+typedef unsigned char t_sub_4256F0_byte_439BD0[8];
 static t_sub_4256F0_byte_439BD0& __sub_4256F0_byte_439BD0 = *(t_sub_4256F0_byte_439BD0*)0x00439BD0;
 
 static inline unsigned int __fwd_sub_4256F0_sub_4118A0(void *a0, void *a1) { return __sub_4118A0((_BYTE *)a0, (char *)a1); }

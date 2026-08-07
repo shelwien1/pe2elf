@@ -22,12 +22,8 @@ static t_sub_4135A0_n0x800000& __sub_4135A0_n0x800000 = *(t_sub_4135A0_n0x800000
 typedef int t_sub_4135A0_n256_1;
 static t_sub_4135A0_n256_1& __sub_4135A0_n256_1 = *(t_sub_4135A0_n256_1*)0x00445708;
 
-#ifndef __PE_DECL___sub_413900
-#define __PE_DECL___sub_413900
-typedef __attribute__((thiscall)) int t_sub_413900(void *, int n2);
-static t_sub_413900& __sub_413900 = *(t_sub_413900*)0x00413900;
-#endif
-#define sub_413900 __sub_413900
+static inline int __fwd_sub_4135A0_sub_413900(void *a0, int a1) { return __sub_413900((unsigned __int16 *)a0, a1); }
+#define sub_413900 __fwd_sub_4135A0_sub_413900
 
 PROBE_DECL(__sub_4135A0)
 BMF_SSE __attribute__((fastcall)) int __sub_4135A0(unsigned __int16 *a1, int n5, int a3, int n5a)

@@ -1,15 +1,15 @@
 // sub_4081E0 @ 0x004081E0 — __usercall
 // Extracted from BMF.c:6624-6812 by extract.py per incdec.md.
 
-typedef char t_sub_4081E0_byte_44339C[0x10000];
+typedef unsigned char t_sub_4081E0_byte_44339C[0x10000];
 static t_sub_4081E0_byte_44339C& __sub_4081E0_byte_44339C = *(t_sub_4081E0_byte_44339C*)0x0044339C;
-typedef char t_sub_4081E0_byte_44339D[0x10000];
+typedef unsigned char t_sub_4081E0_byte_44339D[0x10000];
 static t_sub_4081E0_byte_44339D& __sub_4081E0_byte_44339D = *(t_sub_4081E0_byte_44339D*)0x0044339D;
-typedef char t_sub_4081E0_byte_44339E[0x10000];
+typedef unsigned char t_sub_4081E0_byte_44339E[0x10000];
 static t_sub_4081E0_byte_44339E& __sub_4081E0_byte_44339E = *(t_sub_4081E0_byte_44339E*)0x0044339E;
-typedef char t_sub_4081E0_byte_44339F[0x10000];
+typedef unsigned char t_sub_4081E0_byte_44339F[0x10000];
 static t_sub_4081E0_byte_44339F& __sub_4081E0_byte_44339F = *(t_sub_4081E0_byte_44339F*)0x0044339F;
-typedef char t_sub_4081E0_byte_4433AD[16];
+typedef unsigned char t_sub_4081E0_byte_4433AD[16];
 static t_sub_4081E0_byte_4433AD& __sub_4081E0_byte_4433AD = *(t_sub_4081E0_byte_4433AD*)0x004433AD;
 typedef int t_sub_4081E0_dword_4433A0[0x10000];
 static t_sub_4081E0_dword_4433A0& __sub_4081E0_dword_4433A0 = *(t_sub_4081E0_dword_4433A0*)0x004433A0;

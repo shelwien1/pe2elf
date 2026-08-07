@@ -7,7 +7,7 @@ typedef int t_sub_40B330_Buffer_1;
 static t_sub_40B330_Buffer_1& __sub_40B330_Buffer_1 = *(t_sub_40B330_Buffer_1*)0x00443374;
 typedef int t_sub_40B330_Src;
 static t_sub_40B330_Src& __sub_40B330_Src = *(t_sub_40B330_Src*)0x00442E70;
-typedef char t_sub_40B330_byte_439418[16];
+typedef unsigned char t_sub_40B330_byte_439418[16];
 static t_sub_40B330_byte_439418& __sub_40B330_byte_439418 = *(t_sub_40B330_byte_439418*)0x00439418;
 typedef int t_sub_40B330_dword_438B00[0x10000];
 static t_sub_40B330_dword_438B00& __sub_40B330_dword_438B00 = *(t_sub_40B330_dword_438B00*)0x00438B00;
@@ -37,7 +37,7 @@ typedef int t_sub_40B330_n8;
 static t_sub_40B330_n8& __sub_40B330_n8 = *(t_sub_40B330_n8*)0x00443368;
 typedef int t_sub_40B330_n9;
 static t_sub_40B330_n9& __sub_40B330_n9 = *(t_sub_40B330_n9*)0x00443418;
-typedef int t_sub_40B330_off_4410C0[0x10000];
+typedef void * t_sub_40B330_off_4410C0[0x10000];
 static t_sub_40B330_off_4410C0& __sub_40B330_off_4410C0 = *(t_sub_40B330_off_4410C0*)0x004410C0;
 
 #ifndef __PE_DECL___sub_411700

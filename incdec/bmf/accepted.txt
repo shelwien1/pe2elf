@@ -15,7 +15,9 @@
 00412B10 sub_412B10 thiscall
 00413230 sub_413230 thiscall
 00413560 sub_413560 thiscall
+00413900 sub_413900 thiscall
 004135A0 sub_4135A0 fastcall
+00414060 sub_414060 thiscall
 00413E60 sub_413E60 fastcall
 00414390 sub_414390 thiscall
 00414620 sub_414620 thiscall
@@ -30,6 +32,7 @@
 00419680 sub_419680 cdecl
 004244A0 sub_4244A0 thiscall
 004248D0 sub_4248D0 thiscall
+00413430 sub_413430 thiscall
 004259F0 sub_4259F0 thiscall
 004256F0 sub_4256F0 thiscall
 00424500 sub_424500 cdecl

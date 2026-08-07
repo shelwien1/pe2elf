@@ -3,9 +3,9 @@
 
 typedef int t_sub_40CF80_Buffer_0;
 static t_sub_40CF80_Buffer_0& __sub_40CF80_Buffer_0 = *(t_sub_40CF80_Buffer_0*)0x00443378;
-typedef char t_sub_40CF80_byte_439408[0x10000];
+typedef unsigned char t_sub_40CF80_byte_439408[0x10000];
 static t_sub_40CF80_byte_439408& __sub_40CF80_byte_439408 = *(t_sub_40CF80_byte_439408*)0x00439408;
-typedef char t_sub_40CF80_byte_439409[15];
+typedef unsigned char t_sub_40CF80_byte_439409[15];
 static t_sub_40CF80_byte_439409& __sub_40CF80_byte_439409 = *(t_sub_40CF80_byte_439409*)0x00439409;
 typedef int t_sub_40CF80_dword_438920[24];
 static t_sub_40CF80_dword_438920& __sub_40CF80_dword_438920 = *(t_sub_40CF80_dword_438920*)0x00438920;
