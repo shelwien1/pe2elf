@@ -1,5 +1,5 @@
 // sub_402590 @ 0x00402590 — __cdecl
-// Extracted from BMF.c:1913-2064 by extract.py per incdec.md.
+// Extracted from BMF.cpp:1913-2064 by extract.py per incdec.md.
 
 typedef size_t t_sub_402590_ElementCount;
 static t_sub_402590_ElementCount& __sub_402590_ElementCount = *(t_sub_402590_ElementCount*)0x00441054;

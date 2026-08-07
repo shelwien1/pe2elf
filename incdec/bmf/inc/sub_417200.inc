@@ -1,5 +1,5 @@
 // sub_417200 @ 0x00417200 — __userpurge
-// Extracted from BMF.c:21323-21825 by extract.py per incdec.md.
+// Extracted from BMF.cpp:21323-21825 by extract.py per incdec.md.
 
 typedef int t_sub_417200_n4_4;
 static t_sub_417200_n4_4& __sub_417200_n4_4 = *(t_sub_417200_n4_4*)0x00445740;

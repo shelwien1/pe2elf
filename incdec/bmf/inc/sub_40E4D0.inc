@@ -1,5 +1,5 @@
 // sub_40E4D0 @ 0x0040E4D0 — __cdecl
-// Extracted from BMF.c:12287-12360 by extract.py per incdec.md.
+// Extracted from BMF.cpp:12287-12360 by extract.py per incdec.md.
 
 typedef int t_sub_40E4D0_dword_442EE0[0x10000];
 static t_sub_40E4D0_dword_442EE0& __sub_40E4D0_dword_442EE0 = *(t_sub_40E4D0_dword_442EE0*)0x00442EE0;

@@ -1,5 +1,5 @@
 // sub_40CF80 @ 0x0040CF80 — __cdecl
-// Extracted from BMF.c:10899-11827 by extract.py per incdec.md.
+// Extracted from BMF.cpp:10899-11827 by extract.py per incdec.md.
 
 typedef int t_sub_40CF80_Buffer_0;
 static t_sub_40CF80_Buffer_0& __sub_40CF80_Buffer_0 = *(t_sub_40CF80_Buffer_0*)0x00443378;

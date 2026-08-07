@@ -1,5 +1,5 @@
 // sub_4284E0 @ 0x004284E0 — __cdecl
-// Extracted from BMF.c:32724-32730 by extract.py per incdec.md.
+// Extracted from BMF.cpp:32724-32730 by extract.py per incdec.md.
 
 static inline int __fwd_sub_4284E0_sub_42851C(int a0, void *a1, void *a2) { return __sub_42851C(a0, (const char *)a1, (const char *)a2); }
 #define sub_42851C __fwd_sub_4284E0_sub_42851C

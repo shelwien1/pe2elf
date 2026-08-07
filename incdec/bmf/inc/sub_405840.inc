@@ -1,5 +1,5 @@
 // sub_405840 @ 0x00405840 — __usercall
-// Extracted from BMF.c:4723-4983 by extract.py per incdec.md.
+// Extracted from BMF.cpp:4723-4983 by extract.py per incdec.md.
 
 typedef int t_sub_405840_Buffer_0;
 static t_sub_405840_Buffer_0& __sub_405840_Buffer_0 = *(t_sub_405840_Buffer_0*)0x00443378;

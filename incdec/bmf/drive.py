@@ -66,7 +66,7 @@ def load_candidates(path):
 
 def call_graph(cands):
     """name -> set(callees within the candidate set), for topological order."""
-    src = open('BMF.c', errors='replace').read().split('\n')
+    src = open('BMF.cpp', errors='replace').read().split('\n')
     spans = {}
     for l in open('sites.txt'):
         if not l.strip():

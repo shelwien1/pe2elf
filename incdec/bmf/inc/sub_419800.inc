@@ -1,5 +1,5 @@
 // sub_419800 @ 0x00419800 — __userpurge
-// Extracted from BMF.c:23806-24275 by extract.py per incdec.md.
+// Extracted from BMF.cpp:23806-24275 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

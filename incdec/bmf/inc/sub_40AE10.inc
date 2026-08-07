@@ -1,5 +1,5 @@
 // sub_40AE10 @ 0x0040AE10 — __thiscall
-// Extracted from BMF.c:8916-8961 by extract.py per incdec.md.
+// Extracted from BMF.cpp:8916-8961 by extract.py per incdec.md.
 
 typedef int t_sub_40AE10_n2;
 static t_sub_40AE10_n2& __sub_40AE10_n2 = *(t_sub_40AE10_n2*)0x00443360;

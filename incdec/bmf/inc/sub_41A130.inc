@@ -1,5 +1,5 @@
 // sub_41A130 @ 0x0041A130 — __userpurge
-// Extracted from BMF.c:24278-25448 by extract.py per incdec.md.
+// Extracted from BMF.cpp:24278-25448 by extract.py per incdec.md.
 
 typedef int t_sub_41A130_dword_4398C0[0x10000];
 static t_sub_41A130_dword_4398C0& __sub_41A130_dword_4398C0 = *(t_sub_41A130_dword_4398C0*)0x004398C0;

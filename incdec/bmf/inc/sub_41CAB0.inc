@@ -1,5 +1,5 @@
 // sub_41CAB0 @ 0x0041CAB0 — __userpurge
-// Extracted from BMF.c:25681-28011 by extract.py per incdec.md.
+// Extracted from BMF.cpp:25681-28011 by extract.py per incdec.md.
 
 typedef int t_sub_41CAB0_dword_439880[4];
 static t_sub_41CAB0_dword_439880& __sub_41CAB0_dword_439880 = *(t_sub_41CAB0_dword_439880*)0x00439880;

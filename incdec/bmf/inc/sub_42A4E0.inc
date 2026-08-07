@@ -1,5 +1,5 @@
 // sub_42A4E0 @ 0x0042A4E0 — __usercall
-// Extracted from BMF.c:34812-35123 by extract.py per incdec.md.
+// Extracted from BMF.cpp:34812-35123 by extract.py per incdec.md.
 
 #define sub_42B830 __sub_42B830
 

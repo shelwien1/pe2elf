@@ -1,5 +1,5 @@
 // sub_422D60 @ 0x00422D60 — __usercall
-// Extracted from BMF.c:28942-28955 by extract.py per incdec.md.
+// Extracted from BMF.cpp:28942-28955 by extract.py per incdec.md.
 
 static inline void ** __fwd_sub_422D60_sub_419610(void *a0, char a1) { return __sub_419610((void **)a0, a1); }
 #define sub_419610 __fwd_sub_422D60_sub_419610

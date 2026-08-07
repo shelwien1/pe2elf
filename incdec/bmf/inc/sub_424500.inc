@@ -1,5 +1,5 @@
 // sub_424500 @ 0x00424500 — __cdecl
-// Extracted from BMF.c:30111-30124 by extract.py per incdec.md.
+// Extracted from BMF.cpp:30111-30124 by extract.py per incdec.md.
 
 static inline void ** __fwd_sub_424500_sub_4244A0(void *a0, char a1) { return __sub_4244A0((void **)a0, a1); }
 #define sub_4244A0 __fwd_sub_424500_sub_4244A0

@@ -1,5 +1,5 @@
 // sub_421930 @ 0x00421930 — __cdecl
-// Extracted from BMF.c:28014-28779 by extract.py per incdec.md.
+// Extracted from BMF.cpp:28014-28779 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_421930_byte_44339D[0x10000];
 static t_sub_421930_byte_44339D& __sub_421930_byte_44339D = *(t_sub_421930_byte_44339D*)0x0044339D;

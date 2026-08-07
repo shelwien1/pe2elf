@@ -1,5 +1,5 @@
 // sub_4256F0 @ 0x004256F0 — __thiscall
-// Extracted from BMF.c:30966-31095 by extract.py per incdec.md.
+// Extracted from BMF.cpp:30966-31095 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_4256F0_byte_439BC0[8];
 static t_sub_4256F0_byte_439BC0& __sub_4256F0_byte_439BC0 = *(t_sub_4256F0_byte_439BC0*)0x00439BC0;

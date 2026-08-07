@@ -1,5 +1,5 @@
 // sub_408510 @ 0x00408510 — __cdecl
-// Extracted from BMF.c:6815-8700 by extract.py per incdec.md.
+// Extracted from BMF.cpp:6815-8700 by extract.py per incdec.md.
 
 typedef int t_sub_408510_Buffer_0;
 static t_sub_408510_Buffer_0& __sub_408510_Buffer_0 = *(t_sub_408510_Buffer_0*)0x00443378;

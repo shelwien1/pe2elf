@@ -1,5 +1,5 @@
 // sub_414F60 @ 0x00414F60 — __cdecl
-// Extracted from BMF.c:19397-19565 by extract.py per incdec.md.
+// Extracted from BMF.cpp:19397-19565 by extract.py per incdec.md.
 
 typedef int t_sub_414F60_Buffer_0;
 static t_sub_414F60_Buffer_0& __sub_414F60_Buffer_0 = *(t_sub_414F60_Buffer_0*)0x00443378;

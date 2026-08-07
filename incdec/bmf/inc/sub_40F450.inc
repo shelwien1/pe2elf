@@ -1,5 +1,5 @@
 // sub_40F450 @ 0x0040F450 — __userpurge
-// Extracted from BMF.c:13255-13665 by extract.py per incdec.md.
+// Extracted from BMF.cpp:13255-13665 by extract.py per incdec.md.
 
 typedef int t_sub_40F450_buf[0x10000];
 static t_sub_40F450_buf& __sub_40F450_buf = *(t_sub_40F450_buf*)0x00443380;

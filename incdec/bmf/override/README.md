@@ -1,7 +1,7 @@
 # Hand-written `.inc` overrides
 
 `extract.py <name>` copies `override/<name>.inc` verbatim into `inc/<name>.inc`
-when it exists, instead of generating one from `BMF.c`. Everything downstream —
+when it exists, instead of generating one from `BMF.cpp`. Everything downstream —
 `accepted.txt`, `build.sh`, `drive.py`, the gate — is unchanged; an override is
 just a different way of producing the same file.
 

@@ -1,5 +1,5 @@
 // sub_414620 @ 0x00414620 — __thiscall
-// Extracted from BMF.c:18804-18931 by extract.py per incdec.md.
+// Extracted from BMF.cpp:18804-18931 by extract.py per incdec.md.
 
 typedef int t_sub_414620_Buffer_0;
 static t_sub_414620_Buffer_0& __sub_414620_Buffer_0 = *(t_sub_414620_Buffer_0*)0x00443378;

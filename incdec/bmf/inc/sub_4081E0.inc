@@ -1,5 +1,5 @@
 // sub_4081E0 @ 0x004081E0 — __usercall
-// Extracted from BMF.c:6624-6812 by extract.py per incdec.md.
+// Extracted from BMF.cpp:6624-6812 by extract.py per incdec.md.
 
 typedef unsigned char t_sub_4081E0_byte_44339C[0x10000];
 static t_sub_4081E0_byte_44339C& __sub_4081E0_byte_44339C = *(t_sub_4081E0_byte_44339C*)0x0044339C;

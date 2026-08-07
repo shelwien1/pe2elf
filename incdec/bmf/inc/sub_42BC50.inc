@@ -1,5 +1,5 @@
 // sub_42BC50 @ 0x0042BC50 — __userpurge
-// Extracted from BMF.c:36265-36512 by extract.py per incdec.md.
+// Extracted from BMF.cpp:36265-36512 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

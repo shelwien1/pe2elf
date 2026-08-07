@@ -1,5 +1,5 @@
 // sub_42B990 @ 0x0042B990 — __cdecl
-// Extracted from BMF.c:36072-36120 by extract.py per incdec.md.
+// Extracted from BMF.cpp:36072-36120 by extract.py per incdec.md.
 
 
 PROBE_DECL(__sub_42B990)

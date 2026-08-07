@@ -1,5 +1,5 @@
 // sub_42CAD0 @ 0x0042CAD0 — __cdecl
-// Extracted from BMF.c:37116-37176 by extract.py per incdec.md.
+// Extracted from BMF.cpp:37116-37176 by extract.py per incdec.md.
 
 
 PROBE_DECL(__sub_42CAD0)

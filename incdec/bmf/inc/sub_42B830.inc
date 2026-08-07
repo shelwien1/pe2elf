@@ -1,5 +1,5 @@
 // sub_42B830 @ 0x0042B830 — __cdecl
-// Extracted from BMF.c:35976-36069 by extract.py per incdec.md.
+// Extracted from BMF.cpp:35976-36069 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_4349F0
 #define __PE_DECL___sub_4349F0

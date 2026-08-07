@@ -1,5 +1,5 @@
 // sub_42CBB0 @ 0x0042CBB0 — __cdecl
-// Extracted from BMF.c:37179-37187 by extract.py per incdec.md.
+// Extracted from BMF.cpp:37179-37187 by extract.py per incdec.md.
 
 typedef int t_sub_42CBB0_psub_402E30;
 static t_sub_42CBB0_psub_402E30& __sub_42CBB0_psub_402E30 = *(t_sub_42CBB0_psub_402E30*)0x00445930;

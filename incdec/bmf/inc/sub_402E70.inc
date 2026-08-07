@@ -1,5 +1,5 @@
 // sub_402E70 @ 0x00402E70 — __thiscall
-// Extracted from BMF.c:2492-2500 by extract.py per incdec.md.
+// Extracted from BMF.cpp:2492-2500 by extract.py per incdec.md.
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

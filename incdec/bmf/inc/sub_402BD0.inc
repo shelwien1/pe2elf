@@ -1,5 +1,5 @@
 // sub_402BD0 @ 0x00402BD0 — __usercall
-// Extracted from BMF.c:2251-2460 by extract.py per incdec.md.
+// Extracted from BMF.cpp:2251-2460 by extract.py per incdec.md.
 
 typedef size_t t_sub_402BD0_ElementCount;
 static t_sub_402BD0_ElementCount& __sub_402BD0_ElementCount = *(t_sub_402BD0_ElementCount*)0x00441054;

@@ -1,5 +1,5 @@
 // sub_40BBC0 @ 0x0040BBC0 — __usercall
-// Extracted from BMF.c:9677-9816 by extract.py per incdec.md.
+// Extracted from BMF.cpp:9677-9816 by extract.py per incdec.md.
 
 typedef int t_sub_40BBC0_Src;
 static t_sub_40BBC0_Src& __sub_40BBC0_Src = *(t_sub_40BBC0_Src*)0x00442E70;

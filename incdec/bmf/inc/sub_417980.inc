@@ -1,5 +1,5 @@
 // sub_417980 @ 0x00417980 — __fastcall
-// Extracted from BMF.c:21828-22030 by extract.py per incdec.md.
+// Extracted from BMF.cpp:21828-22030 by extract.py per incdec.md.
 
 typedef char t_sub_417980_buf_0[0x10000];
 static t_sub_417980_buf_0& __sub_417980_buf_0 = *(t_sub_417980_buf_0*)0x00443440;

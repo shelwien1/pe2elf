@@ -19,13 +19,13 @@
 // ---------------------------------------------------------------------------
 // Hex-Rays type vocabulary.
 //
-// This is Hex-Rays' own defs.h, verbatim — the same header BMF.c's `#include
+// This is Hex-Rays' own defs.h, verbatim — the same header BMF.cpp's `#include
 // <defs.h>` refers to — rather than a hand-rolled subset.  It brings LOBYTE /
 // BYTEn / WORDn / SBYTEn / __ROLn__ / __RORn__ / __PAIRn__ / abs32 / qmemcpy /
 // COERCE_* / _UNKNOWN and the __intN aliases, all with the exact semantics the
 // decompiler assumed when it emitted them.
 //
-// BMF.c's other include, <windows.h>, is not wanted here (it would drag in a
+// BMF.cpp's other include, <windows.h>, is not wanted here (it would drag in a
 // Win32 SDK that does not exist on this host), but defs.h keys several
 // typedefs off it: `#ifndef _WINDOWS_` it defines BYTE/WORD/DWORD/LONG/BOOL
 // itself, and as *signed* types (`typedef int8 BYTE`, int8 being plain char).

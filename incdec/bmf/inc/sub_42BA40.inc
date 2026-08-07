@@ -1,5 +1,5 @@
 // sub_42BA40 @ 0x0042BA40 — __thiscall
-// Extracted from BMF.c:36123-36189 by extract.py per incdec.md.
+// Extracted from BMF.cpp:36123-36189 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_428BE0
 #define __PE_DECL___sub_428BE0

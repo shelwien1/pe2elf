@@ -1,5 +1,5 @@
 // sub_429C80 @ 0x00429C80 — __cdecl
-// Extracted from BMF.c:34290-34376 by extract.py per incdec.md.
+// Extracted from BMF.cpp:34290-34376 by extract.py per incdec.md.
 
 
 // BMF links the MSVC CRT into the image, so these route to the PE's

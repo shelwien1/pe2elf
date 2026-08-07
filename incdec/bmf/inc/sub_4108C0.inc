@@ -1,5 +1,5 @@
 // sub_4108C0 @ 0x004108C0 — __cdecl
-// Extracted from BMF.c:14623-14784 by extract.py per incdec.md.
+// Extracted from BMF.cpp:14623-14784 by extract.py per incdec.md.
 
 typedef int t_sub_4108C0_buf[0x10000];
 static t_sub_4108C0_buf& __sub_4108C0_buf = *(t_sub_4108C0_buf*)0x00443380;

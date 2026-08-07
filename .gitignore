@@ -27,9 +27,9 @@ archive.rar
 archive[0-9]*
 *.rar
 
-# incdec working tree: donor decompilation and per-run artifacts
-incdec/bmf/BMF.c
-incdec/bmf/BMF.asm
+# incdec working tree: per-run artifacts.  The donor decompilation (BMF.cpp)
+# and disassembly (BMF.asm) *are* committed — extract.py reads both, and
+# without BMF.asm it silently stops correcting float literals (README).
 incdec/bmf/tr/
 incdec/bmf/*.out
 incdec/bmf/run/

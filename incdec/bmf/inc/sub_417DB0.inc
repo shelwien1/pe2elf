@@ -1,5 +1,5 @@
 // sub_417DB0 @ 0x00417DB0 — __usercall
-// Extracted from BMF.c:22033-22073 by extract.py per incdec.md.
+// Extracted from BMF.cpp:22033-22073 by extract.py per incdec.md.
 
 typedef int t_sub_417DB0_dword_443364;
 static t_sub_417DB0_dword_443364& __sub_417DB0_dword_443364 = *(t_sub_417DB0_dword_443364*)0x00443364;

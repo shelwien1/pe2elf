@@ -1,5 +1,5 @@
 // sub_412300 @ 0x00412300 — __cdecl
-// Extracted from BMF.c:16313-16331 by extract.py per incdec.md.
+// Extracted from BMF.cpp:16313-16331 by extract.py per incdec.md.
 
 typedef int t_sub_412300_dword_4456E8;
 static t_sub_412300_dword_4456E8& __sub_412300_dword_4456E8 = *(t_sub_412300_dword_4456E8*)0x004456E8;

@@ -1,5 +1,5 @@
 // sub_42BB20 @ 0x0042BB20 — __usercall
-// Extracted from BMF.c:36192-36220 by extract.py per incdec.md.
+// Extracted from BMF.cpp:36192-36220 by extract.py per incdec.md.
 
 typedef int t_sub_42BB20_dword_44592C;
 static t_sub_42BB20_dword_44592C& __sub_42BB20_dword_44592C = *(t_sub_42BB20_dword_44592C*)0x0044592C;

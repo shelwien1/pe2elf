@@ -1,5 +1,5 @@
 // sub_4159E0 @ 0x004159E0 — __thiscall
-// Extracted from BMF.c:20063-20971 by extract.py per incdec.md.
+// Extracted from BMF.cpp:20063-20971 by extract.py per incdec.md.
 
 typedef char t_sub_4159E0_buf_0[0x10000];
 static t_sub_4159E0_buf_0& __sub_4159E0_buf_0 = *(t_sub_4159E0_buf_0*)0x00443440;

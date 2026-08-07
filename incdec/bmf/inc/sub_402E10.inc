@@ -1,5 +1,5 @@
 // sub_402E10 @ 0x00402E10 — __thiscall
-// Extracted from BMF.c:2472-2478 by extract.py per incdec.md.
+// Extracted from BMF.cpp:2472-2478 by extract.py per incdec.md.
 
 static inline int __fwd_sub_402E10_sub_42C090(void *a0) { return __sub_42C090((FILE1 **)a0); }
 #define sub_42C090 __fwd_sub_402E10_sub_42C090

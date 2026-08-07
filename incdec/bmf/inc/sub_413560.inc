@@ -1,5 +1,5 @@
 // sub_413560 @ 0x00413560 — __thiscall
-// Extracted from BMF.c:17702-17713 by extract.py per incdec.md.
+// Extracted from BMF.cpp:17702-17713 by extract.py per incdec.md.
 
 
 PROBE_DECL(__sub_413560)

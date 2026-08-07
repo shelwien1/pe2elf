@@ -1,5 +1,5 @@
 // sub_412E60 @ 0x00412E60 — __fastcall
-// Extracted from BMF.c:17123-17439 by extract.py per incdec.md.
+// Extracted from BMF.cpp:17123-17439 by extract.py per incdec.md.
 
 typedef int t_sub_412E60_Buffer_0;
 static t_sub_412E60_Buffer_0& __sub_412E60_Buffer_0 = *(t_sub_412E60_Buffer_0*)0x00443378;

@@ -120,7 +120,7 @@ that **every step ends with a green test**.
    function, because those are printed as `sub_4022C0@<eax>(…)` — the name is
    followed by `@`, not by `(`. Each miss is worse than it looks, because the
    *preceding* function's span then runs on and swallows the missed body
-   whole; in `BMF.c` that was 38 of 151 functions, and one `.inc` came out
+   whole; in `BMF.cpp` that was 38 of 151 functions, and one `.inc` came out
    holding ten concatenated bodies. Use the `//----- (004XXXXX) --------`
    banner Hex-Rays prints ahead of every function, and record an explicit end
    line per function.
@@ -910,7 +910,7 @@ the i386 calling conventions §4 depends on, and makes `long`/`size_t`
 
 ### 8.2 Hex-Rays' own `defs.h`, and MSVC intrinsics
 
-Start from the real thing. `BMF.c` opens with `#include <defs.h>`, and that
+Start from the real thing. `BMF.cpp` opens with `#include <defs.h>`, and that
 header ships with IDA: it defines `LOBYTE`/`BYTEn`/`WORDn`/`SBYTEn`,
 `__ROLn__`/`__RORn__`, `__PAIRn__`/`__SPAIRn__`, `__CFADD__`/`__OFSUB__`,
 `abs8`…`abs64`, `qmemcpy`, `COERCE_FLOAT`, `_UNKNOWN`, and the `__intN`

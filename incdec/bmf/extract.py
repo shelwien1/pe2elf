@@ -12,7 +12,7 @@ for the x64 PPMonstr target — see incdec.md §8.5).  Differences that matter:
     that the global lives at 0x441A20.  A body referencing anything else
     (named CRT entries, operator new/delete) cannot be resolved and the
     function is refused rather than silently mis-linked.
-  * Uses the declared type + extent from BMF.c's data-declaration section
+  * Uses the declared type + extent from BMF.cpp's data-declaration section
     where available, falling back to a usage-derived guess.
 
 Usage: extract.py <name> [--accepted accepted.txt] [--out inc/<name>.inc]
@@ -23,7 +23,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.join(HERE, 'BMF.c')
+SRC = os.path.join(HERE, 'BMF.cpp')
 
 GLOBAL_RE = r'(?:dword|byte|word|unk|off|flt|dbl|qword|xmmword|asc)_[0-9A-Fa-f]{6}'
 SUB_RE = r'sub_[0-9A-Fa-f]{6}'
@@ -211,7 +211,7 @@ def load():
         addr, name, base, ext = (l.rstrip('\n').split('\t') + [''])[:4]
         globals_[name] = (int(addr, 16), base, ext)
 
-    # BMF.c's own "// 4456F4: using guessed type int n0x2000_1;" comments win
+    # BMF.cpp's own "// 4456F4: using guessed type int n0x2000_1;" comments win
     # over symbols.txt.  symbols.txt is keyed by name, and Hex-Rays' names are
     # generated per run: re-decompiling the same binary renumbered the
     # `n0x2000*` family, so a name that resolved last time can be absent or —
@@ -457,10 +457,11 @@ def single_precision(name):
     global _ASM_RANGES
     if _ASM_RANGES is None:
         _ASM_RANGES = {}
-        try:
-            lines = open(ASM, errors='replace').read().split('\n')
-        except OSError:
-            lines = []
+        # Loudly, not silently: without the disassembly this returns False for
+        # every function and the float-literal correction quietly stops
+        # happening, which costs compression ratio and nothing else — exactly
+        # the kind of failure that takes days to notice.
+        lines = open(ASM, errors='replace').read().split('\n')
         start = {}
         for i, l in enumerate(lines):
             m = re.match(r'^[0-9A-F]{8}\s+(\S+)\s+proc\s+near', l)
@@ -833,7 +834,7 @@ def drop_leading_args(text, name, n):
 def array_used(body, name, shadowed=False):
     """True if *this* body indexes the global — decides array vs scalar typedef.
 
-    Per body, not across all of BMF.c.  A global with no declared extent that
+    Per body, not across all of BMF.cpp.  A global with no declared extent that
     some other function indexes is still a plain scalar as far as this one is
     concerned, and typing it `int[0x10000]` here makes every use of it a
     non-lvalue array ("invalid operands of types 'int' and 'int [65536]'").
@@ -900,7 +901,7 @@ def emit(args, cache=None):
                           or body_lines[-1].lstrip().startswith('//')):
         body_lines.pop()
     # Literal substitutions from fixups.txt, applied against the donor text so
-    # the `find` strings can be grepped for in BMF.c.  A fixup that no longer
+    # the `find` strings can be grepped for in BMF.cpp.  A fixup that no longer
     # matches is an error, not a silent no-op: the donor gets re-decompiled and
     # a stale one would quietly stop being applied.
     for find, repl in fixups.get(args.name, ()):
@@ -1043,7 +1044,7 @@ def emit(args, cache=None):
                  f"goes on the stack): {bad_conv}")
     if hit_noaddr:
         sys.exit(f"{args.name} references globals with no recoverable address "
-                 f"(declared in BMF.c but absent from the 'using guessed type' "
+                 f"(declared in BMF.cpp but absent from the 'using guessed type' "
                  f"comments): {hit_noaddr}")
     if unresolved:
         sys.exit(f"{args.name} references unresolvable symbols "
@@ -1051,7 +1052,7 @@ def emit(args, cache=None):
 
     out = []
     out.append(f"// {args.name} @ 0x{va} — __{conv}")
-    out.append(f"// Extracted from BMF.c:{a}-{b} by extract.py per incdec.md.")
+    out.append(f"// Extracted from BMF.cpp:{a}-{b} by extract.py per incdec.md.")
     out.append("")
 
     # --- globals (§6.1) -----------------------------------------------------
@@ -1115,7 +1116,7 @@ def emit(args, cache=None):
             out.append(f"#define {c} __{c}")
             continue
         # The callee's own definition is the authoritative signature.  The
-        # forward-declaration block is not: BMF.c has none at all for several
+        # forward-declaration block is not: BMF.cpp has none at all for several
         # functions (sub_41C4B0, sub_413430, ...), and the fallback used to be
         # `(...)`.  For a __thiscall or __fastcall callee that is silently
         # fatal — gcc ignores the convention attribute on a variadic function,
@@ -1430,7 +1431,7 @@ def main():
     if a.out and len(names) > 1:
         ap.error('--out takes a single name')
 
-    # One load() for the whole batch: BMF.c is 1.2 MB and drive.py re-emits the
+    # One load() for the whole batch: BMF.cpp is 1.2 MB and drive.py re-emits the
     # entire accepted set on every acceptance (see below), so parsing it once
     # per name would dominate the loop.
     cache = load()

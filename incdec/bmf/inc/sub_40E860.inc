@@ -1,5 +1,5 @@
 // sub_40E860 @ 0x0040E860 — __userpurge
-// Extracted from BMF.c:12539-13252 by extract.py per incdec.md.
+// Extracted from BMF.cpp:12539-13252 by extract.py per incdec.md.
 
 typedef int t_sub_40E860_buf[0x10000];
 static t_sub_40E860_buf& __sub_40E860_buf = *(t_sub_40E860_buf*)0x00443380;

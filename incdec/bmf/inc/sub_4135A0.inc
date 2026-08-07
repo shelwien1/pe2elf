@@ -1,5 +1,5 @@
 // sub_4135A0 @ 0x004135A0 — __fastcall
-// Extracted from BMF.c:17716-17932 by extract.py per incdec.md.
+// Extracted from BMF.cpp:17716-17932 by extract.py per incdec.md.
 
 typedef int t_sub_4135A0_Buffer_0;
 static t_sub_4135A0_Buffer_0& __sub_4135A0_Buffer_0 = *(t_sub_4135A0_Buffer_0*)0x00443378;

@@ -1,5 +1,5 @@
 // sub_42AB20 @ 0x0042AB20 — __cdecl
-// Extracted from BMF.c:35126-35473 by extract.py per incdec.md.
+// Extracted from BMF.cpp:35126-35473 by extract.py per incdec.md.
 
 #ifndef __PE_DECL___sub_434980
 #define __PE_DECL___sub_434980

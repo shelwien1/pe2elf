@@ -1,5 +1,5 @@
 // sub_40E590 @ 0x0040E590 — __thiscall
-// Extracted from BMF.c:12363-12536 by extract.py per incdec.md.
+// Extracted from BMF.cpp:12363-12536 by extract.py per incdec.md.
 
 typedef int t_sub_40E590_dword_4394E0[0x10000];
 static t_sub_40E590_dword_4394E0& __sub_40E590_dword_4394E0 = *(t_sub_40E590_dword_4394E0*)0x004394E0;

@@ -1,5 +1,5 @@
 // sub_424550 @ 0x00424550 — __thiscall
-// Extracted from BMF.c:30127-30306 by extract.py per incdec.md.
+// Extracted from BMF.cpp:30127-30306 by extract.py per incdec.md.
 
 static inline int __fwd_sub_424550_sub_4135A0(void *a0, int a1, int a2, int a3) { return __sub_4135A0((unsigned __int16 *)a0, a1, a2, a3); }
 #define sub_4135A0 __fwd_sub_424550_sub_4135A0

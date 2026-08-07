@@ -1,5 +1,5 @@
 // sub_4022C0 @ 0x004022C0 — __usercall
-// Extracted from BMF.c:1779-1910 by extract.py per incdec.md.
+// Extracted from BMF.cpp:1779-1910 by extract.py per incdec.md.
 
 typedef int t_sub_4022C0_dwLowDateTime;
 static t_sub_4022C0_dwLowDateTime& __sub_4022C0_dwLowDateTime = *(t_sub_4022C0_dwLowDateTime*)0x00442BB0;

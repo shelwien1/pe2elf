@@ -1,5 +1,5 @@
 // sub_407B30 @ 0x00407B30 — __usercall
-// Extracted from BMF.c:6241-6440 by extract.py per incdec.md.
+// Extracted from BMF.cpp:6241-6440 by extract.py per incdec.md.
 
 typedef int t_sub_407B30_Buffer;
 static t_sub_407B30_Buffer& __sub_407B30_Buffer = *(t_sub_407B30_Buffer*)0x0044337C;

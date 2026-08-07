@@ -1,5 +1,5 @@
 // sub_40FAC0 @ 0x0040FAC0 — __userpurge
-// Extracted from BMF.c:13668-14183 by extract.py per incdec.md.
+// Extracted from BMF.cpp:13668-14183 by extract.py per incdec.md.
 
 typedef int t_sub_40FAC0_n2;
 static t_sub_40FAC0_n2& __sub_40FAC0_n2 = *(t_sub_40FAC0_n2*)0x00443360;

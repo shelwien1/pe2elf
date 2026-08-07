@@ -1,5 +1,5 @@
 // sub_40CB70 @ 0x0040CB70 — __cdecl
-// Extracted from BMF.c:10575-10645 by extract.py per incdec.md.
+// Extracted from BMF.cpp:10575-10645 by extract.py per incdec.md.
 
 typedef int t_sub_40CB70_buf_1;
 static t_sub_40CB70_buf_1& __sub_40CB70_buf_1 = *(t_sub_40CB70_buf_1*)0x00443430;
