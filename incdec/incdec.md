@@ -1302,6 +1302,16 @@ reading the instructions above the `call`. All six here were the same shape,
 denominator was invariably the expression the surrounding `if` already tests
 for zero — which is a useful sanity check that the right site was matched.
 
+**Then check the convention numerically.** Once the wrapper is in place, print
+its result next to the host libc's for the same input on a real run. That is
+one line of instrumentation and it settles in one go whether the argument
+reached the right register, whether the result came back from the right one,
+and — for a packed routine — whether both lanes are live. It also catches what
+static reading will not: `___svml_log2` is IDA's name for a routine that
+returns the **natural** log, which is why every call site multiplies by
+1.442695040888963. Believing the name would have put a `log2` in a wrapper that
+is fed by, and feeds, code expecting `ln`.
+
 A `@<xmm0>` **return** needs one more thing. g++ returns a value in `xmm0` for
 a raw vector type and only for that: the `M128*` unions of §8.2 are class
 types, and i386 returns every aggregate through a hidden pointer. A moved

@@ -13,9 +13,16 @@
 //   00436E2D  jz       short loc_436E34
 //   00436E2F  call     ___svml_log2_w              ; xmm0 in, xmm0 out
 //
-// It is the lane-masked wrapper around SVML's log2: lanes the caller marked
-// dead are replaced with 0.5 (whose log2 is exact and cannot fault or produce
-// a NaN), and the call is skipped entirely when no lane is live.
+// It is the lane-masked wrapper around the Intel runtime's vector log: lanes
+// the caller marked dead are replaced with 0.5 — any finite positive value
+// will do, since the result is masked off again — and the call is skipped
+// entirely when no lane is live.
+//
+// `___svml_log2` is IDA's name and it is misleading: measured against glibc,
+// the routine returns the *natural* log, not log2.  `__svml_log2(61)` is
+// 4.11087 and `ln(61)` is 4.11087, where `log2(61)` is 5.93074.  That is why
+// every call site multiplies the result by 1.442695040888963 (1/ln 2).  The
+// wrapper passes it through unchanged, so nothing here depends on the name.
 //
 //   1. The `xmm0` argument is missing from the signature — Hex-Rays recovered
 //      only `a1@<xmm1>` — so the whole select vanished from the body.
