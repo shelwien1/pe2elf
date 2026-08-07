@@ -25,7 +25,7 @@ sub_413900	test: t8g: DECOMPRESS FAILED (rc=3)
 sub_419800	extract: sub_419800 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_4197A0	extract: sub_4197A0 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_421930	extract: sub_421930 calls __usercall/__userpurge functions that have not been moved yet, whose regi
-sub_424550	test: t24: LARGER THAN REFERENCE (54276 > 53924)
+sub_424550	test: t8g: COMPRESS FAILED (rc=1)
 sub_424D90	test: t24: COMPRESS FAILED (rc=1)
 sub_415380	extract: sub_415380 calls __usercall/__userpurge functions that have not been moved yet, whose regi
 sub_405840	extract: sub_405840 calls __usercall/__userpurge functions that have not been moved yet, whose regi

@@ -60,9 +60,11 @@ static t_sub_41C4B0& __sub_41C4B0 = *(t_sub_41C4B0*)0x0041C4B0;
 #define sub_41C4B0 __sub_41C4B0
 
 PROBE_DECL(__sub_41A130)
-extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128 *a1, __m128 &a2, __m128 &a3, _DWORD *a4, _DWORD *a5)
+extern "C" BMF_SSE __attribute__((visibility("hidden"))) int __sub_41A130(__m128 *a1, __m128 &a2__ref, __m128 &a3__ref, _DWORD *a4, _DWORD *a5)
 {
   PROBE_HIT(__sub_41A130);
+  __m128 a2 = a2__ref;
+  __m128 a3 = a3__ref;
   __int32 v6; // eax
   __int16 *v7; // ecx
   int v8; // esi

@@ -40,9 +40,10 @@ static inline unsigned int __fwd_sub_41CAB0_sub_414800(void *a0) { return __sub_
 #define sub_414800 __fwd_sub_41CAB0_sub_414800
 
 PROBE_DECL(__sub_41CAB0)
-extern "C" BMF_SSE __attribute__((visibility("hidden"))) unsigned int __sub_41CAB0(int a1, __m128 &a2, int a3, unsigned __int8 a4, int a5)
+extern "C" BMF_SSE __attribute__((visibility("hidden"))) unsigned int __sub_41CAB0(int a1, __m128 &a2__ref, int a3, unsigned __int8 a4, int a5)
 {
   PROBE_HIT(__sub_41CAB0);
+  __m128 a2 = a2__ref;
   int v6; // ecx
   _WORD *v7; // edx
   int v8; // ebx

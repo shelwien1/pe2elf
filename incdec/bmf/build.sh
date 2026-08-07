@@ -41,7 +41,25 @@ OUT=${OUT:-dummy32.so}
 # it at static-link time.  Unlike `static` it does not make the function local,
 # so gcc cannot give it a private calling convention — which would break the
 # patched entry point for every *non*-thunked function.
-g++ ${CXXEXTRA:-} -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
+# -msse2 -mfpmath=sse for the whole translation unit.  gcc's i386 default is
+# -mfpmath=387, which evaluates scalar float and double arithmetic with x87's
+# 80-bit intermediates; the donor is ICC output that used SSE throughout and
+# kept everything at 32 or 64 bits.  (It cannot go in the per-body `target`
+# attribute: `fpmath=` there makes gcc consider the options mismatched for the
+# always_inline intrinsics and refuse to inline them.)
+#
+# Deliberately *not* -mincoming-stack-boundary=2, and not
+# __attribute__((ms_abi)).  The one place the MS and SysV i386 ABIs really
+# differ is that SysV requires esp 16-byte aligned at a call and gcc assumes it
+# on entry, while MSVC guarantees only 4 — and patch_jmp sends PE callers
+# straight into a moved body.  But BMF is ICC output and does keep esp 16-byte
+# aligned, so the assumption holds: measured, telling gcc otherwise makes it
+# realign and *breaks* a round-trip that is green without it.  ms_abi would not
+# have helped either way — on i386 it is very nearly a no-op (verified: same
+# code, same alignment assumptions), unlike x86-64 where it selects a different
+# register convention entirely.  The per-function conventions that do matter
+# here — stdcall / fastcall / thiscall — are on the individual bodies, §4.
+g++ ${CXXEXTRA:-} ${CXXABI:--msse2 -mfpmath=sse} -O2 -fPIC -shared -m32 -std=c++17 -fpermissive \
     -Wno-narrowing -Wno-write-strings -Wno-unused-variable \
     -Wno-unused-but-set-variable -Wno-parentheses \
     -o "$OUT" dummy32.cpp \

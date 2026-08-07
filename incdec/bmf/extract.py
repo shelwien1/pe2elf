@@ -381,8 +381,16 @@ def rename_ident(text, name, repl):
     qualified form `::name` is renamed — that is the global, spelled explicitly
     because a local shadows it.
     """
+    # Positions inside a string or character literal are off limits: a global
+    # whose name also appears in one of BMF's messages would otherwise have the
+    # message rewritten along with the code.
+    lit = []
+    for m in re.finditer(r'"(?:[^"\\]|\\.)*"' + r"|'(?:[^'\\]|\\.)*'", text):
+        lit.append((m.start(), m.end()))
     out, pos = [], 0
     for m in re.finditer(r'\b' + re.escape(name) + r'\b', text):
+        if any(a <= m.start() < b for a, b in lit):
+            continue
         if MEMBER_BEFORE.search(text[max(0, m.start() - 4):m.start()]):
             continue
         out.append(text[pos:m.start()]); out.append(repl); pos = m.end()
@@ -918,10 +926,19 @@ def emit(args, cache=None):
         # vector register argument becomes a reference so that each argument
         # stays one four-byte slot and the thunk needs no 16-byte alignment
         # dance (the i386 ABI passes __m128 by value on a 16-byte boundary).
-        decls = []
+        decls, vec_copies = [], []
         for decl, nm, reg in sig_params:
             if reg in XMM and any(t in decl for t in VEC_TYPES):
-                decl = re.sub(r'\b' + re.escape(nm) + r'\s*$', '&' + nm, decl)
+                # By reference so the slot stays four bytes (§4.2), but the
+                # body gets a *copy*: the original took this in a register, so
+                # a write to it is local.  Binding the reference to a moved
+                # caller's lvalue and letting the body write through it would
+                # clobber the caller's variable — which the PE-side callers
+                # never see, because the thunk points the reference at its own
+                # scratch, so it would only ever go wrong once both ends moved.
+                ty = re.sub(r'\b' + re.escape(nm) + r'\s*$', '', decl).strip()
+                decl = f"{ty} &{nm}__ref"
+                vec_copies.append(f"  {ty} {nm} = {nm}__ref;")
             decls.append(decl)
         ret = sig_text[:sig_text.index(args.name)]
         for k in ('__usercall', '__userpurge', '__noreturn'):
@@ -943,6 +960,10 @@ def emit(args, cache=None):
                     f'{ret} __{args.name}'
                     f"({', '.join(decls) if decls else 'void'})")
         rest = body_lines[nsig:]
+        if vec_copies:
+            # After the opening brace, ahead of Hex-Rays' own declarations.
+            k = next((i for i, l in enumerate(rest) if l.strip() == '{'), -1)
+            rest = rest[:k + 1] + vec_copies + rest[k + 1:]
         joined = [sig_line] + rest
         thunk = make_thunk(args.name, va, conv, sig_params, ret_reg)
     else:
