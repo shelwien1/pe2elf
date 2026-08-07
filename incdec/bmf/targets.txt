@@ -130,3 +130,4 @@
 00436BD0	sub_436BD0	usercall
 00436DC0	__svml_log2_w	usercall
 00436E10	sub_436E10	usercall
+0042BBD0	sub_42BBD0	cdecl

@@ -1,1 +1,0 @@
-sub_42C0B0	extract: sub_42C0B0 calls __usercall/__userpurge functions that have not been moved yet, whose regi

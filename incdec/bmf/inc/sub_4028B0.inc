@@ -6,12 +6,6 @@ static t_sub_4028B0_Destination_& __sub_4028B0_Destination_ = *(t_sub_4028B0_Des
 typedef int t_sub_4028B0_dwLowDateTime;
 static t_sub_4028B0_dwLowDateTime& __sub_4028B0_dwLowDateTime = *(t_sub_4028B0_dwLowDateTime*)0x00442BB0;
 
-#ifndef __PE_DECL___sub_42C0B0
-#define __PE_DECL___sub_42C0B0
-typedef __attribute__((thiscall)) int * t_sub_42C0B0(int _this, int a2);
-static t_sub_42C0B0& __sub_42C0B0 = *(t_sub_42C0B0*)0x0042C0B0;
-#endif
-#define sub_42C0B0 __sub_42C0B0
 #define exit_402E40 __exit_402E40
 static inline FILE1 ** __fwd_sub_4028B0_sub_402DF0(void *a0, char a1) { return __sub_402DF0((FILE1 **)a0, a1); }
 #define sub_402DF0 __fwd_sub_4028B0_sub_402DF0
@@ -25,6 +19,7 @@ static inline int __fwd_sub_4028B0_sub_429C80(void *a0, int a1, void *a2) { retu
 #define sub_429C80 __fwd_sub_4028B0_sub_429C80
 static inline int __fwd_sub_4028B0_sub_42BC50(int a0, int a1, char a2, void *a3) { return __sub_42BC50(a0, a1, a2, (char *)a3); }
 #define sub_42BC50 __fwd_sub_4028B0_sub_42BC50
+#define sub_42C0B0 __sub_42C0B0
 
 // BMF links the MSVC CRT into the image, so these route to the PE's
 // own implementations — its FILE* objects and heap blocks belong to

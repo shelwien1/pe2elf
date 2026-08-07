@@ -129,7 +129,7 @@
   {0x0042B990, "sub_42B990", "cdecl", 0, 0},
   {0x0042BA40, "sub_42BA40", "thiscall", 0, 0},
   {0x0042BB20, "sub_42BB20", "usercall", 0, 0},
-  {0x0042BBD0, "sub_42BBD0", "usercall", 0, 0},
+  {0x0042BBD0, "sub_42BBD0", "cdecl", 0, 0},
   {0x0042BC50, "sub_42BC50", "userpurge", 0, 0},
   {0x0042C090, "sub_42C090", "thiscall", 0, 0},
   {0x0042C0B0, "sub_42C0B0", "thiscall", 0, 0},

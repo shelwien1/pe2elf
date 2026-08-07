@@ -1248,6 +1248,32 @@ concatenates away and changes nothing else. One occurrence in this donor, and
 it is the sort of thing that only ever has one occurrence, which is why it is
 worth grepping for rather than waiting to hit.
 
+### 8.2.4.3 A misaligned atomic, which reads as a hang
+
+Not a decompilation problem, but it presents as one and it cost a day. The
+probe registry of §7.1 counts calls with
+
+```cpp
+__sync_fetch_and_add(&sym##_probe.count, 1ULL)
+```
+
+and `count` is an `unsigned long long` in a struct with two pointers before it.
+i386 aligns `long long` to **4**, so the counter can land 4 bytes off an
+8-byte boundary — and when it straddles a cache line, `lock cmpxchg8b` becomes
+a *bus lock*, which the kernel's split-lock detector traps and emulates at
+roughly a millisecond each.
+
+Adding one more moved function moved a hot counter onto a boundary and a run
+went from 0.3 seconds to 70. The generated code for every function was
+byte-identical between the two builds, the syscall counts matched, and the
+output was correct — it was simply 260 times slower, which the gate reports as
+a timeout and reads like an infinite loop.
+
+`alignas(8)` on the counter, and a plain `++` instead of the atomic: the
+program being instrumented is single-threaded and this is a diagnostic. Worth
+knowing about in general — any 64-bit atomic in i386 instrumentation is one
+struct-layout change away from this.
+
 ### 8.2.5 A callee whose arguments the decompiler did not recover at all
 
 `__libm_sse2_log` and `__svml_log2` are inside the statically-linked Intel
@@ -1666,3 +1692,21 @@ At that point the bodies in `BMF.cpp` are dead code (every entry has
 been overwritten by a JMP at runtime), and the `.inc` set is a standalone
 reimplementation that can be compiled into a native binary without the
 `BMF.exe` donor.
+
+**Except that it is not, quite.** Reaching that point for BMF left two things
+still coming out of the PE, and they are worth naming up front because neither
+is a *function* in the §1 sense and so neither shows up as a candidate:
+
+1. **The statically-linked CRT.** Every moved body still calls the donor's
+   `fopen`, `fread`, `operator new`, `memcpy`, and the register-convention
+   Intel maths entries of §8.2.5. These should be repointed at the host libc
+   rather than decompiled — they have standard semantics and no interesting
+   behaviour — but until they are, the binary runs runtime code out of the
+   image.
+2. **The entry point.** Moving `main` is not the same as owning startup. The
+   process still enters at the PE's `start`, which sets up the CRT and *then*
+   calls `main`; a standalone binary needs its own entry point, and that is
+   the same job as (1).
+
+Plan for both from the beginning. The function count reaching 100% is a
+milestone, not the finish line.
