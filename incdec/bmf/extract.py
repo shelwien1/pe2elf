@@ -53,6 +53,13 @@ INTRIN = re.compile(r'^(_mm_|_m_|__|LOBYTE|HIBYTE|LOWORD|HIWORD|LODWORD|HIDWORD'
 # no arguments at all, at call sites that plainly compute one — so a redirect
 # built on that signature would pass garbage.  Refuse those.
 INTEL_CRT = re.compile(r'^(__svml_|__intel_|__libm_)')
+# Intel CRT maths entries that take and return their argument in xmm0.  There
+# is no i386 C convention for that, so dummy32_head.cpp supplies a naked
+# trampoline plus an inline wrapper for each; the body's call resolves to the
+# wrapper and nothing has to be declared here.  Hex-Rays printed both with an
+# empty argument list, so a body that calls one has to have the argument put
+# back by hand (fixups.txt) — see sub_40A8A0.
+XMM0_CRT = {'__svml_log2', '__libm_sse2_log'}
 CTRL = {'if', 'for', 'while', 'switch', 'return', 'do', 'else', 'sizeof',
         # Type names, which appear followed by '(' in casts to function
         # pointers — `(void (__cdecl *)(int))` reads as a call to `void`.
@@ -554,6 +561,72 @@ def build_frame(locs):
 
 
 
+PTR_LOCAL = re.compile(r'^\s*([A-Za-z_][\w\s]*?\*)\s*(\w+)\s*;')
+
+
+def launder_pointer_counters(body):
+    """Step a pointer that is also tested for truth through `uintptr_t`.
+
+    Hex-Rays types a *register*, so a register that holds a pointer somewhere
+    in the function is typed as one everywhere — including where it is a plain
+    loop counter:
+
+        char *v112;
+        ...
+        v112 = v105;            // a byte count
+        do { ...; --v112; } while ( v112 );
+
+    Subtracting from a pointer cannot produce a null pointer in C, so g++
+    folds the test to `true`: the loop's back edge becomes an unconditional
+    `jmp` with no test at all and the body walks off the end of whatever it is
+    copying.  Nothing warns, and no `-fno-…` switch turns the inference off.
+
+    Rewriting the *step* rather than the test is what actually works.  A
+    pointer produced by casting an integer may legitimately be null, so once
+    the arithmetic goes through `uintptr_t` there is nothing left for g++ to
+    infer.  On i386 it is the same `dec`.
+
+    Only variables that are both stepped and truth-tested are touched, which
+    is seven of them across four functions here; `*p++` in an expression is
+    left alone, since a pointer being dereferenced is not the one at risk.
+    """
+    text = '\n'.join(body)
+    ptr = {}
+    for l in body:
+        m = PTR_LOCAL.match(l)
+        if m:
+            ptr[m.group(2)] = m.group(1).strip()
+    out = list(body)
+    for v, ty in sorted(ptr.items()):
+        e = re.escape(v)
+        if not re.search(r'(?:while|if)\s*\(\s*!?\s*' + e + r'\s*\)', text):
+            continue
+        step = type_size(ty[:-1].strip())
+        scale = '' if step == 1 else f' * {step}'
+        subs = [
+            (re.compile(r'^(\s*)(?:--\s*' + e + r'|' + e + r'\s*--)\s*;\s*$'),
+             lambda m: f"{m.group(1)}{v} = ({ty})((uintptr_t){v} - {step});"),
+            (re.compile(r'^(\s*)(?:\+\+\s*' + e + r'|' + e + r'\s*\+\+)\s*;\s*$'),
+             lambda m: f"{m.group(1)}{v} = ({ty})((uintptr_t){v} + {step});"),
+            (re.compile(r'^(\s*)' + e + r'\s*([-+])=\s*(.+);\s*$'),
+             lambda m: f"{m.group(1)}{v} = ({ty})((uintptr_t){v} {m.group(2)} "
+                       f"({m.group(3)}){scale});"),
+            # The form Hex-Rays uses when the step is in bytes but the pointer
+            # is not a `char *`: `v43 = (unsigned __int16 *)((char *)v43 - 1)`.
+            (re.compile(r'^(\s*)' + e + r'\s*=\s*\(([^()]*\*)\)\(\(char \*\)'
+                        + e + r'\s*([-+])\s*([^;]+)\);\s*$'),
+             lambda m: f"{m.group(1)}{v} = ({m.group(2)})((uintptr_t){v} "
+                       f"{m.group(3)} ({m.group(4)}));"),
+        ]
+        for i, l in enumerate(out):
+            for pat, rep in subs:
+                m = pat.match(l)
+                if m:
+                    out[i] = rep(m)
+                    break
+    return out
+
+
 def mask_shift_counts(line):
     """`x >> n` -> `x >> (n & 31)` for every count that is not a literal.
 
@@ -994,6 +1067,8 @@ def emit(args, cache=None):
             # Resolve here rather than falling through: INTRIN's `__` branch
             # below would otherwise swallow these before they reach the CRT
             # lookup.
+            if n in XMM0_CRT:
+                continue                  # supplied by dummy32_head.cpp
             hit = next((c for c in (n, '_' + n, '__' + n) if c in funcs), None)
             if n in CRT_PROTO and hit:
                 crt[n] = (hit, funcs[hit])
@@ -1262,6 +1337,16 @@ def emit(args, cache=None):
         for k in ('__usercall', '__userpurge', '__noreturn'):
             ret = ret.replace(k, '')
         ret = ' '.join(ret.split()) or 'int'
+        if ret_reg in XMM:
+            # A result in xmm0 is what g++ does for a *raw* vector type and
+            # only for that.  The M128* unions of §8.2 are class types, and
+            # i386 returns every aggregate through a hidden pointer — which
+            # would leave the thunk returning nothing in xmm0 and the PE caller
+            # reading whatever was there.  Name the underlying vector instead;
+            # the wrappers convert to it implicitly, so the body is unchanged.
+            ret = re.sub(r'\b__m128(i|d)?\b', lambda m: '__gnu_m128' + (m.group(1) or ''),
+                         ret)
+            ret = re.sub(r'\b__m64\b', '__gnu_m64', ret)
         # extern "C" so the thunk's `call __<name>` in inline asm names the
         # same symbol the compiler emits; a mangled name would leave the call
         # referencing an undefined symbol, which in a shared object links
@@ -1379,6 +1464,7 @@ def emit(args, cache=None):
         joined = text.split('\n')
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
+    joined = launder_pointer_counters(joined)
     joined = [mask_shift_counts(l) for l in joined]
     if single_precision(args.name):
         joined = [floatify(l) for l in joined]

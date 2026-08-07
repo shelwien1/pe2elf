@@ -98,12 +98,6 @@ static t_sub_408510_off_4410C0& __sub_408510_off_4410C0 = *(t_sub_408510_off_441
 typedef int t_sub_408510_p_n2;
 static t_sub_408510_p_n2& __sub_408510_p_n2 = *(t_sub_408510_p_n2*)0x004433F4;
 
-#ifndef __PE_DECL___sub_40A8A0
-#define __PE_DECL___sub_40A8A0
-typedef __attribute__((thiscall)) int t_sub_40A8A0(void *, int Src, void *, int n6, int n24, int n2);
-static t_sub_40A8A0& __sub_40A8A0 = *(t_sub_40A8A0*)0x0040A8A0;
-#endif
-#define sub_40A8A0 __sub_40A8A0
 #ifndef __PE_DECL___sub_411700
 #define __PE_DECL___sub_411700
 typedef int t_sub_411700(int a1, int n2);
@@ -122,6 +116,8 @@ typedef void * t_sub_4349F0(void *, int, unsigned int);   // stack arguments onl
 static t_sub_4349F0& __sub_4349F0 = *(t_sub_4349F0*)0x004349F0;
 #endif
 #define sub_4349F0 __sub_4349F0
+static inline int __fwd_sub_408510_sub_40A8A0(void *a0, int a1, void *a2, int a3, int a4, int a5) { return __sub_40A8A0((_DWORD *)a0, a1, (unsigned int *)a2, a3, a4, a5); }
+#define sub_40A8A0 __fwd_sub_408510_sub_40A8A0
 static inline int __fwd_sub_408510_sub_40AE10(void *a0, int a1) { return __sub_40AE10((_DWORD *)a0, a1); }
 #define sub_40AE10 __fwd_sub_408510_sub_40AE10
 static inline _DWORD * __fwd_sub_408510_sub_40AF40(void *a0, int a1, int a2, int a3, int a4) { return __sub_40AF40((_DWORD *)a0, a1, a2, a3, a4); }

@@ -173,7 +173,7 @@ extern "C" __attribute__((visibility("hidden"))) int __sub_4022C0(int p_i)
           exit_402E40(5, (char)lpFileName);
         if ( Buffer_2 )
         {
-          Buffer_2 += ElementCount;
+          Buffer_2 = (char *)((uintptr_t)Buffer_2 + (ElementCount));
           fwrite(Buffer_2, 1u, ElementCount, Stream_v);
           dwHighDateTime = *(unsigned __int16 *)(p_i_1 + 4);
         }

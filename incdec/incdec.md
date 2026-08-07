@@ -1140,8 +1140,52 @@ v43 = (unsigned __int16 *)((uintptr_t)v43 - 1);
 ```
 
 On i386 that is the same `dec`; only the inference g++ is allowed to draw
-changes. Worth grepping for across the whole donor: any `while (p)` /
-`if (p)` on a local that the same body steps with `(char *)p ± k`.
+changes. Rewrite the **step**, not the test: the non-null property belongs to
+the pointer value, so `(uintptr_t)p != 0` is just as foldable as `p != 0`.
+
+Do it for every pointer local that is both stepped and truth-tested, rather
+than for the spelling you happened to hit. The first one found here was
+`v43 = (T *)((char *)v43 - 1)` and a scan for that shape reported it as the
+only instance in the donor; the next one was `--v112`, three of them in one
+function, and it took a segfault a thousand lines away to find. The shapes to
+cover are `--p; ++p; p--; p++;` as standalone statements, `p += e; p -= e;`,
+and `p = (T *)((char *)p ± e);`. Seven sites across four functions here.
+
+### 8.2.5 A callee whose arguments the decompiler did not recover at all
+
+`__libm_sse2_log` and `__svml_log2` are inside the statically-linked Intel
+runtime and take their argument in `xmm0`, returning it there — no stack, no
+GPRs. Hex-Rays does not model that, so it printed every call as
+
+```c
+v9 = *(double *)__libm_sse2_log().m128_u64 * 1.442695040888963;
+```
+
+— a call *taking nothing*, whose result is the low lane of an `__m128`, times
+1/ln(2). This will compile and run, and it is not decompiled code any more; it
+is a different program. Two halves to putting it back:
+
+**The convention.** i386 C cannot express "argument in xmm0", so wrap it: a
+`naked` trampoline that realigns the stack and calls the absolute address, plus
+an inline function that ties its input and output to `"Yz"` (g++'s constraint
+for xmm0). `extern "C"` and hidden visibility on the trampoline for the same
+reason as §4.2's thunks. Give the wrapper the type the *call sites* want —
+here `double(double)`, not `__m128(void)` — so the fixups can drop Hex-Rays'
+`*(double *)….m128_u64` wrapping along with the empty argument list.
+
+**The arguments.** One `fixups.txt` row per call site, each recovered by
+reading the instructions above the `call`. All six here were the same shape,
+`cvtsi2sd` of a numerator and a denominator followed by `divsd`, and the
+denominator was invariably the expression the surrounding `if` already tests
+for zero — which is a useful sanity check that the right site was matched.
+
+A `@<xmm0>` **return** needs one more thing. g++ returns a value in `xmm0` for
+a raw vector type and only for that: the `M128*` unions of §8.2 are class
+types, and i386 returns every aggregate through a hidden pointer. A moved
+`__usercall` function declared to return `__m128d` would leave `xmm0` holding
+whatever was there and the PE caller would read it. Declare the raw
+`__gnu_m128d` instead — the wrappers convert to it implicitly, so the body does
+not change.
 
 ### 8.3 MSVC `FILE` layout
 

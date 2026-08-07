@@ -115,7 +115,7 @@ __attribute__((force_align_arg_pointer)) BMF_SSE char *__sub_414F60()
       do
       {
         --Buffer;
-        __sub_414F60_n256 -= 8;
+        __sub_414F60_n256 = (char *)((uintptr_t)__sub_414F60_n256 - (8));
       }
       while ( (int)__sub_414F60_n256 >= 0 );
       __sub_414F60_Buffer_0 = Buffer;

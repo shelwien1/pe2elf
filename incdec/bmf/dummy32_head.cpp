@@ -290,6 +290,73 @@ typedef M128I _OWORD;
 #define __int128 M128I
 
 // ---------------------------------------------------------------------------
+// Intel CRT maths entries, which take and return their argument in xmm0.
+//
+// `___libm_sse2_log` and `___svml_log2` live in the statically-linked Intel
+// runtime and use its own register convention: the argument arrives in xmm0
+// and the result comes back in xmm0, with nothing on the stack at all.  i386
+// C has no spelling for that, and Hex-Rays did not try — it decompiled every
+// call as `__libm_sse2_log()`, taking no argument.
+//
+// The trampoline is `naked` so that the `and $-16, %esp` is ours: these are
+// ICC output and spill SSE registers with aligned stores, while the moved
+// caller's esp is whatever g++ left.  `extern "C"` and hidden visibility for
+// the same reason as §4.2's thunks — the `call` below is assembly, so it names
+// the unmangled symbol, and without hidden visibility it would want a PLT
+// entry and become a text relocation.
+// ---------------------------------------------------------------------------
+#define BMF_XMM0_TRAMP(name, va)                                              \
+  extern "C" __attribute__((naked, visibility("hidden"))) void name();        \
+  extern "C" __attribute__((naked, visibility("hidden"))) void name() {       \
+    __asm__ volatile("push %ebp\n\t"                                          \
+                     "mov  %esp, %ebp\n\t"                                    \
+                     "and  $-16, %esp\n\t"                                    \
+                     "mov  $" #va ", %eax\n\t"                                \
+                     "call *%eax\n\t"                                         \
+                     "mov  %ebp, %esp\n\t"                                    \
+                     "pop  %ebp\n\t"                                          \
+                     "ret");                                                  \
+  }
+
+BMF_XMM0_TRAMP(__bmf_pe_libm_sse2_log, 0x00434460)
+BMF_XMM0_TRAMP(__bmf_pe_svml_log2,     0x00436DD0)
+
+// "Yz" is xmm0.  Tying the input to the output puts the argument there and
+// reads the result back from it.  eax/ecx/edx and xmm1-7 are caller-saved and
+// the callee uses them; ebx/esi/edi/ebp it preserves, which is what lets the
+// trampoline above keep the old esp in ebp across the call.
+#define BMF_XMM0_CALL(tramp, in, out)                                         \
+  do {                                                                        \
+    __gnu_##out __r;                                                          \
+    __asm__ volatile("call " #tramp                                           \
+                     : "=Yz"(__r)                                             \
+                     : "0"(__x)                                               \
+                     : "eax", "ecx", "edx", "cc", "memory",                   \
+                       "xmm1", "xmm2", "xmm3", "xmm4",                        \
+                       "xmm5", "xmm6", "xmm7");                               \
+    return __r;                                                               \
+  } while (0)
+
+BMF_SSE static inline M128D __svml_log2(const M128I &a) {
+  __gnu_m128d __x = (__gnu_m128d)a.v;
+  BMF_XMM0_CALL(__bmf_pe_svml_log2, m128d, m128d);
+}
+
+// Returns the double rather than the register: Hex-Rays wrote every call site
+// as `*(double *)__libm_sse2_log().m128_u64`, i.e. the low lane, and the
+// fixups that put the lost argument back drop that wrapping with it.
+BMF_SSE static inline double __libm_sse2_log(double d) {
+  __gnu_m128d __x = __extension__(__gnu_m128d){d, 0.0};
+  __gnu_m128d __y;
+  __asm__ volatile("call __bmf_pe_libm_sse2_log"
+                   : "=Yz"(__y)
+                   : "0"(__x)
+                   : "eax", "ecx", "edx", "cc", "memory",
+                     "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7");
+  return __y[0];
+}
+
+// ---------------------------------------------------------------------------
 // CPUID, for the routines that override/ rewrites from their expected
 // results (Hex-Rays renders them as `__asm { cpuid }` plus reads of its
 // _EAX/_ECX/_EDX pseudo-registers, which have no C form).

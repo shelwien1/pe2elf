@@ -289,7 +289,7 @@ LABEL_30:
           *((_BYTE *)v47 + 2) = v46;
         }
       }
-      v43 = (unsigned __int16 *)((uintptr_t)v43 - 1);
+      v43 = (unsigned __int16 *)((uintptr_t)v43 - (1));
     }
     while ( v43 );
     __sub_412E60_n0x800000 = n0x800000_1;
