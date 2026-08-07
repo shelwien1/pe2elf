@@ -451,6 +451,54 @@ def build_frame(locs):
 
 
 
+def mask_negative_shifts(line):
+    """`0xFFFFFFFF >> -x` -> `0xFFFFFFFF >> (-x & 31)`.
+
+    Hex-Rays writes the shift count exactly as the instruction computes it, and
+    x86 masks it to five bits: `neg ecx; shr ebp, cl` is `>> ((-x) & 31)`, not a
+    shift by a negative number — which C++ calls undefined and gcc is free to
+    turn into anything.  It turned `0xFFFFFFFF >> -*((_BYTE *)this + 8)` into
+    `0xFFFFFFFF`, so a `j + 1` downstream came out 0 and the arithmetic decoder
+    divided by it.  The mask is a no-op for a count already in range, so
+    applying it wherever the count is negated costs nothing and removes the
+    undefined behaviour.
+    """
+    out, i = [], 0
+    while True:
+        m = re.compile(r'(<<|>>)(\s*)-').search(line, i)
+        if not m:
+            out.append(line[i:])
+            return ''.join(out)
+        # Scan the negated operand, respecting nesting, to the end of the term.
+        j, depth = m.end() - 1, 0
+        while j < len(line):
+            c = line[j]
+            if c in '([':
+                depth += 1
+            elif c in ')]':
+                if depth == 0:
+                    break
+                depth -= 1
+            elif depth == 0 and (c == ';' or c == ','):
+                break
+            elif depth == 0 and c == ':' and (line[j:j + 2] == '::' or
+                                              (j and line[j - 1] == ':')):
+                j += 1                    # `::` is scope resolution, not an operator
+                continue
+            elif depth == 0 and c in '+-*/%&|^<>=!?:':
+                # Only a *binary* operator ends the term.  `-*((_BYTE *)p + 8)`
+                # is a unary minus on a dereference, not a subtraction.
+                k = j - 1
+                while k >= 0 and line[k] == ' ':
+                    k -= 1
+                if k >= 0 and (line[k].isalnum() or line[k] in '_)]'):
+                    break
+            j += 1
+        out.append(line[i:m.end(1)])
+        out.append(m.group(2) + '(' + line[m.end() - 1:j].strip() + ' & 31)')
+        i = j
+
+
 def rename_ident(text, name, repl):
     """Rename `name` to `repl`, but not where it is a struct member.
 
@@ -1144,6 +1192,7 @@ def emit(args, cache=None):
         joined = text.split('\n')
     for g in sorted(refd_globals):
         joined = [rename_ident(l, g, f"__{args.name}_{g}") for l in joined]
+    joined = [mask_negative_shifts(l) for l in joined]
     joined = [wrap_intrinsic_members(l) for l in joined]
     joined = [re.sub(r'\boperator new\s*\(', '__op_new(', l) for l in joined]
     joined = [re.sub(r'\boperator delete\s*\(', '__op_delete(', l) for l in joined]

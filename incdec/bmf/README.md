@@ -4,7 +4,7 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: 102 of 132 reachable functions redirected — 65 of the 92 a round-trip
+**Status: 103 of 132 reachable functions redirected — 66 of the 92 a round-trip
 actually executes. Gate green on all five pixel formats, and nothing left in
 `fail.txt` is a build error.**
 
@@ -242,7 +242,7 @@ shared behind an include guard. Sharing lets whichever body is included first
 fix the type for every other one, and since the type is derived per body, that
 is routinely the wrong one.
 
-## Why 102 and not 132
+## Why 103 and not 132
 
 `fail.txt` records every candidate that did not make it, with the image it
 failed the gate on. At convergence — the driver is run repeatedly until a pass
@@ -251,8 +251,8 @@ as:
 
 | | |
 |---:|---|
-| 20 | queued behind one of the eight below |
-|  7 | builds and runs, then crashes or aborts on some image |
+| 20 | queued behind one of the nine below |
+|  6 | builds and runs, then crashes or aborts on some image |
 |  2 | reaches an Intel CRT helper whose arguments Hex-Rays did not recover |
 |  1 | builds and runs and compresses *worse* than the original |
 
@@ -340,6 +340,13 @@ initialisation rather than drift.
 Four buckets that used to dominate this list are gone, and the fixes are worth
 naming because each was systemic rather than per-function:
 
+* **Shifts by a negative count.** Hex-Rays writes the shift count exactly as
+  the instruction computes it — `0xFFFFFFFF >> -*((_BYTE *)this + 8)` for
+  `neg ecx; shr ebp, cl` — because x86 masks the count to five bits. C++ calls
+  a negative shift undefined and gcc is free to do anything with it; here it
+  produced `0xFFFFFFFF`, so a `j + 1` downstream came out `0` and the
+  arithmetic decoder divided by it. 36 of these in the donor. The count is now
+  masked wherever it is negated, which is a no-op for a count already in range.
 * **The width in an auto-generated name.** `byte_445714` is a *byte* at that
   address — Hex-Rays picks the name by how the body accesses it, and the
   disassembly agrees (`movzx eax, byte_445714[esi*4]`). `symbols.txt`, which is

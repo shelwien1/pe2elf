@@ -62,7 +62,7 @@ __attribute__((thiscall)) void __sub_419430(_DWORD *_this)
   int v27; // eax
 
   n8 = *(_this + 2);
-  j_2 = 0xFFFFFFFF >> -*((_BYTE *)_this + 8);
+  j_2 = 0xFFFFFFFF >> (-*((_BYTE *)_this + 8) & 31);
   v4 = (n8 + 7) >> 3;
   for ( i = 0; i < 8; ++i )
   {

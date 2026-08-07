@@ -364,13 +364,14 @@ Probe::Probe(const char* n) : next(g_probes), name(n), count(0) { g_probes = thi
 #include <csignal>
 #include <ucontext.h>
 #include <dlfcn.h>
-static void bmf_segv(int, siginfo_t *si, void *uc) {
+static void bmf_segv(int sig, siginfo_t *si, void *uc) {
+  (void)sig;
   unsigned eip = (unsigned)((ucontext_t *)uc)->uc_mcontext.gregs[REG_EIP];
   Dl_info di; const char *who = "?"; unsigned off = 0;
   if (dladdr((void *)eip, &di) && di.dli_fbase) {
     who = di.dli_fname; off = eip - (unsigned)di.dli_fbase;
   }
-  fprintf(stderr, "[segv] addr=%p eip=%08x  %s+0x%x\n", si->si_addr, eip, who, off);
+  fprintf(stderr, "[fault] sig=%d addr=%p eip=%08x  %s+0x%x\n", si->si_signo, si->si_addr, eip, who, off);
   fflush(stderr);
   _exit(9);
 }
@@ -384,6 +385,7 @@ static void bmf_trap_arm() {
   sa.sa_flags = SA_SIGINFO;
   sigaction(SIGSEGV, &sa, nullptr);
   sigaction(SIGBUS, &sa, nullptr);
+  sigaction(SIGFPE, &sa, nullptr);   // integer divide by zero lands here too
 }
 #define PROBE_TRAP() bmf_trap_arm()
 #else

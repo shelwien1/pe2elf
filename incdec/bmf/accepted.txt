@@ -100,3 +100,4 @@
 004284E0 sub_4284E0 cdecl
 00418650 sub_418650 thiscall
 004159E0 sub_4159E0 thiscall
+00419430 sub_419430 thiscall

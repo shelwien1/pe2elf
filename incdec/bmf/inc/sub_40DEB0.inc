@@ -157,7 +157,7 @@ int *__sub_40DEB0()
       v60 = *(_DWORD *)__sub_40DEB0_Buffer_0;
       __sub_40DEB0_Buffer_0 += 4;
       v4 = ::__sub_40DEB0_n256 | (v60 << __sub_40DEB0_n8) & 0x3FFFF;
-      ::__sub_40DEB0_n256 = v60 >> -v3;
+      ::__sub_40DEB0_n256 = v60 >> (-v3 & 31);
       ::__sub_40DEB0_n8 = __sub_40DEB0_n8 + 14;
     }
     else
@@ -186,7 +186,7 @@ int *__sub_40DEB0()
           v59 = *(_DWORD *)__sub_40DEB0_Buffer_0;
           __sub_40DEB0_Buffer_0 += 4;
           v9 = __sub_40DEB0_n256 | (v59 << (n8_1 + 4)) & 0xF;
-          __sub_40DEB0_n256 = v59 >> -(char)n8_1;
+          __sub_40DEB0_n256 = v59 >> (-(char)n8_1 & 31);
           n8_1 += 32;
         }
         else
@@ -309,7 +309,7 @@ int *__sub_40DEB0()
                 v56 = *(_DWORD *)__sub_40DEB0_Buffer_0;
                 __sub_40DEB0_Buffer_0 += 4;
                 v43 = j | __sub_40DEB0_dword_439360[v40] & (v56 << (v40 + n8_3));
-                j = v56 >> -(char)n8_3;
+                j = v56 >> (-(char)n8_3 & 31);
                 n8_3 += 32;
                 v39 = v78;
               }
@@ -347,7 +347,7 @@ int *__sub_40DEB0()
                   v57 = *(_DWORD *)__sub_40DEB0_Buffer_0;
                   __sub_40DEB0_Buffer_0 += 4;
                   v52 = j | __sub_40DEB0_dword_439360[v51] & (v57 << n8_3);
-                  n256_2 = v57 >> -(char)n8_2;
+                  n256_2 = v57 >> (-(char)n8_2 & 31);
                   n8_2 += 32;
                   n256_1 = n256_2;
                   ::__sub_40DEB0_n256 = n256_2;

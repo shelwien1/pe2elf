@@ -477,7 +477,7 @@ LABEL_12:
     v145 = *(void **)__sub_40CF80_Buffer_0;
     __sub_40CF80_Buffer_0 += 4;
     n256_1 = ::__sub_40CF80_n256 | ((_DWORD)v145 << n8_1);
-    ::__sub_40CF80_n256 = (unsigned int)v145 >> -v37;
+    ::__sub_40CF80_n256 = (unsigned int)v145 >> (-v37 & 31);
     ::__sub_40CF80_n8 = n8_1 + 24;
   }
   else
@@ -580,7 +580,7 @@ LABEL_12:
           v143 = *(_DWORD *)__sub_40CF80_Buffer_0;
           __sub_40CF80_Buffer_0 += 4;
           v55 = __sub_40CF80_n256_2 | __sub_40CF80_dword_439360[v53] & (v143 << (v53 + n8_3));
-          __sub_40CF80_n256_2 = v143 >> -(char)n8_3;
+          __sub_40CF80_n256_2 = v143 >> (-(char)n8_3 & 31);
           n8_3 += 32;
         }
         else
@@ -689,7 +689,7 @@ LABEL_12:
           v87 = *(_DWORD *)__sub_40CF80_Buffer_0;
           __sub_40CF80_Buffer_0 += 4;
           v80 = __sub_40CF80_n256_2 | __sub_40CF80_dword_439360[v78] & (v87 << (n8_5 + v78));
-          __sub_40CF80_n256_2 = v87 >> -(char)n8_5;
+          __sub_40CF80_n256_2 = v87 >> (-(char)n8_5 & 31);
           n8_5 += 32;
         }
         else
@@ -761,7 +761,7 @@ LABEL_12:
             v141 = *(_DWORD *)__sub_40CF80_Buffer_0;
             __sub_40CF80_Buffer_0 += 4;
             v96 = n256_4 | __sub_40CF80_dword_439360[v95] & (v141 << (n8_7 + v95));
-            n256_4 = v141 >> -(char)n8_7;
+            n256_4 = v141 >> (-(char)n8_7 & 31);
             ::__sub_40CF80_n256 = n256_4;
             n8_7 += 32;
           }
@@ -881,7 +881,7 @@ LABEL_123:
               v140 = *(_DWORD *)__sub_40CF80_Buffer_0;
               __sub_40CF80_Buffer_0 += 4;
               v120 = n256_5 | __sub_40CF80_dword_439360[v119] & (v140 << (v119 + n8_7));
-              n256_5 = v140 >> -(char)n8_7;
+              n256_5 = v140 >> (-(char)n8_7 & 31);
               n8_7 += 32;
             }
             else
@@ -912,7 +912,7 @@ LABEL_123:
               v137 = *(_DWORD *)__sub_40CF80_Buffer_0;
               __sub_40CF80_Buffer_0 += 4;
               v125 = n256_5 | __sub_40CF80_dword_439360[v124] & (v137 << (n8_7 + v124));
-              n256_5 = v137 >> -(char)n8_7;
+              n256_5 = v137 >> (-(char)n8_7 & 31);
               n8_7 += 32;
             }
             else

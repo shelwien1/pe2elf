@@ -557,7 +557,7 @@ LABEL_49:
   else
   {
     n4_1 = ::__sub_40BEE0_n8 - 18;
-    __sub_40BEE0_n256 = ::__sub_40BEE0_n256 | (v101 << -(char)::__sub_40BEE0_n8);
+    __sub_40BEE0_n256 = ::__sub_40BEE0_n256 | (v101 << (-(char)::__sub_40BEE0_n8 & 31));
     ::__sub_40BEE0_n8 -= 18;
   }
   if ( v101 )
@@ -683,7 +683,7 @@ LABEL_49:
       }
       else
       {
-        v85 = v84 << -(char)n4_1;
+        v85 = v84 << (-(char)n4_1 & 31);
         __sub_40BEE0_n8 = n4_1 - 4;
         v87 = v85 | __sub_40BEE0_n256;
       }
@@ -699,7 +699,7 @@ LABEL_49:
       }
       else
       {
-        v89 = v88 << -(char)__sub_40BEE0_n8;
+        v89 = v88 << (-(char)__sub_40BEE0_n8 & 31);
         n4_1 = __sub_40BEE0_n8 - 4;
         __sub_40BEE0_n256 = v89 | v87;
       }
@@ -723,7 +723,7 @@ LABEL_49:
     }
     else
     {
-      v92 = v91 << -(char)n4_1;
+      v92 = v91 << (-(char)n4_1 & 31);
       n8_1 = n4_1 - 4;
       n256_2 = v92 | __sub_40BEE0_n256;
       ::__sub_40BEE0_n256 = n256_2;

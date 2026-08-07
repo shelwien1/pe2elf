@@ -104,7 +104,7 @@ BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40AF40(_DWORD *_this, int Src, i
           }
           else
           {
-            ::__sub_40AF40_n256 |= v32 << -(char)::__sub_40AF40_n8;
+            ::__sub_40AF40_n256 |= v32 << (-(char)::__sub_40AF40_n8 & 31);
             ::__sub_40AF40_n8 -= 8;
           }
           v33 = 16 * v43;
@@ -125,7 +125,7 @@ BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40AF40(_DWORD *_this, int Src, i
           }
           else
           {
-            ::__sub_40AF40_n256 |= (2 * j + 1) << -(char)::__sub_40AF40_n8;
+            ::__sub_40AF40_n256 |= (2 * j + 1) << (-(char)::__sub_40AF40_n8 & 31);
             ::__sub_40AF40_n8 -= 8;
           }
         }
@@ -149,7 +149,7 @@ BMF_SSE __attribute__((thiscall)) _DWORD *__sub_40AF40(_DWORD *_this, int Src, i
         __sub_40AF40_Buffer_0 += 4;
         ::__sub_40AF40_n8 = __sub_40AF40_n8 + 24;
         n256_1 = ::__sub_40AF40_n256 | (unsigned __int8)(v38 << __sub_40AF40_n8);
-        ::__sub_40AF40_n256 = v38 >> -v48;
+        ::__sub_40AF40_n256 = v38 >> (-v48 & 31);
       }
       else
       {

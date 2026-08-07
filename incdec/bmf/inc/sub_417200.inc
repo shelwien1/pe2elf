@@ -138,7 +138,7 @@ extern "C" __attribute__((visibility("hidden"))) void __sub_417200(int Blocka, c
   n8 = *(_DWORD *)(Blocka + 8);
   v91 = a3;
   Blockaa = Blocka;
-  v93 = 0xFFFFFFFF >> -(char)n8;
+  v93 = 0xFFFFFFFF >> (-(char)n8 & 31);
   k_2 = (n8 + 7) >> 3;
   for ( i = 0; i < 8; ++i )
   {

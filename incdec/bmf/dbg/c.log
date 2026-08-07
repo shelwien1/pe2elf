@@ -1,9 +1,9 @@
 BMF lossless image compressor, v.2.01 (C) 1998-1999, 2009 by Dmitry Shkarin
 File           t1.bmp, image 320x240x1, size - 9600: 0.270 bpp
 [probe] ExitProcess(0), call counts:
+[probe]   __sub_419430             0
 [probe]   __sub_4159E0             60054
 [probe]   __sub_418650             0
-[probe]   __sub_412E60             0
 [probe]   __sub_4284E0             0
 [probe]   __sub_42851C             0
 [probe]   __sub_42AB20             1
@@ -69,6 +69,7 @@ File           t1.bmp, image 320x240x1, size - 9600: 0.270 bpp
 [probe]   __sub_424500             0
 [probe]   __sub_4256F0             0
 [probe]   __sub_4259F0             0
+[probe]   __sub_413430             0
 [probe]   __sub_4248D0             0
 [probe]   __sub_4244A0             0
 [probe]   __sub_419680             1
@@ -83,7 +84,9 @@ File           t1.bmp, image 320x240x1, size - 9600: 0.270 bpp
 [probe]   __sub_414620             0
 [probe]   __sub_414390             0
 [probe]   __sub_413E60             0
+[probe]   __sub_414060             0
 [probe]   __sub_4135A0             0
+[probe]   __sub_413900             0
 [probe]   __sub_413560             0
 [probe]   __sub_413230             3058
 [probe]   __sub_412B10             1
