@@ -1312,6 +1312,39 @@ returns the **natural** log, which is why every call site multiplies by
 1.442695040888963. Believing the name would have put a `log2` in a wrapper that
 is fed by, and feeds, code expecting `ln`.
 
+**The same loss with a variadic callee.** `exit_402E40` is BMF's "print
+message N and quit". IDA typed it `void __stdcall exit_402E40(int Code, char
+ArgList)`; the donor is
+
+```
+00402E40  mov   edx, [esp+4]          ; Code
+00402E44  lea   eax, [esp+8]          ; &first vararg
+00402E48  push  eax
+00402E49  push  off_441068[edx*4]     ; Format
+00402E50  call  _vprintf
+```
+
+`lea eax, [esp+8]` is a va_list: the function is `__cdecl exit_402E40(int
+Code, ...)` and forwards everything after `Code` to `vprintf`. Two errors in
+one signature — the convention (it never cleans the stack because it never
+returns, so the callers' `add esp, N` is dead and IDA had nothing to count),
+and the argument, a whole variable-length list rendered as one `char`. Every
+one of the thirty call sites then came out as `exit_402E40(5, (char)FileName)`,
+which compiles.
+
+The recovery is the same as above — read the pushes above each `call` — and the
+message table itself tells you how many to expect: five of the nine messages
+take one `%s`, three take none, and the usage screen takes sixteen. What is
+worth taking from it is *when it was found*, which was long after the function
+was accepted, because *the gate never runs an error path*. A corpus of good
+inputs exercises none of them. Under the shim the damage was invisible: the
+PE's own `vprintf` read wild pointers off the end of the argument block and
+survived. It only became a crash when the CRT was swapped for glibc, whose
+`%s` dereferenced one. If a moved function's arguments are printed rather than
+computed with, the round-trip will not tell you they are wrong — run the
+program's own `--help`, and its error paths, against the un-injected binary and
+diff.
+
 A `@<xmm0>` **return** needs one more thing. g++ returns a value in `xmm0` for
 a raw vector type and only for that: the `M128*` unions of §8.2 are class
 types, and i386 returns every aggregate through a hidden pointer. A moved
@@ -1703,9 +1736,9 @@ been overwritten by a JMP at runtime), and the `.inc` set is a standalone
 reimplementation that can be compiled into a native binary without the
 `BMF.exe` donor.
 
-**Except that it is not, quite.** Reaching that point for BMF left two things
-still coming out of the PE, and they are worth naming up front because neither
-is a *function* in the §1 sense and so neither shows up as a candidate:
+**Except that it is not, quite.** Reaching that point for BMF left three things
+still coming out of the PE, and they are worth naming up front because none of
+them is a *function* in the §1 sense and so none shows up as a candidate:
 
 1. **The statically-linked CRT.** Every moved body still calls the donor's
    `fopen`, `fread`, `operator new`, `memcpy`, and the register-convention
@@ -1717,6 +1750,104 @@ is a *function* in the §1 sense and so neither shows up as a candidate:
    process still enters at the PE's `start`, which sets up the CRT and *then*
    calls `main`; a standalone binary needs its own entry point, and that is
    the same job as (1).
+3. **The call graph, as opposed to the executed paths.** §1 scopes the work to
+   the functions a run of the corpus actually calls, which is the right way to
+   make progress and the wrong place to stop: a function pointer that the
+   corpus never installs, or a format the corpus never asks for, leaves a
+   callee behind. For BMF that was ten of 143 — four scanline writers reached
+   through a pointer, the two image writers that install them, and four
+   integer-formatting helpers. Close the graph before claiming the donor is
+   unnecessary: every `__PE_DECL___sub_` block still emitted into the `.inc`
+   set is one of these.
 
-Plan for both from the beginning. The function count reaching 100% is a
-milestone, not the finish line.
+Plan for all three from the beginning. The function count reaching 100% is a
+milestone, not the finish line — §11 is.
+
+## 11. Cutting the donor loose
+
+The end state is a binary that contains no code from the original image and
+does not load it. Getting there from a complete `.inc` set is a smaller job
+than it looks, and it is almost entirely *not* more decompilation.
+
+**Keep the data, drop the code.** §6.1 has every moved body reaching its
+globals by absolute address — `*(int *)0x00441040` — because that is what the
+decompilation says and because the same address is an `int` to one function and
+a `char[]` to the next. Rewriting 845 of those into named objects would be a
+far bigger change than replacing the runtime around them. So carve the donor's
+initialised data out of the image and have the linker put it back at the
+original virtual addresses (`--section-start`), and the bodies do not change at
+all. For BMF that is 64 KB — `.rdata`, `.data`, `.trace` — as one contiguous
+writable section; `.text` is not included, and the absence is the point. A
+surviving call into the donor's code range then faults immediately instead of
+quietly working.
+
+**The `__PE_DECL_` guards are the seam.** Every reference a generated `.inc`
+makes to something outside the moved set is wrapped in `#ifndef
+__PE_DECL___x` / `#define __PE_DECL___x` (§6.2, §6.4). That is not only an
+include guard: it is an override point. A header included before the bodies
+that defines the guard *and* a real `__x` replaces the PE entry point without
+touching a single generated line, and the two builds — injected and standalone
+— share one `.inc` tree.
+
+**What actually has to be written.** For BMF: the 32 CRT entries, ten kernel32
+imports, `operator new`/`delete`, Intel's memcpy/memset dispatchers, the
+maths entries of §8.2.5, and one two-instruction function IDA refused to
+decompile. Against POSIX that is a few hundred lines. Resist reusing a Win32
+emulation layer if one is lying around — it is the right answer when you are
+running the donor's code and it expects Windows, and the wrong one when the
+goal is a program that stands on its own; ten functions over
+`open`/`opendir`/`futimens` is less code than a shim's handle table alone.
+
+**Startup is not just `main`.** The donor's entry point did work that nothing
+in the `.inc` set does, and it will not announce itself. Two kinds:
+
+- *The C++ static initialisers.* MSVC puts the constructor pointers in `.data`
+  between `__xc_a` and `__xc_z` and `_cinit` walks them before `main`. BMF's
+  table held exactly one entry, `sub_419680`, which fills SSE constant tables
+  that live in the *uninitialised* part of `.data`. Skipping it did not crash;
+  it ran the filters against tables of zeroes, and cost 244 bytes on the two
+  8bpp images and nothing at all on the other four.
+- *CRT globals the bodies read.* MSVC publishes `argv` at a fixed address, and
+  one BMF function reads `argv[0]` through it to build the `.ini` name. That
+  one is loud — it is a null dereference on the first run.
+
+**Not everything the donor's startup did needs doing.** Intel's
+`__intel_new_proc_init` writes cache-size globals for `__intel_fast_memcpy` to
+size its non-temporal stores by. Those two dispatchers are exactly what gets
+replaced with `memcpy`/`memset`, and nothing else reads the globals, so the
+probe stays uncalled. Decide this per initialiser rather than porting the lot.
+
+**Diagnosing a standalone stream that differs.** The probe registry of §7.1 is
+the tool, not the debugger. Compile it into both builds, run both over the same
+input, and diff the counts function by function: a substitution that changed
+behaviour shows up as a call count that moved, and the shallowest such function
+is where the two builds part company. Compare *compress-only against
+compress-only* — a gate that runs a round-trip appends two reports and the
+second will silently win.
+
+Two traps around that. First, the obvious suspect is usually wrong: when BMF's
+8bpp streams grew, floating-point substitution looked like the cause, and it
+was ruled out in one build by putting glibc's `log` into the *hybrid*, where
+the reference stream is known — the general form being to move each
+substitution back into the working build one at a time rather than forward into
+the broken one. Second, a difference that appears on some inputs and not others
+is evidence about *which* code path, not about how small the cause is: the same
+244-byte delta on exactly the two 8bpp images was a table of zeroes, not a
+rounding difference.
+
+**What can be dropped once the donor is gone.** The per-function
+`force_align_arg_pointer` of §8.2.3 exists because a PE caller may enter a
+moved body with `esp` aligned to 4; standalone, every caller is the same
+compiler and has already done the work. The `__usercall` thunks of §4.2 exist
+so that a caller still in the PE can reach the body; standalone there is no
+such caller and the cdecl body is entered directly. Both are best spelled as a
+macro and an `#ifdef` in the shared head rather than a second generated tree.
+The probes are worth keeping behind a flag, for the reason above.
+
+**Verification is the same gate.** Run it against the standalone binary
+unchanged. BMF's is lossless on all six images and byte-identical to the
+donor's own compressed streams — which is a stronger statement than the gate
+requires, and the right one to aim for: it says the substitutions changed
+nothing observable, not merely nothing fatal. Then run the paths the gate does
+not: `--help`, and each error message, diffed against the un-injected binary.
+That is where §8.2.5's variadic loss was hiding.

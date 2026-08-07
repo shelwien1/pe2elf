@@ -4,15 +4,27 @@ An application of [`../incdec.md`](../incdec.md) to `exe32/BMF.exe`: function
 bodies are moved out of the Hex-Rays decompilation into `dummy32.so` one at a
 time, each gated on a `-S -Q9` compress/decompress round-trip.
 
-**Status: all 133 reachable functions redirected, `main` included, and
-`fail.txt` is empty. 90 of the 92 a round-trip executes are out; the two that
-are not are the Intel CRT's `memcpy`/`memset` dispatchers, which are runtime,
-not BMF. Gate green on all five pixel formats, and every image compresses to a
-stream byte-identical to the original's.**
+**Status: done. All 143 reachable functions are out, the call graph is
+closed, and `standalone/` links them into an ELF executable that contains no
+BMF code and does not load `BMF.exe` — its own `main`, glibc for the CRT,
+POSIX for the ten kernel32 imports. Both builds are green on all five pixel
+formats plus a real scan, and every image compresses to a stream
+byte-identical to the original's.**
 
-The goal is a lossless BMP codec that runs none of BMF's own code and
-compresses no worse than it does. Everything below is the state of that
-migration; §"Where this stands" at the end is the honest summary.
+Two builds share one `.inc` tree:
+
+| | `dummy32.so` (hybrid) | `standalone/bmf` |
+|---|---|---|
+| How it runs | injected into the loaded `BMF.exe`, each moved entry point overwritten with a `jmp` | an ordinary `-m32` ELF executable |
+| CRT | the PE's statically-linked MSVC runtime | glibc |
+| kernel32 | `winapi_shim32.so` | POSIX, in `standalone/crt.cpp` |
+| Startup | the PE's `start` at `0x0042D53A` | `standalone/main.cpp` |
+| What it is for | moving one function at a time with a reference to compare against | the actual deliverable |
+
+The hybrid is not obsolete: it is the only place a *single* substitution can be
+tested against a known-good reference, which is how the standalone's one real
+behavioural difference was found (see "Diagnosing a standalone stream that
+differs" below).
 
 ## Layout
 
@@ -40,6 +52,7 @@ migration; §"Where this stands" at the end is the honest summary.
 | `extract.py` | `.inc` generator, BMF/i386-targeted. |
 | `drive.py` | The incremental loop: extract → build → test → keep or revert. |
 | `build.sh` / `test.sh` | Assemble+compile `dummy32.so`; run the gate. |
+| `standalone/` | The second build. `mkdata.py` carves BMF's data out of the PE, `crt.cpp` replaces the runtime, `main.cpp` is the entry point, `build.sh`/`test.sh` mirror the hybrid's. |
 
 ## Running it
 
@@ -48,7 +61,9 @@ python3 mksites.py        # after a fresh decompilation of BMF.cpp
 python3 mkbmps.py         # write the test images
 ./test.sh --baseline      # capture ref_*.bmf from the un-injected binary
 python3 drive.py targets.txt   # repeat until a pass accepts nothing new
-./build.sh && ./test.sh   # PASS
+./build.sh && ./test.sh   # PASS  (hybrid)
+
+cd standalone && ./build.sh && ./test.sh   # PASS  (no BMF code at all)
 ```
 
 For each image, `test.sh` compresses with `-S -Q9` and then decompresses, and
@@ -486,46 +501,138 @@ naming because each was systemic rather than per-function:
   `__intel_sse2_strlen` among them — and the only symptom was an undeclared
   identifier a hundred lines away.
 
+## The standalone build
+
+```sh
+cd standalone && ./build.sh && ./test.sh
+```
+
+`build.sh` assembles one translation unit — the shared head with
+`BMF_STANDALONE` defined, then `crt.cpp`, then the same `../inc/*.inc` in
+`accepted.txt` order, then `main.cpp` — and links it with `bmfdata.S`.
+
+**The data stays, the code goes.** Every moved body reaches its globals by
+absolute address (`incdec.md` §6.1): `*(int *)0x00441040`. Rewriting 845 of
+those into named objects would be a much larger change than replacing the
+runtime around them — the same address is an `int` to one function and a
+`char[]` to the next. So `mkdata.py` carves `.rdata`/`.data`/`.trace` out of
+`BMF.exe` into one 64 KB section and `--section-start` puts it back at
+`0x00438000`. `.text` is not included, and that absence is the point: a
+surviving call into BMF's code range faults instead of quietly working.
+`objdump` confirms there are none.
+
+**`__PE_DECL_` is the seam.** Every reference a generated `.inc` makes to
+something outside the moved set is wrapped in `#ifndef __PE_DECL___x`. That is
+not just an include guard — `crt.cpp` defines the guard *and* a real `__x`
+before the bodies are included, so the PE entry point is replaced without
+touching a single generated line. That is why one `.inc` tree serves both
+builds.
+
+What `crt.cpp` covers: the 32 statically-linked MSVC CRT entries, ten kernel32
+imports, `operator new`/`delete`, Intel's `memcpy`/`memset` dispatchers
+(`sub_434980`/`sub_4349F0` — runtime, not BMF), `__libm_sse2_log` and
+`__svml_log2` (both `log`; the name `___svml_log2` is IDA's and it is wrong),
+`__intel_sse2_strlen` (`strlen`), and `sub_402E30`, whose two instructions IDA
+refused to decompile. The kernel32 ten are written fresh against
+`open`/`opendir`/`futimens` rather than pulled from `winapi_shim32.so`: the
+shim is right when you are running BMF's code and it expects Windows, and wrong
+when the goal is a program that stands on its own.
+
+`main.cpp` does the two things MSVC's startup did that nothing in the `.inc`
+set does — publish `argv` at `0x00445954`, and run the one C++ static
+initialiser the donor's `__xc_a`..`__xc_z` table holds (`sub_419680`, at
+`0x00441004`). Deliberately *not* done: Intel's `__intel_new_proc_init` cache
+probe, whose globals only `__intel_fast_memcpy` reads, and that is one of the
+two dispatchers glibc replaces.
+
+The PE-only scaffolding is gone with it. `force_align_arg_pointer` is now
+`BMF_REALIGN`, empty in this build because every caller is g++ with `esp`
+already aligned; the `__usercall` thunks are `#ifdef`'d out, since nothing
+outside the translation unit enters those functions any more; the probes
+compile away unless `-DBMF_PROBES`.
+
+### Diagnosing a standalone stream that differs
+
+The first standalone build was byte-identical on four images and 244 bytes
+larger on both 8bpp ones. Floating-point substitution was the obvious suspect
+and it was wrong. What settled it in one build each:
+
+1. **Move the substitution back into the hybrid, not forward into the
+   standalone.** The hybrid has a known-good reference, so putting glibc's
+   `log` into it answers "is it the maths?" on its own. It was not — nor the
+   heap, nor `memcpy`, nor dropping the realignment.
+2. **Diff the probe counts.** `-DBMF_PROBES` keeps the counters in the
+   standalone and `main.cpp` dumps them from an `atexit` handler, in the same
+   format as the hybrid's `ExitProcess` hook. Six functions differed, and
+   `sub_419680` — called once in the hybrid, never in the standalone — was the
+   one with no caller in the `.inc` set at all, because its only caller was the
+   CRT's static-initialiser walk. It fills SSE constant tables that live in the
+   *uninitialised* part of `.data`, so skipping it did not crash; it ran the
+   filters against zeroes.
+
+   Compare compress-only against compress-only. `test.sh` appends a report per
+   run, and a round-trip's second report silently wins the parse.
+
+The generalisation, which cost a day: *the same delta on exactly the images
+that share a code path* is evidence about which path, not about how small the
+cause is.
+
+### The paths the gate does not run
+
+`bmf` with no arguments printed garbage and then segfaulted, and had done since
+`exit_402E40` was accepted. IDA typed it `void __stdcall exit_402E40(int Code,
+char ArgList)`; the donor is `__cdecl exit_402E40(int Code, ...)` — `lea eax,
+[esp+8]` is a `va_list`. Both halves wrong, and all thirty call sites came out
+as `exit_402E40(5, (char)FileName)`, which compiles. Under the shim the PE's
+own `vprintf` read wild pointers off the end of the argument block and
+survived; with glibc, `%s` dereferenced one.
+
+`override/exit_402E40.inc` has the real signature and `fixups.txt` restores the
+arguments at every call site, including the sixteen the usage screen pushes at
+`0x00401539..0x004015AD`. Both builds now print the same usage screen and the
+same error messages as the un-injected binary — which is the check that should
+have been run when the function was accepted. A corpus of good inputs exercises
+no error path.
+
 ## Where this stands
 
-The goal is a lossless BMP codec that runs none of BMF's own code. What is
-done:
+The goal was a lossless BMP codec that runs none of BMF's own code. It is met:
 
 * The **mechanism** is complete. Every calling convention in the image can be
   moved, `__usercall`/`__userpurge` included, and the gate is a whole-file
-  lossless round-trip over five pixel formats with a no-regression check on
-  compressed size. Nothing about the remaining work needs new machinery.
-* **All 133 reachable functions are out**, `main` among them, and the
-  round-trip is green with them out — byte-identical compressed streams on all
-  five images, not merely no larger. `fail.txt` is empty.
-* Of the 92 functions a round-trip executes, **90 are now ours**. The two that
-  are not — `sub_434980` and `sub_4349F0` — are the Intel runtime's
-  `memcpy`/`memset` dispatchers, which belong with the CRT below rather than
-  with BMF.
+  lossless round-trip over five pixel formats plus a real 1728x2339 scan, with
+  a no-regression check on compressed size.
+* **All 143 reachable functions are out**, `main` among them, and `fail.txt` is
+  empty. The call graph is closed: no `.inc` declares a `sub_XXXXXX` at a PE
+  address any more.
+* **`standalone/bmf` runs none of BMF's code.** The only thing it takes from
+  the image is 64 KB of initialised data at the original addresses. Gate green,
+  and every stream byte-identical to the donor's — which is a stronger
+  statement than the gate requires, and the right one: it says the
+  substitutions changed nothing observable, not merely nothing fatal.
 
-What is not:
+What is still worth knowing:
 
-* The statically-linked CRT is untouched — moved bodies still call the PE's
-  `fopen`, `fread`, `operator new`, `memcpy` (§6.5), and the Intel maths
-  entries reached through the §8.2.5 trampolines. Those should be repointed at
-  glibc rather than decompiled. It is a bounded job — 30-odd entries, all with
-  standard semantics — but it has not been started.
-* The process still **enters** through the PE's CRT entry point at
-  `0x0042D53A` (`start`, which calls `main` at `start+0xAF`); `main` itself is
-  ours now, but everything above it — `__alloca_probe`, `__alldiv`, `_flsall`,
-  `__amsg_exit`, the MSVC `_iobuf` stdio — is still the statically-linked
-  runtime. A standalone binary needs its own entry point, which is the same
-  job as the previous point.
-* The 42 functions that are reachable but not executed by this corpus are
-  moved without probe coverage. See Caveats.
+* The last ten functions were only found by *reading* the call graph, not by
+  running it — four scanline writers reached through a function pointer, the
+  two writers that install them, and four integer-formatting helpers. A corpus
+  that never asks for TGA output never calls any of them.
+* 43 of the 143 are moved without probe coverage. See Caveats.
+* The globals are still absolute addresses. Naming them is the next real piece
+  of work, and it is a large one — `incdec.md` §6.1 explains why it cannot be
+  done mechanically.
 
 ## Caveats
 
-* 90 of the 133 accepted functions have a non-zero probe count over the ten
-  runs (compress + decompress for each of the five images). The other 43 are
-  reachable but not executed by this corpus: they are moved so that nothing
-  calls back into the PE, and §9's "was it actually called?" check cannot
-  vouch for them. The `[probe]` dump at exit says which.
+* 100 of the 143 accepted functions have a non-zero probe count over a
+  compress + decompress of each image. The other 43 are reachable but not
+  executed by this corpus: they are moved so that the call graph closes, and
+  §9's "was it actually called?" check cannot vouch for them. The `[probe]`
+  dump at exit says which — in the standalone build too, with `-DBMF_PROBES`.
+* The standalone build's `FindFirstFileA` keeps one enumeration at a time in a
+  static context and never sees a `FindClose`, because `main` does not call
+  one. That matches how BMF uses it and would need revisiting if anything else
+  did.
 * `accepted.txt` is re-sorted callees-first and the whole set re-emitted on
   every acceptance. Both are required: §6.3 turns a call to an already-moved
   function into a bare `#define`, which needs the callee's include to come
