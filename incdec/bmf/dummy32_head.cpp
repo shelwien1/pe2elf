@@ -270,10 +270,17 @@ union M128I {
   unsigned long long m128i_u64[2];
   M128I() = default;
   M128I(__gnu_m128i a) : v(a) {}
-  // Hex-Rays writes "zero the register" as `x = 0` / `(__m128i)0LL` even for a
-  // 16-byte object; a non-zero scalar zero-extends, which is what the
-  // corresponding MOVD/MOVQ does.
-  M128I(long long z) { __builtin_memset(this, 0, 16); m128i_i64[0] = z; }
+  // Hex-Rays writes a whole-register constant as a scalar: `x = 0` for the
+  // zeroing idiom, and `x = -1` for `pcmpeqd xmm0, xmm0`, which sets all 128
+  // bits.  Sign-extending covers both, and it is what the decompilation
+  // literally says — these objects are declared `__int128`, where `-1` means
+  // every bit.  Zero-extending instead cost a whole compression mode: the
+  // Huffman decoder initialises its bucket heads to -1 and only the low eight
+  // bytes got them, so the table came out truncated and the stream decoded as
+  // "bad file".  A *negative* scalar meant as a zero-extending MOVD/MOVQ would
+  // now be wrong, but there is no such site: all twelve are pcmpeqd, verified
+  // against the disassembly, and every MOVD/MOVQ constant here is positive.
+  M128I(long long z) { m128i_i64[0] = z; m128i_i64[1] = z < 0 ? -1LL : 0LL; }
   inline M128I(const M128F &o);
   inline M128I(const M128D &o);
   operator __gnu_m128i&() { return v; }
@@ -293,7 +300,7 @@ union M128F {
   unsigned long long m128_u64[2];
   M128F() = default;
   M128F(__gnu_m128 a) : v(a) {}
-  M128F(long long z) { __builtin_memset(this, 0, 16); m128_i64[0] = z; }
+  M128F(long long z) { m128_i64[0] = z; m128_i64[1] = z < 0 ? -1LL : 0LL; }   // sign-extends, see M128I
   inline M128F(const M128I &o);
   inline M128F(const M128D &o);
   operator __gnu_m128&() { return v; }
@@ -308,7 +315,7 @@ union M128D {
   unsigned long long m128d_u64[2];
   M128D() = default;
   M128D(__gnu_m128d a) : v(a) {}
-  M128D(long long z) { __builtin_memset(this, 0, 16); m128d_i64[0] = z; }
+  M128D(long long z) { m128d_i64[0] = z; m128d_i64[1] = z < 0 ? -1LL : 0LL; }   // sign-extends, see M128I
   inline M128D(const M128I &o);
   inline M128D(const M128F &o);
   operator __gnu_m128d&() { return v; }

@@ -1363,6 +1363,35 @@ whatever was there and the PE caller would read it. Declare the raw
 `__gnu_m128d` instead — the wrappers convert to it implicitly, so the body does
 not change.
 
+### 8.2.6 A whole-register constant, written as a scalar
+
+Hex-Rays renders `pcmpeqd xmm0, xmm0` — set all 128 bits — as
+
+```c
+xmmword_442EA0 = -1;
+```
+
+which is also how it renders the zeroing idiom (`= 0`) and a `MOVD`/`MOVQ` of a
+small constant. If the wrapper union's scalar constructor *zero-extends*, on
+the theory that a scalar move is what it usually is, then `= -1` sets only the
+low eight bytes and the other eight stay zero. Nothing crashes: the object is
+a table of bucket heads, half of it is initialised to the wrong sentinel, and
+the Huffman decoder it feeds builds a truncated tree and reports the input as
+corrupt.
+
+Sign-extend instead. It is what the decompilation literally says — these
+objects are declared `__int128`, where `-1` means every bit — and it agrees
+with the zeroing idiom and with every non-negative `MOVD` constant. The case
+it would get wrong is a *negative* scalar that really is a zero-extending
+move; check for those before choosing (here there were none: all twelve `= -1`
+sites are `pcmpeqd`, and every `MOVD`/`MOVQ` constant in the image is
+positive).
+
+The general shape is worth naming: **the decompiler prints a value, not an
+instruction**, and where several instructions print the same the wrapper has to
+pick. Pick by reading the disassembly at every site, not by picking the
+common case.
+
 ### 8.3 MSVC `FILE` layout
 
 Hex-Rays bodies access MSVC `_iobuf` internals: `v17->_cnt`, `v17->_ptr`,
@@ -1728,6 +1757,37 @@ The `fflush(stdout)` is load-bearing. Without it, the first run of this
 example printed the two `[incdec]` lines and the probe dump but **not**
 `__main:` — glibc had buffered it and `_exit()` discarded the buffer. Nothing
 reported an error; the output simply was not there.
+
+### 9.2 A mode is a dimension of the corpus
+
+BMF's `-S` switch reads as a speed/ratio knob — "use Slow, but efficient
+compression". It is not: it selects a *different compressor*, some twenty
+functions the default path never calls. Gating on `-S -Q9` alone left 53 of
+143 accepted functions never once executed and the entire default mode broken
+in both directions, with nothing to say so, for as long as the project ran.
+
+Enumerate the switches that change *which code runs*, not just how hard it
+works, and put every one of them in the gate next to the pixel formats. The
+tell is in the disassembly: a flag that selects between two call sites is a
+mode; a flag that becomes a loop bound is a knob.
+
+Two smaller traps came with it:
+
+* **Report-only comparisons let real bugs through.** §9 deliberately does not
+  fail a run whose compressed stream merely *differs* from the reference, on
+  the grounds that the goal is a codec as good as the donor rather than a
+  bit-identical clone. That is right for accepting a function, and wrong for
+  hunting a regression: a body that changes the stream but stays lossless and
+  no larger passes, and the next function to be moved inherits the corrupted
+  state and gets the blame. When bisecting, tighten the gate to require
+  byte-identity.
+
+* **Name the harness's temporary files carefully.** The gate copies the input
+  aside so the original survives the losslessness compare, and the archive is
+  named after the copy. Removing the wrong name between modes leaves the
+  previous archive in place, and BMF *appends* to an existing archive — which
+  looks exactly like a compression regression, at precisely twice the
+  reference's size.
 
 ## 10. Completion criterion
 

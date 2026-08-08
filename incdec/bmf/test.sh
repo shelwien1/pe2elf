@@ -119,7 +119,12 @@ for spec in $MODES; do
     (
       cd "$WORK"
       export BMF_PROBE_OUT=probe.txt
-      rm -f "$st.bmf"; cp "$img" "in_$st.bmp"
+      # in_$st.bmf, not $st.bmf: the input is copied under a distinct name so
+      # the original survives for the losslessness compare, and BMF derives the
+      # archive name from it.  Removing the wrong one leaves the previous
+      # mode's archive in place, and BMF *appends* to an existing one — which
+      # shows up as a stream exactly twice the reference's size.
+      rm -f "in_$st.bmf"; cp "$img" "in_$st.bmp"
       timeout 300 ./BMF.elf $flags "in_$st.bmp" >"$st.$tag.compress.log" 2>&1
       rc=$?; [ $rc -eq 124 ] && { echo "$st/$tag: COMPRESS TIMED OUT"; exit 1; }
       [ $rc -ne 0 ] && { echo "$st/$tag: COMPRESS FAILED (rc=$rc)"; exit 1; }
