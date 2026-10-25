@@ -101,6 +101,12 @@ extern "C" EXPORT BOOL kernel32_GetProcessAffinityMask(HANDLE /*h*/, uint64_t* p
   return TRUE;
 }
 extern "C" EXPORT BOOL kernel32_SetProcessAffinityMask(HANDLE /*h*/, uint64_t /*mask*/) { return TRUE; }
+// Accepted but not applied (like SetProcessAffinityMask); returns the previous (= process) mask.
+extern "C" EXPORT uint64_t kernel32_SetThreadAffinityMask(HANDLE /*h*/, uint64_t /*mask*/) {
+  uint64_t pm = 0, sm = 0;
+  kernel32_GetProcessAffinityMask(nullptr, &pm, &sm);
+  return pm ? pm : 1;
+}
 
 // ---------------------------------------------------------------------------
 // Process times

@@ -183,6 +183,10 @@ Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 
 - **Named and ordinal imports** — ordinal lookup needs the matching
   side-DLL under `dll/`.
+- **Split IAT layouts** — IAT slots may span several PE sections (e.g. an
+  exe with a DLL folded in by dllmerge: exe `.idata` + DLL `.rdata`). Each
+  such section gets its slots zeroed and is mapped writable;
+  `PT_GNU_RELRO` is emitted only when there is a single IAT section.
 - **Base relocations** — applied at conversion via `--base=<addr>`
   (rebase) or emitted as `R_X86_64_RELATIVE` via `--pie`.
 - **PE TLS directory** — template, callbacks, and TLS index are all
@@ -206,8 +210,6 @@ Default targets: `rar390 rar550a rar701a` (8.0+ versions still TBD).
 
 ## Limitations
 
-- **Single IAT section** — split IAT layouts (IAT slots spanning more
-  than one PE section) are rejected.
 - **AMD64 only** — both the converter and the shim target x86-64
   exclusively. AArch64 has a partial TEB-equivalent (`x18`), no exports.
 - **Subset of WinAPI** — the shim covers what the test binaries (rar,

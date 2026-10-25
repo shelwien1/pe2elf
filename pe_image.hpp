@@ -192,7 +192,12 @@ struct PeImage {
   std::vector<BaseRelocEntry> relocs;
   uint64_t image_base = 0;
   uint32_t ep_rva = 0;
-  int rdata_sec_idx = -1; // index of section holding IAT (usually .rdata)
+  int rdata_sec_idx = -1; // index of the first section holding IAT slots (usually .rdata)
+  std::vector<int> iat_sec_idx; // all sections holding IAT slots (>1 e.g. after an exe+dll merge)
+  bool is_iat_sec(int i) const {
+    for( int s : iat_sec_idx ) if( s==i ) return true;
+    return false;
+  }
 
   // TLS directory (IMAGE_TLS_DIRECTORY64), zeros if no TLS directory present
   uint64_t tls_template_va  = 0; // StartAddressOfRawData
@@ -378,16 +383,12 @@ struct PeImage {
       }
     }
 
-    // Identify which section holds the IAT; error on split layout (D5)
-    if( !imports.empty() ) {
-      rdata_sec_idx = secmap.section_of(imports[0].iat_rva);
-      for( auto &ie : imports ) {
-        if( secmap.section_of(ie.iat_rva)!=rdata_sec_idx ) {
-          fprintf(stderr, "Error: split IAT layout (IAT spans multiple sections) is not supported\n");
-          return false;
-        }
-      }
+    // Identify which sections hold IAT slots (split layout: one patched copy per section)
+    for( auto &ie : imports ) {
+      int s = secmap.section_of(ie.iat_rva);
+      if( !is_iat_sec(s) ) iat_sec_idx.push_back(s);
     }
+    if( !iat_sec_idx.empty() ) rdata_sec_idx = iat_sec_idx[0];
 
     return true;
   }

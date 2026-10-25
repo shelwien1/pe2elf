@@ -26,6 +26,17 @@ extern "C" EXPORT LONG ole32_CoSetProxyBlanket(void* /*proxy*/,
   return 0;  // S_OK — callers usually don't check
 }
 
+// Bink 2 (bink2w64.dll) imports these for its WASAPI path, which is never
+// entered unless the app calls BinkSoundUseWinAudio.
+extern "C" EXPORT LONG ole32_CoInitializeEx(void* /*reserved*/, DWORD /*coinit*/) {
+  return 0;  // S_OK
+}
+extern "C" EXPORT void ole32_CoTaskMemFree(void* p) { free(p); }
+extern "C" EXPORT LONG ole32_PropVariantClear(void* pv) {
+  if( pv ) memset(pv, 0, 24);  // sizeof(PROPVARIANT) on x64; VT_EMPTY
+  return 0;
+}
+
 // oleaut32 ------------------------------------------------------------------
 // BSTR layout: the pointer points at the start of the wide string; the
 // 4 bytes immediately preceding hold the byte length (excluding the

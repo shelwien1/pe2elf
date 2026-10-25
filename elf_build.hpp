@@ -24,8 +24,8 @@ struct Builder {
   std::vector<uint8_t>   trampoline_data;
   std::vector<uint8_t>   hash_data; // only populated in --so mode
 
-  // IAT section with slots zeroed
-  std::vector<uint8_t> rdata_patched;
+  // IAT sections (section index -> raw copy) with slots zeroed
+  std::map<int, std::vector<uint8_t>> iat_patched;
 
   // ELF structural tables
   std::vector<Elf64_Phdr> phdrs;
@@ -354,25 +354,26 @@ struct Builder {
   }
 
   void patch_rdata() {
-    if( image.rdata_sec_idx<0 )
-      return;
-    auto &sec = image.secmap.secs[image.rdata_sec_idx];
-    size_t raw_size = sec.rawsz;
-    if( sec.raw>=image.buf.size() ) {
-      rdata_patched.assign(raw_size, 0);
-    } else {
-      size_t avail = image.buf.size()-sec.raw;
-      if( avail>raw_size ) avail = raw_size;
-      rdata_patched.assign(image.buf.data.data()+sec.raw,
-                           image.buf.data.data()+sec.raw+avail);
-      rdata_patched.resize(raw_size, 0);
-    }
-    for( auto &ie : image.imports ) {
-      if( image.secmap.section_of(ie.iat_rva)!=image.rdata_sec_idx )
-        continue;
-      uint32_t slot_off = ie.iat_rva-sec.va;
-      if( slot_off+8<=raw_size )
-        memset(rdata_patched.data()+slot_off, 0, 8);
+    for( int si : image.iat_sec_idx ) {
+      auto &sec = image.secmap.secs[si];
+      auto &patched = iat_patched[si];
+      size_t raw_size = sec.rawsz;
+      if( sec.raw>=image.buf.size() ) {
+        patched.assign(raw_size, 0);
+      } else {
+        size_t avail = image.buf.size()-sec.raw;
+        if( avail>raw_size ) avail = raw_size;
+        patched.assign(image.buf.data.data()+sec.raw,
+                       image.buf.data.data()+sec.raw+avail);
+        patched.resize(raw_size, 0);
+      }
+      for( auto &ie : image.imports ) {
+        if( image.secmap.section_of(ie.iat_rva)!=si )
+          continue;
+        uint32_t slot_off = ie.iat_rva-sec.va;
+        if( slot_off+8<=raw_size )
+          memset(patched.data()+slot_off, 0, 8);
+      }
     }
   }
 
@@ -439,9 +440,10 @@ struct Builder {
       if( ch&PE_SCN_MEM_READ )    flags |= PF_R;
       if( ch&PE_SCN_MEM_WRITE )   flags |= PF_W;
       if( ch&PE_SCN_MEM_EXECUTE ) flags |= PF_X;
-      if( (int)i==image.rdata_sec_idx ) {
+      if( image.is_iat_sec((int)i) ) {
         flags |= PF_W;
-        relro_sec_idx = (int)i;
+        // ld.so honours a single PT_GNU_RELRO; with a split IAT leave them all writable
+        if( image.iat_sec_idx.size()==1 ) relro_sec_idx = (int)i;
       }
       // Any section with R_X86_64_RELATIVE relocation targets must be writable
       // during dynamic linking so the loader can patch the addresses.
