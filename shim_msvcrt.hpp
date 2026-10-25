@@ -381,6 +381,22 @@ extern "C" EXPORT size_t msvcrt_fwrite(const void* buf, size_t sz, size_t count,
   ssize_t r = write(win_file_to_fd(f), buf, sz * count);
   return r < 0 ? 0 : (size_t)r / sz;
 }
+// fopen returns a host FILE*; all I/O on it goes through its fd (win_file_to_fd -> fileno),
+// matching the unbuffered fwrite/fprintf above, so fseek is an lseek on the same fd.
+extern "C" EXPORT void* msvcrt_fopen(const char* name, const char* mode) {
+  if( !name || !mode ) { errno = EINVAL; return nullptr; }
+  char posix[PATH_MAX]; win_path_to_posix(name, posix, sizeof(posix));
+  return fopen(posix, mode);  // glibc ignores msvcrt-only mode chars (t, c, n, ...)
+}
+extern "C" EXPORT int msvcrt_fclose(void* f) {
+  if( !f ) return -1;
+  uint8_t* fp = (uint8_t*)f;
+  if( fp >= g_fake_iob && fp < g_fake_iob + 144 ) return 0;  // stdin/out/err: leave open
+  return fclose((FILE*)f);
+}
+extern "C" EXPORT int msvcrt_fseek(void* f, long off, int whence) {
+  return lseek(win_file_to_fd(f), (off_t)off, whence) < 0 ? -1 : 0;
+}
 extern "C" EXPORT char* msvcrt_fgets(char* buf, int n, void* f) {
   if( !buf || n <= 0 ) return nullptr;
   int fd = win_file_to_fd(f);

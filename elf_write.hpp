@@ -70,8 +70,9 @@ struct Writer {
     for( uint32_t i = 0; i<image.secmap.secs.size(); ++i ) {
       auto &sec = image.secmap.secs[i];
       out.pad_to_size(sec.elf_foff);
-      if( (int)i==image.rdata_sec_idx&&!build.rdata_patched.empty() ) {
-        out.append(build.rdata_patched.data(), build.rdata_patched.size());
+      auto pit = build.iat_patched.find((int)i);
+      if( pit!=build.iat_patched.end()&&!pit->second.empty() ) {
+        out.append(pit->second.data(), pit->second.size());
       } else {
         if( sec.raw+sec.rawsz<=image.buf.size() ) {
           out.append(image.buf.data.data()+sec.raw, sec.rawsz);

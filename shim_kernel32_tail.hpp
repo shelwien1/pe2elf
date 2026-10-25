@@ -486,6 +486,13 @@ extern "C" EXPORT UINT kernel32_GetSystemDirectoryA(LPSTR buf, UINT size) {
   if( buf && size > n ) { strncpy(buf, dir, size-1); buf[size-1] = '\0'; }
   return n;
 }
+extern "C" EXPORT UINT kernel32_GetWindowsDirectoryA(LPSTR buf, UINT size) {
+  const char* dir = "C:\\Windows";
+  UINT n = (UINT)strlen(dir);
+  if( !buf || size <= n ) return n + 1;
+  memcpy(buf, dir, n + 1);
+  return n;
+}
 extern "C" EXPORT BOOL kernel32_GetVolumeInformationW(const uint16_t* /*root*/,
     uint16_t* volname, DWORD vsz, DWORD* serial, DWORD* max_comp, DWORD* flags,
     uint16_t* fsname, DWORD fssz) {

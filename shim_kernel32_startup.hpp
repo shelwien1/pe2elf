@@ -46,6 +46,14 @@ extern "C" EXPORT LPWSTR kernel32_GetEnvironmentStringsW(void) {
     build_env_block();
   return g_env_block_w;
 }
+extern "C" EXPORT DWORD kernel32_GetEnvironmentVariableA(LPCSTR name, LPSTR buf, DWORD size) {
+  const char* v = name ? getenv(name) : nullptr;
+  if( !v ) { SET_LAST_ERROR(203); return 0; }  // ERROR_ENVVAR_NOT_FOUND
+  DWORD n = (DWORD)strlen(v);
+  if( !buf || size <= n ) return n + 1;        // required size incl. NUL
+  memcpy(buf, v, n + 1);
+  return n;
+}
 extern "C" EXPORT LPSTR kernel32_GetEnvironmentStringsA(void) {
   return kernel32_GetEnvironmentStrings();
 }

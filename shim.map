@@ -38,6 +38,7 @@ WINAPI_SHIM_1.0 {
     kernel32_FlushFileBuffers;
     kernel32_GetFileType;
     kernel32_GetFileSizeEx;
+    kernel32_GetFileSize;
     kernel32_GetSystemTimeAsFileTime;
     kernel32_FileTimeToDosDateTime;
     kernel32_DosDateTimeToFileTime;
@@ -77,6 +78,7 @@ WINAPI_SHIM_1.0 {
     kernel32_GetStartupInfoA;
     kernel32_GetEnvironmentStrings;
     kernel32_GetEnvironmentStringsA;
+    kernel32_GetEnvironmentVariableA;
     kernel32_GetEnvironmentStringsW;
     kernel32_FreeEnvironmentStringsA;
     kernel32_FreeEnvironmentStringsW;
@@ -99,6 +101,7 @@ WINAPI_SHIM_1.0 {
     kernel32_TlsGetValue;
     kernel32_TlsSetValue;
     kernel32_InitializeSListHead;
+    kernel32_InterlockedFlushSList;
     kernel32_FlsAlloc;
     kernel32_FlsFree;
     kernel32_FlsGetValue;
@@ -145,6 +148,7 @@ WINAPI_SHIM_1.0 {
     kernel32_SetThreadContext;
     kernel32_GetProcessAffinityMask;
     kernel32_SetProcessAffinityMask;
+    kernel32_SetThreadAffinityMask;
     kernel32_GetProcessTimes;
     kernel32_GetHandleInformation;
     kernel32_AddVectoredExceptionHandler;
@@ -203,6 +207,7 @@ WINAPI_SHIM_1.0 {
     kernel32_LocalFileTimeToFileTime;
     kernel32_GetVersionExW;
     kernel32_GetSystemDirectoryA;
+    kernel32_GetWindowsDirectoryA;
     kernel32_GetSystemDirectoryW;
     kernel32_GetVolumeInformationW;
     kernel32_GetVolumeInformationA;
@@ -292,6 +297,8 @@ WINAPI_SHIM_1.0 {
     user32_LoadStringA;
     user32_LoadStringW;
     user32_MessageBeep;
+    user32_GetDesktopWindow;
+    user32_MessageBoxA;
 
     msvcrt__commode;
     msvcrt__fmode;
@@ -340,6 +347,9 @@ WINAPI_SHIM_1.0 {
     msvcrt_printf;
     msvcrt_sprintf;
     msvcrt_fwrite;
+    msvcrt_fopen;
+    msvcrt_fclose;
+    msvcrt_fseek;
     msvcrt_fgets;
     msvcrt_puts;
     msvcrt_putchar;
@@ -367,6 +377,9 @@ WINAPI_SHIM_1.0 {
 
     ole32_CoCreateInstance;
     ole32_CoSetProxyBlanket;
+    ole32_CoInitializeEx;
+    ole32_CoTaskMemFree;
+    ole32_PropVariantClear;
 
     oleaut32_SysAllocString;
     oleaut32_SysFreeString;

@@ -179,6 +179,14 @@ extern "C" EXPORT BOOL kernel32_GetFileSizeEx(HANDLE h, int64_t* size) {
   return TRUE;
 }
 
+extern "C" EXPORT DWORD kernel32_GetFileSize(HANDLE h, DWORD* high) {
+  int64_t sz;
+  if( !kernel32_GetFileSizeEx(h, &sz) ) return 0xFFFFFFFFu;  // INVALID_FILE_SIZE
+  if( high ) *high = (DWORD)((uint64_t)sz >> 32);
+  SET_LAST_ERROR(0);
+  return (DWORD)sz;
+}
+
 extern "C" EXPORT DWORD kernel32_GetFileType(HANDLE h) {
   int fd = get_fd(h);
   if( fd<0 )

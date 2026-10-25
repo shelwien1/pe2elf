@@ -158,3 +158,9 @@ extern "C" EXPORT int user32_LoadStringA(HANDLE hinst, UINT id, LPSTR buf, int s
   return load_string_impl(hinst, id, buf, nullptr, sz);
 }
 extern "C" EXPORT BOOL user32_MessageBeep(UINT /*type*/) { return TRUE; }
+extern "C" EXPORT HANDLE user32_GetDesktopWindow(void) { return (HANDLE)(uintptr_t)0x10010; }
+// No GUI: print the box to stderr and answer IDOK.
+extern "C" EXPORT int user32_MessageBoxA(HANDLE /*hwnd*/, LPCSTR text, LPCSTR caption, UINT /*type*/) {
+  fprintf(stderr, "[%s] %s\n", caption ? caption : "", text ? text : "");
+  return 1;  // IDOK
+}

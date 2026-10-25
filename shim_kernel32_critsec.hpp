@@ -107,3 +107,16 @@ extern "C" EXPORT void kernel32_InitializeSListHead(void* h) {
   if( h )
     memset(h, 0, 16); // SLIST_HEADER is 16 bytes
 }
+// x64 SLIST_HEADER: qword0 = Depth:16|Sequence:48, qword1 = Reserved:4|NextEntry:60 (ptr>>4).
+// No other SList op is shimmed, so a lock is enough to keep this atomic.
+extern "C" EXPORT void* kernel32_InterlockedFlushSList(void* h) {
+  static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+  if( !h ) return nullptr;
+  uint64_t* q = (uint64_t*)h;
+  pthread_mutex_lock(&mtx);
+  void* first = (void*)(uintptr_t)(q[1] & ~(uint64_t)0xF);
+  q[0] &= ~(uint64_t)0xFFFF;  // Depth = 0, keep Sequence
+  q[1] = 0;
+  pthread_mutex_unlock(&mtx);
+  return first;
+}
