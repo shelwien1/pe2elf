@@ -57,7 +57,10 @@ $(SHIM_DBG_OUT): $(SHIM_SRCS) $(SHIM_HEADERS) shim_types.h shim.map
 $(DUMMY_OUT): $(DUMMY_SRCS) $(wildcard *.inc) $(wildcard *.h) defs.h
 	$(CC) $(DUMMY_FLAGS) -o $@ $(DUMMY_SRCS) $(DUMMY_LDFLAGS)
 
-$(PE2ELF_OUT): $(PE2ELF_SRCS)
+PE2ELF_HEADERS = util.hpp pe_types.hpp elf_types.hpp pe_image.hpp \
+                 elf_plan.hpp elf_build.hpp elf_write.hpp
+
+$(PE2ELF_OUT): $(PE2ELF_SRCS) $(PE2ELF_HEADERS)
 	$(CC) $(PE2ELF_FLAGS) -o $@ $(PE2ELF_SRCS)
 
 $(LOAD_OUT): $(LOAD_SRCS) $(SHIM_OUT)
