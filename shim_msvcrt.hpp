@@ -394,7 +394,9 @@ extern "C" EXPORT int msvcrt_fclose(void* f) {
   if( fp >= g_fake_iob && fp < g_fake_iob + 144 ) return 0;  // stdin/out/err: leave open
   return fclose((FILE*)f);
 }
-extern "C" EXPORT int msvcrt_fseek(void* f, long off, int whence) {
+// Windows long is 32-bit (LLP64) and the upper half of its register is undefined:
+// take LONG and sign-extend, else fseek(f,-1,SEEK_END) arrives as +0xFFFFFFFF.
+extern "C" EXPORT int msvcrt_fseek(void* f, LONG off, int whence) {
   return lseek(win_file_to_fd(f), (off_t)off, whence) < 0 ? -1 : 0;
 }
 extern "C" EXPORT char* msvcrt_fgets(char* buf, int n, void* f) {

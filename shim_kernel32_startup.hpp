@@ -48,6 +48,11 @@ extern "C" EXPORT LPWSTR kernel32_GetEnvironmentStringsW(void) {
 }
 extern "C" EXPORT DWORD kernel32_GetEnvironmentVariableA(LPCSTR name, LPSTR buf, DWORD size) {
   const char* v = name ? getenv(name) : nullptr;
+  if( !v && name && *name ) {  // Windows names are case-insensitive: "Path" must find PATH
+    size_t nl = strlen(name);
+    for( char** e = environ; e && *e; ++e )
+      if( strncasecmp(*e, name, nl)==0 && (*e)[nl]=='=' ) { v = *e+nl+1; break; }
+  }
   if( !v ) { SET_LAST_ERROR(203); return 0; }  // ERROR_ENVVAR_NOT_FOUND
   DWORD n = (DWORD)strlen(v);
   if( !buf || size <= n ) return n + 1;        // required size incl. NUL
