@@ -149,7 +149,10 @@ extern "C" EXPORT DWORD kernel32_GetFullPathNameW(LPCWSTR path, DWORD size, LPWS
     p += k;
     if( *p ) p++;
   }
-  if( n > 1 && posix[strlen(posix) - 1] == '/' ) full[n++] = '/';
+  if( n > 1 && posix[strlen(posix) - 1] == '/' ) {
+    if( n + 1 >= sizeof(full) ) { SET_LAST_ERROR(ERROR_FILENAME_EXCED_RANGE); return 0; }
+    full[n++] = '/';
+  }
   full[n] = 0;
   posix_to_win_path(full, win, sizeof(win));
   log_always("[SHIM] GetFullPathNameW(\"%s\" -> \"%s\")\n", narrow, win);

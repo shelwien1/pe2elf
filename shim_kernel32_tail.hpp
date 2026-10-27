@@ -155,13 +155,21 @@ extern "C" EXPORT BOOL kernel32_GlobalMemoryStatusEx(uint8_t* buf) {
 // whitespace outside quotes; 2n backslashes before a quote give n of them and
 // the quote opens or closes quoting, 2n+1 give n and a literal quote; other
 // backslashes are literal; "" inside quotes is a literal quote. An empty
-// command line gives the program's path as argv[0].
+// command line gives the program's path, as it is, as the one argument.
 extern "C" EXPORT uint16_t** shell32_CommandLineToArgvW(const uint16_t* cmdline, int* argc_out) {
   if( !argc_out ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return nullptr; }
-  uint16_t self[PATH_MAX];
   if( !cmdline || !*cmdline ) {
-    if( !kernel32_GetModuleFileNameW(NULL_HANDLE, self, PATH_MAX) ) self[0] = 0;
-    cmdline = self;
+    uint16_t self[PATH_MAX];
+    DWORD n = kernel32_GetModuleFileNameW(NULL_HANDLE, self, PATH_MAX);
+    if( n >= PATH_MAX ) n = 0;
+    uint16_t** argv = (uint16_t**)malloc(2*sizeof(uint16_t*) + (n+1)*sizeof(uint16_t));
+    if( !argv ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return nullptr; }
+    uint16_t* d = (uint16_t*)(argv + 2);
+    memcpy(d, self, n*sizeof(uint16_t));
+    d[n] = 0;
+    argv[0] = d; argv[1] = nullptr;
+    *argc_out = 1;
+    return argv;
   }
   size_t len = 0;
   while( cmdline[len] ) len++;
@@ -330,18 +338,40 @@ extern "C" EXPORT BOOL kernel32_MoveFileW(const uint16_t* from, const uint16_t* 
   return TRUE;
 }
 // MoveFileEx: rename() replaces the target, Windows only with
-// MOVEFILE_REPLACE_EXISTING; across file systems only with
-// MOVEFILE_COPY_ALLOWED (copy, then delete). No new name (delete on reboot)
-// is not supported.
+// MOVEFILE_REPLACE_EXISTING: without it the target must not be there, also
+// when it turns up meanwhile (rename_noreplace). Across file systems only with
+// MOVEFILE_COPY_ALLOWED: the file is copied into a new one beside the target,
+// which then takes the target's name the same way (so a link there is
+// replaced, not written through, and an unfinished copy is never the target),
+// and the source is deleted. No new name (delete on reboot) is not supported.
 #define MOVEFILE_REPLACE_EXISTING 0x1u
 #define MOVEFILE_COPY_ALLOWED     0x2u
-static bool copy_file_posix(const char* from, const char* to) {
+#ifndef RENAME_NOREPLACE
+#define RENAME_NOREPLACE (1u<<0)
+#endif
+// rename(), but EEXIST if the target is there: renameat2's RENAME_NOREPLACE;
+// where the kernel or the file system has no such thing, a hard link (which
+// fails if the target is there) and the old name removed; a directory, which
+// cannot be linked, only with a look first.
+static int rename_noreplace(const char* from, const char* to) {
+#ifdef SYS_renameat2
+  if( syscall(SYS_renameat2, AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE) == 0 ) return 0;
+  if( (errno != ENOSYS) && (errno != EINVAL) ) return -1;
+#endif
+  if( link(from, to) == 0 ) return unlink(from);
+  if( errno == EEXIST ) return -1;
+  struct stat st;
+  if( lstat(to, &st) == 0 ) { errno = EEXIST; return -1; }
+  return rename(from, to);
+}
+// a copy of the file from in a new file beside to, named in tmp (to.XXXXXX)
+static bool copy_beside(const char* from, const char* to, char* tmp, size_t tmpsz) {
+  if( (size_t)snprintf(tmp, tmpsz, "%s.XXXXXX", to) >= tmpsz ) { errno = ENAMETOOLONG; return false; }
   int in = open(from, O_RDONLY|O_CLOEXEC);
   if( in < 0 ) return false;
   struct stat st;
-  if( fstat(in, &st) != 0 ) { close(in); return false; }
-  int out = open(to, O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC, st.st_mode & 07777);
-  if( out < 0 ) { close(in); return false; }
+  int out = (fstat(in, &st) == 0) ? mkostemp(tmp, O_CLOEXEC) : -1;
+  if( out < 0 ) { int e = errno; close(in); errno = e; return false; }
   const size_t bufsz = 1<<16;
   char* buf = (char*)malloc(bufsz);
   bool ok = (buf != nullptr);
@@ -355,27 +385,34 @@ static bool copy_file_posix(const char* from, const char* to) {
       if( w < 0 ) { if( errno != EINTR ) ok = false; continue; }
       o += w;
     }
-    if( !ok ) break;
   }
+  if( ok && (fchmod(out, st.st_mode & 07777) != 0) ) ok = false;
   int e = errno;
   free(buf);
   close(in);
-  if( close(out) != 0 ) ok = false;
-  if( !ok ) { unlink(to); errno = e; }
+  if( (close(out) != 0) && ok ) { ok = false; e = errno; }
+  if( !ok ) { unlink(tmp); errno = e; }
   return ok;
 }
 extern "C" EXPORT BOOL kernel32_MoveFileExW(const uint16_t* from, const uint16_t* to, DWORD flags) {
   if( !from || !to ) { SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return FALSE; }
-  char f8[PATH_MAX], t8[PATH_MAX], fp[PATH_MAX], tp[PATH_MAX];
+  char f8[PATH_MAX], t8[PATH_MAX], fp[PATH_MAX], tp[PATH_MAX], tmp[PATH_MAX];
   wchar_to_utf8(from, f8, sizeof(f8)); wchar_to_utf8(to, t8, sizeof(t8));
   win_path_to_posix(f8, fp, sizeof(fp)); win_path_to_posix(t8, tp, sizeof(tp));
-  if( !(flags & MOVEFILE_REPLACE_EXISTING) ) {
-    struct stat st;
-    if( lstat(tp, &st) == 0 ) { SET_LAST_ERROR(ERROR_ALREADY_EXISTS); return FALSE; }
+  bool replace = (flags & MOVEFILE_REPLACE_EXISTING) != 0;
+  struct stat st;
+  int r = replace ? rename(fp, tp) : rename_noreplace(fp, tp);
+  if( (r != 0) && (errno == EXDEV) && (flags & MOVEFILE_COPY_ALLOWED) ) {
+    if( !replace && (lstat(tp, &st) == 0) ) errno = EEXIST; // (not worth a copy)
+    else if( copy_beside(fp, tp, tmp, sizeof(tmp)) ) {
+      r = replace ? rename(tmp, tp) : rename_noreplace(tmp, tp);
+      if( r != 0 ) { int e = errno; unlink(tmp); errno = e; }
+      else r = unlink(fp);
+    }
   }
-  if( rename(fp, tp) == 0 ) return TRUE;
-  if( (errno == EXDEV) && (flags & MOVEFILE_COPY_ALLOWED) && copy_file_posix(fp, tp) && (unlink(fp) == 0) ) return TRUE;
-  set_errno_error();
+  if( r == 0 ) return TRUE;
+  if( errno == EEXIST ) SET_LAST_ERROR(ERROR_ALREADY_EXISTS);
+  else set_errno_error();
   return FALSE;
 }
 extern "C" EXPORT BOOL kernel32_CreateHardLinkW(const uint16_t* lnk, const uint16_t* tgt, void* /*sa*/) {

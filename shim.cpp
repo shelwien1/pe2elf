@@ -135,6 +135,7 @@ static uint32_t errno_to_win32(int e) {
   case EMFILE:   return ERROR_TOO_MANY_OPEN_FILES;
   case ENOSPC:   return 112; // ERROR_DISK_FULL
   case ENOTEMPTY: return 145; // ERROR_DIR_NOT_EMPTY
+  case EXDEV:    return 17;  // ERROR_NOT_SAME_DEVICE
   case EAGAIN:   return 258; // ERROR_TIMEOUT (or ERROR_IO_INCOMPLETE)
   case EBUSY:    return 32;  // ERROR_SHARING_VIOLATION
   case ETIMEDOUT: return 258; // ERROR_TIMEOUT

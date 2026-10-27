@@ -27,11 +27,12 @@ enum WinModuleId {
   WM_SHLWAPI,
   WM_WINMM,
   WM_MSVCRT,
+  WM_PSAPI,
   WM_COUNT,
 };
 static const char* const g_win_module_prefix[WM_COUNT] = {
   "kernel32_", "user32_", "advapi32_", "shell32_",
-  "shlwapi_",  "winmm_",  "msvcrt_",
+  "shlwapi_",  "winmm_",  "msvcrt_",   "psapi_",
 };
 #define WIN_MODULE_BASE  ((intptr_t)(MAX_HANDLES+1))
 #define WIN_MODULE_HANDLE(idx) ((HANDLE)(WIN_MODULE_BASE + (idx)))
@@ -61,6 +62,7 @@ static int win_dll_classify(const char* lower) {
   if( !strcmp(lower, "msvcrt"  ) ) return WM_MSVCRT;
   if( !strncmp(lower, "vcruntime", 9) ) return WM_MSVCRT;
   if( !strcmp(lower, "ucrtbase") ) return WM_MSVCRT;
+  if( !strcmp(lower, "psapi"   ) ) return WM_PSAPI;
   // api-ms-win-* / ext-ms-win-* are Windows API set forwarders.  They don't
   // exist on Linux; let LoadLibrary fail so the CRT walks through them.
   return -1;
