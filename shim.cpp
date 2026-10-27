@@ -25,7 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string>
+#include <poll.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -339,11 +342,17 @@ enum HandleKind { H_FREE, H_FILE, H_FIND, H_MODULE,
                    H_MUTEX, H_EVENT, H_SEMAPHORE, H_THREAD };
 
 struct FindCtx {
-  int  refcount;     // protected by g_handles_mu; freed when it reaches 0
-  DIR* dir;
-  char glob[260];
-  char dirpath[PATH_MAX];
+  int    refcount;     // protected by g_handles_mu; freed when it reaches 0
+  char** names;        // the entries that match, in NTFS order (find_ctx_open)
+  size_t count, next;  // next: the one FindNextFile returns
+  char   dirpath[PATH_MAX];
 };
+
+static void find_ctx_free(FindCtx* fc) {
+  for( size_t i = 0; i<fc->count; i++ ) free(fc->names[i]);
+  free(fc->names);
+  free(fc);
+}
 
 // Sync object structs (defined here so CloseHandle can destroy them)
 // refcount is the first field in every sync struct so it can be accessed
@@ -482,10 +491,7 @@ static void release_find_ctx(FindCtx* fc) {
   pthread_mutex_lock(&g_handles_mu);
   int gone = (--fc->refcount == 0);
   pthread_mutex_unlock(&g_handles_mu);
-  if( gone ) {
-    if( fc->dir ) closedir(fc->dir);
-    free(fc);
-  }
+  if( gone ) find_ctx_free(fc);
 }
 
 // Returns a retained FindCtx* for h; caller must call release_find_ctx().
@@ -588,36 +594,46 @@ static int wchar_to_utf8(const uint16_t* src, char* dst, size_t dstsz) {
   return (int)i;
 }
 
+// One code point from UTF-8 at s (s<e): its length in bytes. *cp is U+FFFD
+// and *bad is set where the bytes are no valid UTF-8 (a bad lead byte, a
+// sequence cut short, an overlong form, a surrogate, past U+10FFFF).
+static int utf8_next(const unsigned char* s, const unsigned char* e, uint32_t* cp, bool* bad) {
+  unsigned c = s[0];
+  if( c<0x80 ) { *cp = c; return 1; }
+  int n;
+  uint32_t v;
+  if( c>=0xC2&&c<=0xDF )      { n = 1; v = c&0x1F; }
+  else if( c>=0xE0&&c<=0xEF ) { n = 2; v = c&0x0F; }
+  else if( c>=0xF0&&c<=0xF4 ) { n = 3; v = c&0x07; }
+  else { *cp = 0xFFFD; *bad = true; return 1; }
+  for( int i = 1; i<=n; ++i ) {
+    if( s+i>=e||(s[i]&0xC0)!=0x80 ) { *cp = 0xFFFD; *bad = true; return i; }
+    v = (v<<6)|(s[i]&0x3F);
+  }
+  if( (n==2&&v<0x800)||(n==3&&v<0x10000)||v>0x10FFFF||(v>=0xD800&&v<=0xDFFF) ) {
+    *cp = 0xFFFD; *bad = true; return n+1;
+  }
+  *cp = v;
+  return n+1;
+}
+
 static int utf8_to_wchar(const char* src, uint16_t* dst, size_t dstsz) {
   if( !src||!dst||dstsz==0 )
     return 0;
   size_t i = 0;
   const unsigned char* s = (const unsigned char*)src;
-  while( *s&&i+1<dstsz ) {
+  const unsigned char* e = s+strlen(src);
+  bool bad = false;
+  while( s<e&&i+1<dstsz ) {
     uint32_t cp;
-    if( *s<0x80 ) {
-      cp = *s++;
-    } else if( (*s&0xE0)==0xC0 ) {
-      cp = (*s++&0x1F)<<6;
-      cp |= (*s++&0x3F);
-    } else if( (*s&0xF0)==0xE0 ) {
-      cp = (*s++&0x0F)<<12;
-      cp |= (*s++&0x3F)<<6;
-      cp |= (*s++&0x3F);
-    } else {
-      cp = '?';
-      s++;
-      while( (*s&0xC0)==0x80 )
-        s++;
-    }
+    s += utf8_next(s, e, &cp, &bad);
     if( cp<0x10000 ) {
       dst[i++] = (uint16_t)cp;
     } else {
+      if( i+2>=dstsz ) break;
       cp -= 0x10000;
-      if( i+2<dstsz ) {
-        dst[i++] = (uint16_t)(0xD800|(cp>>10));
-        dst[i++] = (uint16_t)(0xDC00|(cp&0x3FF));
-      }
+      dst[i++] = (uint16_t)(0xD800|(cp>>10));
+      dst[i++] = (uint16_t)(0xDC00|(cp&0x3FF));
     }
   }
   dst[i] = 0;
@@ -763,17 +779,33 @@ static void rebuild_cmdline(void) {
     size_t raw_len;
     char* raw = read_cmdline_raw(&raw_len);
     if( !raw || raw_len == 0 ) { g_cmdline[0] = '\0'; free(raw); return; }
-    // Convert NUL-separated argv to space-separated cmdline with quoting
+    // NUL-separated argv to a Windows command line that CommandLineToArgvW
+    // and the MSVC CRT split back into the same arguments: argv[0] only gets
+    // quotes around it (a quote cannot be in it there); the others are quoted
+    // when empty or with whitespace or a quote in them, the quotes in them
+    // escaped, and so are the backslashes that come before one of those or
+    // before the closing quote.
     const char* p = raw, *end = raw + raw_len;
-    int first = 1;
-    while( p<end && out+4<sizeof(g_cmdline) ) {
-      if( !first ) g_cmdline[out++] = ' ';
-      first = 0;
-      int needs_quote = (strchr(p, ' ')||strchr(p, '\t')||*p=='\0');
-      if( needs_quote ) g_cmdline[out++] = '"';
-      while( *p && p<end && out+2<sizeof(g_cmdline) ) g_cmdline[out++] = *p++;
-      if( needs_quote ) g_cmdline[out++] = '"';
-      p++;
+    const size_t cap = sizeof(g_cmdline) - 1;
+    for( int first = 1; p<end; first = 0 ) {
+      size_t n = strnlen(p, (size_t)(end-p));
+      if( !first && out<cap ) g_cmdline[out++] = ' ';
+      bool q = (n==0) || memchr(p, ' ', n) || memchr(p, '\t', n) || (!first && memchr(p, '"', n));
+      if( q && out<cap ) g_cmdline[out++] = '"';
+      size_t bs = 0;
+      for( size_t i = 0; i<n; i++ ) {
+        char c = p[i];
+        if( !first && c=='"' ) { // the backslashes before it doubled, and it escaped
+          for( size_t k = 0; k<=bs && out<cap; k++ ) g_cmdline[out++] = '\\';
+          bs = 0;
+        } else bs = (c=='\\') ? bs+1 : 0;
+        if( out<cap ) g_cmdline[out++] = c;
+      }
+      if( q ) {
+        for( size_t k = 0; !first && k<bs && out<cap; k++ ) g_cmdline[out++] = '\\';
+        if( out<cap ) g_cmdline[out++] = '"';
+      }
+      p += n+1;
     }
     free(raw);
   }

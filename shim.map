@@ -386,6 +386,16 @@ WINAPI_SHIM_1.0 {
     oleaut32_VariantClear;
 
     powrprof_SetSuspendState;
+
+    kernel32_GetTimeZoneInformation;
+    kernel32_K32GetProcessMemoryInfo;
+    psapi_GetProcessMemoryInfo;
+    kernel32_MoveFileExA;
+    kernel32_MoveFileExW;
+    kernel32_PeekNamedPipe;
+    kernel32_EnumSystemLocalesW;
+    kernel32_GetUserDefaultLCID;
+    kernel32_IsValidLocale;
   local:
     *;
 };

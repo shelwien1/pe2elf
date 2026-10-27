@@ -7,25 +7,22 @@
 // already in shim.cpp.  CreateFileA also handles the Windows console
 // device aliases (CON/CONIN$/CONOUT$).
 //
-// References from shim.cpp: FindCtx, find_ctx_open, fill_find_data_a,
+// References from shim.cpp: FindCtx, find_ctx_open, find_ctx_free, fill_find_data_a,
 // path_join, handle_alloc_find, win_path_to_posix, posix_to_win_path,
-// utf8_to_wchar, wchar_to_utf8, win_fnmatch, get_find_ctx,
+// utf8_to_wchar, wchar_to_utf8, get_find_ctx,
 // release_find_ctx, make_open_flags, handle_alloc_file, handle_to_idx,
 // g_handles, IS_MAIN_IMAGE, set_errno_error, kernel32_LoadLibraryExW.
 
 static HANDLE find_first_posix(const char* posix, WIN32_FIND_DATAA* pfd) {
   FindCtx* ctx = NULL;
-  struct dirent* ent = find_ctx_open(posix, &ctx);
-  if( !ent )
+  const char* name = find_ctx_open(posix, &ctx);
+  if( !name )
     return INVALID_HANDLE_VALUE;
   char fullpath[PATH_MAX];
-  path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-  fill_find_data_a(pfd, fullpath, ent->d_name);
+  path_join(fullpath, sizeof(fullpath), ctx->dirpath, name);
+  fill_find_data_a(pfd, fullpath, name);
   HANDLE hret = handle_alloc_find(ctx);
-  if( hret==INVALID_HANDLE_VALUE ) {
-    closedir(ctx->dir);
-    free(ctx);
-  }
+  if( hret==INVALID_HANDLE_VALUE ) find_ctx_free(ctx);
   return hret;
 }
 
@@ -45,20 +42,14 @@ extern "C" EXPORT HANDLE kernel32_FindFirstFileA(LPCSTR pattern, WIN32_FIND_DATA
 extern "C" EXPORT BOOL kernel32_FindNextFileA(HANDLE h, WIN32_FIND_DATAA* pfd) {
   FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
   if( !ctx ) return FALSE;
-  struct dirent* ent;
   BOOL found = FALSE;
-  while( (ent = readdir(ctx->dir))!=NULL ) {
-    if( ent->d_name[0]=='.'&&(!ent->d_name[1]||ent->d_name[1]=='.') )
-      continue;
-    if( !win_fnmatch(ctx->glob, ent->d_name) )
-      continue;
+  if( ctx->next<ctx->count ) {
+    const char* name = ctx->names[ctx->next++];
     char fullpath[PATH_MAX];
-    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-    fill_find_data_a(pfd, fullpath, ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, name);
+    fill_find_data_a(pfd, fullpath, name);
     found = TRUE;
-    break;
-  }
-  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  } else SET_LAST_ERROR(ERROR_NO_MORE_FILES);
   release_find_ctx(ctx);
   return found;
 }

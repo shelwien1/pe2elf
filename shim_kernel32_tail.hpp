@@ -148,52 +148,56 @@ extern "C" EXPORT BOOL kernel32_GlobalMemoryStatusEx(uint8_t* buf) {
 // shell32 / shlwapi / winmm
 // ---------------------------------------------------------------------------
 
-// CommandLineToArgvW: parse a Windows command line into wide argv array.
-// Returns pointer to LPWSTR[] allocated with one LocalAlloc block;
-// the caller frees with LocalFree on the returned pointer.
+// CommandLineToArgvW: a Windows command line into a wide argv, one malloc'd
+// block (LocalFree frees it). Windows' rules: argv[0] runs to the first space
+// or tab, or, when it starts with a quote, is what is between the first two
+// quotes; nothing else is done to it. After it, arguments are split at
+// whitespace outside quotes; 2n backslashes before a quote give n of them and
+// the quote opens or closes quoting, 2n+1 give n and a literal quote; other
+// backslashes are literal; "" inside quotes is a literal quote. An empty
+// command line gives the program's path as argv[0].
 extern "C" EXPORT uint16_t** shell32_CommandLineToArgvW(const uint16_t* cmdline, int* argc_out) {
-  // Convert to UTF-8, split, then convert each arg back to wide.
-  char narrow[32768];
-  wchar_to_utf8(cmdline, narrow, sizeof(narrow));
-
-  // Count args and split on whitespace (handling quoted strings).
-  // Two-pass: count then fill.
-  int argc = 0;
-  const char* p = narrow;
-  while( *p ) {
-    while( *p == ' ' || *p == '\t' ) p++;
-    if( !*p ) break;
-    argc++;
-    if( *p == '"' ) { p++; while( *p && *p != '"' ) p++; if(*p) p++; }
-    else            { while( *p && *p != ' ' && *p != '\t' ) p++; }
+  if( !argc_out ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return nullptr; }
+  uint16_t self[PATH_MAX];
+  if( !cmdline || !*cmdline ) {
+    if( !kernel32_GetModuleFileNameW(NULL_HANDLE, self, PATH_MAX) ) self[0] = 0;
+    cmdline = self;
   }
-
-  // Allocate: argc pointers + storage for each wide string.
-  // We allocate a flat block: argv[] + string data.
-  size_t ptrs_sz  = (size_t)(argc + 1) * sizeof(uint16_t*);
-  size_t data_sz  = (strlen(narrow) + 1) * sizeof(uint16_t) * 2;
-  uint8_t* block  = (uint8_t*)malloc(ptrs_sz + data_sz);
-  if( !block ) { if(argc_out) *argc_out=0; return nullptr; }
+  size_t len = 0;
+  while( cmdline[len] ) len++;
+  // at most len/2+2 arguments; their text with terminators fits in 2*len+2 units
+  size_t ptrs_sz = (len/2+3) * sizeof(uint16_t*);
+  uint8_t* block = (uint8_t*)malloc(ptrs_sz + (2*len+2)*sizeof(uint16_t));
+  if( !block ) { SET_LAST_ERROR(ERROR_OUTOFMEMORY); return nullptr; }
   uint16_t** argv = (uint16_t**)block;
-  uint16_t*  data = (uint16_t*)(block + ptrs_sz);
-
-  int i = 0; p = narrow;
-  uint16_t* wp = data;
-  while( *p && i < argc ) {
+  uint16_t* d = (uint16_t*)(block + ptrs_sz);
+  const uint16_t* p = cmdline;
+  int argc = 0;
+  argv[argc++] = d;
+  if( *p == '"' ) { p++; while( *p && *p != '"' ) *d++ = *p++; if( *p ) p++; }
+  else while( *p && *p != ' ' && *p != '\t' ) *d++ = *p++;
+  *d++ = 0;
+  for(;;) {
     while( *p == ' ' || *p == '\t' ) p++;
     if( !*p ) break;
-    argv[i++] = wp;
-    if( *p == '"' ) {
-      p++;
-      while( *p && *p != '"' ) *wp++ = (uint16_t)(uint8_t)*p++;
-      if( *p ) p++;
-    } else {
-      while( *p && *p != ' ' && *p != '\t' ) *wp++ = (uint16_t)(uint8_t)*p++;
+    argv[argc++] = d;
+    bool quoted = false;
+    while( *p && (quoted || (*p != ' ' && *p != '\t')) ) {
+      if( *p == '\\' ) {
+        size_t b = 0;
+        while( *p == '\\' ) { b++; p++; }
+        size_t keep = (*p == '"') ? b/2 : b;
+        for( size_t i = 0; i < keep; i++ ) *d++ = '\\';
+        if( (*p == '"') && (b & 1) ) *d++ = *p++; // an escaped quote
+      } else if( *p == '"' ) {
+        if( quoted && p[1] == '"' ) { *d++ = '"'; p += 2; }
+        else { quoted = !quoted; p++; }
+      } else *d++ = *p++;
     }
-    *wp++ = 0;
+    *d++ = 0;
   }
-  argv[i] = nullptr;
-  if( argc_out ) *argc_out = argc;
+  argv[argc] = nullptr;
+  *argc_out = argc;
   return argv;
 }
 
@@ -325,6 +329,55 @@ extern "C" EXPORT BOOL kernel32_MoveFileW(const uint16_t* from, const uint16_t* 
   if( rename(fp, tp) != 0 ) { set_errno_error(); return FALSE; }
   return TRUE;
 }
+// MoveFileEx: rename() replaces the target, Windows only with
+// MOVEFILE_REPLACE_EXISTING; across file systems only with
+// MOVEFILE_COPY_ALLOWED (copy, then delete). No new name (delete on reboot)
+// is not supported.
+#define MOVEFILE_REPLACE_EXISTING 0x1u
+#define MOVEFILE_COPY_ALLOWED     0x2u
+static bool copy_file_posix(const char* from, const char* to) {
+  int in = open(from, O_RDONLY|O_CLOEXEC);
+  if( in < 0 ) return false;
+  struct stat st;
+  if( fstat(in, &st) != 0 ) { close(in); return false; }
+  int out = open(to, O_WRONLY|O_CREAT|O_TRUNC|O_CLOEXEC, st.st_mode & 07777);
+  if( out < 0 ) { close(in); return false; }
+  const size_t bufsz = 1<<16;
+  char* buf = (char*)malloc(bufsz);
+  bool ok = (buf != nullptr);
+  if( !ok ) errno = ENOMEM;
+  while( ok ) {
+    ssize_t n = read(in, buf, bufsz);
+    if( n == 0 ) break;
+    if( n < 0 ) { if( errno == EINTR ) continue; ok = false; break; }
+    for( ssize_t o = 0; ok && o < n; ) {
+      ssize_t w = write(out, buf+o, (size_t)(n-o));
+      if( w < 0 ) { if( errno != EINTR ) ok = false; continue; }
+      o += w;
+    }
+    if( !ok ) break;
+  }
+  int e = errno;
+  free(buf);
+  close(in);
+  if( close(out) != 0 ) ok = false;
+  if( !ok ) { unlink(to); errno = e; }
+  return ok;
+}
+extern "C" EXPORT BOOL kernel32_MoveFileExW(const uint16_t* from, const uint16_t* to, DWORD flags) {
+  if( !from || !to ) { SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return FALSE; }
+  char f8[PATH_MAX], t8[PATH_MAX], fp[PATH_MAX], tp[PATH_MAX];
+  wchar_to_utf8(from, f8, sizeof(f8)); wchar_to_utf8(to, t8, sizeof(t8));
+  win_path_to_posix(f8, fp, sizeof(fp)); win_path_to_posix(t8, tp, sizeof(tp));
+  if( !(flags & MOVEFILE_REPLACE_EXISTING) ) {
+    struct stat st;
+    if( lstat(tp, &st) == 0 ) { SET_LAST_ERROR(ERROR_ALREADY_EXISTS); return FALSE; }
+  }
+  if( rename(fp, tp) == 0 ) return TRUE;
+  if( (errno == EXDEV) && (flags & MOVEFILE_COPY_ALLOWED) && copy_file_posix(fp, tp) && (unlink(fp) == 0) ) return TRUE;
+  set_errno_error();
+  return FALSE;
+}
 extern "C" EXPORT BOOL kernel32_CreateHardLinkW(const uint16_t* lnk, const uint16_t* tgt, void* /*sa*/) {
   char l8[PATH_MAX], t8[PATH_MAX], lp[PATH_MAX], tp[PATH_MAX];
   wchar_to_utf8(lnk, l8, sizeof(l8)); wchar_to_utf8(tgt, t8, sizeof(t8));
@@ -433,6 +486,35 @@ extern "C" EXPORT BOOL kernel32_TzSpecificLocalTimeToSystemTime(void* /*tz*/, co
 }
 
 // ---------------------------------------------------------------------------
+// GetTimeZoneInformation (the MSVC CRT's tzset asks for it)
+// ---------------------------------------------------------------------------
+// The POSIX zone's transition dates are not at hand, so none are reported
+// (TIME_ZONE_ID_UNKNOWN: the CRT then applies no daylight saving of its own)
+// and Bias is the zone's offset as it is now, daylight saving included, so
+// times around now come out as the local time.
+struct TIME_ZONE_INFORMATION {
+  LONG       Bias;               // minutes: UTC = local time + Bias
+  uint16_t   StandardName[32];
+  SYSTEMTIME StandardDate;
+  LONG       StandardBias;
+  uint16_t   DaylightName[32];
+  SYSTEMTIME DaylightDate;
+  LONG       DaylightBias;
+};
+static_assert(sizeof(TIME_ZONE_INFORMATION) == 172, "TIME_ZONE_INFORMATION size");
+extern "C" EXPORT DWORD kernel32_GetTimeZoneInformation(TIME_ZONE_INFORMATION* tzi) {
+  if( !tzi ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return 0xFFFFFFFFu; } // TIME_ZONE_ID_INVALID
+  memset(tzi, 0, sizeof(*tzi));
+  tzset();
+  time_t now = time(nullptr); struct tm loc; localtime_r(&now, &loc);
+  tzi->Bias = (LONG)(-loc.tm_gmtoff / 60);
+  const char* name = (loc.tm_zone && *loc.tm_zone) ? loc.tm_zone : "UTC";
+  utf8_to_wchar(name, tzi->StandardName, 32);
+  utf8_to_wchar(name, tzi->DaylightName, 32);
+  return 0; // TIME_ZONE_ID_UNKNOWN
+}
+
+// ---------------------------------------------------------------------------
 // LocalFileTimeToFileTime
 // ---------------------------------------------------------------------------
 extern "C" EXPORT BOOL kernel32_LocalFileTimeToFileTime(const FILETIME* local, FILETIME* utc) {
@@ -535,19 +617,19 @@ extern "C" EXPORT DWORD kernel32_GetDriveTypeW(const uint16_t* /*path*/) { retur
 // GetFullPathNameA
 // ---------------------------------------------------------------------------
 extern "C" EXPORT DWORD kernel32_GetFullPathNameA(LPCSTR path, DWORD size, LPSTR buf, LPSTR* filepart) {
-  uint16_t wpath[PATH_MAX], wbuf[PATH_MAX]; LPWSTR wfp = nullptr;
+  if( !path ) { SET_LAST_ERROR(ERROR_INVALID_NAME); return 0; }
+  uint16_t wpath[PATH_MAX], wbuf[PATH_MAX];
   utf8_to_wchar(path, wpath, PATH_MAX);
-  DWORD r = kernel32_GetFullPathNameW(wpath, PATH_MAX, wbuf, &wfp);
-  char narrow[PATH_MAX]; wchar_to_utf8(wbuf, narrow, sizeof(narrow));
-  DWORD n = (DWORD)strlen(narrow);
-  if( buf && size > 0 ) {
-    strncpy(buf, narrow, size - 1); buf[size - 1] = '\0';
-    if( filepart ) {
-      char* s = strrchr(buf, '\\'); if(!s) s = strrchr(buf, '/');
-      *filepart = s ? s + 1 : buf;
-    }
+  if( !kernel32_GetFullPathNameW(wpath, PATH_MAX, wbuf, nullptr) ) return 0;
+  char narrow[PATH_MAX];
+  DWORD n = (DWORD)wchar_to_utf8(wbuf, narrow, sizeof(narrow));
+  if( !buf || size <= n ) return n + 1;
+  memcpy(buf, narrow, n + 1);
+  if( filepart ) {
+    char* s = strrchr(buf, '\\');
+    *filepart = (s && s[1]) ? s + 1 : nullptr;
   }
-  (void)r; return n;
+  return n;
 }
 
 // ---------------------------------------------------------------------------

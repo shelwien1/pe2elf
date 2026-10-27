@@ -17,6 +17,12 @@ extern "C" EXPORT BOOL kernel32_MoveFileA(LPCSTR from, LPCSTR to) {
   if( rename(pf, pt) == 0 ) return TRUE;
   SET_LAST_ERROR(errno_to_win32(errno)); return FALSE;
 }
+extern "C" EXPORT BOOL kernel32_MoveFileExA(LPCSTR from, LPCSTR to, DWORD flags) {
+  if( !from || !to ) { SET_LAST_ERROR(ERROR_CALL_NOT_IMPLEMENTED); return FALSE; }
+  uint16_t wfrom[PATH_MAX], wto[PATH_MAX];
+  utf8_to_wchar(from, wfrom, PATH_MAX); utf8_to_wchar(to, wto, PATH_MAX);
+  return kernel32_MoveFileExW(wfrom, wto, flags);
+}
 extern "C" EXPORT BOOL kernel32_RemoveDirectoryA(LPCSTR path) {
   char p[PATH_MAX]; win_path_to_posix(path, p, sizeof(p));
   if( rmdir(p) == 0 ) return TRUE;

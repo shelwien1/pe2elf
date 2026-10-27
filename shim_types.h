@@ -138,6 +138,15 @@ struct CPINFO { UINT MaxCharSize; BYTE DefaultChar[2]; BYTE LeadByte[12]; };
 #define ERROR_PROC_NOT_FOUND     127
 #define ERROR_INVALID_FLAGS      1004
 #define ERROR_NO_MORE_FILES      18
+#define ERROR_INVALID_FUNCTION   1
+#define ERROR_BROKEN_PIPE        109
+#define ERROR_INSUFFICIENT_BUFFER 122
+#define ERROR_INVALID_NAME       123
+#define ERROR_FILENAME_EXCED_RANGE 206
+#define ERROR_ALREADY_EXISTS     183
+#define ERROR_NO_UNICODE_TRANSLATION 1113
+#define MB_ERR_INVALID_CHARS     0x08u
+#define WC_ERR_INVALID_CHARS     0x80u
 
 // File creation dispositions
 #define CREATE_NEW        1

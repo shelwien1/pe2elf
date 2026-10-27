@@ -203,6 +203,35 @@ extern "C" EXPORT DWORD kernel32_GetFileType(HANDLE h) {
   return FILE_TYPE_UNKNOWN;
 }
 
+// PeekNamedPipe: what is waiting in a pipe (or socket). The bytes themselves
+// can only be looked at without taking them on a socket; on a pipe *read
+// comes back 0 while *avail says how many there are. A pipe with nothing in
+// it whose writers are gone gives ERROR_BROKEN_PIPE, as on Windows; a handle
+// that is no pipe, ERROR_INVALID_FUNCTION.
+extern "C" EXPORT BOOL kernel32_PeekNamedPipe(HANDLE h, LPVOID buf, DWORD size, DWORD* pRead, DWORD* pAvail, DWORD* pLeft) {
+  int fd = get_fd(h);
+  if( fd<0 )
+    return FALSE;
+  struct stat st;
+  if( fstat(fd, &st)<0 ) { set_errno_error(); return FALSE; }
+  if( !S_ISFIFO(st.st_mode) && !S_ISSOCK(st.st_mode) ) { SET_LAST_ERROR(ERROR_INVALID_FUNCTION); return FALSE; }
+  int avail = 0;
+  if( ioctl(fd, FIONREAD, &avail)<0 ) { set_errno_error(); return FALSE; }
+  if( avail==0 ) {
+    struct pollfd pf = { fd, POLLIN, 0 };
+    if( (poll(&pf, 1, 0)==1) && (pf.revents & POLLHUP) ) { SET_LAST_ERROR(ERROR_BROKEN_PIPE); return FALSE; }
+  }
+  DWORD got = 0;
+  if( buf && size && avail>0 && S_ISSOCK(st.st_mode) ) {
+    ssize_t r = recv(fd, buf, size<(DWORD)avail ? size : (DWORD)avail, MSG_PEEK|MSG_DONTWAIT);
+    if( r>0 ) got = (DWORD)r;
+  }
+  if( pRead ) *pRead = got;
+  if( pAvail ) *pAvail = (DWORD)avail;
+  if( pLeft ) *pLeft = 0;
+  return TRUE;
+}
+
 // ---------------------------------------------------------------------------
 // 7.5 File Times
 // ---------------------------------------------------------------------------
@@ -270,15 +299,13 @@ static void fill_find_data_a(WIN32_FIND_DATAA* pfd, const char* fullpath, const 
   strncpy(pfd->cFileName, name, 259);
 }
 
-// Shared helper: open directory from a POSIX pattern path, scan to first match,
-// populate ctx. Returns first matching dirent or NULL.
-
 // Windows FindFirstFile wildcard semantics differ from POSIX fnmatch:
-// "*.foo" also matches extensionless names (FAT/NTFS backward-compat).
+// case does not matter, and "*.foo" also matches extensionless names
+// (FAT/NTFS backward-compat).
 // Specifically, if the pattern ends with ".*", we also try it without the ".*"
 // tail so that "config", "HEAD", "index" etc. match "*.*" or "f*.*".
 static bool win_fnmatch(const char* glob, const char* name) {
-  if( fnmatch(glob, name, FNM_NOESCAPE)==0 ) return true;
+  if( fnmatch(glob, name, FNM_NOESCAPE|FNM_CASEFOLD)==0 ) return true;
   // Strip trailing ".*" and retry — covers *.*  f*.*  etc.
   const char* dot_star = strrchr(glob, '.');
   if( dot_star && dot_star[1]=='*' && dot_star[2]=='\0' ) {
@@ -289,13 +316,33 @@ static bool win_fnmatch(const char* glob, const char* name) {
       prefix[prefix_len] = '\0';
       // Empty prefix (the pattern was just ".*") means match anything.
       const char* p = prefix_len ? prefix : "*";
-      if( fnmatch(p, name, FNM_NOESCAPE)==0 ) return true;
+      if( fnmatch(p, name, FNM_NOESCAPE|FNM_CASEFOLD)==0 ) return true;
     }
   }
   return false;
 }
 
-static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
+// The order NTFS lists a directory in (and so FindFirstFile on Windows, and
+// wine): by name, upper-cased (ASCII letters here) and compared as UTF-16
+// code units; names that differ only in case, as they can here, by their bytes.
+static int find_name_cmp(const void* a, const void* b) {
+  const char* x = *(const char* const*)a;
+  const char* y = *(const char* const*)b;
+  uint16_t s[NAME_MAX+1], t[NAME_MAX+1];
+  utf8_to_wchar(x, s, NAME_MAX+1);
+  utf8_to_wchar(y, t, NAME_MAX+1);
+  for( size_t i = 0;; i++ ) {
+    uint16_t c = (s[i]>='a'&&s[i]<='z') ? s[i]-32 : s[i];
+    uint16_t d = (t[i]>='a'&&t[i]<='z') ? t[i]-32 : t[i];
+    if( c!=d ) return (c<d) ? -1 : 1;
+    if( !c ) return strcmp(x, y);
+  }
+}
+
+// Shared helper: open the directory of a POSIX pattern path, collect the
+// entries that match, in NTFS order, into a new ctx. Returns the first one,
+// or NULL (last error set).
+static const char* find_ctx_open(const char* posix, FindCtx** out_ctx) {
   char dir[PATH_MAX] = ".";
   char glob[260] = "*";
   char tmp[PATH_MAX];
@@ -309,7 +356,7 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
       snprintf(glob, sizeof(glob), "%s", g);
     } else {
       // Trailing slash: caller wants the directory entry itself (like "." in dir).
-      // We mark glob as "." so find_ctx_open can detect it later.
+      // We mark glob as "." so the scan below can detect it.
       snprintf(dir, sizeof(dir), "%s", tmp[0] ? tmp : "/");
       snprintf(glob, sizeof(glob), ".");
     }
@@ -329,27 +376,36 @@ static struct dirent* find_ctx_open(const char* posix, FindCtx** out_ctx) {
     SET_LAST_ERROR(ERROR_OUTOFMEMORY);
     return NULL;
   }
-  ctx->dir = d;
-  snprintf(ctx->glob, sizeof(ctx->glob), "%s", glob);
   snprintf(ctx->dirpath, sizeof(ctx->dirpath), "%s", dir[0] ? dir : ".");
-  *out_ctx = ctx;
-  struct dirent* ent;
   bool dot_query = (strcmp(glob, ".")==0);
-  while( (ent = readdir(d))!=NULL ) {
+  bool oom = false;
+  size_t cap = 0;
+  struct dirent* ent;
+  while( !oom && (ent = readdir(d))!=NULL ) {
+    const char* nm = ent->d_name;
     if( dot_query ) {
-      if( strcmp(ent->d_name, ".")==0 ) return ent;
+      if( strcmp(nm, ".")!=0 ) continue;
+    } else if( strcmp(nm, ".")==0||strcmp(nm, "..")==0||!win_fnmatch(glob, nm) )
       continue;
+    if( ctx->count==cap ) {
+      cap = cap ? 2*cap : 16;
+      char** p = (char**)realloc(ctx->names, cap*sizeof(char*));
+      if( !p ) { oom = true; break; }
+      ctx->names = p;
     }
-    if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
-      continue;
-    if( win_fnmatch(ctx->glob, ent->d_name) )
-      return ent;
+    if( !(ctx->names[ctx->count] = strdup(nm)) ) oom = true;
+    else ctx->count++;
   }
   closedir(d);
-  free(ctx);
-  *out_ctx = NULL;
-  SET_LAST_ERROR(ERROR_FILE_NOT_FOUND);
-  return NULL;
+  if( oom||!ctx->count ) {
+    find_ctx_free(ctx);
+    SET_LAST_ERROR(oom ? ERROR_OUTOFMEMORY : ERROR_FILE_NOT_FOUND);
+    return NULL;
+  }
+  qsort(ctx->names, ctx->count, sizeof(char*), find_name_cmp);
+  ctx->next = 1;
+  *out_ctx = ctx;
+  return ctx->names[0];
 }
 
 extern "C" EXPORT HANDLE kernel32_FindFirstFileExW(LPCWSTR pattern, int lvl, WIN32_FIND_DATAW* pfd, int srchas, void* filter, DWORD flags) {
@@ -364,43 +420,34 @@ extern "C" EXPORT HANDLE kernel32_FindFirstFileExW(LPCWSTR pattern, int lvl, WIN
     log_always("[SHIM] FindFirstFileExW(wlen=%zu \"%s\" -> \"%s\")\n", wl, narrow, posix); }
 
   FindCtx* ctx = NULL;
-  struct dirent* ent = find_ctx_open(posix, &ctx);
-  if( !ent ) {
+  const char* name = find_ctx_open(posix, &ctx);
+  if( !name ) {
     log_always("[SHIM] FindFirstFileExW -> INVALID (find_ctx_open failed)\n");
     return INVALID_HANDLE_VALUE;
   }
 
   char fullpath[PATH_MAX];
-  path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-  fill_find_data_w(pfd, fullpath, ent->d_name);
-  log_always("[SHIM] FindFirstFileExW -> first=\"%s\"\n", ent->d_name);
+  path_join(fullpath, sizeof(fullpath), ctx->dirpath, name);
+  fill_find_data_w(pfd, fullpath, name);
+  log_always("[SHIM] FindFirstFileExW -> first=\"%s\"\n", name);
 
   HANDLE hret = handle_alloc_find(ctx);
-  if( hret==INVALID_HANDLE_VALUE ) {
-    closedir(ctx->dir);
-    free(ctx);
-  }
+  if( hret==INVALID_HANDLE_VALUE ) find_ctx_free(ctx);
   return hret;
 }
 
 extern "C" EXPORT BOOL kernel32_FindNextFileW(HANDLE h, WIN32_FIND_DATAW* pfd) {
   FindCtx* ctx = get_find_ctx(h);   // retained; safe against concurrent FindClose
   if( !ctx ) return FALSE;
-  struct dirent* ent;
   BOOL found = FALSE;
-  while( (ent = readdir(ctx->dir))!=NULL ) {
-    if( strcmp(ent->d_name, ".")==0||strcmp(ent->d_name, "..")==0 )
-      continue;
-    if( !win_fnmatch(ctx->glob, ent->d_name) )
-      continue;
+  if( ctx->next<ctx->count ) {
+    const char* name = ctx->names[ctx->next++];
     char fullpath[PATH_MAX];
-    path_join(fullpath, sizeof(fullpath), ctx->dirpath, ent->d_name);
-    fill_find_data_w(pfd, fullpath, ent->d_name);
-    log_always("[SHIM] FindNextFileW -> \"%s\"\n", ent->d_name);
+    path_join(fullpath, sizeof(fullpath), ctx->dirpath, name);
+    fill_find_data_w(pfd, fullpath, name);
+    log_always("[SHIM] FindNextFileW -> \"%s\"\n", name);
     found = TRUE;
-    break;
-  }
-  if( !found ) SET_LAST_ERROR(ERROR_NO_MORE_FILES);
+  } else SET_LAST_ERROR(ERROR_NO_MORE_FILES);
   release_find_ctx(ctx);
   return found;
 }

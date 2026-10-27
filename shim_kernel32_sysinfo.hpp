@@ -118,6 +118,48 @@ extern "C" EXPORT void kernel32_GlobalMemoryStatus(uint8_t* buf) {
   }
 }
 
+// K32GetProcessMemoryInfo (psapi's GetProcessMemoryInfo): this process's
+// memory, from /proc/self/status; the process handle is not looked at (only
+// GetCurrentProcess's makes sense here). PROCESS_MEMORY_COUNTERS (x64,
+// sizeof=72; the _EX form, 80, adds PrivateUsage):
+//  +0  DWORD cb                 +4  DWORD PageFaultCount
+//  +8  SIZE_T PeakWorkingSetSize    (VmHWM)
+//  +16 SIZE_T WorkingSetSize        (VmRSS)
+//  +24..+48 SIZE_T quota pool usages (0)
+//  +56 SIZE_T PagefileUsage         (RssAnon+VmSwap: private memory in use)
+//  +64 SIZE_T PeakPagefileUsage     (no peak of that is kept: the larger of it and VmHWM)
+//  +72 SIZE_T PrivateUsage          (as PagefileUsage)
+extern "C" EXPORT BOOL kernel32_K32GetProcessMemoryInfo(HANDLE /*proc*/, uint8_t* pmc, DWORD cb) {
+  if( !pmc || cb < 72 ) { SET_LAST_ERROR(ERROR_INSUFFICIENT_BUFFER); return FALSE; }
+  uint64_t hwm = 0, rss = 0, anon = 0, swap = 0;
+  if( FILE* f = fopen("/proc/self/status", "r") ) {
+    char line[256];
+    while( fgets(line, sizeof(line), f) ) {
+      unsigned long long v;
+      if( sscanf(line, "VmHWM: %llu", &v) == 1 ) hwm = (uint64_t)v << 10;
+      else if( sscanf(line, "VmRSS: %llu", &v) == 1 ) rss = (uint64_t)v << 10;
+      else if( sscanf(line, "RssAnon: %llu", &v) == 1 ) anon = (uint64_t)v << 10;
+      else if( sscanf(line, "VmSwap: %llu", &v) == 1 ) swap = (uint64_t)v << 10;
+    }
+    fclose(f);
+  }
+  struct rusage ru;
+  if( getrusage(RUSAGE_SELF, &ru) != 0 ) memset(&ru, 0, sizeof(ru));
+  DWORD n = (cb >= 80) ? 80 : 72;
+  memset(pmc, 0, n);
+  *(uint32_t*)(pmc+0)  = n;
+  *(uint32_t*)(pmc+4)  = (uint32_t)(ru.ru_minflt + ru.ru_majflt);
+  *(uint64_t*)(pmc+8)  = hwm;
+  *(uint64_t*)(pmc+16) = rss;
+  *(uint64_t*)(pmc+56) = anon + swap;
+  *(uint64_t*)(pmc+64) = (hwm > anon + swap) ? hwm : anon + swap;
+  if( n >= 80 ) *(uint64_t*)(pmc+72) = anon + swap;
+  return TRUE;
+}
+extern "C" EXPORT BOOL psapi_GetProcessMemoryInfo(HANDLE proc, uint8_t* pmc, DWORD cb) {
+  return kernel32_K32GetProcessMemoryInfo(proc, pmc, cb);
+}
+
 // RtlAddFunctionTable — stub (no JIT SEH unwind needed)
 extern "C" EXPORT BOOL kernel32_RtlAddFunctionTable(void* /*table*/, DWORD /*count*/, uint64_t /*base*/) {
   return TRUE;
