@@ -32,6 +32,25 @@ extern "C" EXPORT int kernel32_GetLocaleInfoW(DWORD locale, DWORD lctype, uint16
   return n;
 }
 
+// The one locale there is: en-US (LCID 0x0409), as GetLocaleInfo describes
+// it. The MSVC CRT's setlocale enumerates the locales and checks the one it
+// is after.
+typedef BOOL (__attribute__((ms_abi)) *LOCALE_ENUMPROCW)(uint16_t*);
+extern "C" EXPORT BOOL kernel32_EnumSystemLocalesW(LOCALE_ENUMPROCW fn, DWORD flags) {
+  (void)flags;
+  if( !fn ) { SET_LAST_ERROR(ERROR_INVALID_PARAMETER); return FALSE; }
+  uint16_t id[9];
+  utf8_to_wchar("00000409", id, 9);
+  fn(id);
+  return TRUE;
+}
+extern "C" EXPORT DWORD kernel32_GetUserDefaultLCID(void) { return 0x0409; }
+extern "C" EXPORT BOOL kernel32_IsValidLocale(DWORD lcid, DWORD flags) {
+  (void)flags;
+  // en-US, and the defaults and the invariant locale, which stand for it here
+  return (lcid == 0x0409) || (lcid == 0x0400) || (lcid == 0x0800) || (lcid == 0x007F);
+}
+
 // Expand Windows positional escapes (%1!s! %2!d! etc.) from a va_list.
 // Supports up to 9 positional args; reads them from args in declaration order.
 static DWORD format_message_expand(const char* msg, LPSTR buf, DWORD size, va_list* args) {

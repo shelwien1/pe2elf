@@ -32,55 +32,74 @@ extern "C" EXPORT BOOL kernel32_GetCPInfo(DWORD cp, CPINFO* info) {
   return TRUE;
 }
 
+// MultiByteToWideChar / WideCharToMultiByte, as Windows does them, with every
+// code page taken as UTF-8 (the shim's narrow strings are UTF-8 throughout):
+// - srclen -1: the string and its NUL, which the returned count includes;
+//   srclen >= 0: exactly that much, nothing added;
+// - dstlen 0: only the count; else the whole result has to fit
+//   (ERROR_INSUFFICIENT_BUFFER, 0, if not);
+// - what is not valid (bad UTF-8, a lone surrogate) becomes U+FFFD, or with
+//   MB_ERR_INVALID_CHARS / WC_ERR_INVALID_CHARS fails, as for UTF-8 there.
 extern "C" EXPORT int kernel32_MultiByteToWideChar(DWORD cp, DWORD flags, LPCSTR src, int srclen, LPWSTR dst, int dstlen) {
   (void)cp;
-  (void)flags;
-  if( !src ) {
+  if( !src || srclen==0 || dstlen<0 || (dstlen>0 && !dst) ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
-  if( srclen<0 )
-    srclen = (int)strlen(src)+1;
-  // Treat as UTF-8
-  char tmp[65536];
-  if( (size_t)srclen<sizeof(tmp) ) {
-    memcpy(tmp, src, srclen);
-    tmp[srclen] = '\0';
-  } else {
-    memcpy(tmp, src, sizeof(tmp)-1);
-    tmp[sizeof(tmp)-1] = '\0';
+  const unsigned char* s = (const unsigned char*)src;
+  const unsigned char* e = s+((srclen<0) ? strlen(src)+1 : (size_t)srclen);
+  int n = 0;
+  bool bad = false;
+  while( s<e ) {
+    uint32_t c;
+    s += utf8_next(s, e, &c, &bad);
+    if( bad && (flags&MB_ERR_INVALID_CHARS) ) { SET_LAST_ERROR(ERROR_NO_UNICODE_TRANSLATION); return 0; }
+    int k = (c>=0x10000) ? 2 : 1;
+    if( dstlen ) {
+      if( n+k>dstlen ) { SET_LAST_ERROR(ERROR_INSUFFICIENT_BUFFER); return 0; }
+      if( k==2 ) {
+        c -= 0x10000;
+        dst[n] = (uint16_t)(0xD800|(c>>10));
+        dst[n+1] = (uint16_t)(0xDC00|(c&0x3FF));
+      } else dst[n] = (uint16_t)c;
+    }
+    n += k;
   }
-  if( dstlen==0 ) {
-    // Count only
-    uint16_t countbuf[65536];
-    return utf8_to_wchar(tmp, countbuf, 65535)+1;
-  }
-  return utf8_to_wchar(tmp, dst, (size_t)dstlen);
+  return n;
 }
 
 extern "C" EXPORT int kernel32_WideCharToMultiByte(DWORD cp, DWORD flags, LPCWSTR src, int srclen, LPSTR dst, int dstlen, LPCSTR defch, BOOL* useddef) {
   (void)cp;
-  (void)flags;
   (void)defch;
-  (void)useddef;
-  if( !src ) {
+  if( useddef ) *useddef = FALSE;
+  if( !src || srclen==0 || dstlen<0 || (dstlen>0 && !dst) ) {
     SET_LAST_ERROR(ERROR_INVALID_PARAMETER);
     return 0;
   }
-  // Build a NUL-terminated copy bounded by srclen when srclen >= 0
-  uint16_t tmp_w[65536];
-  const uint16_t* wsrc = src;
-  if( srclen>=0 ) {
-    size_t n = (srclen<(int)(sizeof(tmp_w)/2-1)) ? (size_t)srclen : sizeof(tmp_w)/2-1;
-    memcpy(tmp_w, src, n*2);
-    tmp_w[n] = 0;
-    wsrc = tmp_w;
+  const uint16_t* s = src;
+  const uint16_t* e = s;
+  if( srclen<0 ) { while( *e ) ++e; ++e; } else e += srclen;
+  int n = 0;
+  while( s<e ) {
+    uint32_t c = *s++;
+    if( c>=0xD800 && c<=0xDBFF && s<e && *s>=0xDC00 && *s<=0xDFFF ) c = 0x10000+((c-0xD800)<<10)+(*s++-0xDC00);
+    else if( c>=0xD800 && c<=0xDFFF ) {
+      if( flags&WC_ERR_INVALID_CHARS ) { SET_LAST_ERROR(ERROR_NO_UNICODE_TRANSLATION); return 0; }
+      c = 0xFFFD;
+    }
+    char b[4];
+    int k;
+    if( c<0x80 )         { b[0] = (char)c; k = 1; }
+    else if( c<0x800 )   { b[0] = (char)(0xC0|(c>>6)); b[1] = (char)(0x80|(c&0x3F)); k = 2; }
+    else if( c<0x10000 ) { b[0] = (char)(0xE0|(c>>12)); b[1] = (char)(0x80|((c>>6)&0x3F)); b[2] = (char)(0x80|(c&0x3F)); k = 3; }
+    else { b[0] = (char)(0xF0|(c>>18)); b[1] = (char)(0x80|((c>>12)&0x3F)); b[2] = (char)(0x80|((c>>6)&0x3F)); b[3] = (char)(0x80|(c&0x3F)); k = 4; }
+    if( dstlen ) {
+      if( n+k>dstlen ) { SET_LAST_ERROR(ERROR_INSUFFICIENT_BUFFER); return 0; }
+      memcpy(dst+n, b, (size_t)k);
+    }
+    n += k;
   }
-  if( dstlen==0 ) {
-    char tmp[65536];
-    return wchar_to_utf8(wsrc, tmp, sizeof(tmp));
-  }
-  return wchar_to_utf8(wsrc, dst, (size_t)dstlen);
+  return n;
 }
 
 extern "C" EXPORT int kernel32_LCMapStringW(DWORD locale, DWORD flags, LPCWSTR src, int srclen, LPWSTR dst, int dstlen) {

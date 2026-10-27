@@ -118,22 +118,55 @@ extern "C" EXPORT DWORD kernel32_FormatMessageW(DWORD flags, LPCVOID src, DWORD 
   return i;
 }
 
+// GetFullPathNameW as Windows does it: from the path alone (a relative one
+// put after the current directory, "." and ".." folded, a trailing separator
+// kept), not from what is on disk. With room for the path and its NUL the
+// path is stored and its length returned, else the size it needs, NUL
+// included (size 0 asks for just that).
 extern "C" EXPORT DWORD kernel32_GetFullPathNameW(LPCWSTR path, DWORD size, LPWSTR buf, LPWSTR* filepart) {
-  char narrow[PATH_MAX], posix[PATH_MAX], resolved[PATH_MAX], win[PATH_MAX];
+  if( !path || !path[0] ) { SET_LAST_ERROR(ERROR_INVALID_NAME); return 0; }
+  char narrow[PATH_MAX], posix[PATH_MAX], full[PATH_MAX], win[PATH_MAX];
   wchar_to_utf8((const uint16_t*)path, narrow, sizeof(narrow));
   win_path_to_posix(narrow, posix, sizeof(posix));
-  if( !realpath(posix, resolved) ) strncpy(resolved, posix, sizeof(resolved)-1);
-  posix_to_win_path(resolved, win, sizeof(win));
-  log_always("[SHIM] GetFullPathNameW(\"%s\" -> \"%s\")\n", narrow, win);
-  DWORD needed = (DWORD)utf8_to_wchar(win, (uint16_t*)buf, size ? size : 0);
-  if( buf && size > 0 && filepart ) {
-    uint16_t* p = (uint16_t*)buf + needed;
-    uint16_t* slash = (uint16_t*)buf;
-    for( uint16_t* q = (uint16_t*)buf; q < p; q++ )
-      if( *q == '\\' ) slash = q + 1;
-    *filepart = slash < p ? slash : nullptr;
+  size_t n = 1;
+  strcpy(full, "/");
+  if( posix[0] != '/' ) {
+    if( !getcwd(full, sizeof(full)) ) { set_errno_error(); return 0; }
+    n = strlen(full);
   }
-  return needed;
+  for( const char* p = posix; *p; ) {
+    const char* e = strchr(p, '/');
+    size_t k = e ? (size_t)(e - p) : strlen(p);
+    if( k == 2 && p[0] == '.' && p[1] == '.' ) {
+      while( n > 1 && full[n-1] != '/' ) n--;
+      if( n > 1 ) n--;
+    } else if( k && !(k == 1 && p[0] == '.') ) {
+      if( n + 1 + k >= sizeof(full) ) { SET_LAST_ERROR(ERROR_FILENAME_EXCED_RANGE); return 0; }
+      if( n > 1 ) full[n++] = '/';
+      memcpy(full + n, p, k);
+      n += k;
+    }
+    p += k;
+    if( *p ) p++;
+  }
+  if( n > 1 && posix[strlen(posix) - 1] == '/' ) {
+    if( n + 1 >= sizeof(full) ) { SET_LAST_ERROR(ERROR_FILENAME_EXCED_RANGE); return 0; }
+    full[n++] = '/';
+  }
+  full[n] = 0;
+  posix_to_win_path(full, win, sizeof(win));
+  log_always("[SHIM] GetFullPathNameW(\"%s\" -> \"%s\")\n", narrow, win);
+  uint16_t w[PATH_MAX];
+  DWORD len = (DWORD)utf8_to_wchar(win, w, PATH_MAX);
+  if( !buf || size <= len ) return len + 1;
+  memcpy(buf, w, (len + 1) * sizeof(uint16_t));
+  if( filepart ) {
+    uint16_t* slash = nullptr;
+    for( uint16_t* q = (uint16_t*)buf; *q; q++ )
+      if( *q == '\\' ) slash = q;
+    *filepart = (slash && slash[1]) ? slash + 1 : nullptr;
+  }
+  return len;
 }
 
 extern "C" EXPORT void* kernel32_LocalFree(void* p) {
