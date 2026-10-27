@@ -364,9 +364,12 @@ static int rename_noreplace(const char* from, const char* to) {
   if( lstat(to, &st) == 0 ) { errno = EEXIST; return -1; }
   return rename(from, to);
 }
-// a copy of the file from in a new file beside to, named in tmp (to.XXXXXX)
+// a copy of the file from in a new file beside to, named in tmp: a short name
+// in to's directory (.pe2elf-XXXXXX), which is good wherever to's is
 static bool copy_beside(const char* from, const char* to, char* tmp, size_t tmpsz) {
-  if( (size_t)snprintf(tmp, tmpsz, "%s.XXXXXX", to) >= tmpsz ) { errno = ENAMETOOLONG; return false; }
+  const char* slash = strrchr(to, '/');
+  int dirlen = slash ? (int)(slash - to + 1) : 0;
+  if( (size_t)snprintf(tmp, tmpsz, "%.*s.pe2elf-XXXXXX", dirlen, to) >= tmpsz ) { errno = ENAMETOOLONG; return false; }
   int in = open(from, O_RDONLY|O_CLOEXEC);
   if( in < 0 ) return false;
   struct stat st;

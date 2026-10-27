@@ -171,6 +171,8 @@ static uint8_t fake_proc_params[0x200];
 // Empty wide string for UNICODE_STRING buffers
 static uint16_t fake_empty_wstr[2] = {0, 0};
 
+static HANDLE idx_to_handle(int idx);
+
 static void init_fake_peb(void) {
   memset(fake_peb, 0, sizeof(fake_peb));
 
@@ -213,10 +215,11 @@ static void init_fake_peb(void) {
   *(uint32_t*)(pp+0x008) = 1;                                     // Flags: normalized
   // ConsoleHandle: INVALID so CRT doesn't try to init console
   *(void**)(pp+0x018) = (void*)(intptr_t)-1;
-  // Standard handles
-  *(void**)(pp+0x028) = (void*)(intptr_t)0;     // stdin fd 0
-  *(void**)(pp+0x030) = (void*)(intptr_t)1;     // stdout fd 1
-  *(void**)(pp+0x038) = (void*)(intptr_t)2;     // stderr fd 2
+  // Standard handles: slots 0, 1, 2 (stdin, stdout, stderr), as GetStdHandle
+  // gives them
+  *(void**)(pp+0x028) = idx_to_handle(0);
+  *(void**)(pp+0x030) = idx_to_handle(1);
+  *(void**)(pp+0x038) = idx_to_handle(2);
   // ImagePathName: empty string
   *(uint16_t*)(pp+0x068) = 0;    // Length
   *(uint16_t*)(pp+0x06a) = 2;    // MaximumLength
