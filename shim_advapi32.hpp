@@ -30,7 +30,7 @@ extern "C" EXPORT BOOL advapi32_LookupPrivilegeValueW(const uint16_t* /*sys*/,
   if(luid)*luid=1; return TRUE;
 }
 extern "C" EXPORT BOOL advapi32_OpenProcessToken(HANDLE /*proc*/, DWORD /*access*/, HANDLE* tok) {
-  if(tok)*tok=(HANDLE)(intptr_t)1; return TRUE;
+  if(tok)*tok=(HANDLE)(intptr_t)(MAX_HANDLES+0x100); return TRUE; // (no slot's, nor a module's)
 }
 extern "C" EXPORT LONG advapi32_RegCloseKey(HANDLE /*key*/) { return 0; }
 extern "C" EXPORT LONG advapi32_RegOpenKeyExW(HANDLE /*key*/, const uint16_t* /*sub*/,

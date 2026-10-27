@@ -408,16 +408,18 @@ static void handles_init(void) {
   g_handles[2].fd = 2;
 }
 
-// Map HANDLE → slot index (handles are (index+1) as pointer, so 0 maps to fd 0)
+// Map HANDLE → slot index. Handles are (index+1) as pointer, so that none is
+// NULL: the MSVC CRT takes a NULL std handle (as stdin's would be) for none,
+// and then cannot read stdin.
 static int handle_to_idx(HANDLE h) {
   intptr_t v = (intptr_t)h;
-  if( v<0||v>=MAX_HANDLES )
+  if( v<1||v>MAX_HANDLES )
     return -1;
-  return (int)v;
+  return (int)(v-1);
 }
 
 static HANDLE idx_to_handle(int idx) {
-  return (HANDLE)(intptr_t)idx;
+  return (HANDLE)(intptr_t)(idx+1);
 }
 
 static HANDLE handle_alloc_file(int fd) {
