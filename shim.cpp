@@ -681,36 +681,36 @@ static int make_open_flags(DWORD access, DWORD disp) {
 // mmap tracker for VirtualAlloc/VirtualFree
 // ---------------------------------------------------------------------------
 #include <sys/mman.h>
-#define MMAP_TRACK_MAX 4096
-struct MmapEntry { void* base; size_t size; };
-static MmapEntry g_mmap_table[MMAP_TRACK_MAX];
+#include <unordered_map>
+// Each VirtualAlloc'd region's base and size (VirtualFree's MEM_RELEASE gets
+// only the base), with no limit on how many: a program may hold thousands
+// (h264p's decoder takes 64KB blocks by the thousand). A base given again (a
+// commit at a reservation's start) keeps the larger size, the region's.
+// Made on first use and never destroyed, so that threads still running at
+// exit can use it.
 static pthread_mutex_t g_mmap_mu = PTHREAD_MUTEX_INITIALIZER;
+static std::unordered_map<void*, size_t>& mmap_table() {
+  static std::unordered_map<void*, size_t>* t = new std::unordered_map<void*, size_t>();
+  return *t;
+}
 
 static bool mmap_track_add(void* base, size_t size) {
   pthread_mutex_lock(&g_mmap_mu);
-  for( int i = 0; i<MMAP_TRACK_MAX; ++i ) {
-    if( !g_mmap_table[i].base ) {
-      g_mmap_table[i].base = base;
-      g_mmap_table[i].size = size;
-      pthread_mutex_unlock(&g_mmap_mu);
-      return true;
-    }
-  }
+  bool ok = true;
+  try {
+    size_t& s = mmap_table()[base];
+    if( size>s ) s = size;
+  } catch( ... ) { ok = false; } // (no memory for the entry)
   pthread_mutex_unlock(&g_mmap_mu);
-  return false;
+  return ok;
 }
 
 static size_t mmap_track_remove(void* base) {
   pthread_mutex_lock(&g_mmap_mu);
   size_t sz = 0;
-  for( int i = 0; i<MMAP_TRACK_MAX; ++i ) {
-    if( g_mmap_table[i].base==base ) {
-      sz = g_mmap_table[i].size;
-      g_mmap_table[i].base = NULL;
-      g_mmap_table[i].size = 0;
-      break;
-    }
-  }
+  std::unordered_map<void*, size_t>& t = mmap_table();
+  std::unordered_map<void*, size_t>::iterator i = t.find(base);
+  if( i!=t.end() ) { sz = i->second; t.erase(i); }
   pthread_mutex_unlock(&g_mmap_mu);
   return sz;
 }
